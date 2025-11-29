@@ -8,10 +8,11 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { LookaheadTimeline } from "@/components/lookahead/LookaheadTimeline";
 import { CoordinationSummaryDialog } from "@/components/lookahead/CoordinationSummaryDialog";
+import { DelayForecastModal } from "@/components/lookahead/DelayForecastModal";
 import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar as CalendarIcon, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar as CalendarIcon, Sparkles, ChevronLeft, ChevronRight, TrendingUp } from "lucide-react";
 
 const Lookahead = () => {
   const { toast } = useToast();
@@ -26,6 +27,9 @@ const Lookahead = () => {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [projects, setProjects] = useState<any[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [forecastModalOpen, setForecastModalOpen] = useState(false);
+  const [forecastLoading, setForecastLoading] = useState(false);
+  const [forecastData, setForecastData] = useState<any>(null);
 
   useEffect(() => {
     // Fetch projects
@@ -171,6 +175,44 @@ const Lookahead = () => {
     }
   };
 
+  const handleForecastDelay = async () => {
+    if (!selectedProjectId) return;
+
+    setForecastLoading(true);
+    setForecastModalOpen(true);
+    setForecastData(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('forecast-delay', {
+        body: {
+          projectId: selectedProjectId,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.error) {
+        toast({
+          title: 'Forecast Error',
+          description: data.error,
+          variant: 'destructive',
+        });
+        setForecastModalOpen(false);
+      } else {
+        setForecastData(data.forecast);
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Error forecasting delays',
+        description: error.message,
+        variant: 'destructive',
+      });
+      setForecastModalOpen(false);
+    } finally {
+      setForecastLoading(false);
+    }
+  };
+
   const previousWeek = () => {
     const newDate = new Date(startDate);
     newDate.setDate(newDate.getDate() - 7);
@@ -235,16 +277,28 @@ const Lookahead = () => {
             </div>
           </div>
 
-          {/* AI Summary Button */}
-          <Button
-            onClick={handleGenerateSummary}
-            disabled={tasks.length === 0}
-            className="bg-primary hover:bg-primary/90 font-semibold"
-            size="lg"
-          >
-            <Sparkles className="h-5 w-5 mr-2" />
-            Generate Coordination Summary
-          </Button>
+          {/* AI Buttons */}
+          <div className="flex gap-2">
+            <Button
+              onClick={handleForecastDelay}
+              disabled={tasks.length === 0}
+              variant="outline"
+              className="font-semibold"
+              size="lg"
+            >
+              <TrendingUp className="h-5 w-5 mr-2" />
+              Forecast Schedule Impact
+            </Button>
+            <Button
+              onClick={handleGenerateSummary}
+              disabled={tasks.length === 0}
+              className="bg-primary hover:bg-primary/90 font-semibold"
+              size="lg"
+            >
+              <Sparkles className="h-5 w-5 mr-2" />
+              Coordination Summary
+            </Button>
+          </div>
         </div>
 
         {/* Timeline */}
@@ -271,6 +325,13 @@ const Lookahead = () => {
           onOpenChange={setSummaryOpen}
           summary={summary}
           loading={summaryLoading}
+        />
+
+        <DelayForecastModal
+          isOpen={forecastModalOpen}
+          onClose={() => setForecastModalOpen(false)}
+          forecast={forecastData}
+          isLoading={forecastLoading}
         />
 
         <TaskDetailModal
