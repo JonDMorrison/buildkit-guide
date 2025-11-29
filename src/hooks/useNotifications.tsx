@@ -3,7 +3,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useToast } from '@/hooks/use-toast';
 
-export type NotificationType = 'task_assigned' | 'blocker_added' | 'safety_alert' | 'manpower_request' | 'general';
+export type NotificationType = 
+  | 'task_assigned' 
+  | 'blocker_added' 
+  | 'blocker_cleared' 
+  | 'safety_alert' 
+  | 'manpower_request' 
+  | 'manpower_approved' 
+  | 'manpower_denied' 
+  | 'deficiency_created' 
+  | 'document_uploaded' 
+  | 'incident_report' 
+  | 'general';
 
 export interface Notification {
   id: string;

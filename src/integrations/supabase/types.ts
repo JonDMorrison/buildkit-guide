@@ -483,6 +483,60 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          blocker_added: boolean
+          blocker_cleared: boolean
+          created_at: string
+          deficiency_created: boolean
+          document_uploaded: boolean
+          general: boolean
+          id: string
+          incident_report: boolean
+          manpower_approved: boolean
+          manpower_denied: boolean
+          manpower_request: boolean
+          safety_alert: boolean
+          task_assigned: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          blocker_added?: boolean
+          blocker_cleared?: boolean
+          created_at?: string
+          deficiency_created?: boolean
+          document_uploaded?: boolean
+          general?: boolean
+          id?: string
+          incident_report?: boolean
+          manpower_approved?: boolean
+          manpower_denied?: boolean
+          manpower_request?: boolean
+          safety_alert?: boolean
+          task_assigned?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          blocker_added?: boolean
+          blocker_cleared?: boolean
+          created_at?: string
+          deficiency_created?: boolean
+          document_uploaded?: boolean
+          general?: boolean
+          id?: string
+          incident_report?: boolean
+          manpower_approved?: boolean
+          manpower_denied?: boolean
+          manpower_request?: boolean
+          safety_alert?: boolean
+          task_assigned?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -1027,6 +1081,10 @@ export type Database = {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
       }
+      user_wants_notification: {
+        Args: { _notification_type: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role:
@@ -1042,6 +1100,12 @@ export type Database = {
         | "safety_alert"
         | "manpower_request"
         | "general"
+        | "blocker_cleared"
+        | "manpower_approved"
+        | "manpower_denied"
+        | "deficiency_created"
+        | "document_uploaded"
+        | "incident_report"
       safety_status: "draft" | "submitted" | "reviewed"
       task_status: "not_started" | "in_progress" | "blocked" | "done"
     }
@@ -1185,6 +1249,12 @@ export const Constants = {
         "safety_alert",
         "manpower_request",
         "general",
+        "blocker_cleared",
+        "manpower_approved",
+        "manpower_denied",
+        "deficiency_created",
+        "document_uploaded",
+        "incident_report",
       ],
       safety_status: ["draft", "submitted", "reviewed"],
       task_status: ["not_started", "in_progress", "blocked", "done"],

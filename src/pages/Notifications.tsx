@@ -17,8 +17,11 @@ const Notifications = () => {
     { label: 'All', value: undefined },
     { label: 'Tasks', value: 'task_assigned' },
     { label: 'Blockers', value: 'blocker_added' },
+    { label: 'Cleared', value: 'blocker_cleared' },
     { label: 'Safety', value: 'safety_alert' },
     { label: 'Manpower', value: 'manpower_request' },
+    { label: 'Deficiencies', value: 'deficiency_created' },
+    { label: 'Documents', value: 'document_uploaded' },
     { label: 'General', value: 'general' },
   ];
 
@@ -62,12 +65,12 @@ const Notifications = () => {
           onValueChange={(value) => setFilterType(value === 'all' ? undefined : value as NotificationType)}
           className="mb-6"
         >
-          <TabsList className="w-full grid grid-cols-3 lg:grid-cols-6 h-auto gap-2">
+          <TabsList className="w-full grid grid-cols-2 md:grid-cols-5 lg:grid-cols-10 h-auto gap-1">
             {typeFilters.map((filter) => (
               <TabsTrigger 
                 key={filter.label} 
                 value={filter.value || 'all'}
-                className="text-xs lg:text-sm px-2 py-2"
+                className="text-xs px-2 py-1.5"
               >
                 {filter.label}
               </TabsTrigger>
