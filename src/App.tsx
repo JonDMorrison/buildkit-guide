@@ -17,6 +17,7 @@ import Auth from "./pages/Auth";
 import Notifications from "./pages/Notifications";
 import NotificationSettings from "./pages/NotificationSettings";
 import Documents from "./pages/Documents";
+import UserManagement from "./pages/UserManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -115,6 +116,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Documents />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/users"
+              element={
+                <ProtectedRoute>
+                  <UserManagement />
                 </ProtectedRoute>
               }
             />
