@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LookaheadTimeline } from "@/components/lookahead/LookaheadTimeline";
 import { CoordinationSummaryDialog } from "@/components/lookahead/CoordinationSummaryDialog";
 import { DelayForecastModal } from "@/components/lookahead/DelayForecastModal";
@@ -30,6 +31,7 @@ const Lookahead = () => {
   const [forecastModalOpen, setForecastModalOpen] = useState(false);
   const [forecastLoading, setForecastLoading] = useState(false);
   const [forecastData, setForecastData] = useState<any>(null);
+  const [delayedTaskIds, setDelayedTaskIds] = useState<string[]>([]);
 
   useEffect(() => {
     // Fetch projects
@@ -81,6 +83,9 @@ const Lookahead = () => {
       const endDate = new Date(startDate);
       endDate.setDate(endDate.getDate() + 13);
 
+      const startDateStr = startDate.toISOString().split('T')[0];
+      const endDateStr = endDate.toISOString().split('T')[0];
+
       let query = supabase
         .from('tasks')
         .select(`
@@ -89,10 +94,11 @@ const Lookahead = () => {
           projects(name)
         `)
         .eq('project_id', selectedProjectId)
-        .eq('is_deleted', false)
-        .gte('due_date', startDate.toISOString().split('T')[0])
-        .lte('due_date', endDate.toISOString().split('T')[0])
-        .order('due_date');
+        .eq('is_deleted', false);
+
+      // Query tasks that overlap with the 14-day window
+      // Use start_date/end_date if available, fallback to due_date
+      query = query.or(`and(start_date.lte.${endDateStr},end_date.gte.${startDateStr}),and(start_date.is.null,end_date.is.null,due_date.gte.${startDateStr},due_date.lte.${endDateStr})`);
 
       const { data, error } = await query;
 
@@ -112,10 +118,17 @@ const Lookahead = () => {
           return acc;
         }, {} as Record<string, number>) || {};
 
-        const tasksWithBlockers = data.map(task => ({
+        let tasksWithBlockers = data.map(task => ({
           ...task,
           _blockerCount: blockerCounts[task.id] || 0,
         }));
+
+        // Apply Horizon Only filter
+        if (horizonOnly) {
+          tasksWithBlockers = tasksWithBlockers.filter(
+            task => task.trades?.company_name?.toLowerCase().includes('horizon')
+          );
+        }
 
         setTasks(tasksWithBlockers);
       } else {
@@ -200,6 +213,11 @@ const Lookahead = () => {
         setForecastModalOpen(false);
       } else {
         setForecastData(data.forecast);
+        // Extract delayed task IDs for warning indicators
+        if (data.forecast?.delayed_tasks) {
+          const ids = data.forecast.delayed_tasks.map((t: any) => t.task_id);
+          setDelayedTaskIds(ids);
+        }
       }
     } catch (error: any) {
       toast({
@@ -251,8 +269,22 @@ const Lookahead = () => {
         {/* Controls */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6 p-4 bg-card rounded-lg border border-border">
           <div className="flex items-center gap-4">
+            {/* Project Selector */}
+            <Select value={selectedProjectId || undefined} onValueChange={setSelectedProjectId}>
+              <SelectTrigger className="w-[240px] font-semibold">
+                <SelectValue placeholder="Select project" />
+              </SelectTrigger>
+              <SelectContent>
+                {projects.map((project) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    {project.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             {/* Date Navigation */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 pl-4 border-l border-border">
               <Button variant="outline" size="icon" onClick={previousWeek}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
@@ -312,6 +344,7 @@ const Lookahead = () => {
           <LookaheadTimeline
             tasks={tasks}
             startDate={startDate}
+            delayedTaskIds={delayedTaskIds}
             onTaskClick={(taskId) => {
               setSelectedTaskId(taskId);
               setDetailModalOpen(true);
