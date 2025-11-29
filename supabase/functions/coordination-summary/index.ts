@@ -133,9 +133,11 @@ Your analysis must be data-driven, actionable, and field-friendly. Focus on clea
                           items: {
                             type: 'object',
                             properties: {
+                              task_id: { type: 'string' },
                               task_title: { type: 'string' },
                               reason: { type: 'string' }
-                            }
+                            },
+                            required: ['task_id', 'task_title', 'reason']
                           }
                         }
                       }

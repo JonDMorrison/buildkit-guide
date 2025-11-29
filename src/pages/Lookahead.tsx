@@ -325,6 +325,11 @@ const Lookahead = () => {
           onOpenChange={setSummaryOpen}
           summary={summary}
           loading={summaryLoading}
+          onTaskClick={(taskId) => {
+            setSelectedTaskId(taskId);
+            setDetailModalOpen(true);
+            setSummaryOpen(false);
+          }}
         />
 
         <DelayForecastModal
