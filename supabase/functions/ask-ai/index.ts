@@ -21,8 +21,54 @@ serve(async (req) => {
 
     console.log('Processing AI question for project:', projectId);
 
-    // Initialize Supabase client
+    // Get user from auth header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('No authorization header');
+    }
+
+    // Initialize Supabase client with user context
     const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    // Get current user
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !user) {
+      throw new Error('Unauthorized');
+    }
+
+    console.log('User authenticated:', user.id);
+
+    // Check user role for this project
+    const { data: membership } = await supabaseClient
+      .from('project_members')
+      .select('role, trade_id')
+      .eq('user_id', user.id)
+      .eq('project_id', projectId)
+      .single();
+
+    const { data: globalAdmin } = await supabaseClient
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .single();
+
+    const isAdmin = !!globalAdmin;
+    const userRole = membership?.role;
+    const userTradeId = membership?.trade_id;
+
+    console.log('User role:', userRole, 'Trade:', userTradeId, 'Is Admin:', isAdmin);
+
+    if (!isAdmin && !userRole) {
+      throw new Error('No access to this project');
+    }
+
+    // Create service client for data fetching
+    const serviceClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
@@ -43,66 +89,112 @@ serve(async (req) => {
 
     console.log('Search query:', searchQuery);
 
-    // Search document texts using full-text search
-    const { data: documents, error: docError } = await supabaseClient
-      .from('document_texts')
-      .select('id, title, raw_text, created_at')
-      .eq('project_id', projectId)
-      .textSearch('search_vector', searchQuery, { type: 'websearch' })
-      .limit(5);
+    // Role-based data filtering
+    const canSeeAll = isAdmin || userRole === 'project_manager' || userRole === 'foreman';
+    const isWorker = userRole === 'internal_worker' || userRole === 'external_trade';
 
-    if (docError) {
-      console.error('Document search error:', docError);
-    }
+    let documents: any[] = [];
+    let tasks: any[] = [];
+    let blockers: any[] = [];
+    let safetyForms: any[] = [];
+    let deficiencies: any[] = [];
 
-    // Get recent tasks
-    const { data: tasks, error: tasksError } = await supabaseClient
-      .from('tasks')
-      .select('id, title, description, status, priority, due_date, location, assigned_trade_id, trades(name)')
-      .eq('project_id', projectId)
-      .eq('is_deleted', false)
-      .order('created_at', { ascending: false })
-      .limit(20);
+    if (canSeeAll) {
+      // Admin/PM/Foreman: See all project data
+      const { data: docs } = await serviceClient
+        .from('document_texts')
+        .select('id, title, raw_text, created_at')
+        .eq('project_id', projectId)
+        .textSearch('search_vector', searchQuery, { type: 'websearch' })
+        .limit(5);
+      documents = docs || [];
 
-    if (tasksError) {
-      console.error('Tasks fetch error:', tasksError);
-    }
+      const { data: tasksData } = await serviceClient
+        .from('tasks')
+        .select('id, title, description, status, priority, due_date, location, assigned_trade_id, trades(name)')
+        .eq('project_id', projectId)
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      tasks = tasksData || [];
 
-    // Get blockers
-    const { data: blockers, error: blockersError } = await supabaseClient
-      .from('blockers')
-      .select('id, reason, description, is_resolved, task_id, tasks(title, trades(name))')
-      .eq('is_resolved', false)
-      .limit(10);
+      const { data: blockersData } = await serviceClient
+        .from('blockers')
+        .select('id, reason, description, is_resolved, task_id, tasks(title, trades(name))')
+        .eq('is_resolved', false)
+        .limit(10);
+      blockers = blockersData || [];
 
-    if (blockersError) {
-      console.error('Blockers fetch error:', blockersError);
-    }
+      const { data: safetyData } = await serviceClient
+        .from('safety_forms')
+        .select('id, title, form_type, status, inspection_date')
+        .eq('project_id', projectId)
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      safetyForms = safetyData || [];
 
-    // Get recent safety forms
-    const { data: safetyForms, error: safetyError } = await supabaseClient
-      .from('safety_forms')
-      .select('id, title, form_type, status, inspection_date')
-      .eq('project_id', projectId)
-      .eq('is_deleted', false)
-      .order('created_at', { ascending: false })
-      .limit(10);
+      const { data: defData } = await serviceClient
+        .from('deficiencies')
+        .select('id, title, description, status, priority, location, due_date, trades(name)')
+        .eq('project_id', projectId)
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      deficiencies = defData || [];
 
-    if (safetyError) {
-      console.error('Safety forms fetch error:', safetyError);
-    }
+    } else if (isWorker) {
+      // Workers: Only see their assigned tasks and related data
+      console.log('Filtering for worker role');
 
-    // Get deficiencies
-    const { data: deficiencies, error: deficienciesError } = await supabaseClient
-      .from('deficiencies')
-      .select('id, title, description, status, priority, location, due_date, trades(name)')
-      .eq('project_id', projectId)
-      .eq('is_deleted', false)
-      .order('created_at', { ascending: false })
-      .limit(10);
+      // Get tasks assigned to this user OR their trade
+      let taskQuery = serviceClient
+        .from('tasks')
+        .select('id, title, description, status, priority, due_date, location, assigned_trade_id, trades(name), task_assignments(user_id)')
+        .eq('project_id', projectId)
+        .eq('is_deleted', false);
 
-    if (deficienciesError) {
-      console.error('Deficiencies fetch error:', deficienciesError);
+      if (userRole === 'external_trade' && userTradeId) {
+        // External trade: only tasks for their trade
+        taskQuery = taskQuery.eq('assigned_trade_id', userTradeId);
+      } else if (userRole === 'internal_worker') {
+        // Internal worker: only directly assigned tasks
+        taskQuery = taskQuery.eq('task_assignments.user_id', user.id);
+      }
+
+      const { data: tasksData } = await taskQuery.limit(20);
+      tasks = tasksData || [];
+
+      const taskIds = tasks.map(t => t.id);
+
+      // Only get documents, blockers, deficiencies related to their tasks
+      if (taskIds.length > 0) {
+        const { data: docs } = await serviceClient
+          .from('attachments')
+          .select('id, file_name, description, task_id')
+          .in('task_id', taskIds)
+          .textSearch('description', searchQuery, { type: 'websearch' })
+          .limit(5);
+        // Convert attachments to document-like format
+        documents = (docs || []).map(d => ({ id: d.id, title: d.file_name, raw_text: d.description || '' }));
+
+        const { data: blockersData } = await serviceClient
+          .from('blockers')
+          .select('id, reason, description, is_resolved, task_id, tasks(title, trades(name))')
+          .in('task_id', taskIds)
+          .eq('is_resolved', false);
+        blockers = blockersData || [];
+
+        const { data: defData } = await serviceClient
+          .from('deficiencies')
+          .select('id, title, description, status, priority, location, due_date, trades(name), task_id')
+          .in('task_id', taskIds)
+          .eq('is_deleted', false);
+        deficiencies = defData || [];
+      }
+
+      // Workers don't see safety forms
+      safetyForms = [];
     }
 
     // Build context for AI
@@ -166,6 +258,7 @@ serve(async (req) => {
     }
 
     // Call Lovable AI
+    const scopeNote = isWorker ? '\n\nNOTE: User has limited access. Only show information about their assigned tasks.' : '';
     const systemPrompt = `You are a construction project AI assistant. Answer questions based ONLY on the provided project data. Be concise, clear, and field-friendly.
 
 Rules:
@@ -173,7 +266,7 @@ Rules:
 - If information is not available, say so clearly
 - Provide specific details (task names, trade names, dates, locations)
 - Keep answers short and actionable
-- Format responses in plain language, not technical jargon`;
+- Format responses in plain language, not technical jargon${scopeNote}`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -202,10 +295,10 @@ Rules:
     console.log('AI answer generated');
 
     // Save query to ai_queries table
-    const { error: insertError } = await supabaseClient
+    const { error: insertError } = await serviceClient
       .from('ai_queries')
       .insert({
-        user_id: req.headers.get('x-user-id'),
+        user_id: user.id,
         project_id: projectId,
         query_text: question,
         response_text: answer,

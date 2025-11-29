@@ -4,11 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Send, FileText, AlertCircle, CheckSquare, Shield, Upload } from "lucide-react";
+import { Loader2, Send, FileText, AlertCircle, CheckSquare, Shield, Upload, Info } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { useAuthRole } from "@/hooks/useAuthRole";
 import { DocumentUpload } from "@/components/documents/DocumentUpload";
 
 interface Project {
@@ -38,6 +40,7 @@ const AI = () => {
   const [answer, setAnswer] = useState("");
   const [sources, setSources] = useState<Sources | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const { isWorker } = useAuthRole(selectedProjectId || undefined);
 
   const suggestedQuestions = [
     "Where are the inspection requirements for this project?",
@@ -146,6 +149,16 @@ const AI = () => {
             </TabsList>
 
             <TabsContent value="qa" className="space-y-4 mt-4">
+              
+              {/* Worker Scope Notice */}
+              {isWorker && (
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    Your AI answers are based only on tasks assigned to you and related documents.
+                  </AlertDescription>
+                </Alert>
+              )}
 
               {/* Suggested Questions */}
               <Card className="p-4">
