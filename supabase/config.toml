@@ -1,1 +1,13 @@
 project_id = "pckpfhrdrjtcjzcdfvfs"
+
+[functions.ask-ai]
+verify_jwt = false
+
+[functions.extract-task]
+verify_jwt = false
+
+[functions.transcribe-audio]
+verify_jwt = false
+
+[functions.coordination-summary]
+verify_jwt = false
