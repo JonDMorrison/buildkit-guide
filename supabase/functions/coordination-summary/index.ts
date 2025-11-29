@@ -88,7 +88,7 @@ serve(async (req) => {
       })),
     };
 
-    // Call Lovable AI
+    // Call Lovable AI with tool calling for structured output
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -100,23 +100,81 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a construction coordination AI assistant. Analyze the 2-week lookahead data and generate a concise coordination summary.
+            content: `You are a construction coordination AI assistant. Analyze the 2-week lookahead data and generate a structured coordination summary.
 
-Format your response as a structured summary with these sections:
-1. **Overview** - Quick stats
-2. **Blocked Tasks** - Tasks requiring immediate attention
-3. **Trade-by-Trade Summary** - What each trade owes/needs
-4. **Dependencies at Risk** - Tasks blocked by incomplete dependencies
-5. **Schedule Risks** - Potential delays and bottlenecks
-6. **Recommended Actions** - Top 3-5 action items
-
-Keep it field-friendly: short sentences, clear hierarchy, actionable items.`
+Your analysis must be data-driven, actionable, and field-friendly. Focus on clear communication for construction teams.`
           },
           {
             role: 'user',
-            content: `Generate a coordination summary for this 2-week lookahead:\n\n${JSON.stringify(context, null, 2)}`
+            content: `Generate a comprehensive coordination summary for this 2-week lookahead:\n\n${JSON.stringify(context, null, 2)}`
           }
         ],
+        tools: [
+          {
+            type: 'function',
+            function: {
+              name: 'generate_coordination_summary',
+              description: 'Generate a structured coordination summary with blocked tasks, dependencies, risks, and recommendations',
+              parameters: {
+                type: 'object',
+                properties: {
+                  overview: {
+                    type: 'string',
+                    description: 'Brief overview paragraph with key stats'
+                  },
+                  blocked_by_trade: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        trade: { type: 'string' },
+                        tasks: {
+                          type: 'array',
+                          items: {
+                            type: 'object',
+                            properties: {
+                              task_title: { type: 'string' },
+                              reason: { type: 'string' }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  what_horizon_is_waiting_on: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'List of items/actions Horizon needs from external trades'
+                  },
+                  upcoming_risks: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        risk: { type: 'string' },
+                        impact: { type: 'string' }
+                      }
+                    }
+                  },
+                  schedule_impacts: {
+                    type: 'array',
+                    items: { type: 'string' }
+                  },
+                  recommended_actions: {
+                    type: 'array',
+                    items: { type: 'string' }
+                  },
+                  next_7_days_priorities: {
+                    type: 'array',
+                    items: { type: 'string' }
+                  }
+                },
+                required: ['overview', 'blocked_by_trade', 'what_horizon_is_waiting_on', 'upcoming_risks', 'recommended_actions']
+              }
+            }
+          }
+        ],
+        tool_choice: { type: 'function', function: { name: 'generate_coordination_summary' } }
       }),
     });
 
@@ -139,10 +197,21 @@ Keep it field-friendly: short sentences, clear hierarchy, actionable items.`
     }
 
     const aiResponse = await response.json();
-    const summary = aiResponse.choices[0]?.message?.content;
+    
+    // Extract structured summary from tool call
+    const toolCall = aiResponse.choices[0]?.message?.tool_calls?.[0];
+    if (!toolCall) {
+      throw new Error('No tool call in AI response');
+    }
+
+    const structuredSummary = JSON.parse(toolCall.function.arguments);
 
     return new Response(
-      JSON.stringify({ summary, context }),
+      JSON.stringify({ 
+        summary: structuredSummary,
+        context,
+        tasks: tasks?.map(t => ({ id: t.id, title: t.title })) || []
+      }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200 
