@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
 import { TradeBadge } from "@/components/TradeBadge";
+import { PhotoUpload } from "./PhotoUpload";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { Loader2, MapPin, Calendar, Image as ImageIcon } from "lucide-react";
@@ -27,6 +28,8 @@ export const DeficiencyDetailModal = ({
   const [deficiency, setDeficiency] = useState<any>(null);
   const [attachments, setAttachments] = useState<any[]>([]);
   const [newStatus, setNewStatus] = useState("");
+  const [newPhotos, setNewPhotos] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -106,6 +109,61 @@ export const DeficiencyDetailModal = ({
         description: "Failed to update status",
         variant: "destructive",
       });
+    }
+  };
+
+  const handlePhotoUpload = async () => {
+    if (!deficiencyId || newPhotos.length === 0) return;
+
+    setUploading(true);
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) throw new Error("Not authenticated");
+
+      const uploadPromises = newPhotos.map(async (photo, index) => {
+        const fileExt = photo.name.split(".").pop();
+        const fileName = `${deficiencyId}/${Date.now()}_${index}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from("deficiency-photos")
+          .upload(fileName, photo);
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from("deficiency-photos")
+          .getPublicUrl(fileName);
+
+        await supabase.from("attachments").insert({
+          deficiency_id: deficiencyId,
+          project_id: deficiency.project_id,
+          file_name: photo.name,
+          file_type: photo.type,
+          file_url: urlData.publicUrl,
+          file_size: photo.size,
+          uploaded_by: userData.user.id,
+        });
+      });
+
+      await Promise.all(uploadPromises);
+
+      toast({
+        title: "Success",
+        description: `${newPhotos.length} photo(s) uploaded`,
+      });
+
+      setNewPhotos([]);
+      fetchDeficiencyDetails();
+      onUpdate();
+    } catch (error: any) {
+      console.error("Error uploading photos:", error);
+      toast({
+        title: "Error",
+        description: "Failed to upload photos",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -214,6 +272,33 @@ export const DeficiencyDetailModal = ({
               </span>
             </div>
           )}
+
+          {/* Add More Photos */}
+          <div className="space-y-3">
+            <Label className="text-base font-semibold">Add More Photos</Label>
+            <PhotoUpload
+              photos={newPhotos}
+              onPhotosChange={setNewPhotos}
+              maxPhotos={10}
+              disabled={uploading}
+            />
+            {newPhotos.length > 0 && (
+              <Button
+                onClick={handlePhotoUpload}
+                disabled={uploading}
+                className="w-full h-12"
+              >
+                {uploading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  `Upload ${newPhotos.length} Photo${newPhotos.length > 1 ? "s" : ""}`
+                )}
+              </Button>
+            )}
+          </div>
 
           {/* Status Update */}
           <div className="space-y-3">

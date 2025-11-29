@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PhotoUpload } from "./PhotoUpload";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
@@ -23,6 +24,7 @@ export const CreateDeficiencyModal = ({
   const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState<any[]>([]);
   const [trades, setTrades] = useState<any[]>([]);
+  const [photos, setPhotos] = useState<File[]>([]);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -87,23 +89,60 @@ export const CreateDeficiencyModal = ({
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error("Not authenticated");
 
-      const { error } = await supabase.from("deficiencies").insert({
-        title: formData.title,
-        description: formData.description || null,
-        project_id: formData.project_id,
-        assigned_trade_id: formData.assigned_trade_id || null,
-        location: formData.location || null,
-        priority: parseInt(formData.priority),
-        due_date: formData.due_date || null,
-        created_by: userData.user.id,
-        status: "open",
-      });
+      // Create deficiency
+      const { data: deficiency, error: deficiencyError } = await supabase
+        .from("deficiencies")
+        .insert({
+          title: formData.title,
+          description: formData.description || null,
+          project_id: formData.project_id,
+          assigned_trade_id: formData.assigned_trade_id || null,
+          location: formData.location || null,
+          priority: parseInt(formData.priority),
+          due_date: formData.due_date || null,
+          created_by: userData.user.id,
+          status: "open",
+        })
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (deficiencyError) throw deficiencyError;
+
+      // Upload photos if any
+      if (photos.length > 0 && deficiency) {
+        const uploadPromises = photos.map(async (photo, index) => {
+          const fileExt = photo.name.split(".").pop();
+          const fileName = `${deficiency.id}/${Date.now()}_${index}.${fileExt}`;
+          
+          const { error: uploadError, data: uploadData } = await supabase.storage
+            .from("deficiency-photos")
+            .upload(fileName, photo);
+
+          if (uploadError) throw uploadError;
+
+          // Get public URL
+          const { data: urlData } = supabase.storage
+            .from("deficiency-photos")
+            .getPublicUrl(fileName);
+
+          // Create attachment record
+          await supabase.from("attachments").insert({
+            deficiency_id: deficiency.id,
+            project_id: formData.project_id,
+            file_name: photo.name,
+            file_type: photo.type,
+            file_url: urlData.publicUrl,
+            file_size: photo.size,
+            uploaded_by: userData.user.id,
+          });
+        });
+
+        await Promise.all(uploadPromises);
+      }
 
       toast({
         title: "Success",
-        description: "Deficiency created successfully",
+        description: `Deficiency created${photos.length > 0 ? ` with ${photos.length} photo(s)` : ""}`,
       });
 
       setFormData({
@@ -115,6 +154,7 @@ export const CreateDeficiencyModal = ({
         priority: "3",
         due_date: "",
       });
+      setPhotos([]);
       onCreate();
       onClose();
     } catch (error: any) {
@@ -238,6 +278,16 @@ export const CreateDeficiencyModal = ({
               value={formData.due_date}
               onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
               className="h-12"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-base font-semibold">Photos</Label>
+            <PhotoUpload
+              photos={photos}
+              onPhotosChange={setPhotos}
+              maxPhotos={10}
+              disabled={loading}
             />
           </div>
 
