@@ -8,7 +8,9 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LookaheadTimeline } from "@/components/lookahead/LookaheadTimeline";
+import { LookaheadMobileView } from "@/components/lookahead/LookaheadMobileView";
 import { CoordinationSummaryDialog } from "@/components/lookahead/CoordinationSummaryDialog";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { DelayForecastModal } from "@/components/lookahead/DelayForecastModal";
 import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,6 +19,7 @@ import { Calendar as CalendarIcon, Sparkles, ChevronLeft, ChevronRight, Trending
 
 const Lookahead = () => {
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [horizonOnly, setHorizonOnly] = useState(false);
@@ -333,12 +336,22 @@ const Lookahead = () => {
           </div>
         </div>
 
-        {/* Timeline */}
+        {/* Timeline - Desktop vs Mobile */}
         {tasks.length === 0 ? (
           <EmptyState
             icon={<CalendarIcon className="h-8 w-8" />}
             title="No tasks scheduled"
             description="Schedule tasks for the next 2 weeks to view your lookahead."
+          />
+        ) : isMobile ? (
+          <LookaheadMobileView
+            tasks={tasks}
+            startDate={startDate}
+            delayedTaskIds={delayedTaskIds}
+            onTaskClick={(taskId) => {
+              setSelectedTaskId(taskId);
+              setDetailModalOpen(true);
+            }}
           />
         ) : (
           <LookaheadTimeline
