@@ -174,11 +174,13 @@ const Documents = () => {
           <DocumentGrid 
             documents={documents} 
             onPreview={setPreviewDoc}
+            onDelete={refetch}
           />
         ) : (
           <DocumentList 
             documents={documents} 
             onPreview={setPreviewDoc}
+            onDelete={refetch}
           />
         )}
 

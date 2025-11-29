@@ -1,11 +1,27 @@
 import { formatDistanceToNow } from "date-fns";
-import { FileText, Image as ImageIcon, File, Eye } from "lucide-react";
+import { FileText, Image as ImageIcon, File, Eye, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useAuthRole } from "@/hooks/useAuthRole";
+import { useCurrentProject } from "@/hooks/useCurrentProject";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useState } from "react";
 
 interface DocumentListProps {
   documents: any[];
   onPreview: (doc: any) => void;
+  onDelete?: () => void;
 }
 
 const getDocumentIcon = (fileType: string) => {
@@ -30,10 +46,63 @@ const getDocumentTypeLabel = (type: string) => {
   return labels[type] || type;
 };
 
-export const DocumentList = ({ documents, onPreview }: DocumentListProps) => {
+export const DocumentList = ({ documents, onPreview, onDelete }: DocumentListProps) => {
+  const { toast } = useToast();
+  const { currentProjectId } = useCurrentProject();
+  const { can } = useAuthRole(currentProjectId || undefined);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [documentToDelete, setDocumentToDelete] = useState<any>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const canDelete = currentProjectId && can('delete_documents', currentProjectId);
+
+  const handleDeleteClick = (doc: any) => {
+    setDocumentToDelete(doc);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!documentToDelete) return;
+
+    setDeleting(true);
+    try {
+      // Delete from storage if it's in project-documents bucket
+      if (documentToDelete.file_url.includes('project-documents')) {
+        const filePath = documentToDelete.file_url.split('/project-documents/')[1];
+        await supabase.storage.from('project-documents').remove([filePath]);
+      }
+
+      // Delete from database
+      const { error } = await supabase
+        .from('attachments')
+        .delete()
+        .eq('id', documentToDelete.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Document deleted',
+        description: 'The document has been removed successfully',
+      });
+
+      onDelete?.();
+    } catch (error: any) {
+      toast({
+        title: 'Error deleting document',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setDeleting(false);
+      setDeleteDialogOpen(false);
+      setDocumentToDelete(null);
+    }
+  };
+
   return (
-    <div className="space-y-2">
-      {documents.map((doc) => {
+    <>
+      <div className="space-y-2">
+        {documents.map((doc) => {
         const Icon = getDocumentIcon(doc.file_type);
         
         return (
@@ -72,18 +141,50 @@ export const DocumentList = ({ documents, onPreview }: DocumentListProps) => {
               </div>
             </div>
 
-            {/* Action */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onPreview(doc)}
-              className="flex-shrink-0"
-            >
-              <Eye className="h-4 w-4" />
-            </Button>
+            {/* Actions */}
+            <div className="flex gap-1 flex-shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onPreview(doc)}
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+              {canDelete && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleDeleteClick(doc)}
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              )}
+            </div>
           </div>
         );
       })}
     </div>
+
+    <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Document</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to delete "{documentToDelete?.file_name}"? This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleConfirmDelete}
+            disabled={deleting}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {deleting ? 'Deleting...' : 'Delete'}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 };

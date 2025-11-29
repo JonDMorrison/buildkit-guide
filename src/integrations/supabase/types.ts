@@ -320,6 +320,62 @@ export type Database = {
           },
         ]
       }
+      daily_logs: {
+        Row: {
+          created_at: string
+          created_by: string
+          crew_count: number | null
+          id: string
+          issues: string | null
+          log_date: string
+          next_day_plan: string | null
+          project_id: string
+          safety_notes: string | null
+          temperature: string | null
+          updated_at: string
+          weather: string | null
+          work_performed: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          crew_count?: number | null
+          id?: string
+          issues?: string | null
+          log_date: string
+          next_day_plan?: string | null
+          project_id: string
+          safety_notes?: string | null
+          temperature?: string | null
+          updated_at?: string
+          weather?: string | null
+          work_performed: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          crew_count?: number | null
+          id?: string
+          issues?: string | null
+          log_date?: string
+          next_day_plan?: string | null
+          project_id?: string
+          safety_notes?: string | null
+          temperature?: string | null
+          updated_at?: string
+          weather?: string | null
+          work_performed?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_logs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deficiencies: {
         Row: {
           assigned_trade_id: string | null
@@ -447,6 +503,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      invitations: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          full_name: string | null
+          id: string
+          invited_by: string
+          status: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          email: string
+          expires_at?: string
+          full_name?: string | null
+          id?: string
+          invited_by: string
+          status?: string
+          token?: string
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          full_name?: string | null
+          id?: string
+          invited_by?: string
+          status?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       manpower_requests: {
         Row: {

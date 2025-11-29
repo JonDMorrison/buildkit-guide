@@ -2,13 +2,15 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { useUserRole } from '@/hooks/useUserRole';
+import { useAuthRole } from '@/hooks/useAuthRole';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '../ui/dialog';
+import { Alert, AlertDescription } from '../ui/alert';
+import { CommentsSection } from '../comments/CommentsSection';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
@@ -57,7 +59,6 @@ export const TaskDetailModalEnhanced = ({
 }: TaskDetailModalEnhancedProps) => {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { canCreateTasks, canRequestManpower } = useUserRole();
   const [task, setTask] = useState<any>(null);
   const [blockers, setBlockers] = useState<any[]>([]);
   const [dependencies, setDependencies] = useState<any[]>([]);
@@ -70,6 +71,21 @@ export const TaskDetailModalEnhanced = ({
   const [editForm, setEditForm] = useState<any>({});
   const [saving, setSaving] = useState(false);
   const [manpowerModalOpen, setManpowerModalOpen] = useState(false);
+  
+  // Get permissions using task's project_id
+  const { 
+    can, 
+    isWorker, 
+    isExternalTrade,
+    canRequestManpower 
+  } = useAuthRole(task?.project_id);
+  
+  const canEdit = task?.project_id && can('edit_tasks', task.project_id);
+  const canDelete = task?.project_id && can('delete_tasks', task.project_id);
+  const canEditDates = task?.project_id && can('edit_task_dates', task.project_id);
+  const canEditTrade = task?.project_id && can('assign_tasks', task.project_id);
+  const isWorkerRole = task?.project_id && isWorker(task.project_id);
+  const isExternalTradeRole = task?.project_id && isExternalTrade(task.project_id);
 
   useEffect(() => {
     if (!taskId || !open) {
@@ -271,11 +287,12 @@ export const TaskDetailModalEnhanced = ({
                 onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
                 className="text-xl font-semibold"
                 placeholder="Task title"
+                disabled={!canEdit}
               />
             ) : (
               <DialogTitle className="text-xl">{task.title}</DialogTitle>
             )}
-            {canCreateTasks && !editMode && (
+            {canEdit && !editMode && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -288,6 +305,15 @@ export const TaskDetailModalEnhanced = ({
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* View-only warning for workers */}
+          {isWorkerRole && (
+            <Alert>
+              <AlertDescription className="text-sm">
+                You have view-only access. You can only update the task status.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Status and Priority */}
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -336,6 +362,7 @@ export const TaskDetailModalEnhanced = ({
                 onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
                 placeholder="Task description..."
                 className="min-h-[80px]"
+                disabled={!canEdit}
               />
             ) : (
               <p className="text-sm text-muted-foreground">
@@ -359,6 +386,7 @@ export const TaskDetailModalEnhanced = ({
                   value={editForm.start_date}
                   onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })}
                   className="ml-6"
+                  disabled={!canEditDates}
                 />
               ) : (
                 <p className="text-sm text-muted-foreground ml-6">
@@ -379,6 +407,7 @@ export const TaskDetailModalEnhanced = ({
                   onChange={(e) => setEditForm({ ...editForm, end_date: e.target.value })}
                   min={editForm.start_date}
                   className="ml-6"
+                  disabled={!canEditDates}
                 />
               ) : (
                 <p className="text-sm text-muted-foreground ml-6">
@@ -396,6 +425,7 @@ export const TaskDetailModalEnhanced = ({
                 <Select
                   value={editForm.assigned_trade_id}
                   onValueChange={(v) => setEditForm({ ...editForm, assigned_trade_id: v })}
+                  disabled={!canEditTrade}
                 >
                   <SelectTrigger className="ml-6 bg-card border-border">
                     <SelectValue placeholder="Select trade" />
@@ -594,6 +624,16 @@ export const TaskDetailModalEnhanced = ({
               </div>
             </>
           )}
+
+          {/* Comments Section */}
+          <Separator />
+          <div>
+            <h3 className="text-sm font-semibold mb-3">Discussion</h3>
+            <CommentsSection
+              taskId={taskId}
+              projectId={task.project_id}
+            />
+          </div>
 
           {/* Footer Actions */}
           <div className="flex gap-2 pt-4">

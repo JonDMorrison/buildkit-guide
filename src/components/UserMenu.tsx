@@ -1,4 +1,4 @@
-import { User, LogOut, Shield, Settings, Users } from 'lucide-react';
+import { User, LogOut, Shield, Settings, Users, FileText } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useProjectRole } from '@/hooks/useProjectRole';
@@ -70,6 +70,15 @@ export const UserMenu = () => {
             <DropdownMenuItem onClick={() => navigate('/users')}>
               <Users className="mr-2 h-4 w-4" />
               <span>User Management</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
+        {isAdmin && (
+          <>
+            <DropdownMenuItem onClick={() => navigate('/audit')}>
+              <FileText className="mr-2 h-4 w-4" />
+              <span>Audit Log</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
           </>
