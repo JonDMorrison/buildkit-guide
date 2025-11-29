@@ -1,11 +1,12 @@
 import { NavLink } from "./NavLink";
-import { Briefcase, CheckSquare, Calendar, Users, Shield, MessageSquare } from "lucide-react";
+import { Briefcase, CheckSquare, Calendar, Users, AlertCircle, Shield, MessageSquare } from "lucide-react";
 
 const tabs = [
   { name: "Projects", path: "/", icon: Briefcase },
   { name: "Tasks", path: "/tasks", icon: CheckSquare },
   { name: "Lookahead", path: "/lookahead", icon: Calendar },
   { name: "Manpower", path: "/manpower", icon: Users },
+  { name: "Deficiencies", path: "/deficiencies", icon: AlertCircle },
   { name: "Safety", path: "/safety", icon: Shield },
   { name: "AI", path: "/ai", icon: MessageSquare },
 ];
