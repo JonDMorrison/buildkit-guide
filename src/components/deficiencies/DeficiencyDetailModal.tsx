@@ -6,10 +6,13 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
 import { TradeBadge } from "@/components/TradeBadge";
 import { PhotoUpload } from "./PhotoUpload";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CommentsSection } from "@/components/comments/CommentsSection";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { Loader2, MapPin, Calendar, Image as ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuthRole } from "@/hooks/useAuthRole";
 
 interface DeficiencyDetailModalProps {
   deficiencyId: string | null;
@@ -31,6 +34,10 @@ export const DeficiencyDetailModal = ({
   const [newPhotos, setNewPhotos] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
+  
+  const { can, isExternalTrade } = useAuthRole(deficiency?.project_id);
+  const canEditStatus = deficiency?.project_id && can('edit_deficiencies', deficiency.project_id);
+  const isExternalTradeRole = deficiency?.project_id && isExternalTrade(deficiency.project_id);
 
   useEffect(() => {
     if (deficiencyId && isOpen) {
@@ -207,6 +214,15 @@ export const DeficiencyDetailModal = ({
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* View-only warning for External Trade */}
+          {isExternalTradeRole && (
+            <Alert>
+              <AlertDescription className="text-sm">
+                You can only change status from Open to Fixed. Full editing requires PM permissions.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Status and Trade */}
           <div className="flex items-center gap-3 flex-wrap">
             <StatusBadge
@@ -304,25 +320,34 @@ export const DeficiencyDetailModal = ({
           <div className="space-y-3">
             <Label className="text-base font-semibold">Update Status</Label>
             <div className="flex gap-3">
-              <Select value={newStatus} onValueChange={setNewStatus}>
+              <Select value={newStatus} onValueChange={setNewStatus} disabled={!canEditStatus}>
                 <SelectTrigger className="h-12 flex-1">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="open">Open</SelectItem>
-                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  {!isExternalTradeRole && <SelectItem value="in_progress">In Progress</SelectItem>}
                   <SelectItem value="fixed">Fixed</SelectItem>
-                  <SelectItem value="verified">Verified</SelectItem>
+                  {!isExternalTradeRole && <SelectItem value="verified">Verified</SelectItem>}
                 </SelectContent>
               </Select>
               <Button
                 onClick={handleStatusUpdate}
-                disabled={newStatus === deficiency.status}
+                disabled={newStatus === deficiency.status || !canEditStatus}
                 className="h-12"
               >
                 Update
               </Button>
             </div>
+          </div>
+
+          {/* Comments Section */}
+          <div>
+            <Label className="text-base font-semibold mb-3 block">Discussion</Label>
+            <CommentsSection
+              deficiencyId={deficiencyId}
+              projectId={deficiency.project_id}
+            />
           </div>
 
           {/* Documents */}

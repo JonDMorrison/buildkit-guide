@@ -1,0 +1,224 @@
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { FormField } from "@/components/FormField";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { Loader2 } from "lucide-react";
+
+interface DailyLogFormProps {
+  projectId: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess: () => void;
+  existingLog?: any;
+}
+
+interface DailyLogFormData {
+  log_date: string;
+  weather: string;
+  temperature: string;
+  crew_count: number | null;
+  work_performed: string;
+  issues: string;
+  next_day_plan: string;
+  safety_notes: string;
+}
+
+export const DailyLogForm = ({
+  projectId,
+  open,
+  onOpenChange,
+  onSuccess,
+  existingLog,
+}: DailyLogFormProps) => {
+  const { toast } = useToast();
+  const [submitting, setSubmitting] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<DailyLogFormData>({
+    defaultValues: existingLog || {
+      log_date: new Date().toISOString().split('T')[0],
+      weather: '',
+      temperature: '',
+      crew_count: null,
+      work_performed: '',
+      issues: '',
+      next_day_plan: '',
+      safety_notes: '',
+    },
+  });
+
+  const onSubmit = async (data: DailyLogFormData) => {
+    setSubmitting(true);
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) throw new Error("Not authenticated");
+
+      if (existingLog) {
+        // Update existing log
+        const { error } = await supabase
+          .from('daily_logs')
+          .update({
+            weather: data.weather || null,
+            temperature: data.temperature || null,
+            crew_count: data.crew_count,
+            work_performed: data.work_performed,
+            issues: data.issues || null,
+            next_day_plan: data.next_day_plan || null,
+            safety_notes: data.safety_notes || null,
+          })
+          .eq('id', existingLog.id);
+
+        if (error) throw error;
+
+        toast({
+          title: 'Daily log updated',
+          description: 'Your changes have been saved',
+        });
+      } else {
+        // Create new log
+        const { error } = await supabase.from('daily_logs').insert({
+          project_id: projectId,
+          log_date: data.log_date,
+          weather: data.weather || null,
+          temperature: data.temperature || null,
+          crew_count: data.crew_count,
+          work_performed: data.work_performed,
+          issues: data.issues || null,
+          next_day_plan: data.next_day_plan || null,
+          safety_notes: data.safety_notes || null,
+          created_by: userData.user.id,
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: 'Daily log created',
+          description: 'Your log has been saved successfully',
+        });
+      }
+
+      reset();
+      onSuccess();
+      onOpenChange(false);
+    } catch (error: any) {
+      toast({
+        title: 'Error saving log',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{existingLog ? 'Edit Daily Log' : 'Create Daily Log'}</DialogTitle>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <FormField label="Date" required error={errors.log_date?.message}>
+            <Input
+              type="date"
+              {...register('log_date', { required: 'Date is required' })}
+              disabled={!!existingLog}
+            />
+          </FormField>
+
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="Weather">
+              <Input
+                {...register('weather')}
+                placeholder="Sunny, Cloudy, Rainy..."
+              />
+            </FormField>
+
+            <FormField label="Temperature">
+              <Input
+                {...register('temperature')}
+                placeholder="72°F, 22°C..."
+              />
+            </FormField>
+          </div>
+
+          <FormField label="Crew Count">
+            <Input
+              type="number"
+              {...register('crew_count', { 
+                valueAsNumber: true,
+                validate: (val) => val === null || val >= 0 || 'Must be positive'
+              })}
+              placeholder="Number of workers on site"
+            />
+          </FormField>
+
+          <FormField label="Work Performed" required error={errors.work_performed?.message}>
+            <Textarea
+              {...register('work_performed', { required: 'This field is required' })}
+              placeholder="Describe the work completed today..."
+              className="min-h-[100px]"
+            />
+          </FormField>
+
+          <FormField label="Issues / Delays">
+            <Textarea
+              {...register('issues')}
+              placeholder="Any problems, delays, or challenges encountered..."
+              className="min-h-[80px]"
+            />
+          </FormField>
+
+          <FormField label="Next Day Plan">
+            <Textarea
+              {...register('next_day_plan')}
+              placeholder="What's planned for tomorrow..."
+              className="min-h-[80px]"
+            />
+          </FormField>
+
+          <FormField label="Safety Notes">
+            <Textarea
+              {...register('safety_notes')}
+              placeholder="Safety observations, incidents, or concerns..."
+              className="min-h-[80px]"
+            />
+          </FormField>
+
+          <div className="flex gap-3 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="flex-1"
+              disabled={submitting}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" className="flex-1" disabled={submitting}>
+              {submitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                existingLog ? 'Update Log' : 'Create Log'
+              )}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};

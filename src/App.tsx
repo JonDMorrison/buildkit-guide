@@ -19,6 +19,7 @@ import NotificationSettings from "./pages/NotificationSettings";
 import Documents from "./pages/Documents";
 import UserManagement from "./pages/UserManagement";
 import AuditLog from "./pages/AuditLog";
+import DailyLogs from "./pages/DailyLogs";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -133,6 +134,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <AuditLog />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/daily-logs"
+              element={
+                <ProtectedRoute>
+                  <DailyLogs />
                 </ProtectedRoute>
               }
             />

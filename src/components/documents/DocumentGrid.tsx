@@ -1,11 +1,28 @@
 import { formatDistanceToNow } from "date-fns";
-import { FileText, Image as ImageIcon, File } from "lucide-react";
+import { FileText, Image as ImageIcon, File, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAuthRole } from "@/hooks/useAuthRole";
+import { useCurrentProject } from "@/hooks/useCurrentProject";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useState } from "react";
 
 interface DocumentGridProps {
   documents: any[];
   onPreview: (doc: any) => void;
+  onDelete?: () => void;
 }
 
 const getDocumentIcon = (fileType: string) => {
@@ -30,10 +47,62 @@ const getDocumentTypeLabel = (type: string) => {
   return labels[type] || type;
 };
 
-export const DocumentGrid = ({ documents, onPreview }: DocumentGridProps) => {
+export const DocumentGrid = ({ documents, onPreview, onDelete }: DocumentGridProps) => {
+  const { toast } = useToast();
+  const { currentProjectId } = useCurrentProject();
+  const { can } = useAuthRole(currentProjectId || undefined);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [documentToDelete, setDocumentToDelete] = useState<any>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const canDelete = currentProjectId && can('delete_documents', currentProjectId);
+
+  const handleDeleteClick = (e: React.MouseEvent, doc: any) => {
+    e.stopPropagation();
+    setDocumentToDelete(doc);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!documentToDelete) return;
+
+    setDeleting(true);
+    try {
+      if (documentToDelete.file_url.includes('project-documents')) {
+        const filePath = documentToDelete.file_url.split('/project-documents/')[1];
+        await supabase.storage.from('project-documents').remove([filePath]);
+      }
+
+      const { error } = await supabase
+        .from('attachments')
+        .delete()
+        .eq('id', documentToDelete.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Document deleted',
+        description: 'The document has been removed successfully',
+      });
+
+      onDelete?.();
+    } catch (error: any) {
+      toast({
+        title: 'Error deleting document',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setDeleting(false);
+      setDeleteDialogOpen(false);
+      setDocumentToDelete(null);
+    }
+  };
+
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-      {documents.map((doc) => {
+    <>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {documents.map((doc) => {
         const Icon = getDocumentIcon(doc.file_type);
         const isImage = doc.file_type.startsWith('image/');
         
@@ -57,10 +126,20 @@ export const DocumentGrid = ({ documents, onPreview }: DocumentGridProps) => {
               ) : (
                 <Icon className="h-16 w-16 text-muted-foreground" />
               )}
-              <div className="absolute top-2 right-2">
+              <div className="absolute top-2 right-2 flex gap-2">
                 <Badge variant="secondary" className="text-xs">
                   {getDocumentTypeLabel(doc.document_type)}
                 </Badge>
+                {canDelete && (
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={(e) => handleDeleteClick(e, doc)}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -87,5 +166,27 @@ export const DocumentGrid = ({ documents, onPreview }: DocumentGridProps) => {
         );
       })}
     </div>
+
+    <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Document</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to delete "{documentToDelete?.file_name}"? This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleConfirmDelete}
+            disabled={deleting}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {deleting ? 'Deleting...' : 'Delete'}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 };

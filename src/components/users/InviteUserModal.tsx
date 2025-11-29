@@ -38,32 +38,25 @@ export const InviteUserModal = ({
     setLoading(true);
 
     try {
-      // Check if user already exists
-      const { data: existingUser } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('email', email.toLowerCase().trim())
-        .single();
+      // Call edge function to create invitation
+      const { data, error } = await supabase.functions.invoke('send-invite', {
+        body: { 
+          email: email.toLowerCase().trim(),
+          fullName: fullName || null
+        }
+      });
 
-      if (existingUser) {
-        toast({
-          title: 'User already exists',
-          description: 'This user is already registered. You can add them to a project from the main user management page.',
-          variant: 'destructive',
-        });
-        setLoading(false);
-        return;
+      if (error) {
+        throw error;
       }
 
-      // For now, we'll show a success message with instructions
-      // In a full implementation, you would:
-      // 1. Create an invitation record in the database
-      // 2. Send an email via edge function with invitation link
-      // 3. Handle invitation acceptance flow
-      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
       toast({
-        title: 'Invitation prepared',
-        description: `An invitation email would be sent to ${email}. (Email integration pending)`,
+        title: 'Invitation sent',
+        description: `An invitation has been sent to ${email}`,
       });
 
       // Reset form
