@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Send, FileText, AlertCircle, CheckSquare, Shield } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, Send, FileText, AlertCircle, CheckSquare, Shield, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { DocumentUpload } from "@/components/documents/DocumentUpload";
 
 interface Project {
   id: string;
@@ -108,9 +110,14 @@ const AI = () => {
 
   return (
     <Layout>
-      <div className="container max-w-4xl mx-auto px-4 py-6 space-y-6">
+      <div className="container max-w-4xl mx-auto px-4 py-6 space-y-6 pb-20">
         <div className="flex flex-col gap-4">
-          <h2 className="text-2xl font-bold text-foreground">Ask AI</h2>
+          <div>
+            <h2 className="text-2xl font-bold text-foreground">AI Assistant</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Upload documents and ask questions about your project
+            </p>
+          </div>
           
           {/* Project Selector */}
           <Card className="p-4">
@@ -131,145 +138,172 @@ const AI = () => {
             </Select>
           </Card>
 
-          {/* Suggested Questions */}
-          <Card className="p-4">
-            <p className="text-sm font-medium text-foreground mb-3">Suggested questions:</p>
-            <div className="flex flex-wrap gap-2">
-              {suggestedQuestions.map((q, idx) => (
-                <Button
-                  key={idx}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleSuggestedQuestion(q)}
+          {/* Tabs for Q&A and Upload */}
+          <Tabs defaultValue="qa" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="qa">Ask Questions</TabsTrigger>
+              <TabsTrigger value="upload">Upload Documents</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="qa" className="space-y-4 mt-4">
+
+              {/* Suggested Questions */}
+              <Card className="p-4">
+                <p className="text-sm font-medium text-foreground mb-3">Suggested questions:</p>
+                <div className="flex flex-wrap gap-2">
+                  {suggestedQuestions.map((q, idx) => (
+                    <Button
+                      key={idx}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSuggestedQuestion(q)}
+                      disabled={isLoading}
+                      className="text-xs"
+                    >
+                      {q}
+                    </Button>
+                  ))}
+                </div>
+              </Card>
+
+              {/* Question Input */}
+              <Card className="p-4">
+                <label className="text-sm font-medium text-foreground mb-2 block">
+                  Your Question
+                </label>
+                <Textarea
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                  placeholder="Ask about tasks, blockers, safety forms, documents, or deficiencies..."
+                  rows={3}
                   disabled={isLoading}
-                  className="text-xs"
+                  className="mb-3"
+                />
+                <Button
+                  onClick={handleAsk}
+                  disabled={isLoading || !question.trim() || !selectedProjectId}
+                  className="w-full"
+                  size="lg"
                 >
-                  {q}
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Thinking...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="mr-2 h-5 w-5" />
+                      Ask AI
+                    </>
+                  )}
                 </Button>
-              ))}
-            </div>
-          </Card>
+              </Card>
 
-          {/* Question Input */}
-          <Card className="p-4">
-            <label className="text-sm font-medium text-foreground mb-2 block">
-              Your Question
-            </label>
-            <Textarea
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              placeholder="Ask about tasks, blockers, safety forms, documents, or deficiencies..."
-              rows={3}
-              disabled={isLoading}
-              className="mb-3"
-            />
-            <Button
-              onClick={handleAsk}
-              disabled={isLoading || !question.trim() || !selectedProjectId}
-              className="w-full"
-              size="lg"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Thinking...
-                </>
-              ) : (
-                <>
-                  <Send className="mr-2 h-5 w-5" />
-                  Ask AI
-                </>
+              {/* Answer */}
+              {answer && (
+                <Card className="p-6">
+                  <h3 className="text-lg font-semibold text-foreground mb-3">Answer</h3>
+                  <div className="prose prose-sm max-w-none text-foreground whitespace-pre-wrap">
+                    {answer}
+                  </div>
+                </Card>
               )}
-            </Button>
-          </Card>
 
-          {/* Answer */}
-          {answer && (
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold text-foreground mb-3">Answer</h3>
-              <div className="prose prose-sm max-w-none text-foreground whitespace-pre-wrap">
-                {answer}
-              </div>
-            </Card>
-          )}
+              {/* Sources */}
+              {sources && (
+                <Card className="p-6">
+                  <h3 className="text-lg font-semibold text-foreground mb-4">Sources</h3>
+                  <div className="space-y-4">
+                    {sources.documents.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                          <p className="text-sm font-medium text-foreground">Documents</p>
+                        </div>
+                        <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-6">
+                          {sources.documents.map((doc) => (
+                            <li key={doc.id}>{doc.title}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
 
-          {/* Sources */}
-          {sources && (
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold text-foreground mb-4">Sources</h3>
-              <div className="space-y-4">
-                {sources.documents.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <FileText className="h-4 w-4 text-muted-foreground" />
-                      <p className="text-sm font-medium text-foreground">Documents</p>
-                    </div>
-                    <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-6">
-                      {sources.documents.map((doc) => (
-                        <li key={doc.id}>{doc.title}</li>
-                      ))}
-                    </ul>
+                    {sources.tasks.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <CheckSquare className="h-4 w-4 text-muted-foreground" />
+                          <p className="text-sm font-medium text-foreground">Tasks</p>
+                        </div>
+                        <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-6">
+                          {sources.tasks.map((task) => (
+                            <li key={task.id}>{task.title}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {sources.blockers.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                          <p className="text-sm font-medium text-foreground">Blockers</p>
+                        </div>
+                        <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-6">
+                          {sources.blockers.map((blocker) => (
+                            <li key={blocker.id}>{blocker.reason}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {sources.deficiencies.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                          <p className="text-sm font-medium text-foreground">Deficiencies</p>
+                        </div>
+                        <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-6">
+                          {sources.deficiencies.map((def) => (
+                            <li key={def.id}>{def.title}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {sources.safetyForms.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Shield className="h-4 w-4 text-muted-foreground" />
+                          <p className="text-sm font-medium text-foreground">Safety Forms</p>
+                        </div>
+                        <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-6">
+                          {sources.safetyForms.map((form) => (
+                            <li key={form.id}>{form.title}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
-                )}
+                </Card>
+              )}
+            </TabsContent>
 
-                {sources.tasks.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <CheckSquare className="h-4 w-4 text-muted-foreground" />
-                      <p className="text-sm font-medium text-foreground">Tasks</p>
-                    </div>
-                    <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-6">
-                      {sources.tasks.map((task) => (
-                        <li key={task.id}>{task.title}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {sources.blockers.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                      <p className="text-sm font-medium text-foreground">Blockers</p>
-                    </div>
-                    <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-6">
-                      {sources.blockers.map((blocker) => (
-                        <li key={blocker.id}>{blocker.reason}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {sources.deficiencies.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                      <p className="text-sm font-medium text-foreground">Deficiencies</p>
-                    </div>
-                    <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-6">
-                      {sources.deficiencies.map((def) => (
-                        <li key={def.id}>{def.title}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {sources.safetyForms.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Shield className="h-4 w-4 text-muted-foreground" />
-                      <p className="text-sm font-medium text-foreground">Safety Forms</p>
-                    </div>
-                    <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-6">
-                      {sources.safetyForms.map((form) => (
-                        <li key={form.id}>{form.title}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            </Card>
-          )}
+            <TabsContent value="upload" className="space-y-4 mt-4">
+              {selectedProjectId ? (
+                <DocumentUpload 
+                  projectId={selectedProjectId}
+                  onUploadComplete={() => {
+                    toast.success("Document processed and ready for AI Q&A");
+                  }}
+                />
+              ) : (
+                <Card className="p-8 text-center">
+                  <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                  <p className="text-muted-foreground">Please select a project first to upload documents.</p>
+                </Card>
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </Layout>

@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.coordination-summary]
 verify_jwt = false
+
+[functions.process-document]
+verify_jwt = false
