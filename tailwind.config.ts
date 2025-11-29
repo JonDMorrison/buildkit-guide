@@ -54,6 +54,8 @@ export default {
           "progress-foreground": "hsl(var(--status-progress-foreground))",
           issue: "hsl(var(--status-issue))",
           "issue-foreground": "hsl(var(--status-issue-foreground))",
+          info: "hsl(var(--status-info))",
+          "info-foreground": "hsl(var(--status-info-foreground))",
         },
       },
       fontFamily: {
