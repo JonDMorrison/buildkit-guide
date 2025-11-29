@@ -7,6 +7,7 @@ import { SafetyDashboard } from "@/components/safety/SafetyDashboard";
 import { SafetyFormsList } from "@/components/safety/SafetyFormsList";
 import { FormTypeSelector } from "@/components/safety/FormTypeSelector";
 import { SafetyFormModal } from "@/components/safety/SafetyFormModal";
+import { SafetyFormDetailModal } from "@/components/safety/SafetyFormDetailModal";
 import { supabase } from "@/integrations/supabase/client";
 import { ShieldCheck, Plus } from "lucide-react";
 import { format, subDays } from "date-fns";
@@ -16,7 +17,9 @@ const Safety = () => {
   const [loading, setLoading] = useState(true);
   const [isTypeSelectorOpen, setIsTypeSelectorOpen] = useState(false);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedFormType, setSelectedFormType] = useState("");
+  const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
   const [dashboardStats, setDashboardStats] = useState({
     totalForms: 0,
     submittedThisWeek: 0,
@@ -133,6 +136,11 @@ const Safety = () => {
     setIsFormModalOpen(true);
   };
 
+  const handleFormClick = (formId: string) => {
+    setSelectedFormId(formId);
+    setIsDetailModalOpen(true);
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -176,7 +184,7 @@ const Safety = () => {
         ) : (
           <>
             <SafetyDashboard {...dashboardStats} />
-            <SafetyFormsList forms={forms} onFormClick={(id) => console.log("View form", id)} />
+            <SafetyFormsList forms={forms} onFormClick={handleFormClick} />
           </>
         )}
 
@@ -191,6 +199,12 @@ const Safety = () => {
           onClose={() => setIsFormModalOpen(false)}
           onCreate={fetchForms}
           formType={selectedFormType}
+        />
+
+        <SafetyFormDetailModal
+          isOpen={isDetailModalOpen}
+          onClose={() => setIsDetailModalOpen(false)}
+          formId={selectedFormId}
         />
       </div>
     </Layout>
