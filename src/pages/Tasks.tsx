@@ -1,30 +1,232 @@
+import { useState, useEffect } from 'react';
 import { Layout } from "@/components/Layout";
 import { SectionHeader } from "@/components/SectionHeader";
 import { EmptyState } from "@/components/EmptyState";
-import { CheckSquare, Plus } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { TaskFilters, TaskFilters as TaskFiltersType } from "@/components/tasks/TaskFilters";
+import { TaskListView } from "@/components/tasks/TaskListView";
+import { TaskKanbanView } from "@/components/tasks/TaskKanbanView";
+import { TaskCalendarView } from "@/components/tasks/TaskCalendarView";
+import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
+import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { Plus, LayoutList, LayoutGrid, Calendar as CalendarIcon, CheckSquare } from "lucide-react";
+
+type ViewMode = 'list' | 'kanban' | 'calendar';
 
 const Tasks = () => {
+  const { toast } = useToast();
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [filteredTasks, setFilteredTasks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+
+  const fetchTasks = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select(`
+          *,
+          trades(name, trade_type, company_name),
+          projects(name)
+        `)
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setTasks(data || []);
+      setFilteredTasks(data || []);
+    } catch (error: any) {
+      toast({
+        title: 'Error loading tasks',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTasks();
+
+    // Set up real-time subscription
+    const channel = supabase
+      .channel('tasks-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tasks',
+        },
+        () => {
+          fetchTasks();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const handleFilterChange = (filters: TaskFiltersType) => {
+    let filtered = [...tasks];
+
+    // Filter by status
+    if (filters.status) {
+      filtered = filtered.filter(task => task.status === filters.status);
+    }
+
+    // Filter by date range
+    if (filters.dateRange && filters.dateRange !== 'all') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (filters.dateRange === 'today') {
+        filtered = filtered.filter(task => {
+          if (!task.due_date) return false;
+          const dueDate = new Date(task.due_date);
+          dueDate.setHours(0, 0, 0, 0);
+          return dueDate.getTime() === today.getTime();
+        });
+      } else if (filters.dateRange === 'week') {
+        const weekFromNow = new Date(today);
+        weekFromNow.setDate(weekFromNow.getDate() + 7);
+        filtered = filtered.filter(task => {
+          if (!task.due_date) return false;
+          const dueDate = new Date(task.due_date);
+          return dueDate >= today && dueDate <= weekFromNow;
+        });
+      } else if (filters.dateRange === 'overdue') {
+        filtered = filtered.filter(task => {
+          if (!task.due_date || task.status === 'done') return false;
+          return new Date(task.due_date) < today;
+        });
+      }
+    }
+
+    setFilteredTasks(filtered);
+  };
+
+  const handleTaskClick = (taskId: string) => {
+    setSelectedTaskId(taskId);
+    setDetailModalOpen(true);
+  };
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="container max-w-6xl mx-auto px-4 py-6">
+          <Skeleton className="h-12 w-64 mb-6" />
+          <div className="space-y-3">
+            <Skeleton className="h-16" />
+            <Skeleton className="h-16" />
+            <Skeleton className="h-16" />
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
-      <div className="container max-w-2xl mx-auto px-4 py-6">
+      <div className="container max-w-6xl mx-auto px-4 py-6">
         <SectionHeader
           title="Tasks"
-          count={0}
+          count={filteredTasks.length}
           action={{
             label: "Add Task",
             icon: <Plus className="h-6 w-6" />,
-            onClick: () => console.log("Add task"),
+            onClick: () => setCreateModalOpen(true),
           }}
         />
-        
-        <EmptyState
-          icon={<CheckSquare className="h-8 w-8" />}
-          title="No tasks yet"
-          description="Create your first task to start coordinating work across trades."
-          action={{
-            label: "Create Task",
-            onClick: () => console.log("Create task"),
-          }}
+
+        {tasks.length === 0 ? (
+          <EmptyState
+            icon={<CheckSquare className="h-8 w-8" />}
+            title="No tasks yet"
+            description="Create your first task to start coordinating work."
+            action={{
+              label: "Create Task",
+              onClick: () => setCreateModalOpen(true),
+            }}
+          />
+        ) : (
+          <>
+            {/* View Switcher */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex gap-2">
+                <Button
+                  variant={viewMode === 'list' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                >
+                  <LayoutList className="h-4 w-4 mr-2" />
+                  List
+                </Button>
+                <Button
+                  variant={viewMode === 'kanban' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('kanban')}
+                >
+                  <LayoutGrid className="h-4 w-4 mr-2" />
+                  Kanban
+                </Button>
+                <Button
+                  variant={viewMode === 'calendar' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('calendar')}
+                >
+                  <CalendarIcon className="h-4 w-4 mr-2" />
+                  Calendar
+                </Button>
+              </div>
+            </div>
+
+            {/* Filters (only show for list and kanban views) */}
+            {viewMode !== 'calendar' && (
+              <TaskFilters onFilterChange={handleFilterChange} />
+            )}
+
+            {/* Task Views */}
+            <div className="mt-6">
+              {viewMode === 'list' && (
+                <TaskListView tasks={filteredTasks} onTaskClick={handleTaskClick} />
+              )}
+              {viewMode === 'kanban' && (
+                <TaskKanbanView tasks={filteredTasks} onTaskClick={handleTaskClick} />
+              )}
+              {viewMode === 'calendar' && (
+                <TaskCalendarView tasks={tasks} onTaskClick={handleTaskClick} />
+              )}
+            </div>
+
+            {filteredTasks.length === 0 && viewMode !== 'calendar' && (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">No tasks match your filters</p>
+              </div>
+            )}
+          </>
+        )}
+
+        <CreateTaskModal
+          open={createModalOpen}
+          onOpenChange={setCreateModalOpen}
+          onSuccess={fetchTasks}
+        />
+
+        <TaskDetailModal
+          taskId={selectedTaskId}
+          open={detailModalOpen}
+          onOpenChange={setDetailModalOpen}
+          onTaskUpdated={fetchTasks}
         />
       </div>
     </Layout>
