@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
 import { SectionHeader } from "@/components/SectionHeader";
+import { NoAccess } from "@/components/NoAccess";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { useUserRole } from "@/hooks/useUserRole";
+import { useAuthRole } from "@/hooks/useAuthRole";
+import { useCurrentProject } from "@/hooks/useCurrentProject";
 import { ChevronLeft, ChevronRight, Users, CheckCircle, XCircle } from "lucide-react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isSameDay, parseISO } from "date-fns";
 
@@ -19,9 +21,12 @@ export default function Manpower() {
   const [viewMode, setViewMode] = useState<'14day' | 'monthly'>('14day');
   const { toast } = useToast();
   const { user } = useAuth();
-  const { canApproveManpower } = useUserRole();
+  const { currentProjectId } = useCurrentProject();
+  const { can, loading: roleLoading } = useAuthRole(currentProjectId || undefined);
 
-  const canApprove = canApproveManpower;
+  // Check permissions
+  const canRequestManpower = currentProjectId ? can('request_manpower', currentProjectId) : false;
+  const canApprove = currentProjectId ? can('approve_manpower', currentProjectId) : false;
 
   const fetchRequests = async () => {
     try {
@@ -143,6 +148,20 @@ export default function Manpower() {
 
   const days = getDaysInMonth();
   const today = new Date();
+
+  // Show NoAccess for workers
+  if (!roleLoading && currentProjectId && !canRequestManpower) {
+    return (
+      <Layout>
+        <NoAccess 
+          title="Manpower Access Restricted"
+          message="Only Project Managers and Foremen can view and manage manpower requests."
+          returnPath="/tasks"
+          returnLabel="Back to My Tasks"
+        />
+      </Layout>
+    );
+  }
 
   return (
     <Layout>

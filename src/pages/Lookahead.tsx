@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Layout } from "@/components/Layout";
 import { SectionHeader } from "@/components/SectionHeader";
 import { EmptyState } from "@/components/EmptyState";
+import { NoAccess } from "@/components/NoAccess";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -15,11 +16,15 @@ import { DelayForecastModal } from "@/components/lookahead/DelayForecastModal";
 import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuthRole } from "@/hooks/useAuthRole";
+import { useCurrentProject } from "@/hooks/useCurrentProject";
 import { Calendar as CalendarIcon, Sparkles, ChevronLeft, ChevronRight, TrendingUp } from "lucide-react";
 
 const Lookahead = () => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const { currentProjectId } = useCurrentProject();
+  const { can, loading: roleLoading } = useAuthRole(currentProjectId || undefined);
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [horizonOnly, setHorizonOnly] = useState(false);
@@ -35,6 +40,9 @@ const Lookahead = () => {
   const [forecastLoading, setForecastLoading] = useState(false);
   const [forecastData, setForecastData] = useState<any>(null);
   const [delayedTaskIds, setDelayedTaskIds] = useState<string[]>([]);
+
+  // Check if user has permission to view lookahead
+  const canViewLookahead = selectedProjectId ? can('view_lookahead', selectedProjectId) : false;
 
   useEffect(() => {
     // Fetch projects
@@ -261,6 +269,20 @@ const Lookahead = () => {
     );
   }
 
+  // Show NoAccess for workers
+  if (!roleLoading && selectedProjectId && !canViewLookahead) {
+    return (
+      <Layout>
+        <NoAccess 
+          title="Lookahead Access Restricted"
+          message="Only Project Managers and Foremen can view the 2-Week Lookahead schedule."
+          returnPath="/tasks"
+          returnLabel="Back to My Tasks"
+        />
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="container max-w-6xl mx-auto px-4 py-6">
@@ -312,28 +334,30 @@ const Lookahead = () => {
             </div>
           </div>
 
-          {/* AI Buttons */}
-          <div className="flex gap-2">
-            <Button
-              onClick={handleForecastDelay}
-              disabled={tasks.length === 0}
-              variant="outline"
-              className="font-semibold"
-              size="lg"
-            >
-              <TrendingUp className="h-5 w-5 mr-2" />
-              Forecast Schedule Impact
-            </Button>
-            <Button
-              onClick={handleGenerateSummary}
-              disabled={tasks.length === 0}
-              className="bg-primary hover:bg-primary/90 font-semibold"
-              size="lg"
-            >
-              <Sparkles className="h-5 w-5 mr-2" />
-              Coordination Summary
-            </Button>
-          </div>
+          {/* AI Buttons - Only for PM/Foreman */}
+          {canViewLookahead && (
+            <div className="flex gap-2">
+              <Button
+                onClick={handleForecastDelay}
+                disabled={tasks.length === 0}
+                variant="outline"
+                className="font-semibold"
+                size="lg"
+              >
+                <TrendingUp className="h-5 w-5 mr-2" />
+                Forecast Schedule Impact
+              </Button>
+              <Button
+                onClick={handleGenerateSummary}
+                disabled={tasks.length === 0}
+                className="bg-primary hover:bg-primary/90 font-semibold"
+                size="lg"
+              >
+                <Sparkles className="h-5 w-5 mr-2" />
+                Coordination Summary
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Timeline - Desktop vs Mobile */}
