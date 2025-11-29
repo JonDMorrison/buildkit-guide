@@ -346,6 +346,7 @@ const ProjectOverviewTab = ({ projectId, stats }: { projectId: string; stats: Pr
   const [blockedTasks, setBlockedTasks] = useState<any[]>([]);
   const [upcomingDeadlines, setUpcomingDeadlines] = useState<any[]>([]);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [pendingManpower, setPendingManpower] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -389,6 +390,18 @@ const ProjectOverviewTab = ({ projectId, stats }: { projectId: string; stats: Pr
         .limit(5);
 
       setRecentActivity(recent || []);
+
+      // Fetch pending manpower requests
+      const { data: manpower } = await supabase
+        .from('manpower_requests')
+        .select('*, trades(name, trade_type), tasks(title)')
+        .eq('project_id', projectId)
+        .eq('status', 'pending')
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      setPendingManpower(manpower || []);
       setLoading(false);
     };
 
@@ -407,6 +420,50 @@ const ProjectOverviewTab = ({ projectId, stats }: { projectId: string; stats: Pr
 
   return (
     <div className="space-y-6">
+      {/* Pending Manpower Requests */}
+      {pendingManpower.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">Pending Manpower Requests</CardTitle>
+              <Badge variant="secondary">{pendingManpower.length}</Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {pendingManpower.map((request) => (
+                <div
+                  key={request.id}
+                  className="p-3 bg-muted rounded-lg"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-medium">
+                      {request.requested_count} workers • {request.duration_days} days
+                    </span>
+                    <Badge variant="secondary">Pending</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {request.trades?.name} • Starting {new Date(request.required_date).toLocaleDateString()}
+                  </p>
+                  {request.tasks && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      For task: {request.tasks.title}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+            <Button
+              variant="link"
+              className="mt-3 p-0 h-auto"
+              onClick={() => navigate('/manpower')}
+            >
+              View All Requests →
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Blocked Tasks */}
       <Card>
         <CardHeader>

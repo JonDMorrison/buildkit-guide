@@ -38,6 +38,7 @@ export const useUserRole = () => {
   const canMarkBlockers = isAdmin || hasRole('project_manager') || hasRole('foreman');
   const canSubmitSafety = isAdmin || hasRole('project_manager') || hasRole('foreman');
   const canApproveManpower = isAdmin || hasRole('project_manager');
+  const canRequestManpower = isAdmin || hasRole('project_manager') || hasRole('foreman');
 
   return {
     roles,
@@ -49,5 +50,6 @@ export const useUserRole = () => {
     canMarkBlockers,
     canSubmitSafety,
     canApproveManpower,
+    canRequestManpower,
   };
 };

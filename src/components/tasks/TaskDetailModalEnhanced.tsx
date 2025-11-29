@@ -36,9 +36,11 @@ import {
   X,
   Clock,
   Upload,
-  Plus
+  Plus,
+  HardHat
 } from 'lucide-react';
 import { FormField } from '../FormField';
+import { RequestManpowerModal } from './RequestManpowerModal';
 
 interface TaskDetailModalEnhancedProps {
   taskId: string | null;
@@ -55,17 +57,19 @@ export const TaskDetailModalEnhanced = ({
 }: TaskDetailModalEnhancedProps) => {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { canCreateTasks } = useUserRole();
+  const { canCreateTasks, canRequestManpower } = useUserRole();
   const [task, setTask] = useState<any>(null);
   const [blockers, setBlockers] = useState<any[]>([]);
   const [dependencies, setDependencies] = useState<any[]>([]);
   const [attachments, setAttachments] = useState<any[]>([]);
   const [activityLog, setActivityLog] = useState<any[]>([]);
   const [trades, setTrades] = useState<any[]>([]);
+  const [manpowerRequests, setManpowerRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [editForm, setEditForm] = useState<any>({});
   const [saving, setSaving] = useState(false);
+  const [manpowerModalOpen, setManpowerModalOpen] = useState(false);
 
   useEffect(() => {
     if (!taskId || !open) {
@@ -139,6 +143,15 @@ export const TaskDetailModalEnhanced = ({
           .eq('is_active', true)
           .order('name');
         setTrades(tradesData || []);
+
+        // Fetch manpower requests
+        const { data: manpowerData } = await supabase
+          .from('manpower_requests')
+          .select('*, approved_by_profile:approved_by(full_name)')
+          .eq('task_id', taskId)
+          .eq('is_deleted', false)
+          .order('created_at', { ascending: false });
+        setManpowerRequests(manpowerData || []);
 
       } catch (error: any) {
         toast({
@@ -461,6 +474,61 @@ export const TaskDetailModalEnhanced = ({
             </>
           )}
 
+          {/* Manpower */}
+          <Separator />
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <HardHat className="h-4 w-4 text-muted-foreground" />
+                <h3 className="text-sm font-semibold">Manpower</h3>
+                {manpowerRequests.length > 0 && (
+                  <Badge variant="secondary">{manpowerRequests.length}</Badge>
+                )}
+              </div>
+              {canRequestManpower && task.assigned_trade_id && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setManpowerModalOpen(true)}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Request
+                </Button>
+              )}
+            </div>
+            {manpowerRequests.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No manpower requests</p>
+            ) : (
+              <div className="space-y-2">
+                {manpowerRequests.map((request) => (
+                  <div key={request.id} className="p-3 bg-muted rounded-lg">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium">
+                        {request.requested_count} workers • {request.duration_days} days
+                      </span>
+                      <Badge
+                        variant={
+                          request.status === 'approved' ? 'default' :
+                          request.status === 'rejected' ? 'destructive' : 'secondary'
+                        }
+                      >
+                        {request.status}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Starting {new Date(request.required_date).toLocaleDateString()}
+                    </p>
+                    {request.approved_by_profile && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {request.status === 'approved' ? 'Approved' : 'Rejected'} by {request.approved_by_profile.full_name}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Attachments */}
           {attachments.length > 0 && (
             <>
@@ -573,6 +641,29 @@ export const TaskDetailModalEnhanced = ({
           </div>
         </div>
       </DialogContent>
+      
+      {/* Request Manpower Modal */}
+      {task && (
+        <RequestManpowerModal
+          taskId={task.id}
+          projectId={task.project_id}
+          tradeId={task.assigned_trade_id || ''}
+          taskTitle={task.title}
+          taskStatus={task.status}
+          open={manpowerModalOpen}
+          onOpenChange={setManpowerModalOpen}
+          onSuccess={() => {
+            // Refetch manpower requests
+            supabase
+              .from('manpower_requests')
+              .select('*, approved_by_profile:approved_by(full_name)')
+              .eq('task_id', task.id)
+              .eq('is_deleted', false)
+              .order('created_at', { ascending: false })
+              .then(({ data }) => setManpowerRequests(data || []));
+          }}
+        />
+      )}
     </Dialog>
   );
 };

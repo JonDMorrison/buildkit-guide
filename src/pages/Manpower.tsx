@@ -16,6 +16,7 @@ export default function Manpower() {
   const [requests, setRequests] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [viewMode, setViewMode] = useState<'14day' | 'monthly'>('14day');
   const { toast } = useToast();
   const { user } = useAuth();
   const { canApproveManpower } = useUserRole();
@@ -39,6 +40,9 @@ export default function Manpower() {
           ),
           created_by_profile:created_by (
             full_name
+          ),
+          tasks:task_id (
+            title
           )
         `)
         .eq("is_deleted", false)
@@ -92,9 +96,22 @@ export default function Manpower() {
   };
 
   const getDaysInMonth = () => {
-    const start = startOfMonth(currentMonth);
-    const end = endOfMonth(currentMonth);
-    return eachDayOfInterval({ start, end });
+    if (viewMode === '14day') {
+      // Return next 14 days starting from today
+      const days = [];
+      const today = new Date();
+      for (let i = 0; i < 14; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + i);
+        days.push(date);
+      }
+      return days;
+    } else {
+      // Monthly view
+      const start = startOfMonth(currentMonth);
+      const end = endOfMonth(currentMonth);
+      return eachDayOfInterval({ start, end });
+    }
   };
 
   const getRequestsForDate = (date: Date) => {
@@ -135,27 +152,48 @@ export default function Manpower() {
           subtitle="Worker requirements by date and trade"
         />
 
-        {/* Month Navigation */}
-        <div className="flex items-center justify-between">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-          >
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Previous
-          </Button>
-          <h2 className="text-xl font-bold">
-            {format(currentMonth, "MMMM yyyy")}
-          </h2>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-          >
-            Next
-            <ChevronRight className="h-4 w-4 ml-1" />
-          </Button>
+        {/* View Mode Toggle and Month Navigation */}
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-2">
+            <Button
+              variant={viewMode === '14day' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('14day')}
+            >
+              14-Day View
+            </Button>
+            <Button
+              variant={viewMode === 'monthly' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('monthly')}
+            >
+              Monthly View
+            </Button>
+          </div>
+
+          {viewMode === 'monthly' && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Previous
+              </Button>
+              <h2 className="text-lg font-bold">
+                {format(currentMonth, "MMMM yyyy")}
+              </h2>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+              >
+                Next
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          )}
         </div>
 
         {isLoading ? (
@@ -202,6 +240,23 @@ export default function Manpower() {
                         </Badge>
                       ))}
                     </div>
+                    
+                    {/* Show linked tasks if any */}
+                    {getRequestsForDate(day).some(req => req.tasks) && (
+                      <div className="mt-3 pt-3 border-t border-border">
+                        <p className="text-xs font-semibold text-muted-foreground mb-1">Linked Tasks:</p>
+                        <div className="space-y-1">
+                          {getRequestsForDate(day)
+                            .filter(req => req.tasks)
+                            .map(req => (
+                              <p key={req.id} className="text-xs text-muted-foreground">
+                                • {req.tasks.title}
+                              </p>
+                            ))
+                          }
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </Card>
               );
