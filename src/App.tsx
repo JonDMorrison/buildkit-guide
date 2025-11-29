@@ -14,6 +14,7 @@ import Deficiencies from "./pages/Deficiencies";
 import Safety from "./pages/Safety";
 import AI from "./pages/AI";
 import Auth from "./pages/Auth";
+import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -88,6 +89,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <AI />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/notifications"
+              element={
+                <ProtectedRoute>
+                  <Notifications />
                 </ProtectedRoute>
               }
             />
