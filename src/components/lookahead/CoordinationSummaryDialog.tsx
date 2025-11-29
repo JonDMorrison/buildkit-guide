@@ -9,8 +9,9 @@ import {
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Skeleton } from '../ui/skeleton';
-import { Sparkles, Copy, Check, Mail, FileText, AlertTriangle, TrendingUp, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Copy, Check, Mail, FileText, AlertTriangle, TrendingUp, CheckCircle2, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { jsPDF } from 'jspdf';
 
 interface StructuredSummary {
   overview: string;
@@ -65,10 +66,228 @@ export const CoordinationSummaryDialog = ({
   };
 
   const handleExportPDF = () => {
-    toast({
-      title: 'Export PDF',
-      description: 'PDF export feature coming soon',
-    });
+    if (!summary) return;
+
+    try {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 20;
+      const contentWidth = pageWidth - (margin * 2);
+      let yPosition = margin;
+
+      // Helper function to check if we need a new page
+      const checkPageBreak = (requiredSpace: number) => {
+        if (yPosition + requiredSpace > pageHeight - margin) {
+          doc.addPage();
+          yPosition = margin;
+          return true;
+        }
+        return false;
+      };
+
+      // Helper function to add wrapped text
+      const addWrappedText = (text: string, x: number, maxWidth: number, fontSize: number = 10, isBold: boolean = false) => {
+        doc.setFontSize(fontSize);
+        doc.setFont('helvetica', isBold ? 'bold' : 'normal');
+        const lines = doc.splitTextToSize(text, maxWidth);
+        
+        lines.forEach((line: string) => {
+          checkPageBreak(7);
+          doc.text(line, x, yPosition);
+          yPosition += 6;
+        });
+      };
+
+      // Header with branding
+      doc.setFillColor(26, 26, 26); // #1A1A1A dark grey
+      doc.rect(0, 0, pageWidth, 35, 'F');
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(24);
+      doc.setFont('helvetica', 'bold');
+      doc.text('FieldSync', margin, 20);
+      
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Coordination Summary', margin, 28);
+
+      // Date in header
+      const dateStr = new Date().toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+      doc.setFontSize(10);
+      const dateWidth = doc.getTextWidth(dateStr);
+      doc.text(dateStr, pageWidth - margin - dateWidth, 20);
+
+      yPosition = 50;
+      doc.setTextColor(0, 0, 0);
+
+      // Overview Section
+      doc.setFillColor(59, 130, 246); // Blue accent
+      doc.rect(margin, yPosition, 5, 10, 'F');
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Overview', margin + 10, yPosition + 7);
+      yPosition += 15;
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      addWrappedText(summary.overview, margin, contentWidth, 10);
+      yPosition += 5;
+
+      // Blocked Tasks by Trade
+      if (summary.blocked_by_trade.length > 0) {
+        checkPageBreak(20);
+        yPosition += 10;
+        
+        doc.setFillColor(249, 115, 22); // Orange accent
+        doc.rect(margin, yPosition, 5, 10, 'F');
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Blocked Tasks by Trade', margin + 10, yPosition + 7);
+        yPosition += 15;
+
+        summary.blocked_by_trade.forEach((tradeItem) => {
+          checkPageBreak(15);
+          
+          // Trade name with background
+          doc.setFillColor(245, 245, 245);
+          doc.rect(margin, yPosition - 5, contentWidth, 10, 'F');
+          doc.setFontSize(12);
+          doc.setFont('helvetica', 'bold');
+          doc.text(tradeItem.trade, margin + 5, yPosition + 2);
+          yPosition += 12;
+
+          // Tasks
+          tradeItem.tasks.forEach((task) => {
+            checkPageBreak(15);
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.text('•', margin + 5, yPosition);
+            addWrappedText(task.task_title, margin + 10, contentWidth - 15, 10, true);
+            
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(100, 100, 100);
+            addWrappedText(task.reason, margin + 10, contentWidth - 15, 9);
+            doc.setTextColor(0, 0, 0);
+            yPosition += 3;
+          });
+          
+          yPosition += 5;
+        });
+      }
+
+      // What Horizon Needs
+      if (summary.what_horizon_is_waiting_on.length > 0) {
+        checkPageBreak(20);
+        yPosition += 10;
+        
+        doc.setFillColor(59, 130, 246); // Blue accent
+        doc.rect(margin, yPosition, 5, 10, 'F');
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text('What Horizon Needs', margin + 10, yPosition + 7);
+        yPosition += 15;
+
+        summary.what_horizon_is_waiting_on.forEach((item) => {
+          checkPageBreak(10);
+          doc.setFontSize(10);
+          doc.setFont('helvetica', 'normal');
+          doc.text('•', margin + 5, yPosition);
+          addWrappedText(item, margin + 10, contentWidth - 15, 10);
+          yPosition += 2;
+        });
+      }
+
+      // Upcoming Risks
+      if (summary.upcoming_risks.length > 0) {
+        checkPageBreak(20);
+        yPosition += 10;
+        
+        doc.setFillColor(234, 179, 8); // Yellow accent
+        doc.rect(margin, yPosition, 5, 10, 'F');
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Upcoming Risks', margin + 10, yPosition + 7);
+        yPosition += 15;
+
+        summary.upcoming_risks.forEach((riskItem) => {
+          checkPageBreak(15);
+          
+          doc.setFillColor(254, 252, 232); // Light yellow background
+          doc.rect(margin, yPosition - 3, contentWidth, 12, 'F');
+          
+          doc.setFontSize(10);
+          doc.setFont('helvetica', 'bold');
+          addWrappedText(riskItem.risk, margin + 5, contentWidth - 10, 10, true);
+          
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(100, 100, 100);
+          doc.text('Impact:', margin + 5, yPosition);
+          yPosition += 6;
+          addWrappedText(riskItem.impact, margin + 10, contentWidth - 15, 9);
+          doc.setTextColor(0, 0, 0);
+          yPosition += 5;
+        });
+      }
+
+      // Recommended Actions
+      if (summary.recommended_actions.length > 0) {
+        checkPageBreak(20);
+        yPosition += 10;
+        
+        doc.setFillColor(34, 197, 94); // Green accent
+        doc.rect(margin, yPosition, 5, 10, 'F');
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Recommended Actions', margin + 10, yPosition + 7);
+        yPosition += 15;
+
+        summary.recommended_actions.forEach((action, idx) => {
+          checkPageBreak(15);
+          
+          doc.setFillColor(240, 253, 244); // Light green background
+          doc.rect(margin, yPosition - 3, contentWidth, 10, 'F');
+          
+          doc.setFontSize(10);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(34, 197, 94);
+          doc.text(`${idx + 1}.`, margin + 5, yPosition + 3);
+          doc.setTextColor(0, 0, 0);
+          doc.setFont('helvetica', 'normal');
+          addWrappedText(action, margin + 15, contentWidth - 20, 10);
+          yPosition += 5;
+        });
+      }
+
+      // Footer on last page
+      const footerY = pageHeight - 15;
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.setFont('helvetica', 'italic');
+      doc.text('Generated by FieldSync AI', margin, footerY);
+      doc.text(`Page ${doc.internal.pages.length - 1}`, pageWidth - margin - 15, footerY);
+
+      // Save the PDF
+      const fileName = `Coordination_Summary_${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+
+      toast({
+        title: 'PDF exported',
+        description: `${fileName} has been downloaded`,
+      });
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast({
+        title: 'Export failed',
+        description: 'Failed to generate PDF. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleEmail = () => {
@@ -328,7 +547,7 @@ export const CoordinationSummaryDialog = ({
               disabled={!summary || loading}
               size="sm"
             >
-              <FileText className="h-4 w-4 mr-2" />
+              <Download className="h-4 w-4 mr-2" />
               Export PDF
             </Button>
             <Button
