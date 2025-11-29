@@ -10,9 +10,10 @@ import { TaskKanbanView } from "@/components/tasks/TaskKanbanView";
 import { TaskCalendarView } from "@/components/tasks/TaskCalendarView";
 import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
+import { VoiceToTaskModal } from "@/components/tasks/VoiceToTaskModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, LayoutList, LayoutGrid, Calendar as CalendarIcon, CheckSquare } from "lucide-react";
+import { Plus, LayoutList, LayoutGrid, Calendar as CalendarIcon, CheckSquare, Mic } from "lucide-react";
 
 type ViewMode = 'list' | 'kanban' | 'calendar';
 
@@ -23,6 +24,8 @@ const Tasks = () => {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [voiceModalOpen, setVoiceModalOpen] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
 
@@ -148,6 +151,30 @@ const Tasks = () => {
           }}
         />
 
+        {/* Voice Task Button */}
+        <div className="mb-4">
+          <Button
+            onClick={() => {
+              // Get the first project for now, or show project selector
+              if (tasks.length > 0) {
+                setSelectedProjectId(tasks[0].project_id);
+                setVoiceModalOpen(true);
+              } else {
+                toast({
+                  title: "No project available",
+                  description: "Please create a project first.",
+                  variant: "destructive",
+                });
+              }
+            }}
+            size="lg"
+            className="w-full sm:w-auto"
+          >
+            <Mic className="h-5 w-5 mr-2" />
+            Voice to Task
+          </Button>
+        </div>
+
         {tasks.length === 0 ? (
           <EmptyState
             icon={<CheckSquare className="h-8 w-8" />}
@@ -220,6 +247,13 @@ const Tasks = () => {
           open={createModalOpen}
           onOpenChange={setCreateModalOpen}
           onSuccess={fetchTasks}
+        />
+
+        <VoiceToTaskModal
+          isOpen={voiceModalOpen}
+          onClose={() => setVoiceModalOpen(false)}
+          onTaskCreated={fetchTasks}
+          projectId={selectedProjectId}
         />
 
         <TaskDetailModal
