@@ -23,8 +23,11 @@ import {
   Users,
   AlertCircle,
   ChevronRight,
+  BarChart3,
 } from "lucide-react";
-import { format, isAfter, isBefore, addDays, startOfDay } from "date-fns";
+import { format, isAfter, isBefore, addDays, startOfDay, subDays, startOfWeek, endOfWeek } from "date-fns";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -142,6 +145,54 @@ export default function Dashboard() {
   const safetyFormsToday = safetyForms?.filter(f => 
     f.created_at && format(new Date(f.created_at), "yyyy-MM-dd") === format(today, "yyyy-MM-dd")
   ).length || 0;
+
+  // Chart data calculations
+  const taskStatusData = [
+    { status: "Not Started", count: tasks?.filter(t => t.status === "not_started").length || 0, fill: "hsl(var(--muted))" },
+    { status: "In Progress", count: tasks?.filter(t => t.status === "in_progress").length || 0, fill: "hsl(var(--primary))" },
+    { status: "Blocked", count: tasks?.filter(t => t.status === "blocked").length || 0, fill: "hsl(var(--destructive))" },
+    { status: "Done", count: tasks?.filter(t => t.status === "done").length || 0, fill: "hsl(var(--chart-2))" },
+  ];
+
+  // Task completion trend (last 7 days)
+  const completionTrendData = Array.from({ length: 7 }, (_, i) => {
+    const date = subDays(today, 6 - i);
+    const completed = tasks?.filter(t => 
+      t.status === "done" && 
+      t.updated_at && 
+      format(new Date(t.updated_at), "yyyy-MM-dd") === format(date, "yyyy-MM-dd")
+    ).length || 0;
+    const created = tasks?.filter(t => 
+      t.created_at && 
+      format(new Date(t.created_at), "yyyy-MM-dd") === format(date, "yyyy-MM-dd")
+    ).length || 0;
+    return {
+      date: format(date, "EEE"),
+      completed,
+      created,
+    };
+  });
+
+  // Project health score (0-100)
+  const totalTasks = tasks?.length || 1;
+  const doneTasks = tasks?.filter(t => t.status === "done").length || 0;
+  const blockedTasksCount = tasks?.filter(t => t.blockers?.some((b: any) => !b.is_resolved)).length || 0;
+  const overdueTasks = tasks?.filter(t => 
+    t.due_date && 
+    isBefore(new Date(t.due_date), today) && 
+    t.status !== "done"
+  ).length || 0;
+  
+  const completionRate = (doneTasks / totalTasks) * 100;
+  const blockerImpact = (blockedTasksCount / totalTasks) * 100;
+  const overdueImpact = (overdueTasks / totalTasks) * 100;
+  const healthScore = Math.max(0, Math.min(100, completionRate - blockerImpact - overdueImpact));
+
+  const projectHealthData = [
+    { metric: "Completion", value: Math.round(completionRate), fill: "hsl(var(--chart-2))" },
+    { metric: "At Risk", value: Math.round(overdueImpact), fill: "hsl(var(--chart-3))" },
+    { metric: "Blocked", value: Math.round(blockerImpact), fill: "hsl(var(--destructive))" },
+  ];
 
   // My Day tasks
   const myDayTasks = tasks?.filter(t => {
@@ -296,6 +347,158 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Charts Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Task Completion Trend */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-primary" />
+                Task Activity (7 Days)
+              </CardTitle>
+              <CardDescription>
+                Tasks created vs completed this week
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer
+                config={{
+                  completed: {
+                    label: "Completed",
+                    color: "hsl(var(--chart-2))",
+                  },
+                  created: {
+                    label: "Created",
+                    color: "hsl(var(--primary))",
+                  },
+                }}
+                className="h-[200px] w-full"
+              >
+                <AreaChart data={completionTrendData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="date" className="text-xs" />
+                  <YAxis className="text-xs" />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Area
+                    type="monotone"
+                    dataKey="completed"
+                    stackId="1"
+                    stroke="hsl(var(--chart-2))"
+                    fill="hsl(var(--chart-2))"
+                    fillOpacity={0.6}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="created"
+                    stackId="2"
+                    stroke="hsl(var(--primary))"
+                    fill="hsl(var(--primary))"
+                    fillOpacity={0.4}
+                  />
+                </AreaChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+
+          {/* Project Health Score */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                  Project Health
+                </span>
+                <Badge 
+                  variant={healthScore >= 70 ? "default" : healthScore >= 40 ? "secondary" : "destructive"}
+                  className="text-lg font-bold px-3"
+                >
+                  {Math.round(healthScore)}%
+                </Badge>
+              </CardTitle>
+              <CardDescription>
+                Overall project performance metrics
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer
+                config={{
+                  value: {
+                    label: "Percentage",
+                    color: "hsl(var(--primary))",
+                  },
+                }}
+                className="h-[200px] w-full"
+              >
+                <BarChart data={projectHealthData} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis type="number" domain={[0, 100]} className="text-xs" />
+                  <YAxis dataKey="metric" type="category" width={80} className="text-xs" />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                    {projectHealthData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Task Status Distribution */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Task Status Distribution</CardTitle>
+            <CardDescription>
+              Breakdown of all tasks by current status
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <ChartContainer
+                config={{
+                  count: {
+                    label: "Tasks",
+                    color: "hsl(var(--primary))",
+                  },
+                }}
+                className="h-[250px] w-full"
+              >
+                <PieChart>
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Pie
+                    data={taskStatusData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={90}
+                    paddingAngle={2}
+                    dataKey="count"
+                  >
+                    {taskStatusData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ChartContainer>
+              <div className="flex flex-col justify-center space-y-3">
+                {taskStatusData.map((item) => (
+                  <div key={item.status} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div 
+                        className="h-3 w-3 rounded-full" 
+                        style={{ backgroundColor: item.fill }}
+                      />
+                      <span className="text-sm font-medium">{item.status}</span>
+                    </div>
+                    <span className="text-2xl font-bold">{item.count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
