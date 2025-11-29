@@ -15,6 +15,7 @@ import Safety from "./pages/Safety";
 import AI from "./pages/AI";
 import Auth from "./pages/Auth";
 import Notifications from "./pages/Notifications";
+import Documents from "./pages/Documents";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -97,6 +98,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Notifications />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/documents"
+              element={
+                <ProtectedRoute>
+                  <Documents />
                 </ProtectedRoute>
               }
             />
