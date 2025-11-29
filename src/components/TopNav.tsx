@@ -1,6 +1,7 @@
-import { Bell, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { Button } from "./ui/button";
 import { UserMenu } from "./UserMenu";
+import { NotificationsDropdown } from "./notifications/NotificationsDropdown";
 
 export const TopNav = () => {
   return (
@@ -13,9 +14,7 @@ export const TopNav = () => {
         <Button variant="ghost" size="icon" className="min-h-10 min-w-10">
           <Search className="h-5 w-5 text-muted-foreground" />
         </Button>
-        <Button variant="ghost" size="icon" className="min-h-10 min-w-10">
-          <Bell className="h-5 w-5 text-muted-foreground" />
-        </Button>
+        <NotificationsDropdown />
         <UserMenu />
       </div>
     </nav>
