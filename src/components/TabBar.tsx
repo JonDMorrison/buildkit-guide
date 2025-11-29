@@ -3,7 +3,7 @@ import { Briefcase, CheckSquare, Calendar, Users, AlertCircle, Shield, MessageSq
 import { useProjectRole } from "@/hooks/useProjectRole";
 
 const tabs = [
-  { name: "Projects", path: "/", icon: Briefcase, workerAccess: false },
+  { name: "Projects", path: "/dashboard", icon: Briefcase, workerAccess: false },
   { name: "Tasks", path: "/tasks", icon: CheckSquare, workerAccess: true },
   { name: "Lookahead", path: "/lookahead", icon: Calendar, workerAccess: false },
   { name: "Manpower", path: "/manpower", icon: Users, workerAccess: false },

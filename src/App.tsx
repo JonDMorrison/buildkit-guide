@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { PublicRoute } from "@/components/PublicRoute";
+import Landing from "./pages/Landing";
 import Index from "./pages/Index";
 import ProjectOverview from "./pages/ProjectOverview";
 import Tasks from "./pages/Tasks";
@@ -35,6 +37,14 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route
               path="/"
+              element={
+                <PublicRoute>
+                  <Landing />
+                </PublicRoute>
+              }
+            />
+            <Route
+              path="/dashboard"
               element={
                 <ProtectedRoute>
                   <Index />
