@@ -1,0 +1,401 @@
+import { useState, useEffect } from "react";
+import { Layout } from "@/components/Layout";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useProjectRole } from "@/hooks/useProjectRole";
+import { useAuth } from "@/hooks/useAuth";
+import { UserPlus, Users, Shield, Briefcase, Trash2, Edit2 } from "lucide-react";
+import { AddUserToProjectModal } from "@/components/users/AddUserToProjectModal";
+import { InviteUserModal } from "@/components/users/InviteUserModal";
+import { EditUserRoleModal } from "@/components/users/EditUserRoleModal";
+
+interface ProjectMember {
+  id: string;
+  user_id: string;
+  project_id: string;
+  role: string;
+  trade_id: string | null;
+  profiles: {
+    full_name: string | null;
+    email: string;
+  };
+  projects: {
+    name: string;
+  };
+  trades: {
+    name: string;
+  } | null;
+}
+
+interface Project {
+  id: string;
+  name: string;
+}
+
+const UserManagement = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const { isGlobalAdmin, loading: roleLoading } = useProjectRole();
+  const [loading, setLoading] = useState(true);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedProject, setSelectedProject] = useState<string | null>(null);
+  const [members, setMembers] = useState<ProjectMember[]>([]);
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<ProjectMember | null>(null);
+
+  useEffect(() => {
+    if (!roleLoading) {
+      fetchProjects();
+    }
+  }, [roleLoading, isGlobalAdmin]);
+
+  useEffect(() => {
+    if (selectedProject) {
+      fetchMembers();
+    }
+  }, [selectedProject]);
+
+  const fetchProjects = async () => {
+    try {
+      let data: Project[] = [];
+
+      if (isGlobalAdmin) {
+        // Admins see all projects
+        const { data: allProjects, error } = await supabase
+          .from('projects')
+          .select('id, name')
+          .order('name');
+
+        if (error) throw error;
+        data = allProjects || [];
+      } else {
+        // Non-admins only see projects they manage
+        const { data: managedProjects, error } = await supabase
+          .from('project_members')
+          .select('project_id, projects!inner(id, name)')
+          .eq('user_id', user?.id)
+          .eq('role', 'project_manager');
+
+        if (error) throw error;
+
+        data = (managedProjects || []).map((pm: any) => ({
+          id: pm.projects.id,
+          name: pm.projects.name,
+        }));
+      }
+
+      setProjects(data);
+      if (data && data.length > 0) {
+        setSelectedProject(data[0].id);
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Error loading projects',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchMembers = async () => {
+    if (!selectedProject) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('project_members')
+        .select(`
+          id,
+          user_id,
+          project_id,
+          role,
+          trade_id,
+          profiles:user_id (full_name, email),
+          projects:project_id (name),
+          trades:trade_id (name)
+        `)
+        .eq('project_id', selectedProject)
+        .order('role');
+
+      if (error) throw error;
+
+      setMembers(data as unknown as ProjectMember[] || []);
+    } catch (error: any) {
+      toast({
+        title: 'Error loading members',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleRemoveMember = async (memberId: string, userName: string) => {
+    if (!confirm(`Remove ${userName} from this project?`)) return;
+
+    try {
+      const { error } = await supabase
+        .from('project_members')
+        .delete()
+        .eq('id', memberId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Member removed',
+        description: `${userName} has been removed from the project.`,
+      });
+
+      fetchMembers();
+    } catch (error: any) {
+      toast({
+        title: 'Error removing member',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const getRoleBadgeColor = (role: string) => {
+    switch (role) {
+      case 'project_manager':
+        return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
+      case 'foreman':
+        return 'bg-green-500/10 text-green-500 border-green-500/20';
+      case 'internal_worker':
+        return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
+      case 'external_trade':
+        return 'bg-purple-500/10 text-purple-500 border-purple-500/20';
+      default:
+        return 'bg-muted text-muted-foreground';
+    }
+  };
+
+  const getRoleLabel = (role: string) => {
+    switch (role) {
+      case 'project_manager':
+        return 'Project Manager';
+      case 'foreman':
+        return 'Foreman';
+      case 'internal_worker':
+        return 'Internal Worker';
+      case 'external_trade':
+        return 'External Trade';
+      default:
+        return role;
+    }
+  };
+
+  if (roleLoading || loading) {
+    return (
+      <Layout>
+        <div className="container max-w-6xl mx-auto px-4 py-6">
+          <Skeleton className="h-12 w-64 mb-6" />
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-48 mb-2" />
+              <Skeleton className="h-4 w-full max-w-md" />
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {[1, 2, 3, 4].map((i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Access control
+  if (!isGlobalAdmin && projects.length === 0) {
+    return (
+      <Layout>
+        <div className="container max-w-6xl mx-auto px-4 py-6">
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <Shield className="h-16 w-16 text-muted-foreground mb-4" />
+            <h2 className="text-2xl font-bold mb-2">Access Denied</h2>
+            <p className="text-muted-foreground max-w-md">
+              You need to be a Project Manager or Admin to access user management.
+            </p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  return (
+    <Layout>
+      <div className="container max-w-6xl mx-auto px-4 py-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="rounded-full bg-primary/10 p-2">
+              <Users className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">User Management</h1>
+              <p className="text-sm text-muted-foreground">
+                Manage project members and their roles
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setInviteModalOpen(true)}
+              variant="outline"
+              size="sm"
+            >
+              <UserPlus className="h-4 w-4 mr-2" />
+              Invite User
+            </Button>
+            <Button
+              onClick={() => setAddModalOpen(true)}
+              disabled={!selectedProject}
+            >
+              <UserPlus className="h-4 w-4 mr-2" />
+              Add to Project
+            </Button>
+          </div>
+        </div>
+
+        <Tabs value={selectedProject || ''} onValueChange={setSelectedProject}>
+          <TabsList className="w-full mb-6 overflow-x-auto flex-wrap h-auto">
+            {projects.map((project) => (
+              <TabsTrigger key={project.id} value={project.id} className="flex items-center gap-2">
+                <Briefcase className="h-4 w-4" />
+                {project.name}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          {projects.map((project) => (
+            <TabsContent key={project.id} value={project.id}>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Project Members</CardTitle>
+                  <CardDescription>
+                    {members.length} {members.length === 1 ? 'member' : 'members'} on {project.name}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {members.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <Users className="h-12 w-12 text-muted-foreground mb-3" />
+                      <p className="text-muted-foreground">
+                        No members on this project yet. Add users to get started.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {members.map((member) => (
+                        <div
+                          key={member.id}
+                          className="flex items-center justify-between p-4 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
+                        >
+                          <div className="flex items-center gap-4 flex-1">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <p className="font-medium text-foreground truncate">
+                                  {member.profiles?.full_name || 'Unnamed User'}
+                                </p>
+                                <Badge
+                                  variant="outline"
+                                  className={getRoleBadgeColor(member.role)}
+                                >
+                                  {getRoleLabel(member.role)}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground truncate">
+                                {member.profiles?.email}
+                              </p>
+                              {member.trades && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Trade: {member.trades.name}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedMember(member);
+                                setEditModalOpen(true);
+                              }}
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                handleRemoveMember(
+                                  member.id,
+                                  member.profiles?.full_name || member.profiles?.email || 'User'
+                                )
+                              }
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          ))}
+        </Tabs>
+
+        {selectedProject && (
+          <>
+            <AddUserToProjectModal
+              open={addModalOpen}
+              onOpenChange={setAddModalOpen}
+              projectId={selectedProject}
+              onSuccess={() => {
+                fetchMembers();
+                setAddModalOpen(false);
+              }}
+            />
+
+            {selectedMember && (
+              <EditUserRoleModal
+                open={editModalOpen}
+                onOpenChange={setEditModalOpen}
+                member={selectedMember}
+                onSuccess={() => {
+                  fetchMembers();
+                  setEditModalOpen(false);
+                }}
+              />
+            )}
+          </>
+        )}
+
+        <InviteUserModal
+          open={inviteModalOpen}
+          onOpenChange={setInviteModalOpen}
+          onSuccess={() => {
+            setInviteModalOpen(false);
+          }}
+        />
+      </div>
+    </Layout>
+  );
+};
+
+export default UserManagement;
