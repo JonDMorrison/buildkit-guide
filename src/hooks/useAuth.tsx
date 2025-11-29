@@ -27,9 +27,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Redirect to home after successful login
+        // Redirect to dashboard after successful login
         if (event === 'SIGNED_IN' && session) {
-          navigate('/');
+          navigate('/dashboard');
         }
       }
     );
