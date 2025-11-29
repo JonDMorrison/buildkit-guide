@@ -64,6 +64,7 @@ export type Database = {
           created_at: string
           deficiency_id: string | null
           description: string | null
+          document_type: string | null
           file_name: string
           file_size: number | null
           file_type: string
@@ -78,6 +79,7 @@ export type Database = {
           created_at?: string
           deficiency_id?: string | null
           description?: string | null
+          document_type?: string | null
           file_name: string
           file_size?: number | null
           file_type: string
@@ -92,6 +94,7 @@ export type Database = {
           created_at?: string
           deficiency_id?: string | null
           description?: string | null
+          document_type?: string | null
           file_name?: string
           file_size?: number | null
           file_type?: string
@@ -338,6 +341,54 @@ export type Database = {
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_texts: {
+        Row: {
+          attachment_id: string | null
+          created_at: string
+          id: string
+          project_id: string
+          raw_text: string
+          search_vector: unknown
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          attachment_id?: string | null
+          created_at?: string
+          id?: string
+          project_id: string
+          raw_text: string
+          search_vector?: unknown
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          attachment_id?: string | null
+          created_at?: string
+          id?: string
+          project_id?: string
+          raw_text?: string
+          search_vector?: unknown
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_texts_attachment_id_fkey"
+            columns: ["attachment_id"]
+            isOneToOne: false
+            referencedRelation: "attachments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_texts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
