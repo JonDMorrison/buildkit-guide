@@ -17,6 +17,7 @@ interface StructuredSummary {
   blocked_by_trade: Array<{
     trade: string;
     tasks: Array<{
+      task_id: string;
       task_title: string;
       reason: string;
     }>;
@@ -36,6 +37,7 @@ interface CoordinationSummaryDialogProps {
   onOpenChange: (open: boolean) => void;
   summary: StructuredSummary | null;
   loading: boolean;
+  onTaskClick?: (taskId: string) => void;
 }
 
 export const CoordinationSummaryDialog = ({
@@ -43,6 +45,7 @@ export const CoordinationSummaryDialog = ({
   onOpenChange,
   summary,
   loading,
+  onTaskClick,
 }: CoordinationSummaryDialogProps) => {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
@@ -180,7 +183,12 @@ export const CoordinationSummaryDialog = ({
                             <li key={taskIdx} className="flex items-start gap-2 text-sm">
                               <span className="text-destructive mt-1">•</span>
                               <div>
-                                <span className="font-medium">{task.task_title}</span>
+                                <button
+                                  onClick={() => onTaskClick?.(task.task_id)}
+                                  className="font-medium text-primary hover:underline text-left"
+                                >
+                                  {task.task_title}
+                                </button>
                                 <p className="text-muted-foreground">{task.reason}</p>
                               </div>
                             </li>
