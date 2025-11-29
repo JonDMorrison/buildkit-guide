@@ -20,7 +20,7 @@ export default function Landing() {
   };
 
   const handleSeeHowItWorks = () => {
-    document.getElementById('solution')?.scrollIntoView({ behavior: 'smooth' });
+    navigate('/how-it-works');
   };
 
   const handleSeePricing = () => {

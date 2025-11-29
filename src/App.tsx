@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { PublicRoute } from "@/components/PublicRoute";
 import Landing from "./pages/Landing";
+import HowItWorks from "./pages/HowItWorks";
 import Index from "./pages/Index";
 import ProjectOverview from "./pages/ProjectOverview";
 import Tasks from "./pages/Tasks";
@@ -40,6 +41,14 @@ const App = () => (
               element={
                 <PublicRoute>
                   <Landing />
+                </PublicRoute>
+              }
+            />
+            <Route
+              path="/how-it-works"
+              element={
+                <PublicRoute>
+                  <HowItWorks />
                 </PublicRoute>
               }
             />
