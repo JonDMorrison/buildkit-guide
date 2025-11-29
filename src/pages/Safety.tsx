@@ -150,7 +150,7 @@ const Safety = () => {
     setIsDetailModalOpen(true);
   };
 
-  if (loading) {
+  if (roleLoading || loading) {
     return (
       <Layout>
         <div className="container max-w-4xl mx-auto px-4 py-6">
@@ -167,17 +167,33 @@ const Safety = () => {
     );
   }
 
+  // Show no access if user cannot view safety
+  if (!canViewSafety) {
+    return (
+      <Layout>
+        <div className="container max-w-4xl mx-auto px-4 py-6">
+          <NoAccess
+            title="Safety Access Required"
+            message="Only Project Managers and Foremen can access safety forms."
+            returnPath="/tasks"
+            returnLabel="Back to Tasks"
+          />
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="container max-w-4xl mx-auto px-4 py-6">
         <SectionHeader
           title="Safety"
           count={forms.length}
-          action={{
+          action={canCreateSafety ? {
             label: "Add Form",
             icon: <Plus className="h-6 w-6" />,
             onClick: handleCreateForm,
-          }}
+          } : undefined}
         />
 
         {forms.length === 0 ? (

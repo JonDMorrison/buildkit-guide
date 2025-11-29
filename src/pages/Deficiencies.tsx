@@ -158,11 +158,11 @@ const Deficiencies = () => {
         <SectionHeader
           title="Deficiencies"
           count={filteredDeficiencies.length}
-          action={{
+          action={canCreateDeficiencies ? {
             label: "Add Deficiency",
             icon: <Plus className="h-6 w-6" />,
             onClick: handleCreateDeficiency,
-          }}
+          } : undefined}
         />
 
         {deficiencies.length === 0 ? (
@@ -170,10 +170,10 @@ const Deficiencies = () => {
             icon={<AlertCircle className="h-8 w-8" />}
             title="No deficiencies"
             description="Track quality issues, punch list items, and work that needs correction."
-            action={{
+            action={canCreateDeficiencies ? {
               label: "Create Deficiency",
               onClick: handleCreateDeficiency,
-            }}
+            } : undefined}
           />
         ) : (
           <>

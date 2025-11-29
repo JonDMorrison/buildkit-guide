@@ -14,7 +14,7 @@ import { TradeBadge } from '@/components/TradeBadge';
 import { ListItem } from '@/components/ListItem';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useUserRole } from '@/hooks/useUserRole';
+import { useAuthRole } from '@/hooks/useAuthRole';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,11 +52,13 @@ const ProjectOverview = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { canManageProjects } = useUserRole();
+  const { can, loading: roleLoading } = useAuthRole(projectId);
   const [project, setProject] = useState<Project | null>(null);
   const [stats, setStats] = useState<ProjectStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+
+  const canManageProject = projectId ? can('manage_project', projectId) : false;
 
   useEffect(() => {
     if (!projectId) return;
@@ -188,7 +190,7 @@ const ProjectOverview = () => {
               subtitle={project.location}
             />
           </div>
-          {canManageProjects && (
+          {canManageProject && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
