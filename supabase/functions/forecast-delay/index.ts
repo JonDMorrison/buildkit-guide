@@ -22,6 +22,7 @@ serve(async (req) => {
     console.log('Forecasting delay impact for project:', projectId, 'task:', taskId);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
 
@@ -29,7 +30,51 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY not configured');
     }
 
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // Get user from auth header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('No authorization header');
+    }
+
+    // Check user permission
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const { data: { user }, error: userError } = await userClient.auth.getUser();
+    if (userError || !user) {
+      throw new Error('Unauthorized');
+    }
+
+    // Verify user has PM/Foreman role
+    const serviceClient = createClient(supabaseUrl, supabaseKey);
+    const { data: membership } = await serviceClient
+      .from('project_members')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('project_id', projectId)
+      .single();
+
+    const { data: globalAdmin } = await serviceClient
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .single();
+
+    const isAdmin = !!globalAdmin;
+    const canAccess = isAdmin || membership?.role === 'project_manager' || membership?.role === 'foreman';
+
+    if (!canAccess) {
+      return new Response(
+        JSON.stringify({ error: 'Access denied. Only Project Managers and Foremen can forecast delays.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('User authorized for delay forecast:', user.id);
+
+    const supabase = serviceClient;
 
     // Fetch all relevant data for the project
     const [tasksResult, dependenciesResult, blockersResult, manpowerResult] = await Promise.all([
