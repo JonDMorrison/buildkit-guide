@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import {
   Select,
@@ -9,6 +9,7 @@ import {
 } from '../ui/select';
 import { Filter, X } from 'lucide-react';
 import { Badge } from '../ui/badge';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TaskFiltersProps {
   onFilterChange: (filters: TaskFilters) => void;
@@ -24,6 +25,17 @@ export const TaskFilters = ({ onFilterChange }: TaskFiltersProps) => {
   const [filters, setFilters] = useState<TaskFilters>({
     dateRange: 'all',
   });
+  const [trades, setTrades] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Fetch trades for filter
+    supabase
+      .from('trades')
+      .select('id, name, trade_type')
+      .eq('is_active', true)
+      .order('name')
+      .then(({ data }) => setTrades(data || []));
+  }, []);
 
   const updateFilter = (key: keyof TaskFilters, value: string | undefined) => {
     const newFilters = { ...filters, [key]: value === 'all' ? undefined : value };
@@ -68,6 +80,20 @@ export const TaskFilters = ({ onFilterChange }: TaskFiltersProps) => {
           <SelectItem value="today">Today</SelectItem>
           <SelectItem value="week">This Week</SelectItem>
           <SelectItem value="overdue">Overdue</SelectItem>
+        </SelectContent>
+      </Select>
+
+      <Select value={filters.tradeId || 'all'} onValueChange={(v) => updateFilter('tradeId', v)}>
+        <SelectTrigger className="w-[160px] h-10 bg-card border-border">
+          <SelectValue placeholder="Trade" />
+        </SelectTrigger>
+        <SelectContent className="bg-card border-border z-50">
+          <SelectItem value="all">All Trades</SelectItem>
+          {trades.map((trade) => (
+            <SelectItem key={trade.id} value={trade.id}>
+              {trade.name}
+            </SelectItem>
+          ))}
         </SelectContent>
       </Select>
 

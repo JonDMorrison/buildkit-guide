@@ -28,12 +28,21 @@ const taskSchema = z.object({
   title: z.string().trim().min(3, 'Title must be at least 3 characters'),
   description: z.string().trim().optional(),
   projectId: z.string().min(1, 'Please select a project'),
-  tradeId: z.string().optional(),
-  dueDate: z.string().optional(),
+  tradeId: z.string().min(1, 'Please select a trade'),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
   priority: z.number().min(1).max(5),
   requestedCrewSize: z.number().optional(),
   manpowerStartDate: z.string().optional(),
   manpowerEndDate: z.string().optional(),
+}).refine((data) => {
+  if (data.startDate && data.endDate) {
+    return new Date(data.endDate) >= new Date(data.startDate);
+  }
+  return true;
+}, {
+  message: 'End date must be on or after start date',
+  path: ['endDate'],
 });
 
 type TaskForm = z.infer<typeof taskSchema>;
@@ -55,7 +64,8 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
     description: '',
     projectId: '',
     tradeId: '',
-    dueDate: '',
+    startDate: '',
+    endDate: '',
     priority: 3,
     requestedCrewSize: undefined,
     manpowerStartDate: '',
@@ -95,8 +105,9 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
         title: validatedData.title,
         description: validatedData.description,
         project_id: validatedData.projectId,
-        assigned_trade_id: validatedData.tradeId || null,
-        due_date: validatedData.dueDate || null,
+        assigned_trade_id: validatedData.tradeId,
+        start_date: validatedData.startDate || null,
+        end_date: validatedData.endDate || null,
         priority: validatedData.priority,
         status: 'not_started',
         created_by: user?.id,
@@ -113,7 +124,7 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
             trade_id: validatedData.tradeId,
             project_id: validatedData.projectId,
             requested_count: validatedData.requestedCrewSize,
-            required_date: validatedData.manpowerStartDate || validatedData.dueDate || new Date().toISOString().split('T')[0],
+            required_date: validatedData.manpowerStartDate || validatedData.startDate || new Date().toISOString().split('T')[0],
             duration_days: validatedData.manpowerStartDate && validatedData.manpowerEndDate 
               ? Math.ceil((new Date(validatedData.manpowerEndDate).getTime() - new Date(validatedData.manpowerStartDate).getTime()) / (1000 * 60 * 60 * 24))
               : 1,
@@ -142,7 +153,8 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
         description: '',
         projectId: '',
         tradeId: '',
-        dueDate: '',
+        startDate: '',
+        endDate: '',
         priority: 3,
         requestedCrewSize: undefined,
         manpowerStartDate: '',
@@ -216,10 +228,10 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
             </Select>
           </FormField>
 
-          <FormField label="Assigned Trade" error={errors.tradeId}>
+          <FormField label="Assigned Trade" required error={errors.tradeId}>
             <Select value={form.tradeId} onValueChange={(v) => setForm({ ...form, tradeId: v })}>
               <SelectTrigger className="min-h-[52px] bg-card border-border">
-                <SelectValue placeholder="Select trade (optional)" />
+                <SelectValue placeholder="Select trade" />
               </SelectTrigger>
               <SelectContent className="bg-card border-border z-50">
                 {trades.map((trade) => (
@@ -232,32 +244,42 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
           </FormField>
 
           <div className="grid grid-cols-2 gap-4">
-            <FormField label="Due Date" error={errors.dueDate}>
+            <FormField label="Start Date" error={errors.startDate}>
               <Input
                 type="date"
-                value={form.dueDate}
-                onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+                value={form.startDate}
+                onChange={(e) => setForm({ ...form, startDate: e.target.value })}
                 className="min-h-[52px]"
               />
             </FormField>
 
-            <FormField label="Priority" required error={errors.priority}>
-              <Select
-                value={form.priority.toString()}
-                onValueChange={(v) => setForm({ ...form, priority: parseInt(v) })}
-              >
-                <SelectTrigger className="min-h-[52px] bg-card border-border">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-card border-border z-50">
-                  <SelectItem value="1">Urgent</SelectItem>
-                  <SelectItem value="2">High</SelectItem>
-                  <SelectItem value="3">Normal</SelectItem>
-                  <SelectItem value="4">Low</SelectItem>
-                </SelectContent>
-              </Select>
+            <FormField label="End Date" error={errors.endDate}>
+              <Input
+                type="date"
+                value={form.endDate}
+                onChange={(e) => setForm({ ...form, endDate: e.target.value })}
+                min={form.startDate}
+                className="min-h-[52px]"
+              />
             </FormField>
           </div>
+
+          <FormField label="Priority" required error={errors.priority}>
+            <Select
+              value={form.priority.toString()}
+              onValueChange={(v) => setForm({ ...form, priority: parseInt(v) })}
+            >
+              <SelectTrigger className="min-h-[52px] bg-card border-border">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-card border-border z-50">
+                <SelectItem value="1">Urgent</SelectItem>
+                <SelectItem value="2">High</SelectItem>
+                <SelectItem value="3">Normal</SelectItem>
+                <SelectItem value="4">Low</SelectItem>
+              </SelectContent>
+            </Select>
+          </FormField>
 
           <Separator className="my-4" />
           
