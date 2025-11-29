@@ -1,6 +1,6 @@
 import { Layout } from "@/components/Layout";
 import { ProjectCard } from "@/components/ProjectCard";
-import { Button } from "@/components/ui/button";
+import { SectionHeader } from "@/components/SectionHeader";
 import { Plus } from "lucide-react";
 
 const projects = [
@@ -31,15 +31,15 @@ const Index = () => {
   return (
     <Layout>
       <div className="container max-w-2xl mx-auto px-4 py-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-foreground">Projects</h2>
-            <p className="text-sm text-muted-foreground mt-1">3 active projects</p>
-          </div>
-          <Button size="icon" className="h-12 w-12">
-            <Plus className="h-6 w-6" />
-          </Button>
-        </div>
+        <SectionHeader
+          title="Projects"
+          count={projects.length}
+          action={{
+            label: "Add Project",
+            icon: <Plus className="h-6 w-6" />,
+            onClick: () => console.log("Add project"),
+          }}
+        />
 
         <div className="space-y-3">
           {projects.map((project) => (

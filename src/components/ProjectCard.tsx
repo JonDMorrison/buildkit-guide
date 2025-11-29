@@ -1,5 +1,6 @@
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
+import { Progress } from "./ui/progress";
 import { ChevronRight } from "lucide-react";
 
 interface ProjectCardProps {
@@ -41,13 +42,16 @@ export const ProjectCard = ({ name, location, status, tasks }: ProjectCardProps)
         <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0 ml-2" />
       </div>
 
-      <div className="flex items-center justify-between">
-        <Badge className={statusInfo.className}>
-          {statusInfo.label}
-        </Badge>
-        <span className="text-sm text-muted-foreground">
-          {tasks.completed}/{tasks.total} tasks · {completion}%
-        </span>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between text-sm">
+          <Badge className={statusInfo.className}>
+            {statusInfo.label}
+          </Badge>
+          <span className="text-muted-foreground">
+            {tasks.completed}/{tasks.total} tasks
+          </span>
+        </div>
+        <Progress value={completion} />
       </div>
     </Card>
   );
