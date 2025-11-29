@@ -1,6 +1,16 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { CheckCircle } from "lucide-react";
+import heroBackground from "@/assets/hero-construction-bg.jpg";
+import heroMockup from "@/assets/hero-app-mockup.png";
+import problemChaos from "@/assets/problem-chaos.jpg";
+import successOrganized from "@/assets/success-organized.jpg";
+import iconTasks from "@/assets/icon-tasks.png";
+import iconBlocker from "@/assets/icon-blocker.png";
+import iconLookahead from "@/assets/icon-lookahead.png";
+import iconSafety from "@/assets/icon-safety.png";
+import iconManpower from "@/assets/icon-manpower.png";
+import iconAI from "@/assets/icon-ai.png";
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -42,37 +52,80 @@ export default function Landing() {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4">
+      <section 
+        className="pt-32 pb-20 px-4 relative overflow-hidden"
+        style={{
+          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.8)), url(${heroBackground})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center'
+        }}
+      >
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div className="text-center lg:text-left">
+              <h2 className="text-4xl md:text-6xl font-bold text-white mb-6 leading-tight">
+                Your Job Site Is Bleeding Time. This Stops It.
+              </h2>
+              <p className="text-xl md:text-2xl text-gray-200 mb-8">
+                A simple field-ready coordination app that keeps every trade accountable and your schedule on track.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                <Button 
+                  size="lg" 
+                  onClick={handleBookDemo}
+                  className="h-14 px-8 text-lg bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white"
+                >
+                  Book a Demo
+                </Button>
+                <Button 
+                  size="lg" 
+                  variant="outline" 
+                  onClick={handleSeeHowItWorks}
+                  className="h-14 px-8 text-lg bg-white/10 text-white border-white/30 hover:bg-white/20"
+                >
+                  See How It Works
+                </Button>
+              </div>
+            </div>
+            <div className="flex justify-center">
+              <img 
+                src={heroMockup} 
+                alt="FieldSync App Dashboard" 
+                className="w-full max-w-lg rounded-lg shadow-2xl"
+                loading="eager"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Social Proof Section */}
+      <section className="py-12 px-4 bg-card border-y border-border">
         <div className="container mx-auto max-w-4xl text-center">
-          <h2 className="text-4xl md:text-6xl font-bold text-foreground mb-6 leading-tight">
-            Your Job Site Is Bleeding Time. This Stops It.
-          </h2>
-          <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            A simple field-ready coordination app that keeps every trade accountable and your schedule on track.
+          <p className="text-sm uppercase tracking-wider text-muted-foreground mb-6 font-semibold">
+            Trusted by Contractors Who Keep Jobs Moving
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button 
-              size="lg" 
-              onClick={handleBookDemo}
-              className="h-14 px-8 text-lg bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white"
-            >
-              Book a Demo
-            </Button>
-            <Button 
-              size="lg" 
-              variant="outline" 
-              onClick={handleSeeHowItWorks}
-              className="h-14 px-8 text-lg"
-            >
-              See How It Works
-            </Button>
+          <div className="flex flex-wrap justify-center items-center gap-8 opacity-60">
+            {["Horizon Construction", "BuildRight Co", "Prime Builders", "SteelFrame Inc"].map((company, idx) => (
+              <div key={idx} className="text-lg font-bold text-foreground">
+                {company}
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* The Problem */}
-      <section className="py-20 px-4 bg-muted/30">
-        <div className="container mx-auto max-w-4xl">
+      <section className="py-20 px-4 bg-muted/30 relative">
+        <div className="absolute inset-0 opacity-20">
+          <img 
+            src={problemChaos} 
+            alt="Construction site chaos" 
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+        </div>
+        <div className="container mx-auto max-w-4xl relative z-10">
           <h3 className="text-3xl md:text-4xl font-bold text-foreground mb-8 text-center">
             Projects Fall Behind When Trades Do Not Stay Aligned
           </h3>
@@ -85,7 +138,7 @@ export default function Landing() {
               "Foremen drown in admin",
               "Little delays turn into big problems"
             ].map((item, index) => (
-              <div key={index} className="flex items-start gap-3 p-4 bg-card rounded-lg border border-border">
+              <div key={index} className="flex items-start gap-3 p-4 bg-card/95 backdrop-blur-sm rounded-lg border border-border">
                 <div className="h-2 w-2 rounded-full bg-destructive mt-2 flex-shrink-0" />
                 <p className="text-lg text-foreground">{item}</p>
               </div>
@@ -119,30 +172,42 @@ export default function Landing() {
             {[
               {
                 title: "Clear Task Accountability",
-                description: "Every trade sees what they owe and what depends on them."
+                description: "Every trade sees what they owe and what depends on them.",
+                icon: iconTasks
               },
               {
                 title: "Instant Blocker Reporting",
-                description: "Know immediately when a task is blocked and why."
+                description: "Know immediately when a task is blocked and why.",
+                icon: iconBlocker
               },
               {
                 title: "Fast 2-Week Lookahead",
-                description: "A simple visual plan of the next two weeks."
+                description: "A simple visual plan of the next two weeks.",
+                icon: iconLookahead
               },
               {
                 title: "Safety Done Right",
-                description: "Daily logs, hazard IDs, toolbox talks, and incident reports in one place."
+                description: "Daily logs, hazard IDs, toolbox talks, and incident reports in one place.",
+                icon: iconSafety
               },
               {
                 title: "Manpower Planning",
-                description: "Request crews, approve requests, and prevent shortages."
+                description: "Request crews, approve requests, and prevent shortages.",
+                icon: iconManpower
               },
               {
                 title: "AI Support",
-                description: "AI reads documents, answers questions, generates daily logs, and identifies risks."
+                description: "AI reads documents, answers questions, generates daily logs, and identifies risks.",
+                icon: iconAI
               }
             ].map((feature, index) => (
-              <div key={index} className="p-6 bg-card rounded-lg border border-border">
+              <div key={index} className="p-6 bg-card rounded-lg border border-border hover:border-[#FF6B35]/50 transition-colors">
+                <img 
+                  src={feature.icon} 
+                  alt={feature.title} 
+                  className="w-16 h-16 mb-4 rounded-lg"
+                  loading="lazy"
+                />
                 <h4 className="text-xl font-bold text-foreground mb-3">{feature.title}</h4>
                 <p className="text-muted-foreground">{feature.description}</p>
               </div>
@@ -225,8 +290,17 @@ export default function Landing() {
       </section>
 
       {/* Success Vision */}
-      <section className="py-20 px-4">
-        <div className="container mx-auto max-w-4xl">
+      <section className="py-20 px-4 relative overflow-hidden">
+        <div className="absolute inset-0">
+          <img 
+            src={successOrganized} 
+            alt="Organized construction site" 
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/90 to-background/80" />
+        </div>
+        <div className="container mx-auto max-w-4xl relative z-10">
           <h3 className="text-3xl md:text-4xl font-bold text-foreground mb-10 text-center">
             Picture A Job Site With Zero Guesswork
           </h3>
@@ -239,9 +313,9 @@ export default function Landing() {
               "Everyone knows what is needed next",
               "Projects finish on time"
             ].map((item, index) => (
-              <div key={index} className="flex items-start gap-3 p-4">
+              <div key={index} className="flex items-start gap-3 p-4 bg-card/80 backdrop-blur-sm rounded-lg">
                 <CheckCircle className="h-6 w-6 text-[#FF6B35] flex-shrink-0 mt-1" />
-                <p className="text-lg text-foreground">{item}</p>
+                <p className="text-lg text-foreground font-medium">{item}</p>
               </div>
             ))}
           </div>
