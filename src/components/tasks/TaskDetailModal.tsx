@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
-import { Calendar, AlertTriangle, FileText, Users, Link2, History } from 'lucide-react';
+import { Calendar, AlertTriangle, FileText, Users, Link2, Paperclip } from 'lucide-react';
 
 interface TaskDetailModalProps {
   taskId: string | null;
@@ -36,6 +36,7 @@ export const TaskDetailModal = ({ taskId, open, onOpenChange, onTaskUpdated }: T
   const [dependencies, setDependencies] = useState<any[]>([]);
   const [attachments, setAttachments] = useState<any[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
+  const [manpowerRequest, setManpowerRequest] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -90,6 +91,8 @@ export const TaskDetailModal = ({ taskId, open, onOpenChange, onTaskUpdated }: T
           .select('*, profiles(full_name, email)')
           .eq('task_id', taskId);
         setAssignments(assignData || []);
+
+        // TODO: Add manpower request fetch later
 
       } catch (error: any) {
         toast({
@@ -294,6 +297,50 @@ export const TaskDetailModal = ({ taskId, open, onOpenChange, onTaskUpdated }: T
             </>
           )}
 
+          {/* Manpower Request */}
+          {manpowerRequest && (
+            <>
+              <Separator />
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="text-sm font-semibold">Manpower Request</h3>
+                </div>
+                <div className="p-4 bg-muted rounded-lg space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Requested Crew Size</p>
+                      <p className="text-lg font-semibold">{manpowerRequest.requested_count} workers</p>
+                    </div>
+                    <Badge variant={manpowerRequest.status === "approved" ? "default" : manpowerRequest.status === "rejected" ? "destructive" : "secondary"}>
+                      {manpowerRequest.status}
+                    </Badge>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Start Date</p>
+                      <p className="font-medium">{new Date(manpowerRequest.required_date).toLocaleDateString()}</p>
+                    </div>
+                    {manpowerRequest.duration_days && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Duration</p>
+                        <p className="font-medium">{manpowerRequest.duration_days} days</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {manpowerRequest.reason && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Reason</p>
+                      <p className="text-sm">{manpowerRequest.reason}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
           {/* Attachments */}
           {attachments.length > 0 && (
             <>
@@ -306,10 +353,19 @@ export const TaskDetailModal = ({ taskId, open, onOpenChange, onTaskUpdated }: T
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   {attachments.map((attachment) => (
-                    <div key={attachment.id} className="p-3 bg-muted rounded-lg">
-                      <p className="text-sm font-medium truncate">{attachment.file_name}</p>
-                      <p className="text-xs text-muted-foreground">{attachment.file_type}</p>
-                    </div>
+                    <a
+                      key={attachment.id}
+                      href={attachment.file_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 p-3 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
+                    >
+                      <Paperclip className="h-4 w-4" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{attachment.file_name}</p>
+                        <p className="text-xs text-muted-foreground">{attachment.file_type}</p>
+                      </div>
+                    </a>
                   ))}
                 </div>
               </div>

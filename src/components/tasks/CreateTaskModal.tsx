@@ -14,6 +14,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { FormField } from '../FormField';
+import { Separator } from '../ui/separator';
 import {
   Select,
   SelectContent,
@@ -30,6 +31,9 @@ const taskSchema = z.object({
   tradeId: z.string().optional(),
   dueDate: z.string().optional(),
   priority: z.number().min(1).max(5),
+  requestedCrewSize: z.number().optional(),
+  manpowerStartDate: z.string().optional(),
+  manpowerEndDate: z.string().optional(),
 });
 
 type TaskForm = z.infer<typeof taskSchema>;
@@ -53,6 +57,9 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
     tradeId: '',
     dueDate: '',
     priority: 3,
+    requestedCrewSize: undefined,
+    manpowerStartDate: '',
+    manpowerEndDate: '',
   });
   const [errors, setErrors] = useState<Partial<Record<keyof TaskForm, string>>>({});
 
@@ -84,7 +91,7 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
       const validatedData = taskSchema.parse(form);
       setLoading(true);
 
-      const { error } = await supabase.from('tasks').insert({
+      const { data: taskData, error: taskError } = await supabase.from('tasks').insert({
         title: validatedData.title,
         description: validatedData.description,
         project_id: validatedData.projectId,
@@ -93,9 +100,36 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
         priority: validatedData.priority,
         status: 'not_started',
         created_by: user?.id,
-      });
+      }).select().single();
 
-      if (error) throw error;
+      if (taskError) throw taskError;
+
+      // Create manpower request if crew size is specified
+      if (validatedData.requestedCrewSize && validatedData.requestedCrewSize > 0 && validatedData.tradeId) {
+        const { error: manpowerError } = await supabase
+          .from("manpower_requests")
+          .insert({
+            task_id: taskData.id,
+            trade_id: validatedData.tradeId,
+            project_id: validatedData.projectId,
+            requested_count: validatedData.requestedCrewSize,
+            required_date: validatedData.manpowerStartDate || validatedData.dueDate || new Date().toISOString().split('T')[0],
+            duration_days: validatedData.manpowerStartDate && validatedData.manpowerEndDate 
+              ? Math.ceil((new Date(validatedData.manpowerEndDate).getTime() - new Date(validatedData.manpowerStartDate).getTime()) / (1000 * 60 * 60 * 24))
+              : 1,
+            reason: `Manpower request for task: ${validatedData.title}`,
+            created_by: user?.id,
+          });
+
+        if (manpowerError) {
+          console.error("Error creating manpower request:", manpowerError);
+          toast({
+            title: "Warning",
+            description: "Task created but manpower request failed",
+            variant: "destructive",
+          });
+        }
+      }
 
       toast({
         title: 'Task created',
@@ -110,6 +144,9 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
         tradeId: '',
         dueDate: '',
         priority: 3,
+        requestedCrewSize: undefined,
+        manpowerStartDate: '',
+        manpowerEndDate: '',
       });
 
       onOpenChange(false);
@@ -220,6 +257,46 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
                 </SelectContent>
               </Select>
             </FormField>
+          </div>
+
+          <Separator className="my-4" />
+          
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold">Manpower Request (Optional)</h3>
+            
+            <FormField label="Requested Crew Size" helper="Number of workers needed">
+              <Input
+                type="number"
+                min="0"
+                value={form.requestedCrewSize || ""}
+                onChange={(e) => setForm({ ...form, requestedCrewSize: e.target.value ? parseInt(e.target.value) : undefined })}
+                placeholder="0"
+                className="min-h-[52px]"
+              />
+            </FormField>
+
+            {form.requestedCrewSize && form.requestedCrewSize > 0 && (
+              <div className="grid grid-cols-2 gap-4">
+                <FormField label="Start Date">
+                  <Input
+                    type="date"
+                    value={form.manpowerStartDate}
+                    onChange={(e) => setForm({ ...form, manpowerStartDate: e.target.value })}
+                    className="min-h-[52px]"
+                  />
+                </FormField>
+
+                <FormField label="End Date">
+                  <Input
+                    type="date"
+                    value={form.manpowerEndDate}
+                    onChange={(e) => setForm({ ...form, manpowerEndDate: e.target.value })}
+                    min={form.manpowerStartDate}
+                    className="min-h-[52px]"
+                  />
+                </FormField>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-3 pt-4">
