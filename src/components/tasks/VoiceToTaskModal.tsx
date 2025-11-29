@@ -205,6 +205,16 @@ export const VoiceToTaskModal = ({
         });
       }
 
+      // Save the voice transcription
+      if (transcribedText && task) {
+        await supabase.from("voice_transcriptions").insert({
+          user_id: user.user.id,
+          project_id: projectId,
+          task_id: task.id,
+          transcription_text: transcribedText,
+        });
+      }
+
       toast({
         title: "Task created!",
         description: `"${extractedTask.title}" has been added to the project.`,

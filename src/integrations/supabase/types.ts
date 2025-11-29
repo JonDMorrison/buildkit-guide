@@ -949,6 +949,51 @@ export type Database = {
           },
         ]
       }
+      voice_transcriptions: {
+        Row: {
+          audio_url: string | null
+          created_at: string
+          id: string
+          project_id: string
+          task_id: string | null
+          transcription_text: string
+          user_id: string
+        }
+        Insert: {
+          audio_url?: string | null
+          created_at?: string
+          id?: string
+          project_id: string
+          task_id?: string | null
+          transcription_text: string
+          user_id: string
+        }
+        Update: {
+          audio_url?: string | null
+          created_at?: string
+          id?: string
+          project_id?: string
+          task_id?: string | null
+          transcription_text?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_transcriptions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voice_transcriptions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
