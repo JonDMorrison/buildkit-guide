@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
+import { NoAccess } from "@/components/NoAccess";
 import { SectionHeader } from "@/components/SectionHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,10 +10,14 @@ import { FormTypeSelector } from "@/components/safety/FormTypeSelector";
 import { SafetyFormModal } from "@/components/safety/SafetyFormModal";
 import { SafetyFormDetailModal } from "@/components/safety/SafetyFormDetailModal";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuthRole } from "@/hooks/useAuthRole";
+import { useCurrentProject } from "@/hooks/useCurrentProject";
 import { ShieldCheck, Plus } from "lucide-react";
 import { format, subDays } from "date-fns";
 
 const Safety = () => {
+  const { currentProjectId } = useCurrentProject();
+  const { can, loading: roleLoading } = useAuthRole(currentProjectId || undefined);
   const [forms, setForms] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isTypeSelectorOpen, setIsTypeSelectorOpen] = useState(false);
@@ -27,6 +32,10 @@ const Safety = () => {
     complianceRate: 0,
     missingForms: [] as Array<{ type: string; dueDate: string }>,
   });
+
+  // Permission checks
+  const canViewSafety = currentProjectId ? can('view_safety', currentProjectId) : false;
+  const canCreateSafety = currentProjectId ? can('create_safety', currentProjectId) : false;
 
   useEffect(() => {
     fetchForms();

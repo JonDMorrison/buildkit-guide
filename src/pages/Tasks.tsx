@@ -13,12 +13,16 @@ import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
 import { VoiceToTaskModal } from "@/components/tasks/VoiceToTaskModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuthRole } from "@/hooks/useAuthRole";
+import { useCurrentProject } from "@/hooks/useCurrentProject";
 import { Plus, LayoutList, LayoutGrid, Calendar as CalendarIcon, CheckSquare, Mic } from "lucide-react";
 
 type ViewMode = 'list' | 'kanban' | 'calendar';
 
 const Tasks = () => {
   const { toast } = useToast();
+  const { currentProjectId } = useCurrentProject();
+  const { can, isWorker, loading: roleLoading } = useAuthRole(currentProjectId || undefined);
   const [tasks, setTasks] = useState<any[]>([]);
   const [filteredTasks, setFilteredTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,6 +32,10 @@ const Tasks = () => {
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
+
+  // Permission checks
+  const canCreateTasks = currentProjectId ? can('create_tasks', currentProjectId) : false;
+  const showLimitedView = isWorker(currentProjectId || undefined);
 
   const fetchTasks = async () => {
     try {

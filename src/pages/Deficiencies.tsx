@@ -8,9 +8,13 @@ import { DeficiencyListView } from "@/components/deficiencies/DeficiencyListView
 import { DeficiencyDetailModal } from "@/components/deficiencies/DeficiencyDetailModal";
 import { CreateDeficiencyModal } from "@/components/deficiencies/CreateDeficiencyModal";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuthRole } from "@/hooks/useAuthRole";
+import { useCurrentProject } from "@/hooks/useCurrentProject";
 import { AlertCircle, Plus } from "lucide-react";
 
 const Deficiencies = () => {
+  const { currentProjectId } = useCurrentProject();
+  const { can, loading: roleLoading } = useAuthRole(currentProjectId || undefined);
   const [deficiencies, setDeficiencies] = useState<any[]>([]);
   const [filteredDeficiencies, setFilteredDeficiencies] = useState<any[]>([]);
   const [trades, setTrades] = useState<any[]>([]);
@@ -20,6 +24,9 @@ const Deficiencies = () => {
   const [selectedDeficiencyId, setSelectedDeficiencyId] = useState<string | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  // Permission checks
+  const canCreateDeficiencies = currentProjectId ? can('create_deficiencies', currentProjectId) : false;
 
   useEffect(() => {
     fetchDeficiencies();
