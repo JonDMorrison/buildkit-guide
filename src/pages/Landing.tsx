@@ -33,7 +33,14 @@ export default function Landing() {
       <nav className="fixed top-0 w-full bg-background/95 backdrop-blur-sm border-b border-border z-50">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <h1 className="text-xl font-bold text-foreground">FieldSync</h1>
-          <div className="flex gap-3">
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="ghost" 
+              onClick={() => navigate('/how-it-works')}
+              className="hidden md:inline-flex"
+            >
+              How It Works
+            </Button>
             <Button 
               variant="ghost" 
               onClick={() => navigate('/auth')}
