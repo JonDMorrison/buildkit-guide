@@ -7,15 +7,34 @@ import {
   DialogTitle,
 } from '../ui/dialog';
 import { Button } from '../ui/button';
+import { Card } from '../ui/card';
 import { Skeleton } from '../ui/skeleton';
-import { Sparkles, Copy, Check } from 'lucide-react';
+import { Sparkles, Copy, Check, Mail, FileText, AlertTriangle, TrendingUp, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import ReactMarkdown from 'react-markdown';
+
+interface StructuredSummary {
+  overview: string;
+  blocked_by_trade: Array<{
+    trade: string;
+    tasks: Array<{
+      task_title: string;
+      reason: string;
+    }>;
+  }>;
+  what_horizon_is_waiting_on: string[];
+  upcoming_risks: Array<{
+    risk: string;
+    impact: string;
+  }>;
+  schedule_impacts?: string[];
+  recommended_actions: string[];
+  next_7_days_priorities?: string[];
+}
 
 interface CoordinationSummaryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  summary: string | null;
+  summary: StructuredSummary | null;
   loading: boolean;
 }
 
@@ -30,7 +49,9 @@ export const CoordinationSummaryDialog = ({
 
   const handleCopy = () => {
     if (summary) {
-      navigator.clipboard.writeText(summary);
+      // Convert structured summary to readable text
+      const text = formatSummaryAsText(summary);
+      navigator.clipboard.writeText(text);
       setCopied(true);
       toast({
         title: 'Copied to clipboard',
@@ -40,46 +61,246 @@ export const CoordinationSummaryDialog = ({
     }
   };
 
+  const handleExportPDF = () => {
+    toast({
+      title: 'Export PDF',
+      description: 'PDF export feature coming soon',
+    });
+  };
+
+  const handleEmail = () => {
+    if (summary) {
+      const text = formatSummaryAsText(summary);
+      const mailto = `mailto:?subject=Coordination Summary - ${new Date().toLocaleDateString()}&body=${encodeURIComponent(text)}`;
+      window.location.href = mailto;
+    }
+  };
+
+  const formatSummaryAsText = (summary: StructuredSummary): string => {
+    let text = `COORDINATION SUMMARY - ${new Date().toLocaleDateString()}\n\n`;
+    
+    text += `OVERVIEW\n${summary.overview}\n\n`;
+    
+    if (summary.blocked_by_trade.length > 0) {
+      text += `BLOCKED TASKS BY TRADE\n`;
+      summary.blocked_by_trade.forEach(trade => {
+        text += `\n${trade.trade}:\n`;
+        trade.tasks.forEach(task => {
+          text += `  • ${task.task_title} - ${task.reason}\n`;
+        });
+      });
+      text += '\n';
+    }
+    
+    if (summary.what_horizon_is_waiting_on.length > 0) {
+      text += `WHAT HORIZON NEEDS\n`;
+      summary.what_horizon_is_waiting_on.forEach(item => {
+        text += `  • ${item}\n`;
+      });
+      text += '\n';
+    }
+    
+    if (summary.upcoming_risks.length > 0) {
+      text += `UPCOMING RISKS\n`;
+      summary.upcoming_risks.forEach(risk => {
+        text += `  • ${risk.risk}\n    Impact: ${risk.impact}\n`;
+      });
+      text += '\n';
+    }
+    
+    if (summary.recommended_actions.length > 0) {
+      text += `RECOMMENDED ACTIONS\n`;
+      summary.recommended_actions.forEach((action, idx) => {
+        text += `  ${idx + 1}. ${action}\n`;
+      });
+    }
+    
+    return text;
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-card">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-card">
         <DialogHeader>
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
-            <DialogTitle className="text-xl">AI Coordination Summary</DialogTitle>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <DialogTitle className="text-xl">AI Coordination Summary</DialogTitle>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {new Date().toLocaleDateString('en-US', { 
+                weekday: 'short', 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric' 
+              })}
+            </div>
           </div>
           <DialogDescription>
             AI-generated insights for your 2-week lookahead
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-6">
           {loading ? (
-            <div className="space-y-3">
+            <div className="space-y-4">
               <Skeleton className="h-6 w-3/4" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-5/6" />
-              <Skeleton className="h-6 w-2/3 mt-6" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-6 w-2/3" />
+              <Skeleton className="h-32 w-full" />
+              <Skeleton className="h-6 w-2/3" />
+              <Skeleton className="h-24 w-full" />
             </div>
           ) : summary ? (
-            <div className="prose prose-sm max-w-none prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-li:text-foreground">
-              <ReactMarkdown>{summary}</ReactMarkdown>
-            </div>
+            <>
+              {/* Overview */}
+              <Card className="p-4 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                <div className="flex items-start gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                  <div>
+                    <h3 className="font-semibold text-foreground mb-1">Overview</h3>
+                    <p className="text-sm text-foreground/90">{summary.overview}</p>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Blocked Tasks by Trade */}
+              {summary.blocked_by_trade.length > 0 && (
+                <div>
+                  <h3 className="font-bold text-lg mb-3 flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 text-orange-600" />
+                    Blocked Tasks by Trade
+                  </h3>
+                  <div className="space-y-3">
+                    {summary.blocked_by_trade.map((tradeItem, idx) => (
+                      <Card key={idx} className="p-4">
+                        <h4 className="font-semibold text-foreground mb-2">{tradeItem.trade}</h4>
+                        <ul className="space-y-2">
+                          {tradeItem.tasks.map((task, taskIdx) => (
+                            <li key={taskIdx} className="flex items-start gap-2 text-sm">
+                              <span className="text-destructive mt-1">•</span>
+                              <div>
+                                <span className="font-medium">{task.task_title}</span>
+                                <p className="text-muted-foreground">{task.reason}</p>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* What Horizon Needs */}
+              {summary.what_horizon_is_waiting_on.length > 0 && (
+                <div>
+                  <h3 className="font-bold text-lg mb-3 flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-blue-600" />
+                    What Horizon Needs
+                  </h3>
+                  <Card className="p-4">
+                    <ul className="space-y-2">
+                      {summary.what_horizon_is_waiting_on.map((item, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-sm">
+                          <span className="text-blue-600 mt-1">•</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </Card>
+                </div>
+              )}
+
+              {/* Upcoming Risks */}
+              {summary.upcoming_risks.length > 0 && (
+                <div>
+                  <h3 className="font-bold text-lg mb-3 flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-yellow-600" />
+                    Upcoming Risks
+                  </h3>
+                  <div className="space-y-2">
+                    {summary.upcoming_risks.map((riskItem, idx) => (
+                      <Card key={idx} className="p-4 bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800">
+                        <p className="font-medium text-sm text-foreground">{riskItem.risk}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          <span className="font-semibold">Impact:</span> {riskItem.impact}
+                        </p>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Schedule Impacts */}
+              {summary.schedule_impacts && summary.schedule_impacts.length > 0 && (
+                <div>
+                  <h3 className="font-bold text-lg mb-3">Schedule Impacts</h3>
+                  <Card className="p-4">
+                    <ul className="space-y-2">
+                      {summary.schedule_impacts.map((impact, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-sm">
+                          <span className="text-orange-600 mt-1">•</span>
+                          <span>{impact}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </Card>
+                </div>
+              )}
+
+              {/* Recommended Actions */}
+              {summary.recommended_actions.length > 0 && (
+                <div>
+                  <h3 className="font-bold text-lg mb-3 flex items-center gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+                    Recommended Actions
+                  </h3>
+                  <div className="space-y-2">
+                    {summary.recommended_actions.map((action, idx) => (
+                      <Card key={idx} className="p-3 bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+                        <p className="text-sm flex items-start gap-2">
+                          <span className="font-bold text-green-600 dark:text-green-400 min-w-[1.5rem]">
+                            {idx + 1}.
+                          </span>
+                          <span className="text-foreground">{action}</span>
+                        </p>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Next 7 Days Priorities */}
+              {summary.next_7_days_priorities && summary.next_7_days_priorities.length > 0 && (
+                <div>
+                  <h3 className="font-bold text-lg mb-3">Next 7 Days Priorities</h3>
+                  <Card className="p-4">
+                    <ul className="space-y-2">
+                      {summary.next_7_days_priorities.map((priority, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-sm">
+                          <span className="text-primary mt-1">•</span>
+                          <span>{priority}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </Card>
+                </div>
+              )}
+            </>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               No summary available
             </div>
           )}
 
-          <div className="flex gap-2 pt-4 border-t border-border">
+          {/* Action Buttons */}
+          <div className="flex flex-wrap gap-2 pt-4 border-t border-border">
             <Button
               variant="outline"
               onClick={handleCopy}
               disabled={!summary || loading}
-              className="flex-1"
+              size="sm"
             >
               {copied ? (
                 <>
@@ -89,13 +310,31 @@ export const CoordinationSummaryDialog = ({
               ) : (
                 <>
                   <Copy className="h-4 w-4 mr-2" />
-                  Copy Summary
+                  Copy
                 </>
               )}
             </Button>
             <Button
+              variant="outline"
+              onClick={handleExportPDF}
+              disabled={!summary || loading}
+              size="sm"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Export PDF
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleEmail}
+              disabled={!summary || loading}
+              size="sm"
+            >
+              <Mail className="h-4 w-4 mr-2" />
+              Email
+            </Button>
+            <Button
               onClick={() => onOpenChange(false)}
-              className="flex-1"
+              className="ml-auto"
             >
               Close
             </Button>
