@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle, FileX, Ban, FolderSearch, MessageSquareWarning, FileStack, TrendingDown } from "lucide-react";
+import { CheckCircle, FileX, Ban, FolderSearch, MessageSquareWarning, FileStack, TrendingDown, Menu } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { useState } from "react";
 import heroBackground from "@/assets/hero-construction-bg.jpg";
 import heroMockup from "@/assets/hero-app-mockup.png";
 import problemChaos from "@/assets/problem-chaos.jpg";
@@ -13,32 +15,97 @@ import iconManpower from "@/assets/icon-manpower.png";
 import iconAI from "@/assets/icon-ai.png";
 export default function Landing() {
   const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
   const handleBookDemo = () => {
     window.location.href = "mailto:demo@fieldsync.app?subject=Demo Request";
+    setMobileMenuOpen(false);
   };
+  
   const handleSeeHowItWorks = () => {
     navigate('/how-it-works');
+    setMobileMenuOpen(false);
   };
+  
   const handleSeePricing = () => {
     document.getElementById('plan')?.scrollIntoView({
       behavior: 'smooth'
     });
+    setMobileMenuOpen(false);
+  };
+  
+  const handleSignIn = () => {
+    navigate('/auth');
+    setMobileMenuOpen(false);
   };
   return <div className="min-h-screen bg-background">
       {/* Navigation */}
       <nav className="fixed top-0 w-full bg-background/98 backdrop-blur-md border-b border-border z-50 shadow-sm">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <h1 className="text-xl md:text-2xl font-bold text-foreground tracking-tight">FieldSync</h1>
-          <div className="flex items-center gap-2 md:gap-3">
-            <Button variant="ghost" onClick={() => navigate('/how-it-works')} className="hidden md:inline-flex text-base">
+          
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center gap-3">
+            <Button variant="ghost" onClick={handleSeeHowItWorks} className="text-base">
               How It Works
             </Button>
-            <Button variant="ghost" onClick={() => navigate('/auth')} className="hidden sm:inline-flex text-base">
+            <Button variant="ghost" onClick={handleSignIn} className="text-base">
               Sign In
             </Button>
             <Button onClick={handleBookDemo} className="bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold h-12 px-6 text-base">
               Book Demo
             </Button>
+          </div>
+
+          {/* Mobile Navigation */}
+          <div className="flex md:hidden items-center gap-2">
+            <Button onClick={handleBookDemo} className="bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold h-12 px-4 text-sm">
+              Book Demo
+            </Button>
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-12 w-12">
+                  <Menu className="h-6 w-6" />
+                  <span className="sr-only">Open menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[280px] sm:w-[320px]">
+                <SheetHeader className="text-left mb-6">
+                  <SheetTitle className="text-2xl font-bold">FieldSync</SheetTitle>
+                </SheetHeader>
+                <nav className="flex flex-col gap-4">
+                  <Button 
+                    variant="ghost" 
+                    onClick={handleSeeHowItWorks} 
+                    className="justify-start text-base h-12 font-medium"
+                  >
+                    How It Works
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    onClick={handleSeePricing} 
+                    className="justify-start text-base h-12 font-medium"
+                  >
+                    Pricing
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    onClick={handleSignIn} 
+                    className="justify-start text-base h-12 font-medium"
+                  >
+                    Sign In
+                  </Button>
+                  <div className="pt-4 border-t border-border">
+                    <Button 
+                      onClick={handleBookDemo} 
+                      className="w-full bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold h-12 text-base"
+                    >
+                      Book a Demo
+                    </Button>
+                  </div>
+                </nav>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </nav>
