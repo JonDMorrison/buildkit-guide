@@ -1,21 +1,30 @@
 import { NavLink } from "./NavLink";
 import { Briefcase, CheckSquare, Calendar, Users, AlertCircle, Shield, MessageSquare } from "lucide-react";
+import { useProjectRole } from "@/hooks/useProjectRole";
 
 const tabs = [
-  { name: "Projects", path: "/", icon: Briefcase },
-  { name: "Tasks", path: "/tasks", icon: CheckSquare },
-  { name: "Lookahead", path: "/lookahead", icon: Calendar },
-  { name: "Manpower", path: "/manpower", icon: Users },
-  { name: "Deficiencies", path: "/deficiencies", icon: AlertCircle },
-  { name: "Safety", path: "/safety", icon: Shield },
-  { name: "AI", path: "/ai", icon: MessageSquare },
+  { name: "Projects", path: "/", icon: Briefcase, workerAccess: false },
+  { name: "Tasks", path: "/tasks", icon: CheckSquare, workerAccess: true },
+  { name: "Lookahead", path: "/lookahead", icon: Calendar, workerAccess: false },
+  { name: "Manpower", path: "/manpower", icon: Users, workerAccess: false },
+  { name: "Deficiencies", path: "/deficiencies", icon: AlertCircle, workerAccess: false },
+  { name: "Safety", path: "/safety", icon: Shield, workerAccess: false },
+  { name: "AI", path: "/ai", icon: MessageSquare, workerAccess: true },
 ];
 
 export const TabBar = () => {
+  const { shouldShowLimitedNav } = useProjectRole();
+  const limitedNav = shouldShowLimitedNav();
+
+  // Filter tabs based on role
+  const visibleTabs = limitedNav 
+    ? tabs.filter(tab => tab.workerAccess)
+    : tabs;
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 h-tab-bar bg-card border-t border-border overflow-x-auto">
       <div className="flex items-center h-full px-2 min-w-max">
-        {tabs.map((tab) => {
+        {visibleTabs.map((tab) => {
           const Icon = tab.icon;
           return (
             <NavLink

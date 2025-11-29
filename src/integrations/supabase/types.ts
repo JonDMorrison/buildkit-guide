@@ -623,6 +623,7 @@ export type Database = {
           created_at: string
           id: string
           project_id: string
+          role: Database["public"]["Enums"]["app_role"]
           trade_id: string | null
           user_id: string
         }
@@ -630,6 +631,7 @@ export type Database = {
           created_at?: string
           id?: string
           project_id: string
+          role: Database["public"]["Enums"]["app_role"]
           trade_id?: string | null
           user_id: string
         }
@@ -637,6 +639,7 @@ export type Database = {
           created_at?: string
           id?: string
           project_id?: string
+          role?: Database["public"]["Enums"]["app_role"]
           trade_id?: string | null
           user_id?: string
         }
@@ -1069,6 +1072,30 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_manage_project: {
+        Args: { _project_id: string; _user_id: string }
+        Returns: boolean
+      }
+      get_user_project_role: {
+        Args: { _project_id: string; _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_any_project_role: {
+        Args: {
+          _project_id: string
+          _roles: Database["public"]["Enums"]["app_role"][]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      has_project_role: {
+        Args: {
+          _project_id: string
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

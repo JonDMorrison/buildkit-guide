@@ -69,11 +69,12 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
 
       if (error) throw error;
 
-      // Add creator as a project member
+      // Add creator as a project member with project_manager role
       if (data) {
         await supabase.from('project_members').insert({
           project_id: data.id,
           user_id: user?.id,
+          role: 'project_manager',
         });
       }
 
