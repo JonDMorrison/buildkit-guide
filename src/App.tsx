@@ -15,6 +15,7 @@ import Safety from "./pages/Safety";
 import AI from "./pages/AI";
 import Auth from "./pages/Auth";
 import Notifications from "./pages/Notifications";
+import NotificationSettings from "./pages/NotificationSettings";
 import Documents from "./pages/Documents";
 import NotFound from "./pages/NotFound";
 
@@ -98,6 +99,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Notifications />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings/notifications"
+              element={
+                <ProtectedRoute>
+                  <NotificationSettings />
                 </ProtectedRoute>
               }
             />

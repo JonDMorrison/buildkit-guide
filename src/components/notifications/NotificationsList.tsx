@@ -23,10 +23,20 @@ const getNotificationIcon = (type: NotificationType) => {
       return <CheckCircle2 className="h-5 w-5 text-status-info" />;
     case 'blocker_added':
       return <AlertTriangle className="h-5 w-5 text-status-issue" />;
+    case 'blocker_cleared':
+      return <CheckCircle2 className="h-5 w-5 text-status-success" />;
     case 'safety_alert':
       return <Shield className="h-5 w-5 text-status-progress" />;
     case 'manpower_request':
+    case 'manpower_approved':
+    case 'manpower_denied':
       return <Users className="h-5 w-5 text-status-info" />;
+    case 'deficiency_created':
+      return <AlertTriangle className="h-5 w-5 text-status-issue" />;
+    case 'document_uploaded':
+      return <Info className="h-5 w-5 text-status-info" />;
+    case 'incident_report':
+      return <Shield className="h-5 w-5 text-status-issue" />;
     case 'general':
     default:
       return <Info className="h-5 w-5 text-muted-foreground" />;
@@ -39,10 +49,22 @@ const getTypeLabel = (type: NotificationType) => {
       return 'Task Assigned';
     case 'blocker_added':
       return 'Blocker';
+    case 'blocker_cleared':
+      return 'Cleared';
     case 'safety_alert':
       return 'Safety';
     case 'manpower_request':
-      return 'Manpower';
+      return 'Request';
+    case 'manpower_approved':
+      return 'Approved';
+    case 'manpower_denied':
+      return 'Denied';
+    case 'deficiency_created':
+      return 'Deficiency';
+    case 'document_uploaded':
+      return 'Document';
+    case 'incident_report':
+      return 'Incident';
     case 'general':
     default:
       return 'General';
