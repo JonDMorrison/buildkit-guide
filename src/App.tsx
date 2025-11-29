@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import ProjectOverview from "./pages/ProjectOverview";
 import Tasks from "./pages/Tasks";
 import Lookahead from "./pages/Lookahead";
+import Manpower from "./pages/Manpower";
 import Safety from "./pages/Safety";
 import AI from "./pages/AI";
 import Auth from "./pages/Auth";
@@ -54,6 +55,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Lookahead />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/manpower"
+              element={
+                <ProtectedRoute>
+                  <Manpower />
                 </ProtectedRoute>
               }
             />
