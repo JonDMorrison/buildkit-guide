@@ -150,48 +150,50 @@ const Tasks = () => {
     <Layout>
       <div className="container max-w-6xl mx-auto px-4 py-6">
         <SectionHeader
-          title="Tasks"
+          title={showLimitedView ? "My Tasks" : "Tasks"}
           count={filteredTasks.length}
-          action={{
+          action={canCreateTasks ? {
             label: "Add Task",
             icon: <Plus className="h-6 w-6" />,
             onClick: () => setCreateModalOpen(true),
-          }}
+          } : undefined}
         />
 
-        {/* Voice Task Button */}
-        <div className="mb-4">
-          <Button
-            onClick={() => {
-              // Get the first project for now, or show project selector
-              if (tasks.length > 0) {
-                setSelectedProjectId(tasks[0].project_id);
-                setVoiceModalOpen(true);
-              } else {
-                toast({
-                  title: "No project available",
-                  description: "Please create a project first.",
-                  variant: "destructive",
-                });
-              }
-            }}
-            size="lg"
-            className="w-full sm:w-auto"
-          >
-            <Mic className="h-5 w-5 mr-2" />
-            Voice to Task
-          </Button>
-        </div>
+        {/* Voice Task Button - only show if can create tasks */}
+        {canCreateTasks && (
+          <div className="mb-4">
+            <Button
+              onClick={() => {
+                // Get the first project for now, or show project selector
+                if (tasks.length > 0) {
+                  setSelectedProjectId(tasks[0].project_id);
+                  setVoiceModalOpen(true);
+                } else {
+                  toast({
+                    title: "No project available",
+                    description: "Please create a project first.",
+                    variant: "destructive",
+                  });
+                }
+              }}
+              size="lg"
+              className="w-full sm:w-auto"
+            >
+              <Mic className="h-5 w-5 mr-2" />
+              Voice to Task
+            </Button>
+          </div>
+        )}
 
         {tasks.length === 0 ? (
           <EmptyState
             icon={<CheckSquare className="h-8 w-8" />}
             title="No tasks yet"
-            description="Create your first task to start coordinating work."
-            action={{
+            description={showLimitedView ? "You have no assigned tasks yet." : "Create your first task to start coordinating work."}
+            action={canCreateTasks ? {
               label: "Create Task",
               onClick: () => setCreateModalOpen(true),
-            }}
+            } : undefined}
           />
         ) : (
           <>

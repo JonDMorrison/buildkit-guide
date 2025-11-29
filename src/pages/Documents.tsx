@@ -9,6 +9,8 @@ import { DocumentGrid } from "@/components/documents/DocumentGrid";
 import { DocumentList } from "@/components/documents/DocumentList";
 import { DocumentPreviewModal } from "@/components/documents/DocumentPreviewModal";
 import { useDocuments } from "@/hooks/useDocuments";
+import { useAuthRole } from "@/hooks/useAuthRole";
+import { useCurrentProject } from "@/hooks/useCurrentProject";
 import { Plus, Grid3x3, List, FileText } from "lucide-react";
 import {
   Select,
@@ -22,6 +24,8 @@ import { supabase } from "@/integrations/supabase/client";
 export type DocumentType = 'all' | 'plan' | 'rfi' | 'permit' | 'safety' | 'contract' | 'specification' | 'other';
 
 const Documents = () => {
+  const { currentProjectId } = useCurrentProject();
+  const { can } = useAuthRole(currentProjectId || undefined);
   const [selectedProject, setSelectedProject] = useState<string>("all");
   const [filterType, setFilterType] = useState<DocumentType>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -33,6 +37,8 @@ const Documents = () => {
     selectedProject === 'all' ? undefined : selectedProject,
     filterType === 'all' ? undefined : filterType
   );
+
+  const canUploadDocuments = currentProjectId ? can('upload_documents', currentProjectId) : false;
 
   useState(() => {
     const fetchProjects = async () => {
@@ -80,11 +86,11 @@ const Documents = () => {
         <SectionHeader
           title="Documents"
           count={documents.length}
-          action={{
+          action={canUploadDocuments ? {
             label: "Upload",
             icon: <Plus className="h-6 w-6" />,
             onClick: () => setUploadModalOpen(true),
-          }}
+          } : undefined}
         />
 
         {/* Project Selector */}
@@ -157,10 +163,12 @@ const Documents = () => {
                 : "Upload drawings, RFIs, photos, and other project files to get started."
               }
             </p>
-            <Button onClick={() => setUploadModalOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Upload Document
-            </Button>
+            {canUploadDocuments && (
+              <Button onClick={() => setUploadModalOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Upload Document
+              </Button>
+            )}
           </div>
         ) : viewMode === 'grid' ? (
           <DocumentGrid 

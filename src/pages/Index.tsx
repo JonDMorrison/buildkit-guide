@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuthRole } from "@/hooks/useAuthRole";
 import { Plus, Building2 } from "lucide-react";
 
 interface Project {
@@ -23,9 +24,12 @@ interface Project {
 const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { isAdmin, isPM } = useAuthRole();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+
+  const canCreateProjects = isAdmin || isPM();
 
   const fetchProjects = async () => {
     try {
@@ -117,22 +121,22 @@ const Index = () => {
         <SectionHeader
           title="Projects"
           count={projects.length}
-          action={{
+          action={canCreateProjects ? {
             label: "Add Project",
             icon: <Plus className="h-6 w-6" />,
             onClick: () => setCreateModalOpen(true),
-          }}
+          } : undefined}
         />
 
         {projects.length === 0 ? (
           <EmptyState
             icon={<Building2 className="h-8 w-8" />}
             title="No projects yet"
-            description="Create your first project to start coordinating construction work."
-            action={{
+            description={canCreateProjects ? "Create your first project to start coordinating construction work." : "No projects available. Contact your project manager for access."}
+            action={canCreateProjects ? {
               label: "Create Project",
               onClick: () => setCreateModalOpen(true),
-            }}
+            } : undefined}
           />
         ) : (
           <div className="space-y-3">
