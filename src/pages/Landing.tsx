@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, FileX, Ban, FolderSearch, MessageSquareWarning, FileStack, TrendingDown } from "lucide-react";
 import heroBackground from "@/assets/hero-construction-bg.jpg";
 import heroMockup from "@/assets/hero-app-mockup.png";
 import problemChaos from "@/assets/problem-chaos.jpg";
@@ -98,10 +98,24 @@ export default function Landing() {
             Projects Fall Behind When Trades Do Not Stay Aligned
           </h3>
           <div className="grid md:grid-cols-2 gap-4 mb-8">
-            {["Gantt charts get buried and forgotten", "Blocked tasks go unreported", "Safety forms live in too many places", "PMs chase updates all day", "Foremen drown in admin", "Little delays turn into big problems"].map((item, index) => <div key={index} className="flex items-start gap-3 p-4 bg-card/95 backdrop-blur-sm rounded-lg border border-border">
-                <div className="h-2 w-2 rounded-full bg-destructive mt-2 flex-shrink-0" />
-                <p className="text-lg text-foreground">{item}</p>
-              </div>)}
+            {[
+              { icon: FileX, text: "Gantt charts get buried and forgotten" },
+              { icon: Ban, text: "Blocked tasks go unreported" },
+              { icon: FolderSearch, text: "Safety forms live in too many places" },
+              { icon: MessageSquareWarning, text: "PMs chase updates all day" },
+              { icon: FileStack, text: "Foremen drown in admin" },
+              { icon: TrendingDown, text: "Little delays turn into big problems" }
+            ].map((item, index) => {
+              const Icon = item.icon;
+              return (
+                <div key={index} className="flex items-start gap-3 p-4 bg-transparent backdrop-blur-sm rounded-lg border border-border">
+                  <div className="flex-shrink-0 mt-0.5">
+                    <Icon className="h-6 w-6 text-destructive" />
+                  </div>
+                  <p className="text-lg text-foreground">{item.text}</p>
+                </div>
+              );
+            })}
           </div>
           <p className="text-lg text-muted-foreground text-center max-w-2xl mx-auto">
             When communication breaks down you lose time and money. It is frustrating to know the job could move faster if people stayed on top of what they owe.
