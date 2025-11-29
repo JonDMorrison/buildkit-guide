@@ -125,11 +125,11 @@ export default function Landing() {
               <p className="text-lg sm:text-xl md:text-2xl text-gray-200 mb-6 md:mb-8 leading-relaxed">
                 Keep every trade accountable and your schedule on track.
               </p>
-              <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center lg:justify-start">
-                <Button size="lg" onClick={handleBookDemo} className="h-14 md:h-16 px-8 md:px-10 text-base md:text-lg bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold shadow-xl">
+              <div className="flex flex-col gap-3 justify-center lg:justify-start w-full max-w-md mx-auto lg:mx-0">
+                <Button size="lg" onClick={handleBookDemo} className="w-full h-14 md:h-16 text-base md:text-lg bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold shadow-xl">
                   Book a Demo
                 </Button>
-                <Button size="lg" variant="outline" onClick={handleSeeHowItWorks} className="h-14 md:h-16 px-8 md:px-10 text-base md:text-lg bg-white/10 text-white border-white/30 hover:bg-white/20 font-semibold backdrop-blur-sm">
+                <Button size="lg" variant="outline" onClick={handleSeeHowItWorks} className="w-full h-14 md:h-16 text-base md:text-lg bg-white/10 text-white border-white/30 hover:bg-white/20 font-semibold backdrop-blur-sm">
                   See How It Works
                 </Button>
               </div>
@@ -277,11 +277,11 @@ export default function Landing() {
           <p className="text-base md:text-lg text-muted-foreground mb-8 md:mb-10 leading-relaxed max-w-2xl mx-auto">
             Eliminate downtime. Prevent schedule slippage. Keep the GC happy. Protect your margins.
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center">
-            <Button size="lg" onClick={handleBookDemo} className="h-14 md:h-16 px-8 md:px-10 text-base md:text-lg bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold shadow-xl">
+          <div className="flex flex-col gap-3 justify-center w-full max-w-md mx-auto">
+            <Button size="lg" onClick={handleBookDemo} className="w-full h-14 md:h-16 text-base md:text-lg bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold shadow-xl">
               Book a Demo
             </Button>
-            <Button size="lg" variant="outline" onClick={handleSeePricing} className="h-14 md:h-16 px-8 md:px-10 text-base md:text-lg font-semibold">
+            <Button size="lg" variant="outline" onClick={handleSeePricing} className="w-full h-14 md:h-16 text-base md:text-lg font-semibold">
               See Pricing
             </Button>
           </div>

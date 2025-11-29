@@ -7,8 +7,11 @@ import {
   Shield, 
   Users, 
   Sparkles,
-  ArrowRight 
+  ArrowRight,
+  Menu
 } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { useState } from "react";
 import screenshotTasks from "@/assets/screenshot-tasks.png";
 import screenshotBlockers from "@/assets/screenshot-blockers.png";
 import screenshotLookahead from "@/assets/screenshot-lookahead.png";
@@ -18,16 +21,24 @@ import screenshotAI from "@/assets/screenshot-ai.png";
 
 export default function HowItWorks() {
   const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleBookDemo = () => {
     window.location.href = "mailto:demo@fieldsync.app?subject=Demo Request";
+    setMobileMenuOpen(false);
   };
 
   const handleSeePricing = () => {
     navigate('/');
+    setMobileMenuOpen(false);
     setTimeout(() => {
       document.getElementById('plan')?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
+  };
+  
+  const handleSignIn = () => {
+    navigate('/auth');
+    setMobileMenuOpen(false);
   };
 
   const features = [
@@ -114,45 +125,91 @@ export default function HowItWorks() {
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
-      <nav className="fixed top-0 w-full bg-background/95 backdrop-blur-sm border-b border-border z-50">
+      <nav className="fixed top-0 w-full bg-background/98 backdrop-blur-md border-b border-border z-50 shadow-sm">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <h1 
-            className="text-xl font-bold text-foreground cursor-pointer hover:text-[#FF6B35] transition-colors"
+            className="text-xl md:text-2xl font-bold text-foreground cursor-pointer hover:text-[#FF6B35] transition-colors tracking-tight"
             onClick={() => navigate('/')}
           >
             FieldSync
           </h1>
-          <div className="flex gap-3">
-            <Button 
-              variant="ghost" 
-              onClick={() => navigate('/auth')}
-              className="hidden sm:inline-flex"
-            >
+          
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center gap-3">
+            <Button variant="ghost" onClick={handleSignIn} className="text-base">
               Sign In
             </Button>
-            <Button 
-              onClick={handleBookDemo}
-              className="bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white"
-            >
-              Book a Demo
+            <Button onClick={handleBookDemo} className="bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold h-12 px-6 text-base">
+              Book Demo
             </Button>
+          </div>
+
+          {/* Mobile Navigation */}
+          <div className="flex md:hidden items-center gap-2">
+            <Button onClick={handleBookDemo} className="bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold h-12 px-4 text-sm">
+              Book Demo
+            </Button>
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-12 w-12">
+                  <Menu className="h-6 w-6" />
+                  <span className="sr-only">Open menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[280px] sm:w-[320px]">
+                <SheetHeader className="text-left mb-6">
+                  <SheetTitle className="text-2xl font-bold">FieldSync</SheetTitle>
+                </SheetHeader>
+                <nav className="flex flex-col gap-4">
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => { navigate('/'); setMobileMenuOpen(false); }} 
+                    className="justify-start text-base h-12 font-medium"
+                  >
+                    Home
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    onClick={handleSeePricing} 
+                    className="justify-start text-base h-12 font-medium"
+                  >
+                    Pricing
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    onClick={handleSignIn} 
+                    className="justify-start text-base h-12 font-medium"
+                  >
+                    Sign In
+                  </Button>
+                  <div className="pt-4 border-t border-border">
+                    <Button 
+                      onClick={handleBookDemo} 
+                      className="w-full bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold h-12 text-base"
+                    >
+                      Book a Demo
+                    </Button>
+                  </div>
+                </nav>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </nav>
 
       {/* Page Header */}
-      <section className="pt-32 pb-16 px-4 bg-muted/30">
+      <section className="pt-28 md:pt-32 pb-12 md:pb-16 px-4 bg-muted/30">
         <div className="container mx-auto max-w-4xl text-center">
-          <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6 leading-tight">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-4 md:mb-6 leading-tight">
             How The App Keeps Your Job Site Moving
           </h2>
-          <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+          <p className="text-lg sm:text-xl md:text-2xl text-muted-foreground mb-6 md:mb-8 max-w-2xl mx-auto leading-relaxed">
             A simple system that keeps tasks clear, blockers visible, and every trade accountable.
           </p>
           <Button 
             size="lg" 
             onClick={handleBookDemo}
-            className="h-14 px-8 text-lg bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white"
+            className="w-full sm:w-auto h-14 md:h-16 px-8 md:px-10 text-base md:text-lg bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold"
           >
             Book a Demo
           </Button>
@@ -167,31 +224,31 @@ export default function HowItWorks() {
         return (
           <section 
             key={index} 
-            className={`py-20 px-4 ${isEven ? 'bg-background' : 'bg-muted/30'}`}
+            className={`py-12 md:py-20 px-4 ${isEven ? 'bg-background' : 'bg-muted/30'}`}
           >
             <div className="container mx-auto max-w-5xl">
-              <div className="grid lg:grid-cols-2 gap-12 items-center">
+              <div className="grid lg:grid-cols-2 gap-8 md:gap-12 items-center">
                 {/* Content */}
-                <div className={isEven ? 'lg:order-1' : 'lg:order-2'}>
-                  <Icon className={`h-16 w-16 ${feature.color} mb-6`} strokeWidth={1.5} />
-                  <h3 className="text-3xl md:text-4xl font-bold text-foreground mb-6">
+                <div className="order-1">
+                  <Icon className={`h-12 w-12 md:h-16 md:w-16 ${feature.color} mb-4 md:mb-6`} strokeWidth={1.5} />
+                  <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4 md:mb-6 leading-tight">
                     {feature.title}
                   </h3>
-                  <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
+                  <p className="text-base md:text-lg text-muted-foreground mb-4 md:mb-6 leading-relaxed">
                     {feature.description}
                   </p>
-                  <ul className="space-y-3">
+                  <ul className="space-y-2 md:space-y-3">
                     {feature.bullets.map((bullet, idx) => (
-                      <li key={idx} className="flex items-start gap-3">
-                        <ArrowRight className={`h-6 w-6 ${feature.color} flex-shrink-0 mt-0.5`} />
-                        <span className="text-foreground text-lg">{bullet}</span>
+                      <li key={idx} className="flex items-start gap-2 md:gap-3">
+                        <ArrowRight className={`h-5 w-5 md:h-6 md:w-6 ${feature.color} flex-shrink-0 mt-0.5`} />
+                        <span className="text-foreground text-base md:text-lg">{bullet}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
 
                 {/* Visual Placeholder */}
-                <div className={`${isEven ? 'lg:order-2' : 'lg:order-1'} flex justify-center`}>
+                <div className="order-2 flex justify-center">
                   <div className="w-full max-w-md">
                     <img 
                       src={feature.screenshot} 
@@ -208,16 +265,16 @@ export default function HowItWorks() {
       })}
 
       {/* Final CTA */}
-      <section className="py-24 px-4 bg-muted/50">
+      <section className="py-16 md:py-24 px-4 bg-muted/50">
         <div className="container mx-auto max-w-4xl text-center">
-          <h3 className="text-3xl md:text-4xl font-bold text-foreground mb-8">
+          <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-6 md:mb-8 leading-tight">
             Ready To Keep Your Projects On Track
           </h3>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col gap-3 justify-center w-full max-w-md mx-auto">
             <Button 
               size="lg" 
               onClick={handleBookDemo}
-              className="h-14 px-8 text-lg bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white"
+              className="w-full h-14 md:h-16 text-base md:text-lg bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold"
             >
               Book a Demo
             </Button>
@@ -225,7 +282,7 @@ export default function HowItWorks() {
               size="lg" 
               variant="outline" 
               onClick={handleSeePricing}
-              className="h-14 px-8 text-lg"
+              className="w-full h-14 md:h-16 text-base md:text-lg font-semibold"
             >
               See Pricing
             </Button>
