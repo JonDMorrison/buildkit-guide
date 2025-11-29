@@ -16,6 +16,8 @@ interface Project {
   location: string;
   status: 'active' | 'planning' | 'completed';
   tasks: { total: number; completed: number };
+  blockedTasks: number;
+  safetyCompliance: number;
 }
 
 const Index = () => {
@@ -35,7 +37,7 @@ const Index = () => {
 
       if (projectsError) throw projectsError;
 
-      // Fetch task counts for each project
+      // Fetch task counts and stats for each project
       const projectsWithTasks = await Promise.all(
         (projectsData || []).map(async (project) => {
           const { data: tasks } = await supabase
@@ -46,6 +48,21 @@ const Index = () => {
 
           const total = tasks?.length || 0;
           const completed = tasks?.filter(t => t.status === 'done').length || 0;
+          const blocked = tasks?.filter(t => t.status === 'blocked').length || 0;
+
+          // Fetch safety compliance for last 7 days
+          const oneWeekAgo = new Date();
+          oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+          const { data: safetyForms } = await supabase
+            .from('safety_forms')
+            .select('status')
+            .eq('project_id', project.id)
+            .gte('created_at', oneWeekAgo.toISOString());
+
+          const totalForms = safetyForms?.length || 0;
+          const reviewedForms = safetyForms?.filter(f => f.status === 'reviewed').length || 0;
+          const safetyCompliance = totalForms > 0 ? Math.round((reviewedForms / totalForms) * 100) : 100;
 
           return {
             id: project.id,
@@ -53,6 +70,8 @@ const Index = () => {
             location: project.location,
             status: project.status as 'active' | 'planning' | 'completed',
             tasks: { total, completed },
+            blockedTasks: blocked,
+            safetyCompliance,
           };
         })
       );

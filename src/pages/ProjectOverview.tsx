@@ -14,7 +14,24 @@ import { TradeBadge } from '@/components/TradeBadge';
 import { ListItem } from '@/components/ListItem';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, AlertTriangle, Shield, CheckCircle2, FileText, Users, Calendar, Plus } from 'lucide-react';
+import { useUserRole } from '@/hooks/useUserRole';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { ArrowLeft, AlertTriangle, Shield, CheckCircle2, FileText, Users, Calendar, Plus, MoreVertical, Archive } from 'lucide-react';
 
 interface Project {
   id: string;
@@ -35,9 +52,11 @@ const ProjectOverview = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { canManageProjects } = useUserRole();
   const [project, setProject] = useState<Project | null>(null);
   const [stats, setStats] = useState<ProjectStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!projectId) return;
@@ -104,6 +123,32 @@ const ProjectOverview = () => {
     fetchProjectData();
   }, [projectId, navigate, toast]);
 
+  const handleArchiveProject = async () => {
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .update({ is_deleted: true })
+        .eq('id', projectId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Project archived',
+        description: 'This project has been archived successfully.',
+      });
+
+      navigate('/');
+    } catch (error: any) {
+      toast({
+        title: 'Error archiving project',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setArchiveDialogOpen(false);
+    }
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -136,10 +181,32 @@ const ProjectOverview = () => {
           Back to Projects
         </Button>
 
-        <SectionHeader
-          title={project.name}
-          subtitle={project.location}
-        />
+        <div className="flex items-start justify-between mb-6">
+          <div className="flex-1">
+            <SectionHeader
+              title={project.name}
+              subtitle={project.location}
+            />
+          </div>
+          {canManageProjects && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <MoreVertical className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => setArchiveDialogOpen(true)}
+                  className="text-status-issue"
+                >
+                  <Archive className="h-4 w-4 mr-2" />
+                  Archive Project
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
 
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -207,8 +274,9 @@ const ProjectOverview = () => {
         </div>
 
         {/* Tabbed Content */}
-        <Tabs defaultValue="tasks" className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
+        <Tabs defaultValue="overview" className="w-full">
+          <TabsList className="grid w-full grid-cols-7">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="tasks">Tasks</TabsTrigger>
             <TabsTrigger value="lookahead">Lookahead</TabsTrigger>
             <TabsTrigger value="trades">Trades</TabsTrigger>
@@ -216,6 +284,10 @@ const ProjectOverview = () => {
             <TabsTrigger value="documents">Docs</TabsTrigger>
             <TabsTrigger value="deficiencies">Issues</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="overview" className="mt-4">
+            <ProjectOverviewTab projectId={projectId!} stats={stats} />
+          </TabsContent>
 
           <TabsContent value="tasks" className="mt-4">
             <ProjectTasks projectId={projectId!} />
@@ -241,12 +313,208 @@ const ProjectOverview = () => {
             <ProjectDeficiencies projectId={projectId!} />
           </TabsContent>
         </Tabs>
+
+        {/* Archive Confirmation Dialog */}
+        <AlertDialog open={archiveDialogOpen} onOpenChange={setArchiveDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Archive Project?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will archive "{project.name}" and hide it from the active project list.
+                All tasks, documents, and data will be preserved. You can restore archived projects later if needed.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleArchiveProject}
+                className="bg-status-issue hover:bg-status-issue/90"
+              >
+                Archive Project
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </Layout>
   );
 };
 
 // Tab Components
+const ProjectOverviewTab = ({ projectId, stats }: { projectId: string; stats: ProjectStats | null }) => {
+  const navigate = useNavigate();
+  const [blockedTasks, setBlockedTasks] = useState<any[]>([]);
+  const [upcomingDeadlines, setUpcomingDeadlines] = useState<any[]>([]);
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchOverviewData = async () => {
+      // Fetch top 5 blocked tasks
+      const { data: blocked } = await supabase
+        .from('tasks')
+        .select('*, trades(name, trade_type)')
+        .eq('project_id', projectId)
+        .eq('status', 'blocked')
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      setBlockedTasks(blocked || []);
+
+      // Fetch upcoming deadlines (next 7 days)
+      const today = new Date();
+      const nextWeek = new Date();
+      nextWeek.setDate(nextWeek.getDate() + 7);
+
+      const { data: upcoming } = await supabase
+        .from('tasks')
+        .select('*, trades(name, trade_type)')
+        .eq('project_id', projectId)
+        .eq('is_deleted', false)
+        .gte('due_date', today.toISOString().split('T')[0])
+        .lte('due_date', nextWeek.toISOString().split('T')[0])
+        .order('due_date', { ascending: true })
+        .limit(5);
+
+      setUpcomingDeadlines(upcoming || []);
+
+      // Fetch recent activity (latest 5 tasks created or updated)
+      const { data: recent } = await supabase
+        .from('tasks')
+        .select('*, trades(name, trade_type)')
+        .eq('project_id', projectId)
+        .eq('is_deleted', false)
+        .order('updated_at', { ascending: false })
+        .limit(5);
+
+      setRecentActivity(recent || []);
+      setLoading(false);
+    };
+
+    fetchOverviewData();
+  }, [projectId]);
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-32" />
+        <Skeleton className="h-32" />
+        <Skeleton className="h-32" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Blocked Tasks */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Blocked Tasks</CardTitle>
+            {blockedTasks.length > 0 && (
+              <Badge variant="destructive">{blockedTasks.length}</Badge>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {blockedTasks.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No blocked tasks - great work!</p>
+          ) : (
+            <div className="space-y-2">
+              {blockedTasks.map((task) => (
+                <ListItem
+                  key={task.id}
+                  title={task.title}
+                  subtitle={task.trades?.name || 'Unassigned'}
+                  leading={<StatusBadge status="blocked" dotOnly />}
+                  trailing={task.trades && <TradeBadge trade={task.trades.trade_type} />}
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Upcoming Deadlines */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Upcoming Deadlines (Next 7 Days)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {upcomingDeadlines.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No tasks due in the next 7 days</p>
+          ) : (
+            <div className="space-y-2">
+              {upcomingDeadlines.map((task) => (
+                <ListItem
+                  key={task.id}
+                  title={task.title}
+                  subtitle={`Due: ${new Date(task.due_date).toLocaleDateString()}`}
+                  leading={
+                    <StatusBadge
+                      status={
+                        task.status === 'done' ? 'complete' :
+                        task.status === 'blocked' ? 'blocked' :
+                        task.status === 'in_progress' ? 'progress' : 'info'
+                      }
+                      dotOnly
+                    />
+                  }
+                  trailing={task.trades && <TradeBadge trade={task.trades.trade_type} />}
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Recent Activity */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Recent Activity</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {recentActivity.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No recent activity</p>
+          ) : (
+            <div className="space-y-2">
+              {recentActivity.map((task) => (
+                <ListItem
+                  key={task.id}
+                  title={task.title}
+                  subtitle={`Updated ${new Date(task.updated_at).toLocaleDateString()}`}
+                  leading={
+                    <StatusBadge
+                      status={
+                        task.status === 'done' ? 'complete' :
+                        task.status === 'blocked' ? 'blocked' :
+                        task.status === 'in_progress' ? 'progress' : 'info'
+                      }
+                      dotOnly
+                    />
+                  }
+                  trailing={task.trades && <TradeBadge trade={task.trades.trade_type} />}
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Add Task Button */}
+      <Button
+        onClick={() => navigate('/tasks')}
+        className="w-full min-h-[52px]"
+        size="lg"
+      >
+        <Plus className="h-5 w-5 mr-2" />
+        Add Task
+      </Button>
+    </div>
+  );
+};
+
 const ProjectTasks = ({ projectId }: { projectId: string }) => {
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

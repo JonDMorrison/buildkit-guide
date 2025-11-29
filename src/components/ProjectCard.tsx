@@ -11,6 +11,8 @@ interface ProjectCardProps {
     total: number;
     completed: number;
   };
+  blockedTasks: number;
+  safetyCompliance: number;
 }
 
 const statusConfig = {
@@ -28,9 +30,9 @@ const statusConfig = {
   },
 };
 
-export const ProjectCard = ({ name, location, status, tasks }: ProjectCardProps) => {
+export const ProjectCard = ({ name, location, status, tasks, blockedTasks, safetyCompliance }: ProjectCardProps) => {
   const statusInfo = statusConfig[status];
-  const completion = Math.round((tasks.completed / tasks.total) * 100);
+  const completion = tasks.total > 0 ? Math.round((tasks.completed / tasks.total) * 100) : 0;
 
   return (
     <Card className="p-4 border border-border hover:border-primary/50 transition-colors cursor-pointer">
@@ -42,7 +44,7 @@ export const ProjectCard = ({ name, location, status, tasks }: ProjectCardProps)
         <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0 ml-2" />
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-3">
         <div className="flex items-center justify-between text-sm">
           <Badge className={statusInfo.className}>
             {statusInfo.label}
@@ -52,6 +54,15 @@ export const ProjectCard = ({ name, location, status, tasks }: ProjectCardProps)
           </span>
         </div>
         <Progress value={completion} />
+        
+        <div className="flex items-center justify-between text-xs pt-1">
+          <span className="text-muted-foreground">
+            Blocked: <span className={blockedTasks > 0 ? "text-status-issue font-medium" : ""}>{blockedTasks}</span>
+          </span>
+          <span className="text-muted-foreground">
+            Safety: <span className="text-status-complete font-medium">{safetyCompliance}%</span>
+          </span>
+        </div>
       </div>
     </Card>
   );
