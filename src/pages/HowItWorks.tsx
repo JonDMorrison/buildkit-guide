@@ -9,6 +9,12 @@ import {
   Sparkles,
   ArrowRight 
 } from "lucide-react";
+import screenshotTasks from "@/assets/screenshot-tasks.png";
+import screenshotBlockers from "@/assets/screenshot-blockers.png";
+import screenshotLookahead from "@/assets/screenshot-lookahead.png";
+import screenshotSafety from "@/assets/screenshot-safety.png";
+import screenshotManpower from "@/assets/screenshot-manpower.png";
+import screenshotAI from "@/assets/screenshot-ai.png";
 
 export default function HowItWorks() {
   const navigate = useNavigate();
@@ -35,7 +41,8 @@ export default function HowItWorks() {
         "Track progress at a glance",
         "Keep everyone aligned on what needs to happen next"
       ],
-      color: "text-[#FF6B35]"
+      color: "text-[#FF6B35]",
+      screenshot: screenshotTasks
     },
     {
       icon: AlertTriangle,
@@ -47,7 +54,8 @@ export default function HowItWorks() {
         "Notify PMs instantly",
         "Keep the schedule protected"
       ],
-      color: "text-red-500"
+      color: "text-red-500",
+      screenshot: screenshotBlockers
     },
     {
       icon: Calendar,
@@ -59,7 +67,8 @@ export default function HowItWorks() {
         "Watch critical tasks more closely",
         "Keep trades focused on what matters"
       ],
-      color: "text-blue-500"
+      color: "text-blue-500",
+      screenshot: screenshotLookahead
     },
     {
       icon: Shield,
@@ -71,7 +80,8 @@ export default function HowItWorks() {
         "Simple submission workflow",
         "Organized and audit ready"
       ],
-      color: "text-green-500"
+      color: "text-green-500",
+      screenshot: screenshotSafety
     },
     {
       icon: Users,
@@ -83,7 +93,8 @@ export default function HowItWorks() {
         "See crew needs on a calendar",
         "Prevent schedule slip"
       ],
-      color: "text-purple-500"
+      color: "text-purple-500",
+      screenshot: screenshotManpower
     },
     {
       icon: Sparkles,
@@ -95,7 +106,8 @@ export default function HowItWorks() {
         "Identify blockers and risks",
         "Answer questions instantly"
       ],
-      color: "text-[#FF6B35]"
+      color: "text-[#FF6B35]",
+      screenshot: screenshotAI
     }
   ];
 
@@ -180,8 +192,13 @@ export default function HowItWorks() {
 
                 {/* Visual Placeholder */}
                 <div className={`${isEven ? 'lg:order-2' : 'lg:order-1'} flex justify-center`}>
-                  <div className="w-full max-w-md aspect-square bg-card border-2 border-border rounded-lg flex items-center justify-center p-8">
-                    <Icon className={`h-32 w-32 ${feature.color} opacity-20`} strokeWidth={1} />
+                  <div className="w-full max-w-md">
+                    <img 
+                      src={feature.screenshot} 
+                      alt={`${feature.title} screenshot`}
+                      className="w-full h-auto rounded-lg shadow-2xl border border-border"
+                      loading="lazy"
+                    />
                   </div>
                 </div>
               </div>
