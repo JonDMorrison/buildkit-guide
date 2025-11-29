@@ -8,6 +8,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { PublicRoute } from "@/components/PublicRoute";
 import Landing from "./pages/Landing";
 import HowItWorks from "./pages/HowItWorks";
+import Dashboard from "./pages/Dashboard";
 import Index from "./pages/Index";
 import ProjectOverview from "./pages/ProjectOverview";
 import Tasks from "./pages/Tasks";
@@ -54,6 +55,14 @@ const App = () => (
             />
             <Route
               path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/projects"
               element={
                 <ProtectedRoute>
                   <Index />
