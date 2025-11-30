@@ -11,6 +11,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   AlertTriangle,
   CheckCircle2,
   Clock,
@@ -24,6 +32,8 @@ import {
   AlertCircle,
   ChevronRight,
   BarChart3,
+  Building2,
+  ChevronDown,
 } from "lucide-react";
 import { format, isAfter, isBefore, addDays, startOfDay, subDays, startOfWeek, endOfWeek } from "date-fns";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -294,13 +304,72 @@ export default function Dashboard() {
       <div className="max-w-7xl mx-auto space-y-8 md:space-y-10 pb-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 pt-2">
-          <div className="space-y-2">
-            <h1 className="text-4xl md:text-5xl font-bold text-foreground tracking-tight">
-              Today on Site
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl">
-              See what needs attention, where you are blocked, and how your project is trending
-            </p>
+          <div className="space-y-3">
+            {/* Project Selector */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  className="h-auto p-0 hover:bg-transparent group"
+                >
+                  <div className="flex items-center gap-2 text-left">
+                    <Building2 className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                    <div className="flex flex-col">
+                      <span className="text-sm text-muted-foreground">Current Project</span>
+                      <span className="text-xl font-semibold text-foreground group-hover:text-primary transition-colors">
+                        {currentProject?.name}
+                      </span>
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors ml-1" />
+                  </div>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent 
+                align="start" 
+                className="w-[300px] bg-card border-border shadow-lg z-50"
+              >
+                <DropdownMenuLabel className="text-xs text-muted-foreground uppercase tracking-wider">
+                  Switch Project
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {userProjects?.map((project: any) => (
+                  <DropdownMenuItem
+                    key={project.id}
+                    onClick={() => setCurrentProject(project.id)}
+                    className="cursor-pointer py-3 focus:bg-accent focus:text-accent-foreground"
+                  >
+                    <div className="flex flex-col gap-1">
+                      <span className="font-medium">
+                        {project.name}
+                        {project.id === currentProjectId && (
+                          <CheckCircle2 className="inline ml-2 h-4 w-4 text-primary" />
+                        )}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {project.location}
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => navigate("/projects")}
+                  className="cursor-pointer text-primary font-medium"
+                >
+                  <Building2 className="mr-2 h-4 w-4" />
+                  View All Projects
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <div className="space-y-2">
+              <h1 className="text-4xl md:text-5xl font-bold text-foreground tracking-tight">
+                Today on Site
+              </h1>
+              <p className="text-lg text-muted-foreground max-w-2xl">
+                See what needs attention, where you are blocked, and how your project is trending
+              </p>
+            </div>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
             <Button 
