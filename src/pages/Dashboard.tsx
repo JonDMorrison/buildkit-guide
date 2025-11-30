@@ -277,6 +277,27 @@ export default function Dashboard() {
     "What should I focus on today?",
   ];
 
+  const getStatusBadgeVariant = (status: string) => {
+    switch (status) {
+      case "in_progress":
+        return "default";
+      case "completed":
+        return "secondary";
+      case "planning":
+        return "outline";
+      case "on_hold":
+        return "destructive";
+      default:
+        return "outline";
+    }
+  };
+
+  const formatStatus = (status: string) => {
+    return status.split("_").map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(" ");
+  };
+
   if (!currentProject) {
     return (
       <Layout>
@@ -338,16 +359,26 @@ export default function Dashboard() {
                     onClick={() => setCurrentProject(project.id)}
                     className="cursor-pointer py-3 focus:bg-accent focus:text-accent-foreground"
                   >
-                    <div className="flex flex-col gap-1">
-                      <span className="font-medium">
-                        {project.name}
-                        {project.id === currentProjectId && (
-                          <CheckCircle2 className="inline ml-2 h-4 w-4 text-primary" />
-                        )}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {project.location}
-                      </span>
+                    <div className="flex items-start justify-between gap-3 w-full">
+                      <div className="flex flex-col gap-1 flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium truncate">
+                            {project.name}
+                          </span>
+                          {project.id === currentProjectId && (
+                            <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" />
+                          )}
+                        </div>
+                        <span className="text-xs text-muted-foreground truncate">
+                          {project.location}
+                        </span>
+                      </div>
+                      <Badge 
+                        variant={getStatusBadgeVariant(project.status)}
+                        className="flex-shrink-0 text-xs"
+                      >
+                        {formatStatus(project.status)}
+                      </Badge>
                     </div>
                   </DropdownMenuItem>
                 ))}
