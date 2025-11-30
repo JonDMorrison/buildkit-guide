@@ -51,7 +51,7 @@ export default function Dashboard() {
   const today = startOfDay(new Date());
   const nextWeek = addDays(today, 7);
 
-  // Fetch user's projects to auto-select first one if none selected
+  // Fetch user's projects with task completion stats
   const { data: userProjects } = useQuery({
     queryKey: ["user-projects", user?.id],
     queryFn: async () => {
@@ -70,7 +70,32 @@ export default function Dashboard() {
         .eq("user_id", user.id);
 
       if (error) throw error;
-      return data?.map((pm: any) => pm.projects).filter(Boolean) || [];
+      
+      const projects = data?.map((pm: any) => pm.projects).filter(Boolean) || [];
+      
+      // Fetch task counts for each project to calculate progress
+      const projectsWithProgress = await Promise.all(
+        projects.map(async (project: any) => {
+          const { data: tasks, error: tasksError } = await supabase
+            .from("tasks")
+            .select("id, status", { count: "exact" })
+            .eq("project_id", project.id)
+            .eq("is_deleted", false);
+          
+          if (tasksError) {
+            console.error("Error fetching tasks:", tasksError);
+            return { ...project, progress: 0 };
+          }
+          
+          const totalTasks = tasks?.length || 0;
+          const completedTasks = tasks?.filter(t => t.status === "done").length || 0;
+          const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+          
+          return { ...project, progress, totalTasks, completedTasks };
+        })
+      );
+      
+      return projectsWithProgress;
     },
     enabled: !!user?.id,
   });
@@ -360,7 +385,7 @@ export default function Dashboard() {
                     className="cursor-pointer py-3 focus:bg-accent focus:text-accent-foreground"
                   >
                     <div className="flex items-start justify-between gap-3 w-full">
-                      <div className="flex flex-col gap-1 flex-1 min-w-0">
+                      <div className="flex flex-col gap-1.5 flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="font-medium truncate">
                             {project.name}
@@ -372,6 +397,19 @@ export default function Dashboard() {
                         <span className="text-xs text-muted-foreground truncate">
                           {project.location}
                         </span>
+                        {project.totalTasks > 0 && (
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-primary transition-all duration-300"
+                                style={{ width: `${project.progress}%` }}
+                              />
+                            </div>
+                            <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+                              {project.progress}%
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <Badge 
                         variant={getStatusBadgeVariant(project.status)}
