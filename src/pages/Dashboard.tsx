@@ -32,7 +32,7 @@ import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieCh
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { currentProjectId } = useCurrentProject();
+  const { currentProjectId, setCurrentProject } = useCurrentProject();
   const { currentProjectRole, isPM, isForeman, isWorker } = useAuthRole(currentProjectId || undefined);
   const [aiQuery, setAiQuery] = useState("");
   const [aiResponse, setAiResponse] = useState("");
@@ -40,6 +40,37 @@ export default function Dashboard() {
 
   const today = startOfDay(new Date());
   const nextWeek = addDays(today, 7);
+
+  // Fetch user's projects to auto-select first one if none selected
+  const { data: userProjects } = useQuery({
+    queryKey: ["user-projects", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from("project_members")
+        .select(`
+          project_id,
+          projects (
+            id,
+            name,
+            location,
+            status
+          )
+        `)
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+      return data?.map((pm: any) => pm.projects).filter(Boolean) || [];
+    },
+    enabled: !!user?.id,
+  });
+
+  // Auto-select first project if none selected
+  useEffect(() => {
+    if (!currentProjectId && userProjects && userProjects.length > 0) {
+      setCurrentProject(userProjects[0].id);
+    }
+  }, [currentProjectId, userProjects, setCurrentProject]);
 
   // Fetch current project
   const { data: currentProject } = useQuery({
