@@ -260,89 +260,124 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto space-y-6 md:space-y-8">
+      <div className="max-w-7xl mx-auto space-y-8 md:space-y-10 pb-8">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-foreground">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 pt-2">
+          <div className="space-y-2">
+            <h1 className="text-4xl md:text-5xl font-bold text-foreground tracking-tight">
               Today on Site
             </h1>
-            <p className="text-base md:text-lg text-muted-foreground mt-1">
+            <p className="text-lg text-muted-foreground max-w-2xl">
               See what needs attention, where you are blocked, and how your project is trending
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Button onClick={() => navigate("/projects")} variant="default" className="w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button 
+              onClick={() => navigate("/projects")} 
+              variant="default" 
+              size="lg"
+              className="w-full sm:w-auto shadow-lg hover:shadow-xl transition-all"
+            >
               View Projects
+              <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
-            <Button onClick={() => navigate("/tasks")} variant="outline" className="w-full sm:w-auto">
+            <Button 
+              onClick={() => navigate("/tasks")} 
+              variant="outline" 
+              size="lg"
+              className="w-full sm:w-auto"
+            >
               Go to Tasks
             </Button>
           </div>
         </div>
 
         {/* Key Metrics Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="hover:border-primary/50 transition-colors cursor-pointer" onClick={() => navigate("/tasks")}>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground font-medium">Open Tasks</p>
-                  <p className="text-3xl md:text-4xl font-bold text-foreground mt-2">{openTasks}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+          <Card 
+            className="group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer border-border/60 bg-gradient-to-br from-card to-card/50 overflow-hidden relative" 
+            onClick={() => navigate("/tasks")}
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <CardContent className="p-6 relative">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground font-medium uppercase tracking-wide">Open Tasks</p>
+                  <p className="text-4xl md:text-5xl font-bold text-foreground tabular-nums">{openTasks}</p>
                 </div>
-                <Clock className="h-10 w-10 text-primary opacity-20" />
+                <div className="p-3 rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                  <Clock className="h-6 w-6 text-primary" />
+                </div>
               </div>
-              <div className="flex items-center gap-1 mt-3">
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">Active</span>
+              <div className="flex items-center gap-1.5 mt-4 pt-4 border-t border-border/50">
+                <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground font-medium">Active work items</span>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="hover:border-destructive/50 transition-colors cursor-pointer border-destructive/20" onClick={() => navigate("/tasks?filter=blocked")}>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground font-medium">Blocked Tasks</p>
-                  <p className="text-3xl md:text-4xl font-bold text-destructive mt-2">{blockedTasks}</p>
+          <Card 
+            className="group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer border-destructive/30 bg-gradient-to-br from-card to-card/50 overflow-hidden relative" 
+            onClick={() => navigate("/tasks?filter=blocked")}
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-destructive/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <CardContent className="p-6 relative">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground font-medium uppercase tracking-wide">Blocked Tasks</p>
+                  <p className="text-4xl md:text-5xl font-bold text-destructive tabular-nums">{blockedTasks}</p>
                 </div>
-                <AlertTriangle className="h-10 w-10 text-destructive opacity-20" />
+                <div className="p-3 rounded-xl bg-destructive/10 group-hover:bg-destructive/20 transition-colors">
+                  <AlertTriangle className="h-6 w-6 text-destructive" />
+                </div>
               </div>
-              <div className="flex items-center gap-1 mt-3">
-                <AlertCircle className="h-4 w-4 text-destructive" />
-                <span className="text-xs text-destructive">Needs attention</span>
+              <div className="flex items-center gap-1.5 mt-4 pt-4 border-t border-border/50">
+                <AlertCircle className="h-3.5 w-3.5 text-destructive" />
+                <span className="text-xs text-destructive font-medium">Requires immediate action</span>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="hover:border-primary/50 transition-colors cursor-pointer" onClick={() => navigate("/tasks")}>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground font-medium">Upcoming This Week</p>
-                  <p className="text-3xl md:text-4xl font-bold text-foreground mt-2">{upcomingTasks}</p>
+          <Card 
+            className="group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer border-border/60 bg-gradient-to-br from-card to-card/50 overflow-hidden relative" 
+            onClick={() => navigate("/tasks")}
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <CardContent className="p-6 relative">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground font-medium uppercase tracking-wide">Due This Week</p>
+                  <p className="text-4xl md:text-5xl font-bold text-foreground tabular-nums">{upcomingTasks}</p>
                 </div>
-                <Calendar className="h-10 w-10 text-primary opacity-20" />
+                <div className="p-3 rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                  <Calendar className="h-6 w-6 text-primary" />
+                </div>
               </div>
-              <div className="flex items-center gap-1 mt-3">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">Next 7 days</span>
+              <div className="flex items-center gap-1.5 mt-4 pt-4 border-t border-border/50">
+                <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground font-medium">Next 7 days</span>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="hover:border-primary/50 transition-colors cursor-pointer" onClick={() => navigate("/safety")}>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground font-medium">Safety Forms Today</p>
-                  <p className="text-3xl md:text-4xl font-bold text-foreground mt-2">{safetyFormsToday}</p>
+          <Card 
+            className="group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer border-border/60 bg-gradient-to-br from-card to-card/50 overflow-hidden relative" 
+            onClick={() => navigate("/safety")}
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-status-complete/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <CardContent className="p-6 relative">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground font-medium uppercase tracking-wide">Safety Forms</p>
+                  <p className="text-4xl md:text-5xl font-bold text-foreground tabular-nums">{safetyFormsToday}</p>
                 </div>
-                <Shield className="h-10 w-10 text-primary opacity-20" />
+                <div className="p-3 rounded-xl bg-status-complete/10 group-hover:bg-status-complete/20 transition-colors">
+                  <Shield className="h-6 w-6 text-status-complete" />
+                </div>
               </div>
-              <div className="flex items-center gap-1 mt-3">
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                <span className="text-xs text-muted-foreground">Submitted</span>
+              <div className="flex items-center gap-1.5 mt-4 pt-4 border-t border-border/50">
+                <CheckCircle2 className="h-3.5 w-3.5 text-status-complete" />
+                <span className="text-xs text-muted-foreground font-medium">Submitted today</span>
               </div>
             </CardContent>
           </Card>
@@ -351,14 +386,16 @@ export default function Dashboard() {
         {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Task Completion Trend */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-primary" />
-                Task Activity (7 Days)
+          <Card className="border-border/60 shadow-lg">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                </div>
+                Task Activity
               </CardTitle>
-              <CardDescription>
-                Tasks created vs completed this week
+              <CardDescription className="text-base">
+                7-day trend of tasks created vs completed
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -402,22 +439,24 @@ export default function Dashboard() {
           </Card>
 
           {/* Project Health Score */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
+          <Card className="border-border/60 shadow-lg">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center justify-between text-xl">
                 <span className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-primary" />
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <TrendingUp className="h-5 w-5 text-primary" />
+                  </div>
                   Project Health
                 </span>
                 <Badge 
                   variant={healthScore >= 70 ? "default" : healthScore >= 40 ? "secondary" : "destructive"}
-                  className="text-lg font-bold px-3"
+                  className="text-xl font-bold px-4 py-1.5 shadow-sm"
                 >
                   {Math.round(healthScore)}%
                 </Badge>
               </CardTitle>
-              <CardDescription>
-                Overall project performance metrics
+              <CardDescription className="text-base">
+                Real-time performance indicators
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -447,11 +486,11 @@ export default function Dashboard() {
         </div>
 
         {/* Task Status Distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Task Status Distribution</CardTitle>
-            <CardDescription>
-              Breakdown of all tasks by current status
+        <Card className="border-border/60 shadow-lg">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-xl">Task Status Distribution</CardTitle>
+            <CardDescription className="text-base">
+              Complete breakdown of all tasks by current status
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -505,59 +544,72 @@ export default function Dashboard() {
           {/* Left Column - Spans 2 cols on desktop */}
           <div className="lg:col-span-2 space-y-6">
             {/* My Day Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>My Day</span>
-                  <Badge variant="secondary">{myDayTasks.length}</Badge>
-                </CardTitle>
-                <CardDescription>
-                  Most important items for today
-                </CardDescription>
+            <Card className="border-border/60 shadow-lg">
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <CardTitle className="flex items-center gap-2 text-xl">
+                      <div className="p-2 rounded-lg bg-primary/10">
+                        <Clock className="h-5 w-5 text-primary" />
+                      </div>
+                      My Day
+                    </CardTitle>
+                    <CardDescription className="text-base">
+                      Priority work items requiring your attention
+                    </CardDescription>
+                  </div>
+                  <Badge variant="secondary" className="text-base px-3 py-1">{myDayTasks.length}</Badge>
+                </div>
               </CardHeader>
               <CardContent className="space-y-3">
                 {myDayTasks.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-green-500" />
-                    <p className="text-sm">All caught up! No urgent tasks today.</p>
+                  <div className="text-center py-12 text-muted-foreground">
+                    <div className="p-4 rounded-full bg-status-complete/10 w-fit mx-auto mb-4">
+                      <CheckCircle2 className="h-12 w-12 text-status-complete" />
+                    </div>
+                    <p className="text-base font-medium">All caught up!</p>
+                    <p className="text-sm mt-1">No urgent tasks today.</p>
                   </div>
                 ) : (
                   <>
-                    {myDayTasks.map((task) => (
+                    {myDayTasks.map((task, idx) => (
                       <div
                         key={task.id}
-                        className="flex items-start justify-between p-4 rounded-lg border hover:border-primary/50 transition-colors cursor-pointer"
+                        className="group p-5 rounded-xl border border-border/60 hover:border-primary/50 hover:shadow-md transition-all duration-200 cursor-pointer bg-gradient-to-br from-card to-card/50"
                         onClick={() => navigate("/tasks")}
+                        style={{ animationDelay: `${idx * 50}ms` }}
                       >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-medium text-foreground truncate">{task.title}</p>
-                            {task.blockers?.some((b: any) => !b.is_resolved) && (
-                              <Badge variant="destructive" className="text-xs">Blocked</Badge>
-                            )}
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0 space-y-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="font-semibold text-foreground group-hover:text-primary transition-colors">{task.title}</p>
+                              {task.blockers?.some((b: any) => !b.is_resolved) && (
+                                <Badge variant="destructive" className="text-xs shadow-sm">Blocked</Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
+                              {task.assigned_trade && (
+                                <span className="flex items-center gap-1 font-medium">
+                                  <Users className="h-3.5 w-3.5" />
+                                  {task.assigned_trade.name}
+                                </span>
+                              )}
+                              {task.due_date && (
+                                <span className="flex items-center gap-1 font-medium">
+                                  <Calendar className="h-3.5 w-3.5" />
+                                  {format(new Date(task.due_date), "MMM d")}
+                                </span>
+                              )}
+                              <Badge variant={task.status === "in_progress" ? "default" : "secondary"} className="text-xs">
+                                {task.status.replace("_", " ")}
+                              </Badge>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground flex-wrap">
-                            {task.assigned_trade && (
-                              <span className="flex items-center gap-1">
-                                <Users className="h-3 w-3" />
-                                {task.assigned_trade.name}
-                              </span>
-                            )}
-                            {task.due_date && (
-                              <span className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3" />
-                                {format(new Date(task.due_date), "MMM d")}
-                              </span>
-                            )}
-                            <Badge variant={task.status === "in_progress" ? "default" : "secondary"} className="text-xs">
-                              {task.status.replace("_", " ")}
-                            </Badge>
-                          </div>
+                          <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
                         </div>
-                        <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0 ml-2" />
                       </div>
                     ))}
-                    <Button variant="link" onClick={() => navigate("/tasks")} className="w-full">
+                    <Button variant="link" onClick={() => navigate("/tasks")} className="w-full text-base">
                       View all tasks <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                   </>
@@ -566,48 +618,67 @@ export default function Dashboard() {
             </Card>
 
             {/* Blockers and Risks */}
-            <Card className="border-destructive/20">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-destructive" />
-                  Blockers and Risks
-                </CardTitle>
-                <CardDescription>
-                  Tasks that need immediate attention
-                </CardDescription>
+            <Card className="border-destructive/30 shadow-lg bg-gradient-to-br from-card to-destructive/5">
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <CardTitle className="flex items-center gap-2 text-destructive text-xl">
+                      <div className="p-2 rounded-lg bg-destructive/10">
+                        <AlertTriangle className="h-5 w-5" />
+                      </div>
+                      Blockers and Risks
+                    </CardTitle>
+                    <CardDescription className="text-base">
+                      Tasks blocked and requiring immediate resolution
+                    </CardDescription>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent className="space-y-3">
                 {blockerTasks.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <CheckCircle2 className="h-12 w-12 mx-auto mb-3 text-green-500" />
-                    <p className="text-sm">No blocked tasks. Great work!</p>
+                  <div className="text-center py-12 text-muted-foreground">
+                    <div className="p-4 rounded-full bg-status-complete/10 w-fit mx-auto mb-4">
+                      <CheckCircle2 className="h-12 w-12 text-status-complete" />
+                    </div>
+                    <p className="text-base font-medium">No blocked tasks</p>
+                    <p className="text-sm mt-1">Great work keeping things moving!</p>
                   </div>
                 ) : (
                   <>
-                    {blockerTasks.map((task) => (
+                    {blockerTasks.map((task, idx) => (
                       <div
                         key={task.id}
-                        className="flex items-start justify-between p-4 rounded-lg border border-destructive/20 bg-destructive/5 hover:border-destructive/50 transition-colors cursor-pointer"
+                        className="group p-5 rounded-xl border border-destructive/30 hover:border-destructive/60 hover:shadow-md transition-all duration-200 cursor-pointer bg-gradient-to-br from-card to-destructive/5"
                         onClick={() => navigate("/tasks")}
+                        style={{ animationDelay: `${idx * 50}ms` }}
                       >
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-foreground">{task.title}</p>
-                          <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground flex-wrap">
-                            {task.assigned_trade && (
-                              <span className="flex items-center gap-1">
-                                <Users className="h-3 w-3" />
-                                {task.assigned_trade.name}
-                              </span>
-                            )}
-                            <Badge variant="destructive" className="text-xs">
-                              Blocked
-                            </Badge>
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start gap-3">
+                              <div className="p-1.5 rounded-lg bg-destructive/10 shrink-0 mt-0.5">
+                                <AlertCircle className="h-4 w-4 text-destructive" />
+                              </div>
+                              <div className="flex-1 min-w-0 space-y-2">
+                                <p className="font-semibold text-foreground group-hover:text-destructive transition-colors">{task.title}</p>
+                                <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
+                                  {task.assigned_trade && (
+                                    <span className="flex items-center gap-1 font-medium">
+                                      <Users className="h-3.5 w-3.5" />
+                                      {task.assigned_trade.name}
+                                    </span>
+                                  )}
+                                  <Badge variant="destructive" className="text-xs shadow-sm">
+                                    {task.blockers?.length || 0} blocker{task.blockers?.length !== 1 ? 's' : ''}
+                                  </Badge>
+                                </div>
+                              </div>
+                            </div>
                           </div>
+                          <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-destructive transition-colors flex-shrink-0" />
                         </div>
-                        <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0 ml-2" />
                       </div>
                     ))}
-                    <Button variant="link" onClick={() => navigate("/tasks?filter=blocked")} className="w-full text-destructive">
+                    <Button variant="link" onClick={() => navigate("/tasks?filter=blocked")} className="w-full text-destructive text-base">
                       View all blockers <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                   </>
@@ -620,49 +691,61 @@ export default function Dashboard() {
           <div className="space-y-6">
             {/* Safety and Compliance */}
             {currentProjectId && (isPM(currentProjectId) || isForeman(currentProjectId)) && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Shield className="h-5 w-5 text-primary" />
+              <Card className="border-status-complete/30 shadow-lg bg-gradient-to-br from-card to-status-complete/5">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center gap-2 text-xl">
+                    <div className="p-2 rounded-lg bg-status-complete/10">
+                      <Shield className="h-5 w-5 text-status-complete" />
+                    </div>
                     Safety & Compliance
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Forms Today</span>
-                      <span className="text-2xl font-bold text-foreground">{safetyFormsToday}</span>
+                <CardContent className="space-y-5">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 bg-gradient-to-br from-muted/50 to-muted/20 rounded-xl border border-border/40">
+                      <span className="text-sm text-muted-foreground font-medium">Forms Today</span>
+                      <span className="text-3xl font-bold text-foreground tabular-nums">{safetyFormsToday}</span>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Total This Week</span>
-                      <span className="text-lg font-semibold text-foreground">{safetyForms?.length || 0}</span>
+                    <div className="flex items-center justify-between p-4 bg-gradient-to-br from-muted/50 to-muted/20 rounded-xl border border-border/40">
+                      <span className="text-sm text-muted-foreground font-medium">Total This Week</span>
+                      <span className="text-2xl font-bold text-foreground tabular-nums">{safetyForms?.length || 0}</span>
                     </div>
                   </div>
                   {manpowerRequests && manpowerRequests.length > 0 && (
-                    <div className="pt-3 border-t">
-                      <p className="text-sm font-medium text-foreground mb-2">Pending Requests</p>
-                      <Badge variant="secondary">{manpowerRequests.length} manpower requests</Badge>
+                    <div className="pt-4 border-t border-border/50">
+                      <p className="text-sm font-medium text-foreground mb-3">Pending Requests</p>
+                      <Badge variant="secondary" className="text-sm px-3 py-1.5">
+                        {manpowerRequests.length} manpower request{manpowerRequests.length !== 1 ? 's' : ''}
+                      </Badge>
                     </div>
                   )}
-                  <Button onClick={() => navigate("/safety")} variant="outline" className="w-full mt-4">
-                    Open Safety
+                  <Button 
+                    onClick={() => navigate("/safety")} 
+                    variant="outline" 
+                    className="w-full mt-2 hover:bg-status-complete/10 hover:border-status-complete/30"
+                  >
+                    Open Safety Dashboard
+                    <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </CardContent>
               </Card>
             )}
 
             {/* AI Assistant Panel */}
-            <Card className="border-primary/20 bg-gradient-to-br from-background to-primary/5">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-primary" />
+            <Card className="border-primary/30 shadow-xl bg-gradient-to-br from-primary/10 via-primary/5 to-card overflow-hidden relative sticky top-4">
+              <div className="absolute inset-0 bg-grid-white/5 [mask-image:radial-gradient(white,transparent_85%)]" />
+              <CardHeader className="pb-4 relative">
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <div className="p-2 rounded-lg bg-primary/20">
+                    <Sparkles className="h-5 w-5 text-primary" />
+                  </div>
                   Ask AI About This Project
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-base">
                   Get intelligent insights and answers
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 relative">
                 <div className="flex gap-2">
                   <Input
                     placeholder="Ask a question..."
@@ -673,12 +756,12 @@ export default function Dashboard() {
                         handleAskAI(aiQuery);
                       }
                     }}
-                    className="flex-1"
+                    className="flex-1 border-primary/30 focus-visible:ring-primary/30"
                   />
                   <Button 
                     onClick={() => handleAskAI(aiQuery)} 
                     disabled={aiLoading || !aiQuery.trim()}
-                    size="icon"
+                    className="shadow-lg"
                   >
                     <ArrowRight className="h-4 w-4" />
                   </Button>
@@ -692,7 +775,7 @@ export default function Dashboard() {
                       size="sm"
                       onClick={() => handleAskAI(prompt)}
                       disabled={aiLoading}
-                      className="text-xs"
+                      className="text-xs hover:bg-primary/10 hover:border-primary/30 hover:text-primary transition-colors"
                     >
                       {prompt}
                     </Button>
@@ -700,15 +783,18 @@ export default function Dashboard() {
                 </div>
 
                 {aiResponse && (
-                  <div className="p-4 rounded-lg bg-muted/50 border">
-                    <p className="text-sm text-foreground whitespace-pre-wrap">{aiResponse}</p>
+                  <div className="p-5 bg-gradient-to-br from-muted to-muted/50 rounded-xl border border-border/60 shadow-inner">
+                    <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{aiResponse}</p>
                   </div>
                 )}
 
                 {aiLoading && (
-                  <div className="p-4 rounded-lg bg-muted/50 border text-center">
-                    <div className="animate-pulse text-sm text-muted-foreground">
-                      Analyzing project data...
+                  <div className="p-5 rounded-xl bg-gradient-to-br from-muted to-muted/50 border border-border/60 text-center">
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
+                      <span className="text-sm text-muted-foreground font-medium">
+                        Analyzing project data...
+                      </span>
                     </div>
                   </div>
                 )}
