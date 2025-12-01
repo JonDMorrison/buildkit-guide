@@ -280,9 +280,9 @@ export default function Dashboard() {
           query: question,
           projectId: currentProjectId,
           context: {
-            tasks: tasks?.slice(0, 20),
-            blockers: blockers?.slice(0, 10),
-            safetyForms: safetyForms?.slice(0, 10),
+            tasks: (tasks || []).slice(0, 20),
+            blockers: (blockers || []).slice(0, 10),
+            safetyForms: (safetyForms || []).slice(0, 10),
           },
         },
       });
