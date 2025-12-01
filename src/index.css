@@ -8,58 +8,67 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Base surfaces - clean whites and greys */
-    --background: 0 0% 96%;
-    --foreground: 0 0% 10%;
+    /* Horizon Brand Colors */
+    --brand-primary-dark: 150 30% 17%;      /* #1C3B23 */
+    --brand-primary-light: 145 35% 33%;     /* #3D7237 */
+    --brand-accent-orange: 27 60% 57%;      /* #DC8644 */
+    --brand-muted-grey: 135 10% 65%;        /* #A0ADA3 */
+    
+    /* Base surfaces - off white and white */
+    --background: 0 0% 98%;                 /* #FAFAFA */
+    --foreground: 150 30% 17%;              /* brand dark green */
 
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 10%;
+    --card: 0 0% 100%;                      /* #FFFFFF */
+    --card-foreground: 150 30% 17%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 10%;
+    --popover-foreground: 150 30% 17%;
 
-    /* Primary - dark grey for actions */
-    --primary: 0 0% 10%;
+    /* Primary - Horizon Dark Green */
+    --primary: 150 30% 17%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary - soft grey background */
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 10%;
+    /* Secondary - Light Green */
+    --secondary: 145 35% 33%;
+    --secondary-foreground: 0 0% 100%;
 
-    /* Muted - subtle backgrounds */
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
+    /* Muted - Grey Green */
+    --muted: 135 10% 65%;
+    --muted-foreground: 150 30% 17%;
 
-    /* Accent - for highlights */
-    --accent: 0 0% 10%;
+    /* Accent - Orange */
+    --accent: 27 60% 57%;
     --accent-foreground: 0 0% 100%;
 
     /* Status colors - construction standard */
-    --status-complete: 142 71% 45%;
+    --status-complete: 145 35% 33%;         /* Light Green */
     --status-complete-foreground: 0 0% 100%;
     
-    --status-progress: 48 100% 50%;
-    --status-progress-foreground: 0 0% 10%;
+    --status-progress: 145 35% 33%;         /* Light Green */
+    --status-progress-foreground: 0 0% 100%;
     
-    --status-issue: 0 100% 68%;
+    --status-issue: 27 60% 57%;             /* Orange */
     --status-issue-foreground: 0 0% 100%;
 
     --status-info: 210 100% 59%;
     --status-info-foreground: 0 0% 100%;
 
-    --destructive: 0 100% 68%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
     /* Borders and inputs - subtle */
-    --border: 0 0% 88%;
-    --input: 0 0% 88%;
-    --ring: 0 0% 10%;
+    --border: 135 10% 85%;
+    --input: 135 10% 85%;
+    --ring: 150 30% 17%;
 
     --radius: 0.5rem;
 
     /* Navigation */
     --nav-height: 56px;
     --tab-bar-height: 64px;
+    
+    /* Blueprint pattern */
+    --blueprint-grid: 150 30% 17%;
   }
 }
 
