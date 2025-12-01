@@ -376,6 +376,36 @@ export type Database = {
           },
         ]
       }
+      dashboard_layouts: {
+        Row: {
+          created_at: string
+          hidden_widgets: string[] | null
+          id: string
+          layout: Json
+          project_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          hidden_widgets?: string[] | null
+          id?: string
+          layout?: Json
+          project_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          hidden_widgets?: string[] | null
+          id?: string
+          layout?: Json
+          project_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       deficiencies: {
         Row: {
           assigned_trade_id: string | null
