@@ -47,6 +47,12 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        brand: {
+          "primary-dark": "hsl(var(--brand-primary-dark))",
+          "primary-light": "hsl(var(--brand-primary-light))",
+          "accent-orange": "hsl(var(--brand-accent-orange))",
+          "muted-grey": "hsl(var(--brand-muted-grey))",
+        },
         status: {
           complete: "hsl(var(--status-complete))",
           "complete-foreground": "hsl(var(--status-complete-foreground))",
