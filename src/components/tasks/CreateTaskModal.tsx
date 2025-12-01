@@ -22,7 +22,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
-import { Loader2 } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
+import { Badge } from '../ui/badge';
 
 const taskSchema = z.object({
   title: z.string().trim().min(3, 'Title must be at least 3 characters'),
@@ -59,6 +60,8 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
   const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState<any[]>([]);
   const [trades, setTrades] = useState<any[]>([]);
+  const [availableTasks, setAvailableTasks] = useState<any[]>([]);
+  const [selectedDependencies, setSelectedDependencies] = useState<string[]>([]);
   const [form, setForm] = useState<TaskForm>({
     title: '',
     description: '',
@@ -93,6 +96,22 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
     }
   }, [open]);
 
+  // Fetch available tasks when project changes
+  useEffect(() => {
+    if (form.projectId) {
+      supabase
+        .from('tasks')
+        .select('id, title, status')
+        .eq('project_id', form.projectId)
+        .eq('is_deleted', false)
+        .order('title')
+        .then(({ data }) => setAvailableTasks(data || []));
+    } else {
+      setAvailableTasks([]);
+      setSelectedDependencies([]);
+    }
+  }, [form.projectId]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
@@ -114,6 +133,27 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
       }).select().single();
 
       if (taskError) throw taskError;
+
+      // Create dependencies if selected
+      if (selectedDependencies.length > 0) {
+        const dependencyInserts = selectedDependencies.map((depId) => ({
+          task_id: taskData.id,
+          depends_on_task_id: depId,
+        }));
+
+        const { error: depsError } = await supabase
+          .from('task_dependencies')
+          .insert(dependencyInserts);
+
+        if (depsError) {
+          console.error('Error creating dependencies:', depsError);
+          toast({
+            title: 'Warning',
+            description: 'Task created but some dependencies failed',
+            variant: 'destructive',
+          });
+        }
+      }
 
       // Create manpower request if crew size is specified
       if (validatedData.requestedCrewSize && validatedData.requestedCrewSize > 0 && validatedData.tradeId) {
@@ -160,6 +200,7 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
         manpowerStartDate: '',
         manpowerEndDate: '',
       });
+      setSelectedDependencies([]);
 
       onOpenChange(false);
       onSuccess();
@@ -281,6 +322,64 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
             </Select>
           </FormField>
 
+          <Separator className="my-4" />
+
+          {/* Dependencies */}
+          {availableTasks.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold">Task Dependencies (Optional)</h3>
+              <p className="text-xs text-muted-foreground">
+                Select tasks that must be completed before this task can start.
+              </p>
+              
+              {selectedDependencies.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {selectedDependencies.map((depId) => {
+                    const task = availableTasks.find((t) => t.id === depId);
+                    return (
+                      <Badge key={depId} variant="secondary" className="gap-1">
+                        {task?.title}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSelectedDependencies((prev) =>
+                              prev.filter((id) => id !== depId)
+                            )
+                          }
+                          className="ml-1 hover:text-destructive"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    );
+                  })}
+                </div>
+              )}
+
+              <Select
+                value=""
+                onValueChange={(depId) => {
+                  if (!selectedDependencies.includes(depId)) {
+                    setSelectedDependencies((prev) => [...prev, depId]);
+                  }
+                }}
+              >
+                <SelectTrigger className="min-h-[52px] bg-card border-border">
+                  <SelectValue placeholder="Add dependency..." />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-border z-50 max-h-[200px]">
+                  {availableTasks
+                    .filter((task) => !selectedDependencies.includes(task.id))
+                    .map((task) => (
+                      <SelectItem key={task.id} value={task.id}>
+                        {task.title}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          
           <Separator className="my-4" />
           
           <div className="space-y-4">

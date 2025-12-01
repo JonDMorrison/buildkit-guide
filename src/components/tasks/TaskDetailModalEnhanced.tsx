@@ -43,6 +43,7 @@ import {
 } from 'lucide-react';
 import { FormField } from '../FormField';
 import { RequestManpowerModal } from './RequestManpowerModal';
+import { TaskDependencyManager } from './TaskDependencyManager';
 
 interface TaskDetailModalEnhancedProps {
   taskId: string | null;
@@ -478,31 +479,21 @@ export const TaskDetailModalEnhanced = ({
           )}
 
           {/* Dependencies */}
-          {dependencies.length > 0 && (
-            <>
-              <Separator />
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Link2 className="h-4 w-4 text-muted-foreground" />
-                  <h3 className="text-sm font-semibold">Dependencies</h3>
-                </div>
-                <div className="space-y-2">
-                  {dependencies.map((dep) => (
-                    <div key={dep.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                      <span className="text-sm">{dep.depends_on_task?.title}</span>
-                      <StatusBadge
-                        status={
-                          dep.depends_on_task?.status === 'done' ? 'complete' :
-                          dep.depends_on_task?.status === 'blocked' ? 'blocked' : 'progress'
-                        }
-                        label={dep.depends_on_task?.status}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
+          <Separator />
+          <TaskDependencyManager
+            taskId={taskId!}
+            projectId={task.project_id}
+            dependencies={dependencies}
+            onDependenciesChanged={() => {
+              // Refetch dependencies
+              supabase
+                .from('task_dependencies')
+                .select('*, depends_on_task:tasks!task_dependencies_depends_on_task_id_fkey(id, title, status)')
+                .eq('task_id', taskId)
+                .then(({ data }) => setDependencies(data || []));
+            }}
+            canEdit={canEdit}
+          />
 
           {/* Manpower */}
           <Separator />
