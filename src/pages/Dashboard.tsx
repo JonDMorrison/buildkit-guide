@@ -415,8 +415,8 @@ export default function Dashboard() {
   );
 
   const renderActivityWidget = () => (
-    <Card className="border-primary/20 shadow-lg h-full">
-      <CardHeader>
+    <Card className="border-primary/20 shadow-lg flex flex-col h-full">
+      <CardHeader className="flex-shrink-0">
         <CardTitle className="text-2xl font-black text-primary flex items-center gap-2">
           <TrendingUp className="h-6 w-6 text-secondary" />
           Task Activity
@@ -425,7 +425,7 @@ export default function Dashboard() {
           7 day performance at a glance
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1 overflow-auto">
         <ChartContainer
           config={{
             completed: { label: "Completed", color: "hsl(var(--secondary))" },
@@ -469,8 +469,8 @@ export default function Dashboard() {
   );
 
   const renderHealthWidget = () => (
-    <Card className="border-primary/20 shadow-lg h-full">
-      <CardHeader>
+    <Card className="border-primary/20 shadow-lg flex flex-col h-full">
+      <CardHeader className="flex-shrink-0">
         <CardTitle className="text-2xl font-black text-primary flex items-center gap-2">
           <Gauge className="h-6 w-6 text-accent" />
           Project Health
@@ -479,7 +479,7 @@ export default function Dashboard() {
           Key risk indicators
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-col items-center justify-center space-y-6">
+      <CardContent className="flex flex-col items-center justify-center space-y-6 flex-1 overflow-auto">
         <div className="relative w-48 h-48">
           <svg className="w-full h-full transform -rotate-90">
             <circle
@@ -527,8 +527,8 @@ export default function Dashboard() {
   );
 
   const renderDistributionWidget = () => (
-    <Card className="border-primary/20 shadow-lg h-full">
-      <CardHeader>
+    <Card className="border-primary/20 shadow-lg flex flex-col h-full">
+      <CardHeader className="flex-shrink-0">
         <CardTitle className="text-2xl font-black text-primary flex items-center gap-2">
           <Target className="h-6 w-6 text-secondary" />
           Task Status Distribution
@@ -537,7 +537,7 @@ export default function Dashboard() {
           Current workflow breakdown
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 flex-1 overflow-auto">
         {statusDistribution.map((item) => (
           <div key={item.status} className="space-y-2">
             <div className="flex items-center justify-between">
@@ -565,8 +565,8 @@ export default function Dashboard() {
       .slice(0, 5) || [];
 
     return (
-      <Card className="border-primary/20 shadow-lg h-full">
-        <CardHeader>
+      <Card className="border-primary/20 shadow-lg flex flex-col h-full">
+        <CardHeader className="flex-shrink-0">
           <CardTitle className="text-2xl font-black text-primary flex items-center gap-2">
             <CheckCircle2 className="h-6 w-6 text-secondary" />
             My Day
@@ -575,7 +575,7 @@ export default function Dashboard() {
             Priority tasks that need attention
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-3 flex-1 overflow-auto">
           {priorityTasks.length > 0 ? (
             priorityTasks.map((task) => (
               <div
@@ -614,15 +614,15 @@ export default function Dashboard() {
   };
 
   const renderSafetyWidget = () => (
-    <Card className="bg-secondary/5 border-secondary/30 shadow-lg h-full">
-      <CardHeader>
+    <Card className="bg-secondary/5 border-secondary/30 shadow-lg flex flex-col h-full">
+      <CardHeader className="flex-shrink-0">
         <CardTitle className="text-xl font-black text-primary flex items-center gap-2">
           <Shield className="h-5 w-5 text-secondary" />
           Safety & Compliance
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
+      <CardContent className="space-y-4 flex-1 flex flex-col overflow-auto">
+        <div className="space-y-2 flex-1">
           <div className="flex items-center justify-between">
             <span className="text-sm font-bold text-muted-foreground">Forms Today</span>
             <span className="text-2xl font-black text-primary">{safetyForms?.filter(f => 
@@ -641,7 +641,7 @@ export default function Dashboard() {
 
         <Button
           onClick={() => navigate("/safety")}
-          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold"
+          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold flex-shrink-0"
         >
           Open Safety Dashboard
           <ArrowRight className="ml-2 h-4 w-4" />
@@ -654,8 +654,8 @@ export default function Dashboard() {
     const activeBlockers = blockers?.filter(b => !b.is_resolved) || [];
 
     return (
-      <Card className="bg-accent/5 border-accent/30 shadow-lg h-full">
-        <CardHeader>
+      <Card className="bg-accent/5 border-accent/30 shadow-lg flex flex-col h-full">
+        <CardHeader className="flex-shrink-0">
           <CardTitle className="text-2xl font-black text-primary flex items-center gap-2">
             <AlertTriangle className="h-6 w-6 text-accent animate-pulse" />
             Blockers and Risks
@@ -664,7 +664,7 @@ export default function Dashboard() {
             Active issues requiring attention
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-3 flex-1 overflow-auto">
           {activeBlockers.length > 0 ? (
             activeBlockers.slice(0, 5).map((blocker: any) => (
               <div
@@ -702,7 +702,7 @@ export default function Dashboard() {
   };
 
   const renderAIWidget = () => (
-    <Card className="bg-primary text-primary-foreground shadow-2xl border-none overflow-hidden h-full">
+    <Card className="bg-primary text-primary-foreground shadow-2xl border-none overflow-hidden flex flex-col h-full">
       <div className="absolute inset-0 opacity-10" 
         style={{
           backgroundImage: `
@@ -712,7 +712,7 @@ export default function Dashboard() {
           backgroundSize: '20px 20px'
         }}
       />
-      <CardHeader className="relative">
+      <CardHeader className="relative flex-shrink-0">
         <CardTitle className="text-2xl font-black flex items-center gap-2">
           <Sparkles className="h-6 w-6 text-accent" />
           Ask AI About This Project
@@ -721,7 +721,7 @@ export default function Dashboard() {
           Get intelligent insights and answers
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4 relative">
+      <CardContent className="space-y-4 relative flex-1 overflow-auto">
         <div className="flex gap-2">
           <Input
             placeholder="Ask a question about tasks, blockers, safety, or schedule"
@@ -986,57 +986,59 @@ export default function Dashboard() {
             layouts={{ lg: layout, md: layout, sm: layout, xs: layout, xxs: layout }}
             breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
             cols={{ lg: 12, md: 12, sm: 6, xs: 4, xxs: 2 }}
-            rowHeight={60}
+            rowHeight={80}
             isDraggable={isEditMode}
             isResizable={isEditMode}
             onLayoutChange={handleLayoutChange}
             draggableHandle=".drag-handle"
+            margin={[24, 24]}
+            containerPadding={[0, 0]}
           >
             {!hiddenWidgets.includes('metrics') && (
-              <div key="metrics" className={isEditMode ? "border-2 border-primary/50 rounded-lg" : ""}>
-                {isEditMode && <div className="drag-handle absolute top-2 right-2 cursor-move z-10 bg-primary/90 text-primary-foreground p-2 rounded"><MoveIcon className="h-4 w-4" /></div>}
+              <div key="metrics" className={`widget-container ${isEditMode ? "border-2 border-primary/50 rounded-lg bg-background/50" : ""}`}>
+                {isEditMode && <div className="drag-handle absolute top-2 right-2 cursor-move z-10 bg-primary/90 text-primary-foreground p-2 rounded shadow-lg"><MoveIcon className="h-4 w-4" /></div>}
                 {renderMetricsWidget()}
               </div>
             )}
             {!hiddenWidgets.includes('activity') && (
-              <div key="activity" className={isEditMode ? "border-2 border-primary/50 rounded-lg" : ""}>
-                {isEditMode && <div className="drag-handle absolute top-2 right-2 cursor-move z-10 bg-primary/90 text-primary-foreground p-2 rounded"><MoveIcon className="h-4 w-4" /></div>}
+              <div key="activity" className={`widget-container ${isEditMode ? "border-2 border-primary/50 rounded-lg bg-background/50" : ""}`}>
+                {isEditMode && <div className="drag-handle absolute top-2 right-2 cursor-move z-10 bg-primary/90 text-primary-foreground p-2 rounded shadow-lg"><MoveIcon className="h-4 w-4" /></div>}
                 {renderActivityWidget()}
               </div>
             )}
             {!hiddenWidgets.includes('health') && (
-              <div key="health" className={isEditMode ? "border-2 border-primary/50 rounded-lg" : ""}>
-                {isEditMode && <div className="drag-handle absolute top-2 right-2 cursor-move z-10 bg-primary/90 text-primary-foreground p-2 rounded"><MoveIcon className="h-4 w-4" /></div>}
+              <div key="health" className={`widget-container ${isEditMode ? "border-2 border-primary/50 rounded-lg bg-background/50" : ""}`}>
+                {isEditMode && <div className="drag-handle absolute top-2 right-2 cursor-move z-10 bg-primary/90 text-primary-foreground p-2 rounded shadow-lg"><MoveIcon className="h-4 w-4" /></div>}
                 {renderHealthWidget()}
               </div>
             )}
             {!hiddenWidgets.includes('distribution') && (
-              <div key="distribution" className={isEditMode ? "border-2 border-primary/50 rounded-lg" : ""}>
-                {isEditMode && <div className="drag-handle absolute top-2 right-2 cursor-move z-10 bg-primary/90 text-primary-foreground p-2 rounded"><MoveIcon className="h-4 w-4" /></div>}
+              <div key="distribution" className={`widget-container ${isEditMode ? "border-2 border-primary/50 rounded-lg bg-background/50" : ""}`}>
+                {isEditMode && <div className="drag-handle absolute top-2 right-2 cursor-move z-10 bg-primary/90 text-primary-foreground p-2 rounded shadow-lg"><MoveIcon className="h-4 w-4" /></div>}
                 {renderDistributionWidget()}
               </div>
             )}
             {!hiddenWidgets.includes('myday') && (
-              <div key="myday" className={isEditMode ? "border-2 border-primary/50 rounded-lg" : ""}>
-                {isEditMode && <div className="drag-handle absolute top-2 right-2 cursor-move z-10 bg-primary/90 text-primary-foreground p-2 rounded"><MoveIcon className="h-4 w-4" /></div>}
+              <div key="myday" className={`widget-container ${isEditMode ? "border-2 border-primary/50 rounded-lg bg-background/50" : ""}`}>
+                {isEditMode && <div className="drag-handle absolute top-2 right-2 cursor-move z-10 bg-primary/90 text-primary-foreground p-2 rounded shadow-lg"><MoveIcon className="h-4 w-4" /></div>}
                 {renderMyDayWidget()}
               </div>
             )}
             {!hiddenWidgets.includes('safety') && (
-              <div key="safety" className={isEditMode ? "border-2 border-primary/50 rounded-lg" : ""}>
-                {isEditMode && <div className="drag-handle absolute top-2 right-2 cursor-move z-10 bg-primary/90 text-primary-foreground p-2 rounded"><MoveIcon className="h-4 w-4" /></div>}
+              <div key="safety" className={`widget-container ${isEditMode ? "border-2 border-primary/50 rounded-lg bg-background/50" : ""}`}>
+                {isEditMode && <div className="drag-handle absolute top-2 right-2 cursor-move z-10 bg-primary/90 text-primary-foreground p-2 rounded shadow-lg"><MoveIcon className="h-4 w-4" /></div>}
                 {renderSafetyWidget()}
               </div>
             )}
             {!hiddenWidgets.includes('blockers') && (
-              <div key="blockers" className={isEditMode ? "border-2 border-primary/50 rounded-lg" : ""}>
-                {isEditMode && <div className="drag-handle absolute top-2 right-2 cursor-move z-10 bg-primary/90 text-primary-foreground p-2 rounded"><MoveIcon className="h-4 w-4" /></div>}
+              <div key="blockers" className={`widget-container ${isEditMode ? "border-2 border-primary/50 rounded-lg bg-background/50" : ""}`}>
+                {isEditMode && <div className="drag-handle absolute top-2 right-2 cursor-move z-10 bg-primary/90 text-primary-foreground p-2 rounded shadow-lg"><MoveIcon className="h-4 w-4" /></div>}
                 {renderBlockersWidget()}
               </div>
             )}
             {!hiddenWidgets.includes('ai') && (
-              <div key="ai" className={isEditMode ? "border-2 border-primary/50 rounded-lg" : ""}>
-                {isEditMode && <div className="drag-handle absolute top-2 right-2 cursor-move z-10 bg-primary/90 text-primary-foreground p-2 rounded"><MoveIcon className="h-4 w-4" /></div>}
+              <div key="ai" className={`widget-container ${isEditMode ? "border-2 border-primary/50 rounded-lg bg-background/50" : ""}`}>
+                {isEditMode && <div className="drag-handle absolute top-2 right-2 cursor-move z-10 bg-primary/90 text-primary-foreground p-2 rounded shadow-lg"><MoveIcon className="h-4 w-4" /></div>}
                 {renderAIWidget()}
               </div>
             )}
