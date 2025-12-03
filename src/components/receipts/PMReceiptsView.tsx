@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,21 +7,21 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Camera, 
-  Download, 
   Receipt as ReceiptIcon, 
   Loader2, 
   DollarSign, 
   FileText,
   Calendar,
-  ArrowUpDown
+  ArrowUpDown,
+  Files
 } from 'lucide-react';
 import { useReceipts, Receipt, RECEIPT_CATEGORIES, ReceiptCategory } from '@/hooks/useReceipts';
 import { UploadReceiptModal } from './UploadReceiptModal';
+import { BatchUploadReceiptModal } from './BatchUploadReceiptModal';
 import { ReceiptDetailModal } from './ReceiptDetailModal';
 import { ExportReceiptsButton } from './ExportReceiptsButton';
 import { format, startOfMonth, startOfWeek, isAfter } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
-import { useEffect } from 'react';
 
 interface PMReceiptsViewProps {
   projectId: string;
@@ -81,6 +81,7 @@ const ReceiptThumbnail = ({
 
 export const PMReceiptsView = ({ projectId }: PMReceiptsViewProps) => {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [batchUploadModalOpen, setBatchUploadModalOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null);
   const [projectMembers, setProjectMembers] = useState<ProjectMember[]>([]);
@@ -184,14 +185,22 @@ export const PMReceiptsView = ({ projectId }: PMReceiptsViewProps) => {
           <h1 className="text-2xl font-bold text-[#1C3B23]">Project Receipts</h1>
           <p className="text-[#A0ADA3] mt-1">Review and export receipts for this project.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <ExportReceiptsButton receipts={receipts} projectId={projectId} />
+          <Button
+            onClick={() => setBatchUploadModalOpen(true)}
+            variant="outline"
+            className="border-[#DC8644] text-[#DC8644] hover:bg-[#DC8644]/10"
+          >
+            <Files className="h-4 w-4 mr-2" />
+            Batch Upload
+          </Button>
           <Button
             onClick={() => setUploadModalOpen(true)}
             className="bg-[#1C3B23] hover:bg-[#3D7237] text-white"
           >
             <Camera className="h-4 w-4 mr-2" />
-            Upload Receipt
+            Upload
           </Button>
         </div>
       </div>
@@ -445,6 +454,14 @@ export const PMReceiptsView = ({ projectId }: PMReceiptsViewProps) => {
       <UploadReceiptModal
         open={uploadModalOpen}
         onOpenChange={setUploadModalOpen}
+        projectId={projectId}
+        onUploadComplete={refetch}
+      />
+
+      {/* Batch Upload Modal */}
+      <BatchUploadReceiptModal
+        open={batchUploadModalOpen}
+        onOpenChange={setBatchUploadModalOpen}
         projectId={projectId}
         onUploadComplete={refetch}
       />
