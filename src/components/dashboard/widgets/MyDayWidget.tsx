@@ -18,15 +18,15 @@ export const MyDayWidget = ({ priorityTasks }: MyDayWidgetProps) => {
   const navigate = useNavigate();
 
   return (
-    <Card className="border-primary/20 shadow-md h-full flex flex-col">
-      <CardHeader className="pb-2">
+    <Card className="border-primary/20 shadow-md h-full flex flex-col overflow-hidden">
+      <CardHeader className="pb-2 flex-shrink-0">
         <CardTitle className="text-lg font-bold text-primary flex items-center gap-2">
           <CheckCircle2 className="h-5 w-5 text-secondary" />
           My Day
         </CardTitle>
         <CardDescription className="text-sm">Priority tasks needing attention</CardDescription>
       </CardHeader>
-      <CardContent className="flex-1 overflow-auto min-h-0">
+      <CardContent className="flex-1 overflow-auto min-h-0 p-3">
         {priorityTasks.length > 0 ? (
           <div className="space-y-2">
             {priorityTasks.map((task) => (

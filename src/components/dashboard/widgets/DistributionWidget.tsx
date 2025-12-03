@@ -14,15 +14,15 @@ interface DistributionWidgetProps {
 
 export const DistributionWidget = ({ statusDistribution, totalTasks }: DistributionWidgetProps) => {
   return (
-    <Card className="border-primary/20 shadow-md h-full flex flex-col">
-      <CardHeader className="pb-2">
+    <Card className="border-primary/20 shadow-md h-full flex flex-col overflow-hidden">
+      <CardHeader className="pb-2 flex-shrink-0">
         <CardTitle className="text-lg font-bold text-primary flex items-center gap-2">
           <Target className="h-5 w-5 text-secondary" />
           Task Distribution
         </CardTitle>
         <CardDescription className="text-sm">Current workflow breakdown</CardDescription>
       </CardHeader>
-      <CardContent className="flex-1 flex flex-col justify-center gap-3 min-h-0">
+      <CardContent className="flex-1 flex flex-col justify-center gap-3 min-h-0 overflow-hidden p-3">
         {statusDistribution.map((item) => (
           <div key={item.status} className="space-y-1">
             <div className="flex items-center justify-between">

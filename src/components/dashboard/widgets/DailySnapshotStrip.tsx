@@ -28,9 +28,9 @@ export const DailySnapshotStrip = ({
   blockedCount,
 }: DailySnapshotStripProps) => {
   return (
-    <Card className="bg-primary/5 border-primary/20">
-      <CardContent className="p-4">
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
+    <Card className="bg-primary/5 border-primary/20 overflow-hidden">
+      <CardContent className="p-3 md:p-4 overflow-x-auto">
+        <div className="grid grid-cols-3 md:grid-cols-6 gap-3 md:gap-4 min-w-0">
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-lg bg-primary/10">
               {getWeatherIcon(weather)}
