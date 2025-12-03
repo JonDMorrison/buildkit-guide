@@ -1,6 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { AlertTriangle, ChevronRight } from "lucide-react";
 
 interface Blocker {
   id: string;
@@ -16,13 +15,16 @@ export const BlockersWidget = ({ blockers }: BlockersWidgetProps) => {
   const navigate = useNavigate();
 
   return (
-    <div className="widget-card widget-card-accent h-full">
-      <div className="flex-shrink-0 mb-3">
-        <h3 className="widget-title">
-          <AlertTriangle className="h-4 w-4 text-accent" />
-          Active Blockers
-        </h3>
-        <p className="widget-subtitle">{blockers.length} unresolved issue{blockers.length !== 1 ? 's' : ''}</p>
+    <div className="widget-card widget-card-accent h-full group cursor-pointer hover:border-accent/40 transition-colors" onClick={() => navigate("/tasks?status=blocked")}>
+      <div className="flex-shrink-0 mb-3 flex items-start justify-between">
+        <div>
+          <h3 className="widget-title">
+            <AlertTriangle className="h-4 w-4 text-accent" />
+            Active Blockers
+          </h3>
+          <p className="widget-subtitle">{blockers.length} unresolved issue{blockers.length !== 1 ? 's' : ''}</p>
+        </div>
+        <ChevronRight className="h-4 w-4 text-accent opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
       
       <div className="flex-1 overflow-auto min-h-0">
@@ -57,16 +59,10 @@ export const BlockersWidget = ({ blockers }: BlockersWidgetProps) => {
       </div>
       
       {blockers.length > 4 && (
-        <div className="flex-shrink-0 pt-3 mt-auto">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => navigate("/tasks?filter=blocked")}
-            className="w-full border-accent/30 text-accent hover:bg-accent hover:text-accent-foreground"
-          >
-            View All ({blockers.length})
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
+        <div className="flex-shrink-0 pt-3 mt-auto text-center">
+          <p className="text-xs text-accent font-medium">
+            +{blockers.length - 4} more blockers
+          </p>
         </div>
       )}
     </div>

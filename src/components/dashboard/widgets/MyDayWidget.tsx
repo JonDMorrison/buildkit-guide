@@ -17,13 +17,19 @@ export const MyDayWidget = ({ priorityTasks }: MyDayWidgetProps) => {
   const navigate = useNavigate();
 
   return (
-    <div className="widget-card h-full">
-      <div className="flex-shrink-0 mb-3">
-        <h3 className="widget-title">
-          <CheckCircle2 className="h-4 w-4 text-secondary" />
-          My Day
-        </h3>
-        <p className="widget-subtitle">Priority tasks needing attention</p>
+    <div className="widget-card h-full group">
+      <div 
+        className="flex-shrink-0 mb-3 flex items-start justify-between cursor-pointer"
+        onClick={() => navigate("/tasks")}
+      >
+        <div>
+          <h3 className="widget-title">
+            <CheckCircle2 className="h-4 w-4 text-secondary" />
+            My Day
+          </h3>
+          <p className="widget-subtitle">Priority tasks needing attention</p>
+        </div>
+        <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
       
       <div className="flex-1 overflow-auto min-h-0">
