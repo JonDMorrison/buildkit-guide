@@ -360,7 +360,7 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <Button onClick={() => navigate("/tasks")} size="sm" className="bg-primary hover:bg-primary/90 px-3">
+              <Button onClick={() => navigate("/tasks")} size="sm" className="bg-primary hover:bg-primary/90 px-3 w-fit">
                 <ArrowRight className="h-4 w-4 mr-1" /> Tasks
               </Button>
             </div>
