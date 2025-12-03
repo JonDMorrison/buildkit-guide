@@ -24,7 +24,7 @@ export default function HowItWorks() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleBookDemo = () => {
-    window.location.href = "mailto:demo@fieldsync.app?subject=Demo Request";
+    window.location.href = "mailto:demo@buildsense.app?subject=Demo Request";
     setMobileMenuOpen(false);
   };
 
@@ -131,7 +131,7 @@ export default function HowItWorks() {
             className="text-xl md:text-2xl font-bold text-foreground cursor-pointer hover:text-[#FF6B35] transition-colors tracking-tight"
             onClick={() => navigate('/')}
           >
-            FieldSync
+            Build Sense
           </h1>
           
           {/* Desktop Navigation */}
@@ -158,7 +158,7 @@ export default function HowItWorks() {
               </SheetTrigger>
               <SheetContent side="right" className="w-[280px] sm:w-[320px]">
                 <SheetHeader className="text-left mb-6">
-                  <SheetTitle className="text-2xl font-bold">FieldSync</SheetTitle>
+                  <SheetTitle className="text-2xl font-bold">Build Sense</SheetTitle>
                 </SheetHeader>
                 <nav className="flex flex-col gap-4">
                   <Button 
@@ -295,7 +295,7 @@ export default function HowItWorks() {
         <div className="container mx-auto max-w-6xl">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-muted-foreground">
-              © 2024 FieldSync. Built for the field.
+              © 2024 Build Sense. Built for the field.
             </p>
             <div className="flex gap-4">
               <Button 

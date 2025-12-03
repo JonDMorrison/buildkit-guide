@@ -18,7 +18,7 @@ export default function Landing() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   const handleBookDemo = () => {
-    window.location.href = "mailto:demo@fieldsync.app?subject=Demo Request";
+    window.location.href = "mailto:demo@buildsense.app?subject=Demo Request";
     setMobileMenuOpen(false);
   };
   
@@ -42,7 +42,7 @@ export default function Landing() {
       {/* Navigation */}
       <nav className="fixed top-0 w-full bg-background/98 backdrop-blur-md border-b border-border z-50 shadow-sm">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <h1 className="text-xl md:text-2xl font-bold text-foreground tracking-tight">FieldSync</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-foreground tracking-tight">Build Sense</h1>
           
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-3">
@@ -71,7 +71,7 @@ export default function Landing() {
               </SheetTrigger>
               <SheetContent side="right" className="w-[280px] sm:w-[320px]">
                 <SheetHeader className="text-left mb-6">
-                  <SheetTitle className="text-2xl font-bold">FieldSync</SheetTitle>
+                  <SheetTitle className="text-2xl font-bold">Build Sense</SheetTitle>
                 </SheetHeader>
                 <nav className="flex flex-col gap-4">
                   <Button 
@@ -135,7 +135,7 @@ export default function Landing() {
               </div>
             </div>
             <div className="flex justify-center mt-8 lg:mt-0">
-              <img alt="FieldSync App Dashboard" className="w-full max-w-md lg:max-w-lg rounded-lg shadow-2xl" loading="eager" src="/lovable-uploads/4e1b85d6-7eda-4f22-abb7-fb02a677b21c.png" />
+              <img alt="Build Sense App Dashboard" className="w-full max-w-md lg:max-w-lg rounded-lg shadow-2xl" loading="eager" src="/lovable-uploads/4e1b85d6-7eda-4f22-abb7-fb02a677b21c.png" />
             </div>
           </div>
         </div>
@@ -315,7 +315,7 @@ export default function Landing() {
         <div className="container mx-auto max-w-6xl">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-muted-foreground">
-              © 2024 FieldSync. Built for the field.
+              © 2024 Build Sense. Built for the field.
             </p>
             <Button variant="ghost" onClick={() => navigate('/auth')}>
               Sign In

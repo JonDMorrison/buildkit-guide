@@ -7,7 +7,7 @@ export const TopNav = () => {
   return (
     <nav className="sticky top-0 z-50 flex items-center justify-between h-nav px-4 bg-card border-b border-border">
       <div className="flex items-center gap-3">
-        <h1 className="text-lg font-semibold text-foreground">Horizon Coordination</h1>
+        <h1 className="text-lg font-semibold text-foreground">Build Sense</h1>
       </div>
       
       <div className="flex items-center gap-2">
