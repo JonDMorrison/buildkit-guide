@@ -468,7 +468,7 @@ export default function Dashboard() {
             containerPadding={[0, 0]}
           >
             {widgetIds.filter(id => !hiddenWidgets.includes(id)).map(widgetId => (
-              <div key={widgetId} className={`widget-container ${isEditMode ? "border border-primary/30 rounded-lg bg-background/80" : ""}`}>
+              <div key={widgetId} className={`widget-container overflow-hidden rounded-lg ${isEditMode ? "border border-primary/30 bg-background/80" : ""}`}>
                 {isEditMode && (
                   <div className="drag-handle absolute top-1 right-1 cursor-move z-10 bg-primary text-primary-foreground p-1.5 rounded shadow">
                     <MoveIcon className="h-3 w-3" />

@@ -13,14 +13,14 @@ export const SafetyWidget = ({ formsToday, formsThisWeek, incidents }: SafetyWid
   const navigate = useNavigate();
 
   return (
-    <Card className="bg-secondary/5 border-secondary/30 shadow-md h-full flex flex-col">
-      <CardHeader className="pb-2">
+    <Card className="bg-secondary/5 border-secondary/30 shadow-md h-full flex flex-col overflow-hidden">
+      <CardHeader className="pb-2 flex-shrink-0">
         <CardTitle className="text-lg font-bold text-primary flex items-center gap-2">
           <Shield className="h-5 w-5 text-secondary" />
           Safety & Compliance
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex-1 flex flex-col justify-between min-h-0">
+      <CardContent className="flex-1 flex flex-col justify-between min-h-0 overflow-hidden p-3">
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-muted-foreground">Forms Today</span>

@@ -9,21 +9,21 @@ interface ActivityWidgetProps {
 
 export const ActivityWidget = ({ completionTrendData }: ActivityWidgetProps) => {
   return (
-    <Card className="border-primary/20 shadow-md h-full flex flex-col">
-      <CardHeader className="pb-2">
+    <Card className="border-primary/20 shadow-md h-full flex flex-col overflow-hidden">
+      <CardHeader className="pb-2 flex-shrink-0">
         <CardTitle className="text-lg font-bold text-primary flex items-center gap-2">
           <TrendingUp className="h-5 w-5 text-secondary" />
           Task Activity
         </CardTitle>
         <CardDescription className="text-sm">7-day performance</CardDescription>
       </CardHeader>
-      <CardContent className="flex-1 min-h-0">
+      <CardContent className="flex-1 min-h-0 overflow-hidden p-3">
         <ChartContainer
           config={{
             completed: { label: "Completed", color: "hsl(var(--secondary))" },
             created: { label: "Created", color: "hsl(var(--muted))" },
           }}
-          className="h-full w-full"
+          className="h-full w-full max-h-full"
         >
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={completionTrendData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>

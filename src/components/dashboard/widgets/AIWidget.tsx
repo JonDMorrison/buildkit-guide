@@ -53,8 +53,8 @@ export const AIWidget = ({ projectId, contextData }: AIWidgetProps) => {
   };
 
   return (
-    <Card className="bg-primary text-primary-foreground shadow-lg border-none h-full flex flex-col overflow-hidden">
-      <div className="absolute inset-0 opacity-10 pointer-events-none" 
+    <Card className="relative bg-primary text-primary-foreground shadow-lg border-none h-full flex flex-col overflow-hidden">
+      <div className="absolute inset-0 opacity-10 pointer-events-none overflow-hidden" 
         style={{
           backgroundImage: `
             linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),

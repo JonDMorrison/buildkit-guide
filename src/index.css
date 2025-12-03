@@ -13,11 +13,14 @@ All colors MUST be HSL.
   display: flex;
   flex-direction: column;
   position: relative;
+  overflow: hidden;
+  border-radius: 0.5rem;
 }
 
 .widget-container > * {
   width: 100%;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
@@ -25,6 +28,7 @@ All colors MUST be HSL.
 .react-grid-item {
   transition: all 200ms ease;
   transition-property: left, top, width, height;
+  overflow: hidden;
 }
 
 .react-grid-item.cssTransforms {
