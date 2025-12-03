@@ -7,3 +7,6 @@ export { SafetyWidget } from './SafetyWidget';
 export { BlockersWidget } from './BlockersWidget';
 export { AIWidget } from './AIWidget';
 export { DailySnapshotStrip } from './DailySnapshotStrip';
+export { SnapshotDetailModal } from './SnapshotDetailModal';
+export { ActiveTradesPopover } from './ActiveTradesPopover';
+export type { SnapshotTask, SnapshotTrade } from './DailySnapshotStrip';

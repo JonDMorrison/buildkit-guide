@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Layout } from "@/components/Layout";
 import { SectionHeader } from "@/components/SectionHeader";
 import { EmptyState } from "@/components/EmptyState";
@@ -21,6 +22,7 @@ type ViewMode = 'list' | 'kanban' | 'calendar';
 
 const Tasks = () => {
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { currentProjectId } = useCurrentProject();
   const { can, isWorker, loading: roleLoading } = useAuthRole(currentProjectId || undefined);
   const [tasks, setTasks] = useState<any[]>([]);
@@ -32,6 +34,7 @@ const Tasks = () => {
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [initialFilters, setInitialFilters] = useState<TaskFiltersType | null>(null);
 
   // Permission checks
   const canCreateTasks = currentProjectId ? can('create_tasks', currentProjectId) : false;
@@ -63,6 +66,32 @@ const Tasks = () => {
     }
   };
 
+  // Read URL params for initial filters and task detail
+  useEffect(() => {
+    const statusParam = searchParams.get('status');
+    const dateRangeParam = searchParams.get('dateRange') as 'all' | 'today' | 'week' | 'overdue' | null;
+    const tradeIdParam = searchParams.get('tradeId');
+    const taskIdParam = searchParams.get('taskId');
+
+    // Set initial filters from URL
+    if (statusParam || dateRangeParam || tradeIdParam) {
+      setInitialFilters({
+        status: statusParam || undefined,
+        dateRange: dateRangeParam || undefined,
+        tradeId: tradeIdParam || undefined,
+      });
+    }
+
+    // Open task detail modal if taskId is in URL
+    if (taskIdParam) {
+      setSelectedTaskId(taskIdParam);
+      setDetailModalOpen(true);
+      // Clear taskId from URL after opening modal
+      searchParams.delete('taskId');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams]);
+
   useEffect(() => {
     fetchTasks();
 
@@ -86,6 +115,14 @@ const Tasks = () => {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  // Apply initial filters once tasks are loaded
+  useEffect(() => {
+    if (tasks.length > 0 && initialFilters) {
+      handleFilterChange(initialFilters);
+      setInitialFilters(null);
+    }
+  }, [tasks, initialFilters]);
 
   const handleFilterChange = (filters: TaskFiltersType) => {
     let filtered = [...tasks];

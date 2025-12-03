@@ -20,7 +20,10 @@ import {
   BlockersWidget,
   AIWidget,
   DailySnapshotStrip,
+  SnapshotDetailModal,
+  ActiveTradesPopover,
 } from "@/components/dashboard/widgets";
+import type { SnapshotTask, SnapshotTrade } from "@/components/dashboard/widgets";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,6 +52,11 @@ export default function Dashboard() {
   const { currentProjectId, setCurrentProject } = useCurrentProject();
   const { isPM, isForeman } = useAuthRole(currentProjectId || undefined);
   const [currentBreakpoint, setCurrentBreakpoint] = useState("lg");
+  
+  // Modal states for snapshot strip
+  const [startingModalOpen, setStartingModalOpen] = useState(false);
+  const [finishingModalOpen, setFinishingModalOpen] = useState(false);
+  const [tradesPopoverOpen, setTradesPopoverOpen] = useState(false);
 
   const {
     layouts,
@@ -182,22 +190,43 @@ export default function Dashboard() {
     enabled: !!currentProjectId,
   });
 
-  const { data: activeTrades = 0 } = useQuery({
-    queryKey: ["dashboard-active-trades", currentProjectId],
+  // Fetch active trades with names and task counts
+  const { data: activeTradesData = [] } = useQuery({
+    queryKey: ["dashboard-active-trades-detail", currentProjectId],
     queryFn: async () => {
-      if (!currentProjectId) return 0;
+      if (!currentProjectId) return [];
       const { data, error } = await supabase
         .from("tasks")
-        .select("assigned_trade_id")
+        .select("assigned_trade_id, trades(id, name, trade_type)")
         .eq("project_id", currentProjectId)
         .eq("is_deleted", false)
-        .in("status", ["in_progress", "not_started"]);
+        .in("status", ["in_progress", "not_started"])
+        .not("assigned_trade_id", "is", null);
       if (error) throw error;
-      const uniqueTrades = new Set(data?.map(t => t.assigned_trade_id).filter(Boolean));
-      return uniqueTrades.size;
+      
+      // Group by trade and count tasks
+      const tradeMap = new Map<string, SnapshotTrade>();
+      data?.forEach((t: any) => {
+        if (t.trades) {
+          const existing = tradeMap.get(t.trades.id);
+          if (existing) {
+            existing.taskCount++;
+          } else {
+            tradeMap.set(t.trades.id, {
+              id: t.trades.id,
+              name: t.trades.name,
+              trade_type: t.trades.trade_type,
+              taskCount: 1,
+            });
+          }
+        }
+      });
+      return Array.from(tradeMap.values()).sort((a, b) => b.taskCount - a.taskCount);
     },
     enabled: !!currentProjectId,
   });
+
+  const activeTrades = activeTradesData.length;
 
   // Calculate metrics
   const openTasks = tasks.filter(t => t.status !== "done").length;
@@ -235,8 +264,37 @@ export default function Dashboard() {
   const formsToday = safetyForms.filter(f => format(new Date(f.created_at), "yyyy-MM-dd") === format(today, "yyyy-MM-dd")).length;
   const incidents = safetyForms.filter(f => f.form_type === "incident").length;
 
-  const tasksStartingToday = tasks.filter(t => t.start_date && format(new Date(t.start_date), "yyyy-MM-dd") === format(today, "yyyy-MM-dd")).length;
-  const tasksFinishingToday = tasks.filter(t => t.due_date && format(new Date(t.due_date), "yyyy-MM-dd") === format(today, "yyyy-MM-dd")).length;
+  // Get full task objects for starting/finishing today
+  const tasksStartingTodayList: SnapshotTask[] = tasks
+    .filter(t => t.start_date && format(new Date(t.start_date), "yyyy-MM-dd") === format(today, "yyyy-MM-dd"))
+    .map(t => ({
+      id: t.id,
+      title: t.title,
+      status: t.status,
+      due_date: t.due_date,
+      start_date: t.start_date,
+      location: t.location,
+      assigned_trade: t.assigned_trade,
+    }));
+  
+  const tasksFinishingTodayList: SnapshotTask[] = tasks
+    .filter(t => t.due_date && format(new Date(t.due_date), "yyyy-MM-dd") === format(today, "yyyy-MM-dd"))
+    .map(t => ({
+      id: t.id,
+      title: t.title,
+      status: t.status,
+      due_date: t.due_date,
+      start_date: t.start_date,
+      location: t.location,
+      assigned_trade: t.assigned_trade,
+    }));
+
+  const tasksStartingToday = tasksStartingTodayList.length;
+  const tasksFinishingToday = tasksFinishingTodayList.length;
+
+  // Snapshot click handlers
+  const handleDailyLogsNav = () => navigate("/daily-logs");
+  const handleBlockersNav = () => navigate("/tasks?status=blocked");
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -367,13 +425,43 @@ export default function Dashboard() {
           </div>
 
           {/* Daily Snapshot */}
-          <DailySnapshotStrip
-            weather={todayLog?.weather || null}
-            crewCount={todayLog?.crew_count || 0}
-            activeTrades={activeTrades}
-            tasksStarting={tasksStartingToday}
-            tasksFinishing={tasksFinishingToday}
-            blockedCount={blockedTasks}
+          <ActiveTradesPopover
+            trades={activeTradesData}
+            open={tradesPopoverOpen}
+            onOpenChange={setTradesPopoverOpen}
+          >
+            <div>
+              <DailySnapshotStrip
+                weather={todayLog?.weather || null}
+                crewCount={todayLog?.crew_count || 0}
+                activeTrades={activeTrades}
+                tasksStarting={tasksStartingToday}
+                tasksFinishing={tasksFinishingToday}
+                blockedCount={blockedTasks}
+                onWeatherClick={handleDailyLogsNav}
+                onCrewClick={handleDailyLogsNav}
+                onTradesClick={() => setTradesPopoverOpen(true)}
+                onStartingClick={() => setStartingModalOpen(true)}
+                onFinishingClick={() => setFinishingModalOpen(true)}
+                onBlockersClick={handleBlockersNav}
+              />
+            </div>
+          </ActiveTradesPopover>
+
+          {/* Snapshot Detail Modals */}
+          <SnapshotDetailModal
+            open={startingModalOpen}
+            onOpenChange={setStartingModalOpen}
+            title="Tasks Starting Today"
+            tasks={tasksStartingTodayList}
+            filterParam="dateRange=today"
+          />
+          <SnapshotDetailModal
+            open={finishingModalOpen}
+            onOpenChange={setFinishingModalOpen}
+            title="Tasks Due Today"
+            tasks={tasksFinishingTodayList}
+            filterParam="dateRange=today"
           />
 
           {/* Widget Grid */}
