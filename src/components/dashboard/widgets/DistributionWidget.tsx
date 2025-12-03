@@ -1,4 +1,3 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Target } from "lucide-react";
 
 interface StatusItem {
@@ -14,22 +13,23 @@ interface DistributionWidgetProps {
 
 export const DistributionWidget = ({ statusDistribution, totalTasks }: DistributionWidgetProps) => {
   return (
-    <Card className="border-primary/20 shadow-md h-full flex flex-col overflow-hidden">
-      <CardHeader className="pb-2 flex-shrink-0">
-        <CardTitle className="text-lg font-bold text-primary flex items-center gap-2">
-          <Target className="h-5 w-5 text-secondary" />
+    <div className="widget-card h-full">
+      <div className="flex-shrink-0 mb-3">
+        <h3 className="widget-title">
+          <Target className="h-4 w-4 text-secondary" />
           Task Distribution
-        </CardTitle>
-        <CardDescription className="text-sm">Current workflow breakdown</CardDescription>
-      </CardHeader>
-      <CardContent className="flex-1 flex flex-col justify-center gap-3 min-h-0 overflow-hidden p-3">
+        </h3>
+        <p className="widget-subtitle">Current workflow breakdown</p>
+      </div>
+      
+      <div className="flex-1 flex flex-col justify-center gap-3 min-h-0">
         {statusDistribution.map((item) => (
-          <div key={item.status} className="space-y-1">
+          <div key={item.status} className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-foreground">{item.status}</span>
-              <span className="text-sm font-bold text-primary">{item.count}</span>
+              <span className="text-xs font-medium text-foreground">{item.status}</span>
+              <span className="text-xs font-bold text-foreground">{item.count}</span>
             </div>
-            <div className="w-full bg-muted/50 rounded-full h-2.5 overflow-hidden">
+            <div className="w-full bg-muted/20 rounded-full h-2 overflow-hidden">
               <div
                 className="h-full rounded-full transition-all duration-500"
                 style={{
@@ -40,7 +40,7 @@ export const DistributionWidget = ({ statusDistribution, totalTasks }: Distribut
             </div>
           </div>
         ))}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };

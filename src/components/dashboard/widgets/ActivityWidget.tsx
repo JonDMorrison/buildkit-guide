@@ -1,4 +1,3 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp } from "lucide-react";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Line, LineChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
@@ -9,34 +8,47 @@ interface ActivityWidgetProps {
 
 export const ActivityWidget = ({ completionTrendData }: ActivityWidgetProps) => {
   return (
-    <Card className="border-primary/20 shadow-md h-full flex flex-col overflow-hidden">
-      <CardHeader className="pb-2 flex-shrink-0">
-        <CardTitle className="text-lg font-bold text-primary flex items-center gap-2">
-          <TrendingUp className="h-5 w-5 text-secondary" />
-          Task Activity
-        </CardTitle>
-        <CardDescription className="text-sm">7-day performance</CardDescription>
-      </CardHeader>
-      <CardContent className="flex-1 min-h-0 overflow-hidden p-3">
+    <div className="widget-card h-full">
+      <div className="flex-shrink-0 mb-3">
+        <h3 className="widget-title">
+          <TrendingUp className="h-4 w-4 text-secondary" />
+          Activity Trend
+        </h3>
+        <p className="widget-subtitle">Tasks completed vs created (7 days)</p>
+      </div>
+      
+      <div className="flex-1 min-h-0">
         <ChartContainer
           config={{
             completed: { label: "Completed", color: "hsl(var(--secondary))" },
             created: { label: "Created", color: "hsl(var(--muted))" },
           }}
-          className="h-full w-full max-h-full"
+          className="h-full w-full"
         >
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={completionTrendData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+            <LineChart data={completionTrendData} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-              <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={10} tickLine={false} />
-              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={10} tickLine={false} axisLine={false} />
+              <XAxis 
+                dataKey="date" 
+                stroke="hsl(var(--muted-foreground))" 
+                fontSize={10} 
+                tickLine={false}
+                axisLine={{ stroke: 'hsl(var(--border))' }}
+              />
+              <YAxis 
+                stroke="hsl(var(--muted-foreground))" 
+                fontSize={10} 
+                tickLine={false} 
+                axisLine={false} 
+              />
               <ChartTooltip content={<ChartTooltipContent />} />
               <Line 
                 type="monotone" 
                 dataKey="completed" 
                 stroke="hsl(var(--secondary))" 
                 strokeWidth={2}
-                dot={{ fill: "hsl(var(--secondary))", r: 3 }}
+                dot={{ fill: "hsl(var(--secondary))", r: 3, strokeWidth: 0 }}
+                activeDot={{ r: 5 }}
               />
               <Line 
                 type="monotone" 
@@ -44,12 +56,13 @@ export const ActivityWidget = ({ completionTrendData }: ActivityWidgetProps) => 
                 stroke="hsl(var(--muted))" 
                 strokeWidth={2}
                 strokeDasharray="5 5"
-                dot={{ fill: "hsl(var(--muted))", r: 2 }}
+                dot={{ fill: "hsl(var(--muted))", r: 2, strokeWidth: 0 }}
+                activeDot={{ r: 4 }}
               />
             </LineChart>
           </ResponsiveContainer>
         </ChartContainer>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
