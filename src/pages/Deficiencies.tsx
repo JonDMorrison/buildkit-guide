@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { SectionHeader } from "@/components/SectionHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { DeficiencyFilters } from "@/components/deficiencies/DeficiencyFilters";
 import { DeficiencyListView } from "@/components/deficiencies/DeficiencyListView";
 import { DeficiencyDetailModal } from "@/components/deficiencies/DeficiencyDetailModal";
@@ -10,11 +12,12 @@ import { CreateDeficiencyModal } from "@/components/deficiencies/CreateDeficienc
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthRole } from "@/hooks/useAuthRole";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
-import { AlertCircle, Plus } from "lucide-react";
+import { AlertCircle, Plus, Upload } from "lucide-react";
 
 const Deficiencies = () => {
+  const navigate = useNavigate();
   const { currentProjectId } = useCurrentProject();
-  const { can, loading: roleLoading } = useAuthRole(currentProjectId || undefined);
+  const { can, isPM, isAdmin, loading: roleLoading } = useAuthRole(currentProjectId || undefined);
   const [deficiencies, setDeficiencies] = useState<any[]>([]);
   const [filteredDeficiencies, setFilteredDeficiencies] = useState<any[]>([]);
   const [trades, setTrades] = useState<any[]>([]);
@@ -164,6 +167,20 @@ const Deficiencies = () => {
             onClick: handleCreateDeficiency,
           } : undefined}
         />
+
+        {/* Import from GC button - only visible to PM/Admin */}
+        {(isPM || isAdmin) && currentProjectId && (
+          <div className="flex justify-end mb-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/projects/${currentProjectId}/deficiency-import`)}
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Import from GC
+            </Button>
+          </div>
+        )}
 
         {deficiencies.length === 0 ? (
           <EmptyState

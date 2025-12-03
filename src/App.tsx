@@ -27,6 +27,7 @@ import DailyLogs from "./pages/DailyLogs";
 import Receipts from "./pages/Receipts";
 import ProjectReceipts from "./pages/ProjectReceipts";
 import AccountingReceipts from "./pages/AccountingReceipts";
+import DeficiencyImport from "./pages/DeficiencyImport";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -117,6 +118,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Deficiencies />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/projects/:projectId/deficiency-import"
+              element={
+                <ProtectedRoute>
+                  <DeficiencyImport />
                 </ProtectedRoute>
               }
             />

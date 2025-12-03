@@ -534,6 +534,221 @@ export type Database = {
           },
         ]
       }
+      gc_column_mappings: {
+        Row: {
+          created_at: string
+          id: string
+          mapping: Json
+          project_id: string
+          source_name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mapping: Json
+          project_id: string
+          source_name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mapping?: Json
+          project_id?: string
+          source_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_column_mappings_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_deficiency_imports: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          file_path: string
+          horizon_rows: number | null
+          id: string
+          imported_rows: number | null
+          project_id: string
+          source_name: string
+          status: string
+          total_rows: number | null
+          updated_at: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          file_path: string
+          horizon_rows?: number | null
+          id?: string
+          imported_rows?: number | null
+          project_id: string
+          source_name: string
+          status?: string
+          total_rows?: number | null
+          updated_at?: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          file_path?: string
+          horizon_rows?: number | null
+          id?: string
+          imported_rows?: number | null
+          project_id?: string
+          source_name?: string
+          status?: string
+          total_rows?: number | null
+          updated_at?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_deficiency_imports_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_deficiency_imports_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_deficiency_items: {
+        Row: {
+          belongs_confidence: number | null
+          belongs_to_horizon: boolean | null
+          created_at: string
+          error_message: string | null
+          id: string
+          import_id: string
+          is_error: boolean | null
+          mapped_deficiency_id: string | null
+          parsed_description: string | null
+          parsed_due_date: string | null
+          parsed_gc_trade: string | null
+          parsed_location: string | null
+          parsed_priority: string | null
+          raw_row_json: Json
+          row_index: number
+          suggested_internal_scope: string | null
+        }
+        Insert: {
+          belongs_confidence?: number | null
+          belongs_to_horizon?: boolean | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          import_id: string
+          is_error?: boolean | null
+          mapped_deficiency_id?: string | null
+          parsed_description?: string | null
+          parsed_due_date?: string | null
+          parsed_gc_trade?: string | null
+          parsed_location?: string | null
+          parsed_priority?: string | null
+          raw_row_json: Json
+          row_index: number
+          suggested_internal_scope?: string | null
+        }
+        Update: {
+          belongs_confidence?: number | null
+          belongs_to_horizon?: boolean | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          import_id?: string
+          is_error?: boolean | null
+          mapped_deficiency_id?: string | null
+          parsed_description?: string | null
+          parsed_due_date?: string | null
+          parsed_gc_trade?: string | null
+          parsed_location?: string | null
+          parsed_priority?: string | null
+          raw_row_json?: Json
+          row_index?: number
+          suggested_internal_scope?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_deficiency_items_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "gc_deficiency_imports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_deficiency_items_mapped_deficiency_id_fkey"
+            columns: ["mapped_deficiency_id"]
+            isOneToOne: false
+            referencedRelation: "deficiencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_import_logs: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          id: string
+          import_id: string
+          items_imported: number | null
+          items_skipped: number | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          import_id: string
+          items_imported?: number | null
+          items_skipped?: number | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          import_id?: string
+          items_imported?: number | null
+          items_skipped?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_import_logs_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "gc_deficiency_imports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_import_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invitations: {
         Row: {
           accepted_at: string | null
