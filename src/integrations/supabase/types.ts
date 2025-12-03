@@ -1378,6 +1378,7 @@ export type Database = {
         | "foreman"
         | "internal_worker"
         | "external_trade"
+        | "accounting"
       deficiency_status: "open" | "in_progress" | "fixed" | "verified"
       notification_type:
         | "task_assigned"
@@ -1533,6 +1534,7 @@ export const Constants = {
         "foreman",
         "internal_worker",
         "external_trade",
+        "accounting",
       ],
       deficiency_status: ["open", "in_progress", "fixed", "verified"],
       notification_type: [
