@@ -26,6 +26,7 @@ import AuditLog from "./pages/AuditLog";
 import DailyLogs from "./pages/DailyLogs";
 import Receipts from "./pages/Receipts";
 import ProjectReceipts from "./pages/ProjectReceipts";
+import AccountingReceipts from "./pages/AccountingReceipts";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -188,6 +189,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Receipts />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/accounting/receipts"
+              element={
+                <ProtectedRoute>
+                  <AccountingReceipts />
                 </ProtectedRoute>
               }
             />

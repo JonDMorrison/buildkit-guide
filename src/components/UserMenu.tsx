@@ -1,4 +1,4 @@
-import { User, LogOut, Shield, Settings, Users, FileText } from 'lucide-react';
+import { User, LogOut, Shield, Settings, Users, FileText, Receipt } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useProjectRole } from '@/hooks/useProjectRole';
@@ -28,6 +28,10 @@ export const UserMenu = () => {
   // Check if user can manage users (admin or PM on any project)
   const canManageUsers = isGlobalAdmin || isAdmin || projectRoles.some(pr => pr.role === 'project_manager');
   
+  // Check if user can access accounting (admin or accounting role)
+  const isAccounting = (roles as string[]).includes('accounting');
+  const canAccessAccounting = isAdmin || isAccounting;
+  
   const getRoleLabel = (role: string) => {
     const labels: Record<string, string> = {
       admin: 'Admin',
@@ -35,6 +39,7 @@ export const UserMenu = () => {
       foreman: 'Foreman',
       internal_worker: 'Internal',
       external_trade: 'Trade',
+      accounting: 'Accounting',
     };
     return labels[role] || role;
   };
@@ -79,6 +84,15 @@ export const UserMenu = () => {
             <DropdownMenuItem onClick={() => navigate('/audit')}>
               <FileText className="mr-2 h-4 w-4" />
               <span>Audit Log</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
+        {canAccessAccounting && (
+          <>
+            <DropdownMenuItem onClick={() => navigate('/accounting/receipts')}>
+              <Receipt className="mr-2 h-4 w-4" />
+              <span>Accounting Receipts</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
           </>
