@@ -11,14 +11,18 @@ type TradeType =
   | "roofing"
   | "flooring"
   | "painting"
+  | "glazing"
+  | "fire_protection"
+  | "masonry"
+  | "elevator"
   | "general";
 
 interface TradeBadgeProps {
-  trade: TradeType;
+  trade: string;
   className?: string;
 }
 
-const tradeConfig: Record<TradeType, { label: string; className: string }> = {
+const tradeConfig: Record<string, { label: string; className: string }> = {
   electrical: { 
     label: "Electrical", 
     className: "bg-yellow-100 text-yellow-900 border-yellow-300" 
@@ -55,21 +59,43 @@ const tradeConfig: Record<TradeType, { label: string; className: string }> = {
     label: "Painting", 
     className: "bg-purple-100 text-purple-900 border-purple-300" 
   },
+  glazing: { 
+    label: "Glazing", 
+    className: "bg-sky-100 text-sky-900 border-sky-300" 
+  },
+  fire_protection: { 
+    label: "Fire Protection", 
+    className: "bg-rose-100 text-rose-900 border-rose-300" 
+  },
+  masonry: { 
+    label: "Masonry", 
+    className: "bg-amber-100 text-amber-900 border-amber-300" 
+  },
+  elevator: { 
+    label: "Elevator", 
+    className: "bg-indigo-100 text-indigo-900 border-indigo-300" 
+  },
   general: { 
     label: "General", 
     className: "bg-gray-100 text-gray-900 border-gray-300" 
   },
 };
 
+const defaultConfig = { 
+  label: "Trade", 
+  className: "bg-gray-100 text-gray-900 border-gray-300" 
+};
+
 export const TradeBadge = ({ trade, className }: TradeBadgeProps) => {
-  const config = tradeConfig[trade];
+  const config = tradeConfig[trade] || defaultConfig;
+  const displayLabel = tradeConfig[trade] ? config.label : trade.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   
   return (
     <Badge 
       variant="outline" 
       className={cn(config.className, "text-xs font-medium", className)}
     >
-      {config.label}
+      {displayLabel}
     </Badge>
   );
 };
