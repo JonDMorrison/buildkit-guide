@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sparkles, Send } from "lucide-react";
@@ -53,46 +52,54 @@ export const AIWidget = ({ projectId, contextData }: AIWidgetProps) => {
   };
 
   return (
-    <Card className="relative bg-primary text-primary-foreground shadow-lg border-none h-full flex flex-col overflow-hidden">
-      <div className="absolute inset-0 opacity-10 pointer-events-none overflow-hidden" 
+    <div className="widget-card widget-card-dark h-full relative">
+      {/* Subtle grid background */}
+      <div 
+        className="absolute inset-0 opacity-5 pointer-events-none rounded-xl overflow-hidden" 
         style={{
           backgroundImage: `
-            linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)
+            linear-gradient(rgba(255,255,255,0.15) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px)
           `,
-          backgroundSize: '20px 20px'
+          backgroundSize: '24px 24px'
         }}
       />
-      <CardHeader className="relative pb-2">
-        <CardTitle className="text-lg font-bold flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-accent" />
-          AI Assistant
-        </CardTitle>
-        <CardDescription className="text-primary-foreground/70 text-sm">
-          Ask about your project
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex-1 flex flex-col gap-3 relative min-h-0 overflow-auto">
-        <div className="flex gap-2">
+      
+      {/* Content */}
+      <div className="relative flex flex-col h-full gap-3 min-h-0">
+        {/* Header */}
+        <div className="flex-shrink-0">
+          <h3 className="text-sm font-semibold flex items-center gap-2 text-primary-foreground">
+            <Sparkles className="h-4 w-4 text-accent" />
+            AI Assistant
+          </h3>
+          <p className="text-xs text-primary-foreground/60 mt-0.5">
+            Ask about your project
+          </p>
+        </div>
+
+        {/* Input */}
+        <div className="flex gap-2 flex-shrink-0">
           <Input
             placeholder="Ask a question..."
             value={aiQuery}
             onChange={(e) => setAiQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAskAI(aiQuery)}
-            className="flex-1 bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/50"
+            className="flex-1 bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/40 h-10"
             disabled={aiLoading}
           />
           <Button
             onClick={() => handleAskAI(aiQuery)}
             disabled={aiLoading || !aiQuery.trim()}
             size="icon"
-            className="bg-accent hover:bg-accent/90 text-accent-foreground rounded-lg h-10 w-10 flex-shrink-0"
+            className="bg-accent hover:bg-accent/90 text-accent-foreground h-10 w-10 flex-shrink-0"
           >
             <Send className="h-4 w-4" />
           </Button>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        {/* Quick prompts */}
+        <div className="flex flex-wrap gap-2 flex-shrink-0">
           {quickPrompts.map((prompt) => (
             <Button
               key={prompt}
@@ -102,7 +109,7 @@ export const AIWidget = ({ projectId, contextData }: AIWidgetProps) => {
                 setAiQuery(prompt);
                 handleAskAI(prompt);
               }}
-              className="bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground hover:bg-accent hover:text-accent-foreground text-xs h-8"
+              className="bg-primary-foreground/5 border-primary-foreground/15 text-primary-foreground/80 hover:bg-accent hover:text-accent-foreground hover:border-accent text-xs h-8 px-3"
               disabled={aiLoading}
             >
               {prompt}
@@ -110,20 +117,22 @@ export const AIWidget = ({ projectId, contextData }: AIWidgetProps) => {
           ))}
         </div>
 
+        {/* Response area */}
         {aiResponse && (
-          <div className="p-3 rounded-lg bg-primary-foreground/10 border border-primary-foreground/20 flex-1 overflow-auto">
-            <p className="text-sm text-primary-foreground whitespace-pre-wrap leading-relaxed">
+          <div className="flex-1 min-h-0 overflow-auto rounded-lg bg-primary-foreground/5 border border-primary-foreground/10 p-3">
+            <p className="text-sm text-primary-foreground/90 whitespace-pre-wrap leading-relaxed">
               {aiResponse}
             </p>
           </div>
         )}
 
+        {/* Loading */}
         {aiLoading && (
           <div className="flex items-center justify-center py-4">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-accent"></div>
+            <div className="animate-spin rounded-full h-5 w-5 border-2 border-accent border-t-transparent"></div>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };

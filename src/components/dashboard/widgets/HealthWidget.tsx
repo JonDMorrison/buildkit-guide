@@ -1,4 +1,3 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Gauge } from "lucide-react";
 
 interface HealthWidgetProps {
@@ -14,59 +13,67 @@ export const HealthWidget = ({
   blockedTasks,
   overdueTasks,
 }: HealthWidgetProps) => {
+  const getScoreColor = () => {
+    if (healthScore > 70) return "hsl(var(--secondary))";
+    if (healthScore > 40) return "hsl(var(--accent))";
+    return "hsl(var(--destructive))";
+  };
+
   return (
-    <Card className="border-primary/20 shadow-md h-full flex flex-col overflow-hidden">
-      <CardHeader className="pb-2 flex-shrink-0">
-        <CardTitle className="text-lg font-bold text-primary flex items-center gap-2">
-          <Gauge className="h-5 w-5 text-accent" />
+    <div className="widget-card h-full">
+      <div className="flex-shrink-0 mb-3">
+        <h3 className="widget-title">
+          <Gauge className="h-4 w-4 text-accent" />
           Project Health
-        </CardTitle>
-        <CardDescription className="text-sm">Key risk indicators</CardDescription>
-      </CardHeader>
-      <CardContent className="flex-1 flex flex-col items-center justify-center gap-3 min-h-0 overflow-hidden p-3">
-        <div className="relative w-24 h-24 md:w-28 md:h-28 lg:w-32 lg:h-32 flex-shrink-0">
-          <svg className="w-full h-full transform -rotate-90">
+        </h3>
+        <p className="widget-subtitle">Key risk indicators</p>
+      </div>
+      
+      <div className="flex-1 flex flex-col items-center justify-center gap-4 min-h-0">
+        {/* Circular gauge */}
+        <div className="relative w-24 h-24 flex-shrink-0">
+          <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
             <circle
-              cx="50%"
-              cy="50%"
-              r="45%"
+              cx="50"
+              cy="50"
+              r="42"
               fill="none"
-              stroke="hsl(var(--muted))"
-              strokeWidth="10"
-              opacity="0.2"
+              stroke="hsl(var(--muted) / 0.2)"
+              strokeWidth="8"
             />
             <circle
-              cx="50%"
-              cy="50%"
-              r="45%"
+              cx="50"
+              cy="50"
+              r="42"
               fill="none"
-              stroke={healthScore > 70 ? "hsl(var(--secondary))" : healthScore > 40 ? "hsl(var(--accent))" : "hsl(var(--destructive))"}
-              strokeWidth="10"
-              strokeDasharray={`${(healthScore / 100) * 283} 283`}
+              stroke={getScoreColor()}
+              strokeWidth="8"
+              strokeDasharray={`${(healthScore / 100) * 264} 264`}
               strokeLinecap="round"
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-2xl lg:text-3xl font-black text-primary">{healthScore}</span>
-            <span className="text-xs text-muted-foreground font-semibold">Health</span>
+            <span className="text-2xl font-bold text-foreground">{healthScore}</span>
+            <span className="text-[10px] text-muted-foreground font-medium">Health</span>
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 w-full flex-shrink-0">
+        {/* Risk metrics */}
+        <div className="grid grid-cols-3 gap-3 w-full">
           <div className="text-center">
-            <p className="text-lg font-black text-accent">{atRiskTasks}</p>
-            <p className="text-xs text-muted-foreground font-medium truncate">At Risk</p>
+            <p className="text-lg font-bold text-accent">{atRiskTasks}</p>
+            <p className="text-[10px] text-muted-foreground font-medium">At Risk</p>
           </div>
           <div className="text-center">
-            <p className="text-lg font-black text-accent">{blockedTasks}</p>
-            <p className="text-xs text-muted-foreground font-medium truncate">Blocked</p>
+            <p className="text-lg font-bold text-accent">{blockedTasks}</p>
+            <p className="text-[10px] text-muted-foreground font-medium">Blocked</p>
           </div>
           <div className="text-center">
-            <p className="text-lg font-black text-destructive">{overdueTasks}</p>
-            <p className="text-xs text-muted-foreground font-medium truncate">Overdue</p>
+            <p className="text-lg font-bold text-destructive">{overdueTasks}</p>
+            <p className="text-[10px] text-muted-foreground font-medium">Overdue</p>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };

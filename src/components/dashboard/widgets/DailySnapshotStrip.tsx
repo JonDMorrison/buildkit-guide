@@ -1,4 +1,3 @@
-import { Card, CardContent } from "@/components/ui/card";
 import { CloudRain, HardHat, Wrench, PlayCircle, CheckSquare, AlertTriangle, Sun, Cloud, CloudSnow } from "lucide-react";
 
 interface DailySnapshotStripProps {
@@ -11,13 +10,32 @@ interface DailySnapshotStripProps {
 }
 
 const getWeatherIcon = (weather: string | null) => {
-  if (!weather) return <Sun className="h-5 w-5 text-primary" />;
+  if (!weather) return Sun;
   const w = weather.toLowerCase();
-  if (w.includes("rain") || w.includes("storm")) return <CloudRain className="h-5 w-5 text-primary" />;
-  if (w.includes("snow")) return <CloudSnow className="h-5 w-5 text-primary" />;
-  if (w.includes("cloud") || w.includes("overcast")) return <Cloud className="h-5 w-5 text-primary" />;
-  return <Sun className="h-5 w-5 text-primary" />;
+  if (w.includes("rain") || w.includes("storm")) return CloudRain;
+  if (w.includes("snow")) return CloudSnow;
+  if (w.includes("cloud") || w.includes("overcast")) return Cloud;
+  return Sun;
 };
+
+interface MetricTileProps {
+  icon: React.ElementType;
+  label: string;
+  value: string | number;
+  variant?: "default" | "warning";
+}
+
+const MetricTile = ({ icon: Icon, label, value, variant = "default" }: MetricTileProps) => (
+  <div className="metric-tile">
+    <div className={`metric-icon ${variant === "warning" ? "bg-accent/20" : "bg-primary/10"}`}>
+      <Icon className={`h-4 w-4 ${variant === "warning" ? "text-accent" : "text-primary"}`} />
+    </div>
+    <div className="min-w-0 flex-1">
+      <p className="metric-label truncate">{label}</p>
+      <p className={`metric-value ${variant === "warning" ? "text-accent" : ""}`}>{value}</p>
+    </div>
+  </div>
+);
 
 export const DailySnapshotStrip = ({
   weather,
@@ -27,71 +45,18 @@ export const DailySnapshotStrip = ({
   tasksFinishing,
   blockedCount,
 }: DailySnapshotStripProps) => {
+  const WeatherIcon = getWeatherIcon(weather);
+  
   return (
-    <Card className="bg-primary/5 border-primary/20 overflow-hidden">
-      <CardContent className="p-3 md:p-4 overflow-x-auto">
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-3 md:gap-4 min-w-0">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-primary/10">
-              {getWeatherIcon(weather)}
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Weather</p>
-              <p className="text-sm font-bold text-primary">{weather || "Clear"}</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <HardHat className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Crew</p>
-              <p className="text-sm font-bold text-primary">{crewCount}</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Wrench className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Trades</p>
-              <p className="text-sm font-bold text-primary">{activeTrades} Active</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <PlayCircle className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Starting</p>
-              <p className="text-sm font-bold text-primary">{tasksStarting}</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <CheckSquare className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Finishing</p>
-              <p className="text-sm font-bold text-primary">{tasksFinishing}</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-accent/10">
-              <AlertTriangle className="h-5 w-5 text-accent" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Blockers</p>
-              <p className="text-sm font-bold text-accent">{blockedCount}</p>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="widget-card !p-3 md:!p-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <MetricTile icon={WeatherIcon} label="Weather" value={weather || "Clear"} />
+        <MetricTile icon={HardHat} label="Crew" value={crewCount} />
+        <MetricTile icon={Wrench} label="Active Trades" value={activeTrades} />
+        <MetricTile icon={PlayCircle} label="Starting" value={tasksStarting} />
+        <MetricTile icon={CheckSquare} label="Finishing" value={tasksFinishing} />
+        <MetricTile icon={AlertTriangle} label="Blockers" value={blockedCount} variant="warning" />
+      </div>
+    </div>
   );
 };

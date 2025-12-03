@@ -6,86 +6,6 @@
 All colors MUST be HSL.
 */
 
-/* Dashboard grid layout overrides */
-.widget-container {
-  width: 100% !important;
-  height: 100% !important;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  overflow: hidden;
-  border-radius: 0.5rem;
-}
-
-.widget-container > * {
-  width: 100%;
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.react-grid-item {
-  transition: all 200ms ease;
-  transition-property: left, top, width, height;
-  overflow: hidden;
-}
-
-.react-grid-item.cssTransforms {
-  transition-property: transform, width, height;
-}
-
-.react-grid-item.resizing {
-  transition: none;
-  z-index: 100;
-  will-change: width, height;
-}
-
-.react-grid-item.react-draggable-dragging {
-  transition: none;
-  z-index: 100;
-  will-change: transform;
-}
-
-.react-grid-item.dropping {
-  visibility: hidden;
-}
-
-.react-grid-item.react-grid-placeholder {
-  background: hsl(var(--primary) / 0.2);
-  opacity: 0.5;
-  transition-duration: 100ms;
-  z-index: 2;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  -o-user-select: none;
-  user-select: none;
-  border-radius: 0.5rem;
-  border: 2px dashed hsl(var(--primary));
-}
-
-.react-grid-item > .react-resizable-handle {
-  position: absolute;
-  width: 20px;
-  height: 20px;
-}
-
-.react-grid-item > .react-resizable-handle::after {
-  content: "";
-  position: absolute;
-  right: 3px;
-  bottom: 3px;
-  width: 5px;
-  height: 5px;
-  border-right: 2px solid hsl(var(--primary) / 0.5);
-  border-bottom: 2px solid hsl(var(--primary) / 0.5);
-}
-
-.react-resizable-hide > .react-resizable-handle {
-  display: none;
-}
-
 @layer base {
   :root {
     /* Horizon Brand Colors */
@@ -166,6 +86,143 @@ All colors MUST be HSL.
 
   /* Field-optimized touch targets */
   button, a {
-    @apply min-h-[48px] min-w-[48px];
+    @apply min-h-[44px] min-w-[44px];
   }
+}
+
+/* Dashboard Widget System */
+@layer components {
+  .dashboard-container {
+    @apply w-full max-w-screen-2xl mx-auto px-4 md:px-6 lg:px-8;
+  }
+
+  .dashboard-section {
+    @apply space-y-6;
+  }
+
+  .widget-card {
+    @apply bg-card border border-border/50 rounded-xl shadow-sm p-4 flex flex-col overflow-hidden transition-all duration-200;
+  }
+
+  .widget-card:hover {
+    @apply shadow-md;
+  }
+
+  .widget-card-accent {
+    @apply bg-accent/5 border-accent/20;
+  }
+
+  .widget-card-success {
+    @apply bg-secondary/5 border-secondary/20;
+  }
+
+  .widget-card-dark {
+    @apply bg-primary text-primary-foreground border-none;
+  }
+
+  .widget-title {
+    @apply text-sm font-semibold text-foreground/80 flex items-center gap-2;
+  }
+
+  .widget-subtitle {
+    @apply text-xs text-muted-foreground;
+  }
+
+  .metric-tile {
+    @apply flex items-center gap-3 bg-muted/10 border border-border/30 rounded-lg p-3 md:p-4 transition-all duration-200;
+  }
+
+  .metric-tile:hover {
+    @apply shadow-sm -translate-y-0.5;
+  }
+
+  .metric-icon {
+    @apply w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0;
+  }
+
+  .metric-label {
+    @apply text-[10px] uppercase tracking-wider text-muted-foreground font-medium;
+  }
+
+  .metric-value {
+    @apply text-lg font-bold text-foreground tabular-nums;
+  }
+}
+
+/* React Grid Layout - Clean Overrides */
+.react-grid-layout {
+  position: relative;
+}
+
+.react-grid-item {
+  transition: all 200ms ease;
+  transition-property: left, top, width, height;
+  overflow: hidden;
+  border-radius: 0.75rem;
+}
+
+.react-grid-item.cssTransforms {
+  transition-property: transform, width, height;
+}
+
+.react-grid-item.resizing {
+  transition: none;
+  z-index: 100;
+  will-change: width, height;
+}
+
+.react-grid-item.react-draggable-dragging {
+  transition: none;
+  z-index: 100;
+  will-change: transform;
+}
+
+.react-grid-item.dropping {
+  visibility: hidden;
+}
+
+.react-grid-item.react-grid-placeholder {
+  background: hsl(var(--primary) / 0.1);
+  opacity: 0.8;
+  transition-duration: 100ms;
+  z-index: 2;
+  user-select: none;
+  border-radius: 0.75rem;
+  border: 2px dashed hsl(var(--primary) / 0.5);
+}
+
+.react-grid-item > .react-resizable-handle {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+}
+
+.react-grid-item > .react-resizable-handle::after {
+  content: "";
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 6px;
+  height: 6px;
+  border-right: 2px solid hsl(var(--primary) / 0.4);
+  border-bottom: 2px solid hsl(var(--primary) / 0.4);
+}
+
+.react-resizable-hide > .react-resizable-handle {
+  display: none;
+}
+
+/* Widget container fills grid item */
+.widget-wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.widget-wrapper > * {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }

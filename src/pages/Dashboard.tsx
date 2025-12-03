@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAuthRole } from "@/hooks/useAuthRole";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
-import { useDashboardLayout, DashboardWidget } from "@/hooks/useDashboardLayout";
+import { useDashboardLayout } from "@/hooks/useDashboardLayout";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -72,10 +72,7 @@ export default function Dashboard() {
       if (!user?.id) return [];
       const { data, error } = await supabase
         .from("project_members")
-        .select(`
-          project_id,
-          projects (id, name, location, status)
-        `)
+        .select(`project_id, projects (id, name, location, status)`)
         .eq("user_id", user.id);
 
       if (error) throw error;
@@ -103,14 +100,12 @@ export default function Dashboard() {
     enabled: !!user?.id,
   });
 
-  // Auto-select first project if none selected
   useEffect(() => {
     if (!currentProjectId && userProjects && userProjects.length > 0) {
       setCurrentProject(userProjects[0].id);
     }
   }, [currentProjectId, userProjects, setCurrentProject]);
 
-  // Fetch current project
   const { data: currentProject } = useQuery({
     queryKey: ["current-project", currentProjectId],
     queryFn: async () => {
@@ -126,40 +121,28 @@ export default function Dashboard() {
     enabled: !!currentProjectId,
   });
 
-  // Fetch tasks
   const { data: tasks = [] } = useQuery({
     queryKey: ["dashboard-tasks", user?.id, currentProjectId],
     queryFn: async () => {
       if (!user || !currentProjectId) return [];
-      
       const { data, error } = await supabase
         .from("tasks")
-        .select(`
-          *,
-          assigned_trade:trades(name),
-          task_assignments(user_id),
-          blockers(id, is_resolved)
-        `)
+        .select(`*, assigned_trade:trades(name), task_assignments(user_id), blockers(id, is_resolved)`)
         .eq("project_id", currentProjectId)
         .eq("is_deleted", false);
-
       if (error) throw error;
       return data || [];
     },
     enabled: !!user && !!currentProjectId,
   });
 
-  // Fetch blockers
   const { data: blockers = [] } = useQuery({
     queryKey: ["dashboard-blockers", currentProjectId],
     queryFn: async () => {
       if (!currentProjectId) return [];
       const { data, error } = await supabase
         .from("blockers")
-        .select(`
-          *,
-          task:tasks(id, title, assigned_trade:trades(name))
-        `)
+        .select(`*, task:tasks(id, title, assigned_trade:trades(name))`)
         .eq("is_resolved", false);
       if (error) throw error;
       return data || [];
@@ -167,7 +150,6 @@ export default function Dashboard() {
     enabled: !!currentProjectId,
   });
 
-  // Fetch safety forms
   const { data: safetyForms = [] } = useQuery({
     queryKey: ["dashboard-safety", currentProjectId],
     queryFn: async () => {
@@ -184,7 +166,6 @@ export default function Dashboard() {
     enabled: !!(currentProjectId && (isPM || isForeman)),
   });
 
-  // Fetch today's daily log for snapshot data
   const { data: todayLog } = useQuery({
     queryKey: ["dashboard-daily-log", currentProjectId, format(today, "yyyy-MM-dd")],
     queryFn: async () => {
@@ -201,7 +182,6 @@ export default function Dashboard() {
     enabled: !!currentProjectId,
   });
 
-  // Fetch active trades count
   const { data: activeTrades = 0 } = useQuery({
     queryKey: ["dashboard-active-trades", currentProjectId],
     queryFn: async () => {
@@ -223,24 +203,17 @@ export default function Dashboard() {
   const openTasks = tasks.filter(t => t.status !== "done").length;
   const blockedTasks = tasks.filter(t => t.status === "blocked").length;
   const upcomingTasks = tasks.filter(t => 
-    t.due_date && 
-    isAfter(new Date(t.due_date), today) && 
-    isBefore(new Date(t.due_date), nextWeek)
+    t.due_date && isAfter(new Date(t.due_date), today) && isBefore(new Date(t.due_date), nextWeek)
   ).length;
   const safetyFormsThisWeek = safetyForms.length;
 
-  // Prepare chart data
   const completionTrendData = Array.from({ length: 7 }, (_, i) => {
     const date = subDays(today, 6 - i);
     const dateStr = format(date, "yyyy-MM-dd");
     return {
       date: format(date, "MMM dd"),
-      completed: tasks.filter(t => 
-        t.status === "done" && t.updated_at && format(new Date(t.updated_at), "yyyy-MM-dd") === dateStr
-      ).length,
-      created: tasks.filter(t => 
-        t.created_at && format(new Date(t.created_at), "yyyy-MM-dd") === dateStr
-      ).length,
+      completed: tasks.filter(t => t.status === "done" && t.updated_at && format(new Date(t.updated_at), "yyyy-MM-dd") === dateStr).length,
+      created: tasks.filter(t => t.created_at && format(new Date(t.created_at), "yyyy-MM-dd") === dateStr).length,
     };
   });
 
@@ -250,36 +223,21 @@ export default function Dashboard() {
     { status: "Blocked", count: tasks.filter(t => t.status === "blocked").length, color: "hsl(var(--accent))" },
   ];
 
-  // Calculate health score
   const totalTasks = tasks.length || 1;
-  const atRiskTasks = tasks.filter(t => 
-    t.due_date && isBefore(new Date(t.due_date), addDays(today, 3)) && t.status !== "done"
-  ).length;
-  const overdueTasks = tasks.filter(t => 
-    t.due_date && isBefore(new Date(t.due_date), today) && t.status !== "done"
-  ).length;
+  const atRiskTasks = tasks.filter(t => t.due_date && isBefore(new Date(t.due_date), addDays(today, 3)) && t.status !== "done").length;
+  const overdueTasks = tasks.filter(t => t.due_date && isBefore(new Date(t.due_date), today) && t.status !== "done").length;
   const healthScore = Math.max(0, Math.min(100, 100 - (blockedTasks * 10) - (atRiskTasks * 5) - (overdueTasks * 15)));
 
-  // Priority tasks for My Day
   const priorityTasks = tasks
     .filter(t => t.status !== "done" && (t.priority === 1 || (t.due_date && isBefore(new Date(t.due_date), addDays(today, 3)))))
     .slice(0, 5);
 
-  // Safety widget data
-  const formsToday = safetyForms.filter(f => 
-    format(new Date(f.created_at), "yyyy-MM-dd") === format(today, "yyyy-MM-dd")
-  ).length;
+  const formsToday = safetyForms.filter(f => format(new Date(f.created_at), "yyyy-MM-dd") === format(today, "yyyy-MM-dd")).length;
   const incidents = safetyForms.filter(f => f.form_type === "incident").length;
 
-  // Daily snapshot data
-  const tasksStartingToday = tasks.filter(t => 
-    t.start_date && format(new Date(t.start_date), "yyyy-MM-dd") === format(today, "yyyy-MM-dd")
-  ).length;
-  const tasksFinishingToday = tasks.filter(t => 
-    t.due_date && format(new Date(t.due_date), "yyyy-MM-dd") === format(today, "yyyy-MM-dd")
-  ).length;
+  const tasksStartingToday = tasks.filter(t => t.start_date && format(new Date(t.start_date), "yyyy-MM-dd") === format(today, "yyyy-MM-dd")).length;
+  const tasksFinishingToday = tasks.filter(t => t.due_date && format(new Date(t.due_date), "yyyy-MM-dd") === format(today, "yyyy-MM-dd")).length;
 
-  // Helper functions
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
       case "completed": return "default";
@@ -290,41 +248,27 @@ export default function Dashboard() {
     }
   };
 
-  const formatStatus = (status: string) => {
-    return status.split("_").map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
-  };
+  const formatStatus = (status: string) => status.split("_").map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
 
   const handleLayoutChange = (currentLayout: GridLayout[], allLayouts: { [key: string]: GridLayout[] }) => {
     if (isEditMode) {
       Object.entries(allLayouts).forEach(([breakpoint, layout]) => {
         updateLayouts(breakpoint, layout.map(item => ({
-          i: item.i,
-          x: item.x,
-          y: item.y,
-          w: item.w,
-          h: item.h,
-          minW: item.minW,
-          minH: item.minH,
-          maxW: item.maxW,
-          maxH: item.maxH,
+          i: item.i, x: item.x, y: item.y, w: item.w, h: item.h,
+          minW: item.minW, minH: item.minH, maxW: item.maxW, maxH: item.maxH,
         })));
       });
     }
   };
 
-  const handleBreakpointChange = (newBreakpoint: string) => {
-    setCurrentBreakpoint(newBreakpoint);
-  };
-
-  const handleSaveLayout = () => {
-    saveLayout(layouts);
-  };
+  const handleBreakpointChange = (newBreakpoint: string) => setCurrentBreakpoint(newBreakpoint);
+  const handleSaveLayout = () => saveLayout(layouts);
 
   if (layoutLoading) {
     return (
       <Layout>
         <div className="flex items-center justify-center h-full">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent"></div>
         </div>
       </Layout>
     );
@@ -332,24 +276,15 @@ export default function Dashboard() {
 
   const renderWidget = (widgetId: string) => {
     switch (widgetId) {
-      case 'metrics':
-        return <MetricsWidget openTasks={openTasks} blockedTasks={blockedTasks} upcomingTasks={upcomingTasks} safetyFormsThisWeek={safetyFormsThisWeek} />;
-      case 'activity':
-        return <ActivityWidget completionTrendData={completionTrendData} />;
-      case 'health':
-        return <HealthWidget healthScore={healthScore} atRiskTasks={atRiskTasks} blockedTasks={blockedTasks} overdueTasks={overdueTasks} />;
-      case 'distribution':
-        return <DistributionWidget statusDistribution={statusDistribution} totalTasks={totalTasks} />;
-      case 'myday':
-        return <MyDayWidget priorityTasks={priorityTasks} />;
-      case 'safety':
-        return <SafetyWidget formsToday={formsToday} formsThisWeek={safetyFormsThisWeek} incidents={incidents} />;
-      case 'blockers':
-        return <BlockersWidget blockers={blockers.filter(b => !b.is_resolved)} />;
-      case 'ai':
-        return <AIWidget projectId={currentProjectId} contextData={{ tasks, blockers, safetyForms }} />;
-      default:
-        return null;
+      case 'metrics': return <MetricsWidget openTasks={openTasks} blockedTasks={blockedTasks} upcomingTasks={upcomingTasks} safetyFormsThisWeek={safetyFormsThisWeek} />;
+      case 'activity': return <ActivityWidget completionTrendData={completionTrendData} />;
+      case 'health': return <HealthWidget healthScore={healthScore} atRiskTasks={atRiskTasks} blockedTasks={blockedTasks} overdueTasks={overdueTasks} />;
+      case 'distribution': return <DistributionWidget statusDistribution={statusDistribution} totalTasks={totalTasks} />;
+      case 'myday': return <MyDayWidget priorityTasks={priorityTasks} />;
+      case 'safety': return <SafetyWidget formsToday={formsToday} formsThisWeek={safetyFormsThisWeek} incidents={incidents} />;
+      case 'blockers': return <BlockersWidget blockers={blockers.filter(b => !b.is_resolved)} />;
+      case 'ai': return <AIWidget projectId={currentProjectId} contextData={{ tasks, blockers, safetyForms }} />;
+      default: return null;
     }
   };
 
@@ -357,127 +292,129 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="p-4 md:p-6 space-y-4 pb-20 md:pb-6">
-        {/* Header */}
-        <div className="rounded-xl bg-gradient-to-br from-background via-primary/5 to-secondary/5 border border-primary/20 p-4 md:p-6">
-          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
-            <div className="space-y-3">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="justify-start gap-2 h-auto py-2 px-3 border-primary/30 hover:border-primary">
-                    <Building2 className="h-4 w-4 text-primary" />
-                    <div className="text-left">
-                      <p className="text-xs text-muted-foreground">Project</p>
-                      <p className="text-sm font-bold text-primary truncate max-w-[200px]">
-                        {currentProject?.name || "Select Project"}
-                      </p>
-                    </div>
-                    <ChevronDown className="h-4 w-4 text-primary" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-[300px]">
-                  <DropdownMenuLabel className="text-xs uppercase tracking-wider">Switch Project</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {userProjects?.map((project: any) => (
-                    <DropdownMenuItem
-                      key={project.id}
-                      onClick={() => setCurrentProject(project.id)}
-                      className="flex items-center gap-3 p-2 cursor-pointer"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          {project.id === currentProjectId && <CheckCircle2 className="h-3 w-3 text-primary" />}
-                          <p className="font-semibold text-sm truncate">{project.name}</p>
-                        </div>
-                        {project.totalTasks > 0 && (
-                          <div className="flex items-center gap-2 mt-1">
-                            <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                              <div className="h-full bg-primary rounded-full" style={{ width: `${project.progress}%` }} />
-                            </div>
-                            <span className="text-xs font-bold text-primary">{project.progress}%</span>
-                          </div>
-                        )}
+      <div className="dashboard-container py-6 pb-24 md:pb-8">
+        <div className="dashboard-section">
+          {/* Header */}
+          <div className="widget-card !bg-gradient-to-br !from-card !via-primary/5 !to-secondary/5">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="space-y-3">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="justify-start gap-2 h-auto py-2 px-3 border-border hover:border-primary/50">
+                      <Building2 className="h-4 w-4 text-primary" />
+                      <div className="text-left">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Project</p>
+                        <p className="text-sm font-semibold text-foreground truncate max-w-[200px]">
+                          {currentProject?.name || "Select Project"}
+                        </p>
                       </div>
-                      <Badge variant={getStatusBadgeVariant(project.status)} className="text-xs">
-                        {formatStatus(project.status)}
-                      </Badge>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-[300px]">
+                    <DropdownMenuLabel className="text-xs uppercase tracking-wider text-muted-foreground">Switch Project</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {userProjects?.map((project: any) => (
+                      <DropdownMenuItem
+                        key={project.id}
+                        onClick={() => setCurrentProject(project.id)}
+                        className="flex items-center gap-3 p-3 cursor-pointer"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            {project.id === currentProjectId && <CheckCircle2 className="h-3 w-3 text-secondary" />}
+                            <p className="font-medium text-sm truncate">{project.name}</p>
+                          </div>
+                          {project.totalTasks > 0 && (
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <div className="flex-1 h-1.5 bg-muted/30 rounded-full overflow-hidden">
+                                <div className="h-full bg-secondary rounded-full transition-all" style={{ width: `${project.progress}%` }} />
+                              </div>
+                              <span className="text-xs font-medium text-muted-foreground">{project.progress}%</span>
+                            </div>
+                          )}
+                        </div>
+                        <Badge variant={getStatusBadgeVariant(project.status)} className="text-[10px]">
+                          {formatStatus(project.status)}
+                        </Badge>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
-              <div>
-                <h1 className="text-2xl md:text-3xl font-black text-primary">Today on Site</h1>
-                <p className="text-sm text-muted-foreground">Project status and priorities</p>
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-bold text-foreground">Today on Site</h1>
+                  <p className="text-sm text-muted-foreground">Project status and priorities</p>
+                </div>
               </div>
-            </div>
 
-            <div className="flex flex-wrap gap-2">
-              <DashboardCustomizer
-                isEditMode={isEditMode}
-                setIsEditMode={setIsEditMode}
-                hiddenWidgets={hiddenWidgets}
-                onToggleWidget={toggleWidget}
-                onSave={handleSaveLayout}
-                onReset={resetLayout}
-              />
-              <Button onClick={() => navigate("/tasks")} size="sm" className="bg-primary hover:bg-primary/90">
-                Tasks <ArrowRight className="ml-1 h-4 w-4" />
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <DashboardCustomizer
+                  isEditMode={isEditMode}
+                  setIsEditMode={setIsEditMode}
+                  hiddenWidgets={hiddenWidgets}
+                  onToggleWidget={toggleWidget}
+                  onSave={handleSaveLayout}
+                  onReset={resetLayout}
+                />
+                <Button onClick={() => navigate("/tasks")} size="sm" className="bg-primary hover:bg-primary/90">
+                  Tasks <ArrowRight className="ml-1.5 h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Daily Snapshot */}
-        <DailySnapshotStrip
-          weather={todayLog?.weather || null}
-          crewCount={todayLog?.crew_count || 0}
-          activeTrades={activeTrades}
-          tasksStarting={tasksStartingToday}
-          tasksFinishing={tasksFinishingToday}
-          blockedCount={blockedTasks}
-        />
+          {/* Daily Snapshot */}
+          <DailySnapshotStrip
+            weather={todayLog?.weather || null}
+            crewCount={todayLog?.crew_count || 0}
+            activeTrades={activeTrades}
+            tasksStarting={tasksStartingToday}
+            tasksFinishing={tasksFinishingToday}
+            blockedCount={blockedTasks}
+          />
 
-        {/* Widget Grid */}
-        <div className={isEditMode ? "border-2 border-dashed border-primary/50 rounded-lg p-2 bg-primary/5" : ""}>
-          {isEditMode && (
-            <div className="bg-primary/90 text-primary-foreground px-3 py-2 rounded-t-lg flex items-center gap-2 mb-2">
-              <MoveIcon className="h-4 w-4" />
-              <span className="text-sm font-semibold">Drag to rearrange • Resize corners</span>
-            </div>
-          )}
-          
-          <ResponsiveGridLayout
-            className="layout"
-            layouts={{
-              lg: layouts.lg,
-              md: layouts.md,
-              sm: layouts.sm,
-              xs: layouts.sm,
-              xxs: layouts.sm,
-            }}
-            breakpoints={{ lg: 1200, md: 768, sm: 480, xs: 0, xxs: 0 }}
-            cols={{ lg: 12, md: 8, sm: 4, xs: 4, xxs: 4 }}
-            rowHeight={70}
-            isDraggable={isEditMode}
-            isResizable={isEditMode}
-            onLayoutChange={handleLayoutChange}
-            onBreakpointChange={handleBreakpointChange}
-            draggableHandle=".drag-handle"
-            margin={[16, 16]}
-            containerPadding={[0, 0]}
-          >
-            {widgetIds.filter(id => !hiddenWidgets.includes(id)).map(widgetId => (
-              <div key={widgetId} className={`widget-container overflow-hidden rounded-lg ${isEditMode ? "border border-primary/30 bg-background/80" : ""}`}>
-                {isEditMode && (
-                  <div className="drag-handle absolute top-1 right-1 cursor-move z-10 bg-primary text-primary-foreground p-1.5 rounded shadow">
-                    <MoveIcon className="h-3 w-3" />
-                  </div>
-                )}
-                {renderWidget(widgetId)}
+          {/* Widget Grid */}
+          <div className={isEditMode ? "rounded-xl border-2 border-dashed border-primary/40 p-3 bg-primary/5" : ""}>
+            {isEditMode && (
+              <div className="bg-primary text-primary-foreground px-4 py-2.5 rounded-lg flex items-center gap-2 mb-4">
+                <MoveIcon className="h-4 w-4" />
+                <span className="text-sm font-medium">Drag to rearrange • Resize from corners</span>
               </div>
-            ))}
-          </ResponsiveGridLayout>
+            )}
+            
+            <ResponsiveGridLayout
+              className="layout"
+              layouts={{
+                lg: layouts.lg,
+                md: layouts.md,
+                sm: layouts.sm,
+                xs: layouts.sm,
+                xxs: layouts.sm,
+              }}
+              breakpoints={{ lg: 1200, md: 768, sm: 480, xs: 0, xxs: 0 }}
+              cols={{ lg: 12, md: 8, sm: 4, xs: 4, xxs: 4 }}
+              rowHeight={78}
+              isDraggable={isEditMode}
+              isResizable={isEditMode}
+              onLayoutChange={handleLayoutChange}
+              onBreakpointChange={handleBreakpointChange}
+              draggableHandle=".drag-handle"
+              margin={[16, 16]}
+              containerPadding={[0, 0]}
+            >
+              {widgetIds.filter(id => !hiddenWidgets.includes(id)).map(widgetId => (
+                <div key={widgetId} className={`widget-wrapper ${isEditMode ? "ring-1 ring-primary/20" : ""}`}>
+                  {isEditMode && (
+                    <div className="drag-handle absolute top-2 right-2 cursor-move z-10 bg-primary text-primary-foreground p-1.5 rounded-md shadow-sm">
+                      <MoveIcon className="h-3 w-3" />
+                    </div>
+                  )}
+                  {renderWidget(widgetId)}
+                </div>
+              ))}
+            </ResponsiveGridLayout>
+          </div>
         </div>
       </div>
     </Layout>
