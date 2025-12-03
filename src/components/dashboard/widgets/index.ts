@@ -9,4 +9,7 @@ export { AIWidget } from './AIWidget';
 export { DailySnapshotStrip } from './DailySnapshotStrip';
 export { SnapshotDetailModal } from './SnapshotDetailModal';
 export { ActiveTradesPopover } from './ActiveTradesPopover';
+export { WeatherInfoPopover } from './WeatherInfoPopover';
+export { CrewInfoPopover } from './CrewInfoPopover';
+export { BlockersPreviewModal } from './BlockersPreviewModal';
 export type { SnapshotTask, SnapshotTrade } from './DailySnapshotStrip';

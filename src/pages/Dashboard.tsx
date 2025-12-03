@@ -22,6 +22,9 @@ import {
   DailySnapshotStrip,
   SnapshotDetailModal,
   ActiveTradesPopover,
+  WeatherInfoPopover,
+  CrewInfoPopover,
+  BlockersPreviewModal,
 } from "@/components/dashboard/widgets";
 import type { SnapshotTask, SnapshotTrade } from "@/components/dashboard/widgets";
 import {
@@ -53,10 +56,13 @@ export default function Dashboard() {
   const { isPM, isForeman } = useAuthRole(currentProjectId || undefined);
   const [currentBreakpoint, setCurrentBreakpoint] = useState("lg");
   
-  // Modal states for snapshot strip
+  // Modal/popover states for snapshot strip
   const [startingModalOpen, setStartingModalOpen] = useState(false);
   const [finishingModalOpen, setFinishingModalOpen] = useState(false);
   const [tradesPopoverOpen, setTradesPopoverOpen] = useState(false);
+  const [weatherPopoverOpen, setWeatherPopoverOpen] = useState(false);
+  const [crewPopoverOpen, setCrewPopoverOpen] = useState(false);
+  const [blockersModalOpen, setBlockersModalOpen] = useState(false);
 
   const {
     layouts,
@@ -228,6 +234,33 @@ export default function Dashboard() {
 
   const activeTrades = activeTradesData.length;
 
+  // Fetch project team members
+  const { data: teamMembers = [] } = useQuery({
+    queryKey: ["dashboard-team-members", currentProjectId],
+    queryFn: async () => {
+      if (!currentProjectId) return [];
+      const { data, error } = await supabase
+        .from("project_members")
+        .select(`
+          id,
+          user_id,
+          role,
+          trade:trades(name),
+          profile:profiles(id, full_name, email)
+        `)
+        .eq("project_id", currentProjectId);
+      if (error) throw error;
+      return (data || []).map((m: any) => ({
+        id: m.user_id,
+        full_name: m.profile?.full_name || null,
+        email: m.profile?.email || "",
+        role: m.role,
+        trade_name: m.trade?.name || null,
+      }));
+    },
+    enabled: !!currentProjectId,
+  });
+
   // Calculate metrics
   const openTasks = tasks.filter(t => t.status !== "done").length;
   const blockedTasks = tasks.filter(t => t.status === "blocked").length;
@@ -292,9 +325,13 @@ export default function Dashboard() {
   const tasksStartingToday = tasksStartingTodayList.length;
   const tasksFinishingToday = tasksFinishingTodayList.length;
 
-  // Snapshot click handlers
-  const handleDailyLogsNav = () => navigate("/daily-logs");
-  const handleBlockersNav = () => navigate("/tasks?status=blocked");
+  // Blockers with created_at for modal
+  const blockersForModal = blockers.filter(b => !b.is_resolved).map(b => ({
+    id: b.id,
+    reason: b.reason,
+    created_at: b.created_at,
+    task: b.task,
+  }));
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -424,29 +461,42 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Daily Snapshot */}
-          <ActiveTradesPopover
-            trades={activeTradesData}
-            open={tradesPopoverOpen}
-            onOpenChange={setTradesPopoverOpen}
+          {/* Daily Snapshot with Popovers */}
+          <WeatherInfoPopover
+            todayLog={todayLog}
+            open={weatherPopoverOpen}
+            onOpenChange={setWeatherPopoverOpen}
           >
-            <div>
-              <DailySnapshotStrip
-                weather={todayLog?.weather || null}
-                crewCount={todayLog?.crew_count || 0}
-                activeTrades={activeTrades}
-                tasksStarting={tasksStartingToday}
-                tasksFinishing={tasksFinishingToday}
-                blockedCount={blockedTasks}
-                onWeatherClick={handleDailyLogsNav}
-                onCrewClick={handleDailyLogsNav}
-                onTradesClick={() => setTradesPopoverOpen(true)}
-                onStartingClick={() => setStartingModalOpen(true)}
-                onFinishingClick={() => setFinishingModalOpen(true)}
-                onBlockersClick={handleBlockersNav}
-              />
-            </div>
-          </ActiveTradesPopover>
+            <CrewInfoPopover
+              crewCount={todayLog?.crew_count || 0}
+              teamMembers={teamMembers}
+              open={crewPopoverOpen}
+              onOpenChange={setCrewPopoverOpen}
+            >
+              <ActiveTradesPopover
+                trades={activeTradesData}
+                open={tradesPopoverOpen}
+                onOpenChange={setTradesPopoverOpen}
+              >
+                <div>
+                  <DailySnapshotStrip
+                    weather={todayLog?.weather || null}
+                    crewCount={todayLog?.crew_count || 0}
+                    activeTrades={activeTrades}
+                    tasksStarting={tasksStartingToday}
+                    tasksFinishing={tasksFinishingToday}
+                    blockedCount={blockedTasks}
+                    onWeatherClick={() => setWeatherPopoverOpen(true)}
+                    onCrewClick={() => setCrewPopoverOpen(true)}
+                    onTradesClick={() => setTradesPopoverOpen(true)}
+                    onStartingClick={() => setStartingModalOpen(true)}
+                    onFinishingClick={() => setFinishingModalOpen(true)}
+                    onBlockersClick={() => setBlockersModalOpen(true)}
+                  />
+                </div>
+              </ActiveTradesPopover>
+            </CrewInfoPopover>
+          </WeatherInfoPopover>
 
           {/* Snapshot Detail Modals */}
           <SnapshotDetailModal
@@ -462,6 +512,11 @@ export default function Dashboard() {
             title="Tasks Due Today"
             tasks={tasksFinishingTodayList}
             filterParam="dateRange=today"
+          />
+          <BlockersPreviewModal
+            open={blockersModalOpen}
+            onOpenChange={setBlockersModalOpen}
+            blockers={blockersForModal}
           />
 
           {/* Widget Grid */}
