@@ -1,4 +1,9 @@
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { TradeBadge } from "@/components/TradeBadge";
 import { useNavigate } from "react-router-dom";
@@ -11,19 +16,17 @@ interface Trade {
   taskCount: number;
 }
 
-interface ActiveTradesPopoverProps {
+interface ActiveTradesModalProps {
   trades: Trade[];
-  children: React.ReactNode;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export const ActiveTradesPopover = ({
+export const ActiveTradesModal = ({
   trades,
-  children,
   open,
   onOpenChange,
-}: ActiveTradesPopoverProps) => {
+}: ActiveTradesModalProps) => {
   const navigate = useNavigate();
 
   const handleTradeClick = (tradeId: string) => {
@@ -32,31 +35,30 @@ export const ActiveTradesPopover = ({
   };
 
   return (
-    <Popover open={open} onOpenChange={onOpenChange}>
-      <PopoverTrigger asChild>{children}</PopoverTrigger>
-      <PopoverContent className="w-72 p-0" align="start">
-        <div className="p-3 border-b border-border">
-          <h4 className="font-semibold text-sm flex items-center gap-2">
-            <Wrench className="h-4 w-4 text-primary" />
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Wrench className="h-5 w-5 text-primary" />
             Active Trades
-          </h4>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          </DialogTitle>
+          <p className="text-xs text-muted-foreground">
             {trades.length} trade{trades.length !== 1 ? "s" : ""} with active tasks
           </p>
-        </div>
+        </DialogHeader>
 
         <div className="max-h-[280px] overflow-y-auto">
           {trades.length === 0 ? (
-            <div className="p-4 text-center text-sm text-muted-foreground">
+            <div className="py-6 text-center text-sm text-muted-foreground">
               No active trades
             </div>
           ) : (
-            <div className="p-2 space-y-1">
+            <div className="space-y-1">
               {trades.map((trade) => (
                 <button
                   key={trade.id}
                   onClick={() => handleTradeClick(trade.id)}
-                  className="w-full flex items-center justify-between p-2 rounded-md hover:bg-accent/10 transition-colors text-left"
+                  className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-accent/10 transition-colors text-left"
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <TradeBadge trade={trade.trade_type as any} />
@@ -73,11 +75,11 @@ export const ActiveTradesPopover = ({
           )}
         </div>
 
-        <div className="p-2 border-t border-border">
+        <div className="pt-2">
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
-            className="w-full justify-center text-xs"
+            className="w-full"
             onClick={() => {
               onOpenChange(false);
               navigate("/tasks");
@@ -86,7 +88,7 @@ export const ActiveTradesPopover = ({
             View All Tasks <ArrowRight className="h-3 w-3 ml-1" />
           </Button>
         </div>
-      </PopoverContent>
-    </Popover>
+      </DialogContent>
+    </Dialog>
   );
 };

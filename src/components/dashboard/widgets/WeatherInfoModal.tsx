@@ -1,7 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import { Cloud, Sun, CloudRain, Snowflake, Wind, Thermometer, FileText, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { format } from "date-fns";
 
 interface DailyLog {
@@ -14,8 +19,7 @@ interface DailyLog {
   log_date: string;
 }
 
-interface WeatherInfoPopoverProps {
-  children: React.ReactNode;
+interface WeatherInfoModalProps {
   todayLog: DailyLog | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -31,7 +35,7 @@ const getWeatherIcon = (weather: string | null) => {
   return <Cloud className="h-5 w-5 text-muted-foreground" />;
 };
 
-export const WeatherInfoPopover = ({ children, todayLog, open, onOpenChange }: WeatherInfoPopoverProps) => {
+export const WeatherInfoModal = ({ todayLog, open, onOpenChange }: WeatherInfoModalProps) => {
   const navigate = useNavigate();
 
   const handleNavigate = () => {
@@ -40,21 +44,20 @@ export const WeatherInfoPopover = ({ children, todayLog, open, onOpenChange }: W
   };
 
   return (
-    <Popover open={open} onOpenChange={onOpenChange}>
-      <PopoverTrigger asChild>{children}</PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="start">
-        <div className="p-4 border-b border-border">
-          <div className="flex items-center gap-2">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
             {getWeatherIcon(todayLog?.weather)}
-            <h4 className="font-semibold text-foreground">Today's Conditions</h4>
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">
+            Today's Conditions
+          </DialogTitle>
+          <p className="text-xs text-muted-foreground">
             {format(new Date(), "EEEE, MMMM d, yyyy")}
           </p>
-        </div>
+        </DialogHeader>
 
         {todayLog ? (
-          <div className="p-4 space-y-4">
+          <div className="space-y-4">
             {/* Weather & Temperature */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -101,7 +104,7 @@ export const WeatherInfoPopover = ({ children, todayLog, open, onOpenChange }: W
             </Button>
           </div>
         ) : (
-          <div className="p-6 text-center">
+          <div className="py-6 text-center">
             <div className="w-12 h-12 rounded-full bg-muted/30 flex items-center justify-center mx-auto mb-3">
               <FileText className="h-6 w-6 text-muted-foreground" />
             </div>
@@ -115,7 +118,7 @@ export const WeatherInfoPopover = ({ children, todayLog, open, onOpenChange }: W
             </Button>
           </div>
         )}
-      </PopoverContent>
-    </Popover>
+      </DialogContent>
+    </Dialog>
   );
 };
