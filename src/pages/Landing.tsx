@@ -13,6 +13,7 @@ import iconLookahead from "@/assets/icon-lookahead.png";
 import iconSafety from "@/assets/icon-safety.png";
 import iconManpower from "@/assets/icon-manpower.png";
 import iconAI from "@/assets/icon-ai.png";
+import buildSenseLogo from "@/assets/build-sense-logo.png";
 export default function Landing() {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -42,7 +43,10 @@ export default function Landing() {
       {/* Navigation */}
       <nav className="fixed top-0 w-full bg-background/98 backdrop-blur-md border-b border-border z-50 shadow-sm">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <h1 className="text-xl md:text-2xl font-bold text-foreground tracking-tight">Build Sense</h1>
+          <div className="flex items-center gap-2">
+            <img src={buildSenseLogo} alt="Build Sense" className="h-9 w-9" />
+            <h1 className="text-xl md:text-2xl font-bold text-foreground tracking-tight">Build Sense</h1>
+          </div>
           
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-3">
@@ -71,7 +75,10 @@ export default function Landing() {
               </SheetTrigger>
               <SheetContent side="right" className="w-[280px] sm:w-[320px]">
                 <SheetHeader className="text-left mb-6">
-                  <SheetTitle className="text-2xl font-bold">Build Sense</SheetTitle>
+                  <SheetTitle className="flex items-center gap-2">
+                    <img src={buildSenseLogo} alt="Build Sense" className="h-8 w-8" />
+                    <span className="text-2xl font-bold">Build Sense</span>
+                  </SheetTitle>
                 </SheetHeader>
                 <nav className="flex flex-col gap-4">
                   <Button 
@@ -314,9 +321,12 @@ export default function Landing() {
       <footer className="py-12 px-4 border-t border-border">
         <div className="container mx-auto max-w-6xl">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-sm text-muted-foreground">
-              © 2024 Build Sense. Built for the field.
-            </p>
+            <div className="flex items-center gap-2">
+              <img src={buildSenseLogo} alt="Build Sense" className="h-7 w-7" />
+              <p className="text-sm text-muted-foreground">
+                © 2024 Build Sense. Built for the field.
+              </p>
+            </div>
             <Button variant="ghost" onClick={() => navigate('/auth')}>
               Sign In
             </Button>
