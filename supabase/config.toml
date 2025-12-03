@@ -1,5 +1,8 @@
 project_id = "pckpfhrdrjtcjzcdfvfs"
 
+[functions.parse-gc-pdf]
+verify_jwt = true
+
 [functions.ask-ai]
 verify_jwt = false
 
