@@ -31,7 +31,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, AlertTriangle, Shield, CheckCircle2, FileText, Users, Calendar, Plus, MoreVertical, Archive } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Shield, CheckCircle2, FileText, Users, Calendar, Plus, MoreVertical, Archive, Receipt } from 'lucide-react';
 
 interface Project {
   id: string;
@@ -277,7 +277,7 @@ const ProjectOverview = () => {
 
         {/* Tabbed Content */}
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="tasks">Tasks</TabsTrigger>
             <TabsTrigger value="lookahead">Lookahead</TabsTrigger>
@@ -285,6 +285,7 @@ const ProjectOverview = () => {
             <TabsTrigger value="safety">Safety</TabsTrigger>
             <TabsTrigger value="documents">Docs</TabsTrigger>
             <TabsTrigger value="deficiencies">Issues</TabsTrigger>
+            <TabsTrigger value="receipts">Receipts</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="mt-4">
@@ -313,6 +314,10 @@ const ProjectOverview = () => {
 
           <TabsContent value="deficiencies" className="mt-4">
             <ProjectDeficiencies projectId={projectId!} />
+          </TabsContent>
+
+          <TabsContent value="receipts" className="mt-4">
+            <ProjectReceiptsTab projectId={projectId!} />
           </TabsContent>
         </Tabs>
 
@@ -952,6 +957,24 @@ const ProjectDeficiencies = ({ projectId }: { projectId: string }) => {
           }
         />
       ))}
+    </div>
+  );
+};
+
+// Receipts Tab Component
+const ProjectReceiptsTab = ({ projectId }: { projectId: string }) => {
+  const navigate = useNavigate();
+
+  return (
+    <div className="text-center py-8">
+      <Receipt className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+      <h3 className="font-medium mb-2">Project Receipts</h3>
+      <p className="text-sm text-muted-foreground mb-4">
+        Upload and manage expense receipts for this project.
+      </p>
+      <Button onClick={() => navigate(`/projects/${projectId}/receipts`)}>
+        Open Receipts
+      </Button>
     </div>
   );
 };
