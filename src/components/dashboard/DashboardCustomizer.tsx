@@ -44,7 +44,7 @@ export const DashboardCustomizer = ({
               onSave();
               setIsEditMode(false);
             }}
-            className="bg-primary-dark text-white hover:bg-primary-dark/90 border-0"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 border-0"
           >
             <Save className="h-4 w-4 mr-2" />
             Save Layout
@@ -96,7 +96,7 @@ export const DashboardCustomizer = ({
                         {hiddenWidgets.includes(id) ? (
                           <EyeOff className="h-4 w-4 text-muted-foreground" />
                         ) : (
-                          <Eye className="h-4 w-4 text-primary-light" />
+                          <Eye className="h-4 w-4 text-secondary" />
                         )}
                         {name}
                       </Label>
@@ -120,7 +120,7 @@ export const DashboardCustomizer = ({
                   </p>
                   <Button
                     onClick={() => setIsEditMode(true)}
-                    className="w-full bg-primary-dark text-white hover:bg-primary-dark/90"
+                    className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
                   >
                     <Settings className="h-4 w-4 mr-2" />
                     Enable Edit Mode
