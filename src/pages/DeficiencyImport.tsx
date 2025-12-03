@@ -207,16 +207,71 @@ export default function DeficiencyImport() {
         throw new Error('Invalid file type. Please upload .xlsx, .xls, .csv, or .pdf files.');
       }
 
-      // Parse file content
+      // Upload file to storage first
+      const importId = crypto.randomUUID();
+      const filePath = `${projectId}/${importId}/source.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('gc_deficiency_uploads')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get signed URL for the uploaded file (works for private buckets)
+      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+        .from('gc_deficiency_uploads')
+        .createSignedUrl(filePath, 3600); // 1 hour expiry
+
+      if (signedUrlError || !signedUrlData?.signedUrl) {
+        throw new Error('Failed to generate file access URL');
+      }
+
       let rows: any[] = [];
       let headers: string[] = [];
 
       if (ext === 'pdf') {
-        toast.error('PDF parsing is not yet fully supported. Please request a CSV or Excel export from the GC.');
-        setUploadingFile(false);
+        // Use AI-powered PDF parsing
+        toast.info('Processing PDF with AI OCR. This may take a moment...');
+        
+        const { data: pdfResult, error: pdfError } = await supabase.functions.invoke('parse-gc-pdf', {
+          body: {
+            fileUrl: signedUrlData.signedUrl,
+            projectId,
+            sourceName: file.name,
+          },
+        });
+
+        if (pdfError) throw pdfError;
+        
+        if (!pdfResult?.success || !pdfResult?.rows?.length) {
+          // Clean up uploaded file on failure
+          await supabase.storage.from('gc_deficiency_uploads').remove([filePath]);
+          throw new Error(pdfResult?.error || 'Could not extract data from PDF. Please request a CSV or Excel export from the GC.');
+        }
+
+        rows = pdfResult.rows;
+        // For PDFs, we have fixed headers from AI extraction
+        headers = ['gc_id', 'description', 'location', 'gc_trade', 'status', 'due_date'];
+        
+        toast.success(`Extracted ${rows.length} items from PDF`);
+        
+        // For PDFs, auto-set column mapping since AI already structured the data
+        setColumnMapping({
+          gc_id: 'gc_id',
+          description: 'description',
+          location: 'location',
+          gc_trade: 'gc_trade',
+          status: 'status',
+          due_date: 'due_date',
+        });
+        
+        // Skip column mapping dialog for PDFs since data is already structured
+        setPendingFileData({ rows, sourceName: file.name, filePath });
+        await completePdfUpload(rows, file.name, filePath);
         return;
       }
 
+      // Parse Excel/CSV files
       const data = await file.arrayBuffer();
       const workbook = XLSX.read(data);
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -243,16 +298,6 @@ export default function DeficiencyImport() {
         toast.warning(`File contains ${rows.length} rows. Only the first 500 will be processed.`);
       }
 
-      // Upload file to storage
-      const importId = crypto.randomUUID();
-      const filePath = `${projectId}/${importId}/source.${ext}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('gc_deficiency_uploads')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
       // Store pending data and show column mapping
       setDetectedHeaders(headers);
       setPendingFileData({ rows, sourceName: file.name, filePath });
@@ -265,6 +310,67 @@ export default function DeficiencyImport() {
       setUploadingFile(false);
     }
   }, [projectId, user]);
+
+  // Complete PDF upload (skip column mapping since AI structured the data)
+  const completePdfUpload = async (rows: any[], sourceName: string, filePath: string) => {
+    if (!projectId || !user) return;
+
+    try {
+      // Create import record
+      const { data: importRecord, error: createError } = await supabase
+        .from('gc_deficiency_imports')
+        .insert({
+          project_id: projectId,
+          uploaded_by: user.id,
+          file_path: filePath,
+          source_name: sourceName,
+          status: 'uploaded',
+          total_rows: rows.length,
+        })
+        .select()
+        .single();
+
+      if (createError) throw createError;
+
+      // Start parsing with pre-mapped columns
+      setParsing(true);
+      setSelectedImport(importRecord as GCImport);
+
+      const pdfColumnMapping = {
+        gc_id: 'gc_id',
+        description: 'description',
+        location: 'location',
+        gc_trade: 'gc_trade',
+        status: 'status',
+        due_date: 'due_date',
+      };
+
+      const { error: parseError } = await supabase.functions.invoke('parse-gc-deficiency-list', {
+        body: {
+          importId: importRecord.id,
+          rows: rows,
+          projectInfo: {
+            name: project?.name,
+            horizonScope: project?.description,
+          },
+          columnMapping: pdfColumnMapping,
+        },
+      });
+
+      if (parseError) throw parseError;
+
+      toast.success('PDF parsed and processed successfully');
+      queryClient.invalidateQueries({ queryKey: ['gc-imports', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['gc-import-items', importRecord.id] });
+
+    } catch (error) {
+      console.error('PDF processing error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to process PDF');
+    } finally {
+      setParsing(false);
+      setPendingFileData(null);
+    }
+  };
 
   // Complete upload after column mapping
   const completeUpload = async () => {
