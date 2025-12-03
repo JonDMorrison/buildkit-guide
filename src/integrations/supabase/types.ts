@@ -897,6 +897,79 @@ export type Database = {
           },
         ]
       }
+      receipts: {
+        Row: {
+          amount: number | null
+          category: Database["public"]["Enums"]["receipt_category"]
+          created_at: string
+          currency: string
+          file_path: string
+          id: string
+          notes: string | null
+          processed_data_json: Json | null
+          project_id: string
+          task_id: string | null
+          updated_at: string
+          uploaded_at: string
+          uploaded_by: string
+          vendor: string | null
+        }
+        Insert: {
+          amount?: number | null
+          category?: Database["public"]["Enums"]["receipt_category"]
+          created_at?: string
+          currency?: string
+          file_path: string
+          id?: string
+          notes?: string | null
+          processed_data_json?: Json | null
+          project_id: string
+          task_id?: string | null
+          updated_at?: string
+          uploaded_at?: string
+          uploaded_by: string
+          vendor?: string | null
+        }
+        Update: {
+          amount?: number | null
+          category?: Database["public"]["Enums"]["receipt_category"]
+          created_at?: string
+          currency?: string
+          file_path?: string
+          id?: string
+          notes?: string | null
+          processed_data_json?: Json | null
+          project_id?: string
+          task_id?: string | null
+          updated_at?: string
+          uploaded_at?: string
+          uploaded_by?: string
+          vendor?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipts_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipts_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       safety_entries: {
         Row: {
           created_at: string
@@ -1318,6 +1391,13 @@ export type Database = {
         | "deficiency_created"
         | "document_uploaded"
         | "incident_report"
+      receipt_category:
+        | "fuel"
+        | "materials"
+        | "tools"
+        | "meals"
+        | "lodging"
+        | "other"
       safety_status: "draft" | "submitted" | "reviewed"
       task_status: "not_started" | "in_progress" | "blocked" | "done"
     }
@@ -1467,6 +1547,14 @@ export const Constants = {
         "deficiency_created",
         "document_uploaded",
         "incident_report",
+      ],
+      receipt_category: [
+        "fuel",
+        "materials",
+        "tools",
+        "meals",
+        "lodging",
+        "other",
       ],
       safety_status: ["draft", "submitted", "reviewed"],
       task_status: ["not_started", "in_progress", "blocked", "done"],

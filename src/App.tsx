@@ -24,6 +24,7 @@ import Documents from "./pages/Documents";
 import UserManagement from "./pages/UserManagement";
 import AuditLog from "./pages/AuditLog";
 import DailyLogs from "./pages/DailyLogs";
+import Receipts from "./pages/Receipts";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -170,6 +171,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <DailyLogs />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/receipts"
+              element={
+                <ProtectedRoute>
+                  <Receipts />
                 </ProtectedRoute>
               }
             />
