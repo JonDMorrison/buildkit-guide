@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.create-demo-user]
 verify_jwt = false
+
+[functions.ai-parse-receipt]
+verify_jwt = false
