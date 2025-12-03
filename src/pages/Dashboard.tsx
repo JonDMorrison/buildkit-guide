@@ -41,7 +41,9 @@ import {
   Building2,
   ChevronDown,
   MoveIcon,
+  Plus,
 } from "lucide-react";
+import { QuickAddModal } from "@/components/dashboard/QuickAddModal";
 import { format, isAfter, isBefore, addDays, startOfDay, subDays } from "date-fns";
 import { Responsive, WidthProvider, Layout as GridLayout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
@@ -63,6 +65,7 @@ export default function Dashboard() {
   const [weatherPopoverOpen, setWeatherPopoverOpen] = useState(false);
   const [crewPopoverOpen, setCrewPopoverOpen] = useState(false);
   const [blockersModalOpen, setBlockersModalOpen] = useState(false);
+  const [quickAddModalOpen, setQuickAddModalOpen] = useState(false);
 
   const {
     layouts,
@@ -455,9 +458,18 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <Button onClick={() => navigate("/tasks")} size="sm" className="bg-primary hover:bg-primary/90 px-3 w-fit">
-                <ArrowRight className="h-4 w-4 mr-1" /> Tasks
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button 
+                  onClick={() => setQuickAddModalOpen(true)} 
+                  size="sm" 
+                  className="bg-[#DC8644] hover:bg-[#DC8644]/90 text-white px-3 w-fit"
+                >
+                  <Plus className="h-4 w-4 mr-1" /> Add
+                </Button>
+                <Button onClick={() => navigate("/tasks")} size="sm" className="bg-primary hover:bg-primary/90 px-3 w-fit">
+                  <ArrowRight className="h-4 w-4 mr-1" /> Tasks
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -512,6 +524,11 @@ export default function Dashboard() {
             open={blockersModalOpen}
             onOpenChange={setBlockersModalOpen}
             blockers={blockersForModal}
+          />
+          <QuickAddModal
+            open={quickAddModalOpen}
+            onOpenChange={setQuickAddModalOpen}
+            currentProjectId={currentProjectId}
           />
 
           {/* Widget Grid */}
