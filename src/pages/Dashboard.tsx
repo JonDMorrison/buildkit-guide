@@ -348,7 +348,10 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <Button onClick={() => navigate("/tasks")} size="sm" className="bg-primary hover:bg-primary/90">
+                  Tasks <ArrowRight className="ml-1.5 h-4 w-4" />
+                </Button>
                 <DashboardCustomizer
                   isEditMode={isEditMode}
                   setIsEditMode={setIsEditMode}
@@ -357,9 +360,6 @@ export default function Dashboard() {
                   onSave={handleSaveLayout}
                   onReset={resetLayout}
                 />
-                <Button onClick={() => navigate("/tasks")} size="sm" className="bg-primary hover:bg-primary/90">
-                  Tasks <ArrowRight className="ml-1.5 h-4 w-4" />
-                </Button>
               </div>
             </div>
           </div>

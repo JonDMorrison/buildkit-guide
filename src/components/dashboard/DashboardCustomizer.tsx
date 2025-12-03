@@ -72,9 +72,8 @@ export const DashboardCustomizer = ({
       ) : (
         <Sheet>
           <SheetTrigger asChild>
-            <Button variant="outline" size="sm">
-              <Settings className="h-4 w-4 mr-2" />
-              Customize
+            <Button variant="ghost" size="icon" className="h-9 w-9">
+              <Settings className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
             </Button>
           </SheetTrigger>
           <SheetContent className="w-[400px] sm:w-[540px]">
