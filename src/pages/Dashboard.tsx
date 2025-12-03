@@ -292,6 +292,18 @@ export default function Dashboard() {
 
   return (
     <Layout>
+      {/* Dashboard Settings in TopNav area */}
+      <div className="fixed top-0 right-[140px] z-50 h-nav flex items-center">
+        <DashboardCustomizer
+          isEditMode={isEditMode}
+          setIsEditMode={setIsEditMode}
+          hiddenWidgets={hiddenWidgets}
+          onToggleWidget={toggleWidget}
+          onSave={handleSaveLayout}
+          onReset={resetLayout}
+        />
+      </div>
+      
       <div className="dashboard-container py-6 pb-24 md:pb-8">
         <div className="dashboard-section">
           {/* Header */}
@@ -348,19 +360,9 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <Button onClick={() => navigate("/tasks")} size="sm" className="bg-primary hover:bg-primary/90">
-                  Tasks <ArrowRight className="ml-1.5 h-4 w-4" />
-                </Button>
-                <DashboardCustomizer
-                  isEditMode={isEditMode}
-                  setIsEditMode={setIsEditMode}
-                  hiddenWidgets={hiddenWidgets}
-                  onToggleWidget={toggleWidget}
-                  onSave={handleSaveLayout}
-                  onReset={resetLayout}
-                />
-              </div>
+              <Button onClick={() => navigate("/tasks")} size="sm" className="bg-primary hover:bg-primary/90">
+                Tasks <ArrowRight className="ml-1.5 h-4 w-4" />
+              </Button>
             </div>
           </div>
 
