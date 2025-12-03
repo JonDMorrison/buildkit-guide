@@ -31,7 +31,7 @@ export const useProjectRole = (projectId?: string) => {
         .select('role')
         .eq('user_id', user.id)
         .eq('role', 'admin')
-        .single();
+        .maybeSingle();
 
       setIsGlobalAdmin(!!adminData);
 
