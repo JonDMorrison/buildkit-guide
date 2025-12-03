@@ -15,20 +15,57 @@ export interface DashboardWidget {
   maxH?: number;
 }
 
-const DEFAULT_LAYOUT: DashboardWidget[] = [
-  { i: 'metrics', x: 0, y: 0, w: 12, h: 2, minH: 2, minW: 6 },
-  { i: 'activity', x: 0, y: 2, w: 6, h: 4, minH: 3, minW: 4 },
-  { i: 'health', x: 6, y: 2, w: 6, h: 4, minH: 3, minW: 4 },
-  { i: 'distribution', x: 0, y: 6, w: 12, h: 3, minH: 2, minW: 6 },
-  { i: 'myday', x: 0, y: 9, w: 8, h: 5, minH: 4, minW: 6 },
-  { i: 'safety', x: 8, y: 9, w: 4, h: 5, minH: 4, minW: 3 },
-  { i: 'blockers', x: 0, y: 14, w: 12, h: 4, minH: 3, minW: 6 },
-  { i: 'ai', x: 0, y: 18, w: 12, h: 5, minH: 4, minW: 6 },
+export interface ResponsiveLayouts {
+  lg: DashboardWidget[];
+  md: DashboardWidget[];
+  sm: DashboardWidget[];
+}
+
+// Desktop layout (lg: 1200px+, 12 cols)
+const LAYOUT_LG: DashboardWidget[] = [
+  { i: 'metrics', x: 0, y: 0, w: 12, h: 2, minH: 2, maxH: 2, minW: 8 },
+  { i: 'activity', x: 0, y: 2, w: 6, h: 4, minH: 3, maxH: 5, minW: 4 },
+  { i: 'health', x: 6, y: 2, w: 6, h: 4, minH: 3, maxH: 5, minW: 4 },
+  { i: 'distribution', x: 0, y: 6, w: 4, h: 3, minH: 3, maxH: 4, minW: 3 },
+  { i: 'myday', x: 4, y: 6, w: 5, h: 4, minH: 3, maxH: 6, minW: 4 },
+  { i: 'safety', x: 9, y: 6, w: 3, h: 4, minH: 3, maxH: 5, minW: 3 },
+  { i: 'blockers', x: 0, y: 10, w: 6, h: 4, minH: 3, maxH: 5, minW: 4 },
+  { i: 'ai', x: 6, y: 10, w: 6, h: 4, minH: 3, maxH: 6, minW: 4 },
 ];
+
+// Tablet layout (md: 768-1199px, 8 cols)
+const LAYOUT_MD: DashboardWidget[] = [
+  { i: 'metrics', x: 0, y: 0, w: 8, h: 3, minH: 2, maxH: 3, minW: 6 },
+  { i: 'activity', x: 0, y: 3, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
+  { i: 'health', x: 4, y: 3, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
+  { i: 'distribution', x: 0, y: 7, w: 4, h: 3, minH: 3, maxH: 4, minW: 3 },
+  { i: 'safety', x: 4, y: 7, w: 4, h: 3, minH: 3, maxH: 4, minW: 3 },
+  { i: 'myday', x: 0, y: 10, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
+  { i: 'blockers', x: 4, y: 10, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
+  { i: 'ai', x: 0, y: 14, w: 8, h: 4, minH: 3, maxH: 5, minW: 6 },
+];
+
+// Mobile layout (sm: <768px, 4 cols - stacked)
+const LAYOUT_SM: DashboardWidget[] = [
+  { i: 'metrics', x: 0, y: 0, w: 4, h: 4, minH: 4, maxH: 4, minW: 4 },
+  { i: 'health', x: 0, y: 4, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
+  { i: 'myday', x: 0, y: 8, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
+  { i: 'blockers', x: 0, y: 12, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
+  { i: 'safety', x: 0, y: 16, w: 4, h: 3, minH: 3, maxH: 4, minW: 4 },
+  { i: 'activity', x: 0, y: 19, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
+  { i: 'distribution', x: 0, y: 23, w: 4, h: 3, minH: 3, maxH: 4, minW: 4 },
+  { i: 'ai', x: 0, y: 26, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
+];
+
+const DEFAULT_LAYOUTS: ResponsiveLayouts = {
+  lg: LAYOUT_LG,
+  md: LAYOUT_MD,
+  sm: LAYOUT_SM,
+};
 
 export const useDashboardLayout = (projectId: string | null) => {
   const { user } = useAuth();
-  const [layout, setLayout] = useState<DashboardWidget[]>(DEFAULT_LAYOUT);
+  const [layouts, setLayouts] = useState<ResponsiveLayouts>(DEFAULT_LAYOUTS);
   const [hiddenWidgets, setHiddenWidgets] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -37,7 +74,7 @@ export const useDashboardLayout = (projectId: string | null) => {
     if (user?.id && projectId) {
       loadLayout();
     } else {
-      setLayout(DEFAULT_LAYOUT);
+      setLayouts(DEFAULT_LAYOUTS);
       setHiddenWidgets([]);
       setIsLoading(false);
     }
@@ -51,29 +88,42 @@ export const useDashboardLayout = (projectId: string | null) => {
         .select('layout, hidden_widgets')
         .eq('user_id', user!.id)
         .eq('project_id', projectId!)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         throw error;
       }
 
       if (data) {
-        setLayout(JSON.parse(JSON.stringify(data.layout)) as DashboardWidget[]);
+        const savedLayout = data.layout as any;
+        // Check if it's the new responsive format or old single layout
+        if (savedLayout.lg) {
+          setLayouts(savedLayout as ResponsiveLayouts);
+        } else if (Array.isArray(savedLayout)) {
+          // Migrate old format to new
+          setLayouts({
+            lg: savedLayout as DashboardWidget[],
+            md: LAYOUT_MD,
+            sm: LAYOUT_SM,
+          });
+        } else {
+          setLayouts(DEFAULT_LAYOUTS);
+        }
         setHiddenWidgets(data.hidden_widgets || []);
       } else {
-        setLayout(DEFAULT_LAYOUT);
+        setLayouts(DEFAULT_LAYOUTS);
         setHiddenWidgets([]);
       }
     } catch (error) {
       console.error('Error loading dashboard layout:', error);
-      setLayout(DEFAULT_LAYOUT);
+      setLayouts(DEFAULT_LAYOUTS);
       setHiddenWidgets([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const saveLayout = async (newLayout: DashboardWidget[], newHiddenWidgets?: string[]) => {
+  const saveLayout = async (newLayouts: ResponsiveLayouts, newHiddenWidgets?: string[]) => {
     if (!user?.id || !projectId) return;
 
     try {
@@ -82,14 +132,14 @@ export const useDashboardLayout = (projectId: string | null) => {
         .upsert({
           user_id: user.id,
           project_id: projectId,
-          layout: JSON.parse(JSON.stringify(newLayout)),
+          layout: JSON.parse(JSON.stringify(newLayouts)),
           hidden_widgets: newHiddenWidgets || hiddenWidgets,
           updated_at: new Date().toISOString(),
         } as any);
 
       if (error) throw error;
 
-      setLayout(newLayout);
+      setLayouts(newLayouts);
       if (newHiddenWidgets) {
         setHiddenWidgets(newHiddenWidgets);
       }
@@ -112,7 +162,7 @@ export const useDashboardLayout = (projectId: string | null) => {
 
       if (error) throw error;
 
-      setLayout(DEFAULT_LAYOUT);
+      setLayouts(DEFAULT_LAYOUTS);
       setHiddenWidgets([]);
       toast.success('Dashboard layout reset to default');
     } catch (error) {
@@ -127,15 +177,32 @@ export const useDashboardLayout = (projectId: string | null) => {
       : [...hiddenWidgets, widgetId];
     
     setHiddenWidgets(newHiddenWidgets);
-    saveLayout(layout, newHiddenWidgets);
+    saveLayout(layouts, newHiddenWidgets);
   };
 
-  const updateLayout = (newLayout: DashboardWidget[]) => {
-    setLayout(newLayout);
+  const updateLayouts = (breakpoint: string, newLayout: DashboardWidget[]) => {
+    setLayouts(prev => ({
+      ...prev,
+      [breakpoint]: newLayout.map(item => ({
+        i: item.i,
+        x: item.x,
+        y: item.y,
+        w: item.w,
+        h: item.h,
+        minW: item.minW,
+        minH: item.minH,
+        maxW: item.maxW,
+        maxH: item.maxH,
+      })),
+    }));
   };
+
+  // For backward compatibility, expose layout as lg layout
+  const layout = layouts.lg;
 
   return {
     layout,
+    layouts,
     hiddenWidgets,
     isLoading,
     isEditMode,
@@ -143,6 +210,8 @@ export const useDashboardLayout = (projectId: string | null) => {
     saveLayout,
     resetLayout,
     toggleWidget,
-    updateLayout,
+    updateLayouts,
+    // Keep old method for compatibility
+    updateLayout: (newLayout: DashboardWidget[]) => updateLayouts('lg', newLayout),
   };
 };
