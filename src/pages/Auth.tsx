@@ -8,7 +8,8 @@ import { FormField } from '@/components/FormField';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Building2, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import buildSenseLogo from '@/assets/build-sense-logo.png';
 
 const signInSchema = z.object({
   email: z.string().trim().email({ message: 'Invalid email address' }),
@@ -148,9 +149,11 @@ const Auth = () => {
     <div className="min-h-screen flex items-center justify-center bg-secondary p-4">
       <Card className="w-full max-w-md p-8">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 bg-primary rounded-lg flex items-center justify-center mb-4">
-            <Building2 className="h-8 w-8 text-primary-foreground" />
-          </div>
+          <img 
+            src={buildSenseLogo} 
+            alt="Build Sense" 
+            className="w-20 h-20 mb-2"
+          />
           <h1 className="text-2xl font-bold text-foreground">Build Sense</h1>
           <p className="text-sm text-muted-foreground mt-1">Field coordination made simple</p>
         </div>
