@@ -45,7 +45,7 @@ export const WeatherInfoModal = ({ todayLog, open, onOpenChange }: WeatherInfoMo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md animate-scale-in">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {getWeatherIcon(todayLog?.weather)}
