@@ -21,9 +21,9 @@ import {
   AIWidget,
   DailySnapshotStrip,
   SnapshotDetailModal,
-  ActiveTradesPopover,
-  WeatherInfoPopover,
-  CrewInfoPopover,
+  ActiveTradesModal,
+  WeatherInfoModal,
+  CrewInfoModal,
   BlockersPreviewModal,
 } from "@/components/dashboard/widgets";
 import type { SnapshotTask, SnapshotTrade } from "@/components/dashboard/widgets";
@@ -461,44 +461,39 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Daily Snapshot with Popovers */}
-          <WeatherInfoPopover
+          {/* Daily Snapshot Strip */}
+          <DailySnapshotStrip
+            weather={todayLog?.weather || null}
+            crewCount={todayLog?.crew_count || 0}
+            activeTrades={activeTrades}
+            tasksStarting={tasksStartingToday}
+            tasksFinishing={tasksFinishingToday}
+            blockedCount={blockedTasks}
+            onWeatherClick={() => setWeatherPopoverOpen(true)}
+            onCrewClick={() => setCrewPopoverOpen(true)}
+            onTradesClick={() => setTradesPopoverOpen(true)}
+            onStartingClick={() => setStartingModalOpen(true)}
+            onFinishingClick={() => setFinishingModalOpen(true)}
+            onBlockersClick={() => setBlockersModalOpen(true)}
+          />
+
+          {/* All Modals - rendered flat, not nested */}
+          <WeatherInfoModal
             todayLog={todayLog}
             open={weatherPopoverOpen}
             onOpenChange={setWeatherPopoverOpen}
-          >
-            <CrewInfoPopover
-              crewCount={todayLog?.crew_count || 0}
-              teamMembers={teamMembers}
-              open={crewPopoverOpen}
-              onOpenChange={setCrewPopoverOpen}
-            >
-              <ActiveTradesPopover
-                trades={activeTradesData}
-                open={tradesPopoverOpen}
-                onOpenChange={setTradesPopoverOpen}
-              >
-                <div>
-                  <DailySnapshotStrip
-                    weather={todayLog?.weather || null}
-                    crewCount={todayLog?.crew_count || 0}
-                    activeTrades={activeTrades}
-                    tasksStarting={tasksStartingToday}
-                    tasksFinishing={tasksFinishingToday}
-                    blockedCount={blockedTasks}
-                    onWeatherClick={() => setWeatherPopoverOpen(true)}
-                    onCrewClick={() => setCrewPopoverOpen(true)}
-                    onTradesClick={() => setTradesPopoverOpen(true)}
-                    onStartingClick={() => setStartingModalOpen(true)}
-                    onFinishingClick={() => setFinishingModalOpen(true)}
-                    onBlockersClick={() => setBlockersModalOpen(true)}
-                  />
-                </div>
-              </ActiveTradesPopover>
-            </CrewInfoPopover>
-          </WeatherInfoPopover>
-
-          {/* Snapshot Detail Modals */}
+          />
+          <CrewInfoModal
+            crewCount={todayLog?.crew_count || 0}
+            teamMembers={teamMembers}
+            open={crewPopoverOpen}
+            onOpenChange={setCrewPopoverOpen}
+          />
+          <ActiveTradesModal
+            trades={activeTradesData}
+            open={tradesPopoverOpen}
+            onOpenChange={setTradesPopoverOpen}
+          />
           <SnapshotDetailModal
             open={startingModalOpen}
             onOpenChange={setStartingModalOpen}

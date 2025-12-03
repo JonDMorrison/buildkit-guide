@@ -1,7 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import { Users, HardHat, Briefcase, Shield, Wrench, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -13,8 +18,7 @@ interface TeamMember {
   trade_name?: string | null;
 }
 
-interface CrewInfoPopoverProps {
-  children: React.ReactNode;
+interface CrewInfoModalProps {
   crewCount: number;
   teamMembers: TeamMember[];
   open: boolean;
@@ -55,13 +59,12 @@ const formatRole = (role: string) => {
   return role.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 };
 
-export const CrewInfoPopover = ({ 
-  children, 
+export const CrewInfoModal = ({ 
   crewCount, 
   teamMembers, 
   open, 
   onOpenChange 
-}: CrewInfoPopoverProps) => {
+}: CrewInfoModalProps) => {
   const navigate = useNavigate();
 
   // Group members by role
@@ -78,26 +81,28 @@ export const CrewInfoPopover = ({
   );
 
   return (
-    <Popover open={open} onOpenChange={onOpenChange}>
-      <PopoverTrigger asChild>{children}</PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="start">
-        {/* Header with crew count */}
-        <div className="p-4 border-b border-border bg-muted/30">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <HardHat className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{crewCount}</p>
-                <p className="text-xs text-muted-foreground">Workers on site today</p>
-              </div>
-            </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <HardHat className="h-5 w-5 text-primary" />
+            Crew on Site
+          </DialogTitle>
+        </DialogHeader>
+
+        {/* Crew count */}
+        <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <HardHat className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-foreground">{crewCount}</p>
+            <p className="text-xs text-muted-foreground">Workers on site today</p>
           </div>
         </div>
 
         {/* Team members list */}
-        <div className="p-2">
+        <div>
           <div className="flex items-center gap-2 px-2 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
             <Users className="h-3.5 w-3.5" />
             Project Team ({teamMembers.length})
@@ -149,7 +154,7 @@ export const CrewInfoPopover = ({
         </div>
 
         {/* Footer actions */}
-        <div className="p-3 border-t border-border flex gap-2">
+        <div className="flex gap-2 pt-2">
           <Button 
             variant="outline" 
             size="sm" 
@@ -173,7 +178,7 @@ export const CrewInfoPopover = ({
             Manage Team
           </Button>
         </div>
-      </PopoverContent>
-    </Popover>
+      </DialogContent>
+    </Dialog>
   );
 };
