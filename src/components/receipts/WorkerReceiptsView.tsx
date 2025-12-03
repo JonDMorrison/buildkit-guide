@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Camera, Receipt as ReceiptIcon, Loader2, Sparkles } from 'lucide-react';
+import { Camera, Receipt as ReceiptIcon, Loader2, Sparkles, Files } from 'lucide-react';
 import { useReceipts, Receipt, RECEIPT_CATEGORIES } from '@/hooks/useReceipts';
 import { UploadReceiptModal } from './UploadReceiptModal';
+import { BatchUploadReceiptModal } from './BatchUploadReceiptModal';
 import { ReceiptDetailModal } from './ReceiptDetailModal';
 import { format } from 'date-fns';
 
@@ -59,6 +60,7 @@ const ReceiptThumbnail = ({
 
 export const WorkerReceiptsView = ({ projectId, userId }: WorkerReceiptsViewProps) => {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [batchUploadModalOpen, setBatchUploadModalOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null);
 
@@ -81,23 +83,33 @@ export const WorkerReceiptsView = ({ projectId, userId }: WorkerReceiptsViewProp
         <p className="text-[#A0ADA3] mt-1">Snap a photo and attach it to this project.</p>
       </div>
 
-      {/* Upload Button - Large and prominent for mobile */}
-      <Button
-        onClick={() => setUploadModalOpen(true)}
-        className="w-full h-14 text-lg bg-[#1C3B23] hover:bg-[#3D7237] text-white"
-        size="lg"
-      >
-        <Camera className="h-6 w-6 mr-3" />
-        Upload Receipt
-      </Button>
+      {/* Upload Buttons */}
+      <div className="flex flex-col gap-3">
+        <Button
+          onClick={() => setUploadModalOpen(true)}
+          className="w-full h-14 text-lg bg-[#1C3B23] hover:bg-[#3D7237] text-white"
+          size="lg"
+        >
+          <Camera className="h-6 w-6 mr-3" />
+          Upload Receipt
+        </Button>
+        <Button
+          onClick={() => setBatchUploadModalOpen(true)}
+          variant="outline"
+          className="w-full h-12 border-[#DC8644] text-[#DC8644] hover:bg-[#DC8644]/10"
+        >
+          <Files className="h-5 w-5 mr-2" />
+          Batch Upload with AI
+        </Button>
+      </div>
 
       {/* AI Auto-fill hint */}
       <Card className="p-4 bg-[#DC8644]/10 border-[#DC8644]/30">
         <div className="flex items-center gap-3">
           <Sparkles className="h-5 w-5 text-[#DC8644]" />
           <div>
-            <p className="text-sm font-medium text-[#1C3B23]">AI Auto-fill coming soon</p>
-            <p className="text-xs text-[#A0ADA3]">Snap a photo and we'll extract the details automatically.</p>
+            <p className="text-sm font-medium text-[#1C3B23]">AI-Powered Receipt Scanning</p>
+            <p className="text-xs text-[#A0ADA3]">Upload multiple receipts and we'll auto-fill the details.</p>
           </div>
         </div>
       </Card>
@@ -178,6 +190,14 @@ export const WorkerReceiptsView = ({ projectId, userId }: WorkerReceiptsViewProp
       <UploadReceiptModal
         open={uploadModalOpen}
         onOpenChange={setUploadModalOpen}
+        projectId={projectId}
+        onUploadComplete={refetch}
+      />
+
+      {/* Batch Upload Modal */}
+      <BatchUploadReceiptModal
+        open={batchUploadModalOpen}
+        onOpenChange={setBatchUploadModalOpen}
         projectId={projectId}
         onUploadComplete={refetch}
       />
