@@ -151,7 +151,7 @@ const Auth = () => {
           <div className="w-16 h-16 bg-primary rounded-lg flex items-center justify-center mb-4">
             <Building2 className="h-8 w-8 text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Horizon Coordination</h1>
+          <h1 className="text-2xl font-bold text-foreground">Build Sense</h1>
           <p className="text-sm text-muted-foreground mt-1">Field coordination made simple</p>
         </div>
 
