@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.ai-parse-receipt]
 verify_jwt = false
+
+[functions.parse-gc-deficiency-list]
+verify_jwt = false
