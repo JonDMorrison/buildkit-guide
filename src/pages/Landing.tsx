@@ -18,8 +18,8 @@ export default function Landing() {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
-  const handleBookDemo = () => {
-    window.location.href = "mailto:demo@buildsense.app?subject=Demo Request";
+  const handleLogin = () => {
+    navigate('/auth');
     setMobileMenuOpen(false);
   };
   
@@ -56,15 +56,15 @@ export default function Landing() {
             <Button variant="ghost" onClick={handleSignIn} className="text-base">
               Sign In
             </Button>
-            <Button onClick={handleBookDemo} className="bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold h-12 px-6 text-base">
-              Book Demo
+            <Button onClick={handleLogin} className="bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold h-12 px-6 text-base">
+              Login
             </Button>
           </div>
 
           {/* Mobile Navigation */}
           <div className="flex md:hidden items-center gap-2">
-            <Button onClick={handleBookDemo} className="bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold h-12 px-4 text-sm">
-              Book Demo
+            <Button onClick={handleLogin} className="bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold h-12 px-4 text-sm">
+              Login
             </Button>
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
@@ -104,10 +104,10 @@ export default function Landing() {
                   </Button>
                   <div className="pt-4 border-t border-border">
                     <Button 
-                      onClick={handleBookDemo} 
+                      onClick={handleLogin} 
                       className="w-full bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold h-12 text-base"
                     >
-                      Book a Demo
+                      Login
                     </Button>
                   </div>
                 </nav>
@@ -133,8 +133,8 @@ export default function Landing() {
                 Keep every trade accountable and your schedule on track.
               </p>
               <div className="flex flex-col gap-3 justify-center lg:justify-start w-full max-w-md mx-auto lg:mx-0">
-                <Button size="lg" onClick={handleBookDemo} className="w-full h-14 md:h-16 text-base md:text-lg bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold shadow-xl">
-                  Book a Demo
+                <Button size="lg" onClick={handleLogin} className="w-full h-14 md:h-16 text-base md:text-lg bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold shadow-xl">
+                  Login
                 </Button>
                 <Button size="lg" variant="outline" onClick={handleSeeHowItWorks} className="w-full h-14 md:h-16 text-base md:text-lg bg-white/10 text-white border-white/30 hover:bg-white/20 font-semibold backdrop-blur-sm">
                   See How It Works
@@ -258,7 +258,7 @@ export default function Landing() {
           <div className="grid sm:grid-cols-3 gap-6 md:gap-8">
             {[{
             step: "1",
-            title: "Book a Demo"
+            title: "Sign Up"
           }, {
             step: "2",
             title: "Set Up Projects"
@@ -285,8 +285,8 @@ export default function Landing() {
             Eliminate downtime. Prevent schedule slippage. Keep the GC happy. Protect your margins.
           </p>
           <div className="flex flex-col gap-3 justify-center w-full max-w-md mx-auto">
-            <Button size="lg" onClick={handleBookDemo} className="w-full h-14 md:h-16 text-base md:text-lg bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold shadow-xl">
-              Book a Demo
+            <Button size="lg" onClick={handleLogin} className="w-full h-14 md:h-16 text-base md:text-lg bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold shadow-xl">
+              Login
             </Button>
             <Button size="lg" variant="outline" onClick={handleSeePricing} className="w-full h-14 md:h-16 text-base md:text-lg font-semibold">
               See Pricing
