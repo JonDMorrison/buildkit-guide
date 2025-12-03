@@ -17,3 +17,9 @@ verify_jwt = false
 
 [functions.forecast-delay]
 verify_jwt = false
+
+[functions.send-invite]
+verify_jwt = false
+
+[functions.create-demo-user]
+verify_jwt = false
