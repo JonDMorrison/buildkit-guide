@@ -574,6 +574,15 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Mobile Floating Action Button */}
+      <Button
+        onClick={() => setQuickAddModalOpen(true)}
+        className="md:hidden fixed bottom-20 right-4 z-40 h-14 w-14 rounded-full shadow-lg bg-accent hover:bg-accent/90 text-accent-foreground"
+        size="icon"
+      >
+        <Plus className="h-6 w-6" />
+      </Button>
     </Layout>
   );
 }
