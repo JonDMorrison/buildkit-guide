@@ -26,25 +26,20 @@ export const AIWidget = ({ projectId, contextData }: AIWidgetProps) => {
   const [aiResponse, setAiResponse] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
 
-  const handleAskAI = async (question: string) => {
-    if (!question.trim() || !projectId) return;
+  const handleAskAI = async (questionText: string) => {
+    if (!questionText.trim() || !projectId) return;
 
     setAiLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("ask-ai", {
         body: {
-          query: question,
+          question: questionText,
           projectId,
-          context: {
-            tasks: contextData.tasks.slice(0, 20),
-            blockers: contextData.blockers.slice(0, 10),
-            safetyForms: contextData.safetyForms.slice(0, 10),
-          },
         },
       });
 
       if (error) throw error;
-      setAiResponse(data.response);
+      setAiResponse(data.answer || "No response received.");
     } catch (error) {
       console.error("Error asking AI:", error);
       setAiResponse("Sorry, I encountered an error processing your question.");
