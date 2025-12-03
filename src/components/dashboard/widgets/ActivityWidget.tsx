@@ -1,4 +1,5 @@
-import { TrendingUp } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { TrendingUp, ChevronRight } from "lucide-react";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Line, LineChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
 
@@ -7,14 +8,19 @@ interface ActivityWidgetProps {
 }
 
 export const ActivityWidget = ({ completionTrendData }: ActivityWidgetProps) => {
+  const navigate = useNavigate();
+
   return (
-    <div className="widget-card h-full">
-      <div className="flex-shrink-0 mb-3">
-        <h3 className="widget-title">
-          <TrendingUp className="h-4 w-4 text-secondary" />
-          Activity Trend
-        </h3>
-        <p className="widget-subtitle">Tasks completed vs created (7 days)</p>
+    <div className="widget-card h-full group cursor-pointer hover:border-primary/30 transition-colors" onClick={() => navigate("/tasks")}>
+      <div className="flex-shrink-0 mb-3 flex items-start justify-between">
+        <div>
+          <h3 className="widget-title">
+            <TrendingUp className="h-4 w-4 text-secondary" />
+            Activity Trend
+          </h3>
+          <p className="widget-subtitle">Tasks completed vs created (7 days)</p>
+        </div>
+        <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
       
       <div className="flex-1 min-h-0">

@@ -1,4 +1,5 @@
-import { Target } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Target, ChevronRight } from "lucide-react";
 
 interface StatusItem {
   status: string;
@@ -12,14 +13,19 @@ interface DistributionWidgetProps {
 }
 
 export const DistributionWidget = ({ statusDistribution, totalTasks }: DistributionWidgetProps) => {
+  const navigate = useNavigate();
+
   return (
-    <div className="widget-card h-full">
-      <div className="flex-shrink-0 mb-3">
-        <h3 className="widget-title">
-          <Target className="h-4 w-4 text-secondary" />
-          Task Distribution
-        </h3>
-        <p className="widget-subtitle">Current workflow breakdown</p>
+    <div className="widget-card h-full group cursor-pointer hover:border-primary/30 transition-colors" onClick={() => navigate("/tasks")}>
+      <div className="flex-shrink-0 mb-3 flex items-start justify-between">
+        <div>
+          <h3 className="widget-title">
+            <Target className="h-4 w-4 text-secondary" />
+            Task Distribution
+          </h3>
+          <p className="widget-subtitle">Current workflow breakdown</p>
+        </div>
+        <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
       
       <div className="flex-1 flex flex-col justify-center gap-3 min-h-0">

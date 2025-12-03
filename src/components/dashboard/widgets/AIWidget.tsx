@@ -1,7 +1,8 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Sparkles, Send } from "lucide-react";
+import { Sparkles, Send, Maximize2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface AIWidgetProps {
@@ -20,6 +21,7 @@ const quickPrompts = [
 ];
 
 export const AIWidget = ({ projectId, contextData }: AIWidgetProps) => {
+  const navigate = useNavigate();
   const [aiQuery, setAiQuery] = useState("");
   const [aiResponse, setAiResponse] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
@@ -68,14 +70,20 @@ export const AIWidget = ({ projectId, contextData }: AIWidgetProps) => {
       {/* Content */}
       <div className="relative flex flex-col h-full gap-3 min-h-0">
         {/* Header */}
-        <div className="flex-shrink-0">
-          <h3 className="text-sm font-semibold flex items-center gap-2 text-primary-foreground">
-            <Sparkles className="h-4 w-4 text-accent" />
-            AI Assistant
-          </h3>
-          <p className="text-xs text-primary-foreground/60 mt-0.5">
-            Ask about your project
-          </p>
+        <div 
+          className="flex-shrink-0 flex items-start justify-between cursor-pointer group/header"
+          onClick={() => navigate("/ai")}
+        >
+          <div>
+            <h3 className="text-sm font-semibold flex items-center gap-2 text-primary-foreground">
+              <Sparkles className="h-4 w-4 text-accent" />
+              AI Assistant
+            </h3>
+            <p className="text-xs text-primary-foreground/60 mt-0.5">
+              Ask about your project
+            </p>
+          </div>
+          <Maximize2 className="h-4 w-4 text-primary-foreground/40 opacity-0 group-hover/header:opacity-100 transition-opacity" />
         </div>
 
         {/* Input */}
