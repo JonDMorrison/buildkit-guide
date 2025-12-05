@@ -50,6 +50,7 @@ const Tasks = () => {
           projects(name)
         `)
         .eq('is_deleted', false)
+        .order('sort_order', { ascending: true })
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -272,7 +273,12 @@ const Tasks = () => {
             {/* Task Views */}
             <div className="mt-6">
               {viewMode === 'list' && (
-                <TaskListView tasks={filteredTasks} onTaskClick={handleTaskClick} />
+                <TaskListView 
+                  tasks={filteredTasks} 
+                  onTaskClick={handleTaskClick} 
+                  canReorder={canCreateTasks}
+                  onTasksReordered={() => fetchTasks()}
+                />
               )}
               {viewMode === 'kanban' && (
                 <TaskKanbanView tasks={filteredTasks} onTaskClick={handleTaskClick} />
