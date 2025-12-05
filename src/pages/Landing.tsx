@@ -197,14 +197,40 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* The Guide */}
+      {/* Free Up Capacity - Major Differentiator */}
+      <section className="py-16 md:py-20 px-4 bg-[#1C3B23]">
+        <div className="container mx-auto max-w-4xl text-center">
+          <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-4 md:mb-6 leading-tight">
+            Free Up Capacity Without Adding a Staff Member
+          </h3>
+          <p className="text-lg md:text-xl text-white/80 mb-8 leading-relaxed max-w-2xl mx-auto">
+            Your PM spends 40% of their day chasing updates. Build Sense gives that time back.
+          </p>
+          <div className="grid sm:grid-cols-3 gap-6 text-left">
+            <div className="bg-white/10 p-5 rounded-lg border border-white/20">
+              <p className="text-white font-semibold mb-2">Replace Scattered Tools</p>
+              <p className="text-white/70 text-sm">One app replaces your spreadsheets, group texts, and endless meetings.</p>
+            </div>
+            <div className="bg-white/10 p-5 rounded-lg border border-white/20">
+              <p className="text-white font-semibold mb-2">Coordinate 10 Trades</p>
+              <p className="text-white/70 text-sm">Your foreman coordinates 10 trades with one screen. No phone tag.</p>
+            </div>
+            <div className="bg-white/10 p-5 rounded-lg border border-white/20">
+              <p className="text-white font-semibold mb-2">Like Adding a Coordinator</p>
+              <p className="text-white/70 text-sm">Get the benefits of a full-time coordinator without adding headcount.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* The Guide - Field First */}
       <section className="py-16 md:py-20 px-4">
         <div className="container mx-auto max-w-3xl text-center">
           <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4 md:mb-6 leading-tight">
-            You Do Not Need More Meetings. You Need Control.
+            Built for the Site, Not the Office
           </h3>
           <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
-            Built for crews who need quick answers, not complicated software.
+            The best project management app for field teams. Works in bright sunlight with one-tap access to everything you need.
           </p>
         </div>
       </section>

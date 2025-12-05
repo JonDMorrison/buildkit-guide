@@ -27,6 +27,10 @@ export interface Receipt {
   task?: {
     title: string;
   } | null;
+  project?: {
+    name: string;
+    job_number: string | null;
+  } | null;
 }
 
 interface UseReceiptsOptions {
@@ -57,7 +61,8 @@ export const useReceipts = (options: UseReceiptsOptions) => {
         .select(`
           *,
           uploader:profiles!uploaded_by(full_name, email),
-          task:tasks(title)
+          task:tasks(title),
+          project:projects(name, job_number)
         `)
         .eq('project_id', projectId)
         .order('uploaded_at', { ascending: false });

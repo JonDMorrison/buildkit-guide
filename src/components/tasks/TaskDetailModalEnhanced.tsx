@@ -665,9 +665,51 @@ export const TaskDetailModalEnhanced = ({
                 </Button>
               </>
             ) : (
-              <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
-                Close
-              </Button>
+              <>
+                {/* Request Review button for workers */}
+                {isWorkerRole && !task.review_requested_at && task.status !== 'done' && (
+                  <Button 
+                    variant="default"
+                    className="flex-1"
+                    onClick={async () => {
+                      try {
+                        const { error } = await supabase
+                          .from('tasks')
+                          .update({
+                            review_requested_at: new Date().toISOString(),
+                            review_requested_by: user?.id,
+                          })
+                          .eq('id', taskId);
+                        
+                        if (error) throw error;
+                        
+                        setTask({ ...task, review_requested_at: new Date().toISOString() });
+                        toast({
+                          title: 'Review requested',
+                          description: 'PM/Foreman has been notified to review this task.',
+                        });
+                        onTaskUpdated?.();
+                      } catch (error: any) {
+                        toast({
+                          title: 'Error requesting review',
+                          description: error.message,
+                          variant: 'destructive',
+                        });
+                      }
+                    }}
+                  >
+                    Request Review
+                  </Button>
+                )}
+                {isWorkerRole && task.review_requested_at && (
+                  <Badge variant="secondary" className="flex-1 justify-center py-2">
+                    Review Requested
+                  </Badge>
+                )}
+                <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
+                  Close
+                </Button>
+              </>
             )}
           </div>
         </div>
