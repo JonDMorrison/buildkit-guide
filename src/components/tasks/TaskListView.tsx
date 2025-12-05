@@ -1,8 +1,27 @@
+import { useState } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { ListItem } from '../ListItem';
 import { StatusBadge } from '../StatusBadge';
 import { TradeBadge } from '../TradeBadge';
-import { Badge } from '../ui/badge';
-import { Calendar, AlertCircle } from 'lucide-react';
+import { GripVertical } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface Task {
   id: string;
@@ -11,6 +30,7 @@ interface Task {
   status: string;
   due_date: string | null;
   priority: number;
+  sort_order?: number;
   trades?: {
     name: string;
     trade_type: string;
@@ -20,9 +40,32 @@ interface Task {
 interface TaskListViewProps {
   tasks: Task[];
   onTaskClick: (taskId: string) => void;
+  canReorder?: boolean;
+  onTasksReordered?: (tasks: Task[]) => void;
 }
 
-export const TaskListView = ({ tasks, onTaskClick }: TaskListViewProps) => {
+interface SortableTaskItemProps {
+  task: Task;
+  onTaskClick: (taskId: string) => void;
+  canReorder: boolean;
+}
+
+const SortableTaskItem = ({ task, onTaskClick, canReorder }: SortableTaskItemProps) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: task.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
   const getStatusBadgeType = (status: string) => {
     switch (status) {
       case 'done':
@@ -42,10 +85,18 @@ export const TaskListView = ({ tasks, onTaskClick }: TaskListViewProps) => {
   };
 
   return (
-    <div className="space-y-3">
-      {tasks.map((task) => (
+    <div ref={setNodeRef} style={style} className="flex items-center gap-2">
+      {canReorder && (
+        <button
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-foreground touch-none"
+        >
+          <GripVertical className="h-5 w-5" />
+        </button>
+      )}
+      <div className="flex-1">
         <ListItem
-          key={task.id}
           title={task.title}
           subtitle={
             task.due_date ? (
@@ -60,7 +111,112 @@ export const TaskListView = ({ tasks, onTaskClick }: TaskListViewProps) => {
           }
           onClick={() => onTaskClick(task.id)}
         />
-      ))}
+      </div>
     </div>
+  );
+};
+
+export const TaskListView = ({ tasks, onTaskClick, canReorder = false, onTasksReordered }: TaskListViewProps) => {
+  const { toast } = useToast();
+  const [localTasks, setLocalTasks] = useState(tasks);
+
+  // Update local tasks when prop changes
+  if (tasks !== localTasks && !canReorder) {
+    setLocalTasks(tasks);
+  }
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = localTasks.findIndex((t) => t.id === active.id);
+      const newIndex = localTasks.findIndex((t) => t.id === over.id);
+      
+      const newTasks = arrayMove(localTasks, oldIndex, newIndex);
+      setLocalTasks(newTasks);
+      
+      // Update sort_order in database
+      try {
+        const updates = newTasks.map((task, index) => ({
+          id: task.id,
+          sort_order: index,
+        }));
+
+        for (const update of updates) {
+          await supabase
+            .from('tasks')
+            .update({ sort_order: update.sort_order })
+            .eq('id', update.id);
+        }
+
+        onTasksReordered?.(newTasks);
+        
+        toast({
+          title: 'Tasks reordered',
+          description: 'Task order has been saved.',
+        });
+      } catch (error: any) {
+        toast({
+          title: 'Error saving order',
+          description: error.message,
+          variant: 'destructive',
+        });
+        // Revert on error
+        setLocalTasks(tasks);
+      }
+    }
+  };
+
+  const displayTasks = canReorder ? localTasks : tasks;
+
+  if (!canReorder) {
+    // Simple non-draggable list
+    return (
+      <div className="space-y-3">
+        {displayTasks.map((task) => (
+          <SortableTaskItem
+            key={task.id}
+            task={task}
+            onTaskClick={onTaskClick}
+            canReorder={false}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+    >
+      <SortableContext
+        items={displayTasks.map((t) => t.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        <div className="space-y-3">
+          {displayTasks.map((task) => (
+            <SortableTaskItem
+              key={task.id}
+              task={task}
+              onTaskClick={onTaskClick}
+              canReorder={true}
+            />
+          ))}
+        </div>
+      </SortableContext>
+    </DndContext>
   );
 };

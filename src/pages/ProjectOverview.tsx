@@ -11,6 +11,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { StatusBadge } from '@/components/StatusBadge';
 import { TradeBadge } from '@/components/TradeBadge';
 import { ListItem } from '@/components/ListItem';
+import { EditProjectModal } from '@/components/EditProjectModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthRole } from '@/hooks/useAuthRole';
@@ -19,6 +20,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
@@ -30,15 +32,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, AlertTriangle, Shield, CheckCircle2, FileText, Users, Calendar, Plus, MoreVertical, Archive, Receipt } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Shield, CheckCircle2, FileText, Users, Calendar, Plus, MoreVertical, Archive, Receipt, Pencil, FileImage } from 'lucide-react';
 
 interface Project {
   id: string;
   name: string;
   job_number: string | null;
   location: string;
-  description: string;
+  description: string | null;
   status: string;
+  start_date: string | null;
+  end_date: string | null;
 }
 
 interface ProjectStats {
@@ -57,6 +61,7 @@ const ProjectOverview = () => {
   const [stats, setStats] = useState<ProjectStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
 
   const canManageProject = projectId ? can('manage_project', projectId) : false;
 
@@ -203,6 +208,11 @@ const ProjectOverview = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setEditModalOpen(true)}>
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Edit Project
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => setArchiveDialogOpen(true)}
                   className="text-status-issue"
@@ -347,6 +357,26 @@ const ProjectOverview = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Edit Project Modal */}
+        <EditProjectModal
+          open={editModalOpen}
+          onOpenChange={setEditModalOpen}
+          project={project}
+          onSuccess={() => {
+            // Refresh project data
+            if (projectId) {
+              supabase
+                .from('projects')
+                .select('*')
+                .eq('id', projectId)
+                .single()
+                .then(({ data }) => {
+                  if (data) setProject(data);
+                });
+            }
+          }}
+        />
       </div>
     </Layout>
   );
@@ -359,6 +389,7 @@ const ProjectOverviewTab = ({ projectId, stats }: { projectId: string; stats: Pr
   const [upcomingDeadlines, setUpcomingDeadlines] = useState<any[]>([]);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [pendingManpower, setPendingManpower] = useState<any[]>([]);
+  const [drawings, setDrawings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -414,6 +445,17 @@ const ProjectOverviewTab = ({ projectId, stats }: { projectId: string; stats: Pr
         .limit(3);
 
       setPendingManpower(manpower || []);
+
+      // Fetch drawings (plan, drawing, blueprint document types)
+      const { data: drawingsData } = await supabase
+        .from('attachments')
+        .select('*')
+        .eq('project_id', projectId)
+        .in('document_type', ['plan', 'drawing', 'blueprint', 'specification'])
+        .order('created_at', { ascending: false })
+        .limit(4);
+
+      setDrawings(drawingsData || []);
       setLoading(false);
     };
 
@@ -432,6 +474,57 @@ const ProjectOverviewTab = ({ projectId, stats }: { projectId: string; stats: Pr
 
   return (
     <div className="space-y-6">
+      {/* Drawings Quick Access */}
+      <Card className="border-primary/20 bg-primary/5">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FileImage className="h-5 w-5 text-primary" />
+              <CardTitle className="text-lg">Drawings & Plans</CardTitle>
+            </div>
+            <Badge variant="secondary">{drawings.length} files</Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {drawings.length === 0 ? (
+            <div className="text-center py-4">
+              <p className="text-sm text-muted-foreground mb-3">No drawings uploaded yet</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate(`/projects/${projectId}/documents?type=plan`)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Upload Drawings
+              </Button>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                {drawings.map((doc) => (
+                  <div
+                    key={doc.id}
+                    className="p-3 bg-background rounded-lg border hover:border-primary/50 cursor-pointer transition-colors"
+                    onClick={() => window.open(doc.file_url, '_blank')}
+                  >
+                    <FileText className="h-8 w-8 text-muted-foreground mb-2" />
+                    <p className="text-xs font-medium truncate">{doc.file_name}</p>
+                    <p className="text-xs text-muted-foreground capitalize">{doc.document_type}</p>
+                  </div>
+                ))}
+              </div>
+              <Button
+                variant="link"
+                className="p-0 h-auto"
+                onClick={() => navigate(`/projects/${projectId}/documents?type=plan`)}
+              >
+                View All Drawings →
+              </Button>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Pending Manpower Requests */}
       {pendingManpower.length > 0 && (
         <Card>
