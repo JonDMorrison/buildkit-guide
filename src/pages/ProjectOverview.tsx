@@ -292,9 +292,10 @@ const ProjectOverview = () => {
 
         {/* Tabbed Content */}
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-8">
+          <TabsList className="grid w-full grid-cols-9">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="tasks">Tasks</TabsTrigger>
+            <TabsTrigger value="drawings">Drawings</TabsTrigger>
             <TabsTrigger value="lookahead">Lookahead</TabsTrigger>
             <TabsTrigger value="trades">Trades</TabsTrigger>
             <TabsTrigger value="safety">Safety</TabsTrigger>
@@ -309,6 +310,10 @@ const ProjectOverview = () => {
 
           <TabsContent value="tasks" className="mt-4">
             <ProjectTasks projectId={projectId!} />
+          </TabsContent>
+
+          <TabsContent value="drawings" className="mt-4">
+            <ProjectDrawings projectId={projectId!} />
           </TabsContent>
 
           <TabsContent value="lookahead" className="mt-4">
@@ -744,6 +749,140 @@ const ProjectTasks = ({ projectId }: { projectId: string }) => {
           }
         />
       ))}
+    </div>
+  );
+};
+
+const ProjectDrawings = ({ projectId }: { projectId: string }) => {
+  const [drawings, setDrawings] = useState<any[]>([]);
+  const [filteredDrawings, setFilteredDrawings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeFilter, setActiveFilter] = useState<string>('all');
+
+  const drawingTypes = [
+    { value: 'all', label: 'All' },
+    { value: 'plan', label: 'Plans' },
+    { value: 'drawing', label: 'Drawings' },
+    { value: 'blueprint', label: 'Blueprints' },
+    { value: 'specification', label: 'Specs' },
+  ];
+
+  useEffect(() => {
+    const fetchDrawings = async () => {
+      const { data } = await supabase
+        .from('attachments')
+        .select('*, profiles(full_name)')
+        .eq('project_id', projectId)
+        .in('document_type', ['plan', 'drawing', 'blueprint', 'specification'])
+        .order('created_at', { ascending: false });
+
+      setDrawings(data || []);
+      setFilteredDrawings(data || []);
+      setLoading(false);
+    };
+
+    fetchDrawings();
+  }, [projectId]);
+
+  useEffect(() => {
+    if (activeFilter === 'all') {
+      setFilteredDrawings(drawings);
+    } else {
+      setFilteredDrawings(drawings.filter(d => d.document_type === activeFilter));
+    }
+  }, [activeFilter, drawings]);
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-10 w-full" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Skeleton className="h-32" />
+          <Skeleton className="h-32" />
+          <Skeleton className="h-32" />
+          <Skeleton className="h-32" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Filter Tabs */}
+      <div className="flex gap-2 flex-wrap">
+        {drawingTypes.map((type) => (
+          <Button
+            key={type.value}
+            variant={activeFilter === type.value ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setActiveFilter(type.value)}
+          >
+            {type.label}
+            {type.value !== 'all' && (
+              <Badge variant="secondary" className="ml-2">
+                {drawings.filter(d => d.document_type === type.value).length}
+              </Badge>
+            )}
+          </Button>
+        ))}
+      </div>
+
+      {/* Summary Stats */}
+      <Card>
+        <CardContent className="py-4">
+          <div className="grid grid-cols-4 gap-4 text-center">
+            {drawingTypes.slice(1).map((type) => (
+              <div key={type.value}>
+                <p className="text-2xl font-bold">
+                  {drawings.filter(d => d.document_type === type.value).length}
+                </p>
+                <p className="text-xs text-muted-foreground">{type.label}</p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {filteredDrawings.length === 0 ? (
+        <EmptyState
+          icon={<FileImage className="h-8 w-8" />}
+          title="No drawings found"
+          description={activeFilter === 'all' 
+            ? "Upload drawings, plans, and blueprints for this project."
+            : `No ${activeFilter}s uploaded yet.`}
+        />
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {filteredDrawings.map((doc) => (
+            <Card
+              key={doc.id}
+              className="cursor-pointer hover:border-primary/50 transition-colors"
+              onClick={() => window.open(doc.file_url, '_blank')}
+            >
+              <CardContent className="p-4">
+                <div className="flex flex-col items-center text-center">
+                  {doc.file_type?.startsWith('image/') ? (
+                    <img
+                      src={doc.file_url}
+                      alt={doc.file_name}
+                      className="w-full h-24 object-cover rounded mb-2"
+                    />
+                  ) : (
+                    <FileText className="h-12 w-12 text-muted-foreground mb-2" />
+                  )}
+                  <p className="text-sm font-medium truncate w-full">{doc.file_name}</p>
+                  <Badge variant="secondary" className="mt-1 capitalize">
+                    {doc.document_type}
+                  </Badge>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {new Date(doc.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
