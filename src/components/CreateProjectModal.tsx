@@ -18,7 +18,8 @@ import { Loader2 } from 'lucide-react';
 
 const projectSchema = z.object({
   name: z.string().trim().min(3, 'Project name must be at least 3 characters'),
-  location: z.string().trim().min(5, 'Location must be at least 5 characters'),
+  jobNumber: z.string().trim().optional(),
+  location: z.string().trim().min(5, 'Address must be at least 5 characters'),
   description: z.string().trim().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
@@ -38,6 +39,7 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState<ProjectForm>({
     name: '',
+    jobNumber: '',
     location: '',
     description: '',
     startDate: '',
@@ -57,6 +59,7 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
         .from('projects')
         .insert({
           name: validatedData.name,
+          job_number: validatedData.jobNumber || null,
           location: validatedData.location,
           description: validatedData.description,
           start_date: validatedData.startDate || null,
@@ -86,6 +89,7 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
       // Reset form
       setForm({
         name: '',
+        jobNumber: '',
         location: '',
         description: '',
         startDate: '',
@@ -126,21 +130,35 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <FormField
-            label="Project Name"
-            required
-            error={errors.name}
-          >
-            <Input
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="Downtown Office Complex"
-              className="min-h-[52px]"
-            />
-          </FormField>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              label="Project Name"
+              required
+              error={errors.name}
+            >
+              <Input
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="Downtown Office Complex"
+                className="min-h-[52px]"
+              />
+            </FormField>
+
+            <FormField
+              label="Job #"
+              error={errors.jobNumber}
+            >
+              <Input
+                value={form.jobNumber}
+                onChange={(e) => setForm({ ...form, jobNumber: e.target.value })}
+                placeholder="2024-001"
+                className="min-h-[52px]"
+              />
+            </FormField>
+          </div>
 
           <FormField
-            label="Location"
+            label="Address"
             required
             error={errors.location}
           >

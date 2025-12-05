@@ -1,7 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { Layout } from '@/components/Layout';
-import { SectionHeader } from '@/components/SectionHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -36,6 +35,7 @@ import { ArrowLeft, AlertTriangle, Shield, CheckCircle2, FileText, Users, Calend
 interface Project {
   id: string;
   name: string;
+  job_number: string | null;
   location: string;
   description: string;
   status: string;
@@ -185,10 +185,15 @@ const ProjectOverview = () => {
 
         <div className="flex items-start justify-between mb-6">
           <div className="flex-1">
-            <SectionHeader
-              title={project.name}
-              subtitle={project.location}
-            />
+            <div className="flex items-center gap-3 mb-1">
+              <h1 className="text-2xl font-bold text-foreground">{project.name}</h1>
+              {project.job_number && (
+                <Badge variant="outline" className="text-sm font-mono">
+                  #{project.job_number}
+                </Badge>
+              )}
+            </div>
+            <p className="text-muted-foreground">{project.location}</p>
           </div>
           {canManageProject && (
             <DropdownMenu>

@@ -1070,6 +1070,7 @@ export type Database = {
           end_date: string | null
           id: string
           is_deleted: boolean
+          job_number: string | null
           location: string
           name: string
           start_date: string | null
@@ -1083,6 +1084,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           is_deleted?: boolean
+          job_number?: string | null
           location: string
           name: string
           start_date?: string | null
@@ -1096,6 +1098,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           is_deleted?: boolean
+          job_number?: string | null
           location?: string
           name?: string
           start_date?: string | null
@@ -1360,6 +1363,9 @@ export type Database = {
           location: string | null
           priority: number
           project_id: string
+          review_requested_at: string | null
+          review_requested_by: string | null
+          sort_order: number | null
           start_date: string | null
           status: Database["public"]["Enums"]["task_status"]
           title: string
@@ -1378,6 +1384,9 @@ export type Database = {
           location?: string | null
           priority?: number
           project_id: string
+          review_requested_at?: string | null
+          review_requested_by?: string | null
+          sort_order?: number | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           title: string
@@ -1396,6 +1405,9 @@ export type Database = {
           location?: string | null
           priority?: number
           project_id?: string
+          review_requested_at?: string | null
+          review_requested_by?: string | null
+          sort_order?: number | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           title?: string
@@ -1421,6 +1433,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_review_requested_by_fkey"
+            columns: ["review_requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

@@ -107,7 +107,7 @@ export const ReceiptsList = ({
             className="p-4 cursor-pointer hover:bg-accent/50 transition-colors"
             onClick={() => onReceiptClick(receipt)}
           >
-            <div className="flex gap-4">
+              <div className="flex gap-4">
               <ReceiptThumbnail filePath={receipt.file_path} getSignedUrl={getSignedUrl} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
@@ -127,9 +127,16 @@ export const ReceiptsList = ({
                     {categoryLabel}
                   </Badge>
                 </div>
-                <p className="text-sm text-muted-foreground truncate mt-1">
-                  {receipt.uploader?.full_name || receipt.uploader?.email}
-                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  {receipt.project?.job_number && (
+                    <Badge variant="secondary" className="text-xs font-mono">
+                      #{receipt.project.job_number}
+                    </Badge>
+                  )}
+                  <p className="text-sm text-muted-foreground truncate">
+                    {receipt.uploader?.full_name || receipt.uploader?.email}
+                  </p>
+                </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   {format(new Date(receipt.uploaded_at), 'MMM d, yyyy · h:mm a')}
                 </p>

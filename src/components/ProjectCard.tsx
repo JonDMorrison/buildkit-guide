@@ -5,6 +5,7 @@ import { ChevronRight } from "lucide-react";
 
 interface ProjectCardProps {
   name: string;
+  jobNumber?: string | null;
   location: string;
   status: "active" | "planning" | "completed";
   tasks: {
@@ -30,7 +31,7 @@ const statusConfig = {
   },
 };
 
-export const ProjectCard = ({ name, location, status, tasks, blockedTasks, safetyCompliance }: ProjectCardProps) => {
+export const ProjectCard = ({ name, jobNumber, location, status, tasks, blockedTasks, safetyCompliance }: ProjectCardProps) => {
   const statusInfo = statusConfig[status];
   const completion = tasks.total > 0 ? Math.round((tasks.completed / tasks.total) * 100) : 0;
 
@@ -38,7 +39,14 @@ export const ProjectCard = ({ name, location, status, tasks, blockedTasks, safet
     <Card className="p-4 border border-border hover:border-primary/50 transition-colors cursor-pointer">
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1">
-          <h3 className="font-semibold text-foreground mb-1">{name}</h3>
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="font-semibold text-foreground">{name}</h3>
+            {jobNumber && (
+              <Badge variant="outline" className="text-xs font-mono">
+                #{jobNumber}
+              </Badge>
+            )}
+          </div>
           <p className="text-sm text-muted-foreground">{location}</p>
         </div>
         <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0 ml-2" />
