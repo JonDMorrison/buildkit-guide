@@ -15,6 +15,7 @@ import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { FormField } from '../FormField';
 import { Separator } from '../ui/separator';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import {
   Select,
   SelectContent,
@@ -22,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
-import { Loader2, X } from 'lucide-react';
+import { Loader2, X, UserPlus } from 'lucide-react';
 import { Badge } from '../ui/badge';
 
 const taskSchema = z.object({
@@ -48,11 +49,30 @@ const taskSchema = z.object({
 
 type TaskForm = z.infer<typeof taskSchema>;
 
+interface ProjectMember {
+  id: string;
+  user_id: string;
+  role: string;
+  profiles: {
+    id: string;
+    full_name: string | null;
+    email: string;
+    avatar_url: string | null;
+  };
+}
+
 interface CreateTaskModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
 }
+
+const getInitials = (name: string | null, email: string) => {
+  if (name) {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  }
+  return email.substring(0, 2).toUpperCase();
+};
 
 export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskModalProps) => {
   const { user } = useAuth();
@@ -61,7 +81,9 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
   const [projects, setProjects] = useState<any[]>([]);
   const [trades, setTrades] = useState<any[]>([]);
   const [availableTasks, setAvailableTasks] = useState<any[]>([]);
+  const [projectMembers, setProjectMembers] = useState<ProjectMember[]>([]);
   const [selectedDependencies, setSelectedDependencies] = useState<string[]>([]);
+  const [selectedWorkers, setSelectedWorkers] = useState<string[]>([]);
   const [form, setForm] = useState<TaskForm>({
     title: '',
     description: '',
@@ -96,9 +118,10 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
     }
   }, [open]);
 
-  // Fetch available tasks when project changes
+  // Fetch available tasks and project members when project changes
   useEffect(() => {
     if (form.projectId) {
+      // Fetch tasks for dependencies
       supabase
         .from('tasks')
         .select('id, title, status')
@@ -106,9 +129,18 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
         .eq('is_deleted', false)
         .order('title')
         .then(({ data }) => setAvailableTasks(data || []));
+
+      // Fetch project members for worker assignment
+      supabase
+        .from('project_members')
+        .select('id, user_id, role, profiles(id, full_name, email, avatar_url)')
+        .eq('project_id', form.projectId)
+        .then(({ data }) => setProjectMembers((data as ProjectMember[]) || []));
     } else {
       setAvailableTasks([]);
+      setProjectMembers([]);
       setSelectedDependencies([]);
+      setSelectedWorkers([]);
     }
   }, [form.projectId]);
 
@@ -150,6 +182,27 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
           toast({
             title: 'Warning',
             description: 'Task created but some dependencies failed',
+            variant: 'destructive',
+          });
+        }
+      }
+
+      // Create worker assignments if selected
+      if (selectedWorkers.length > 0) {
+        const assignmentInserts = selectedWorkers.map((userId) => ({
+          task_id: taskData.id,
+          user_id: userId,
+        }));
+
+        const { error: assignError } = await supabase
+          .from('task_assignments')
+          .insert(assignmentInserts);
+
+        if (assignError) {
+          console.error('Error creating assignments:', assignError);
+          toast({
+            title: 'Warning',
+            description: 'Task created but some worker assignments failed',
             variant: 'destructive',
           });
         }
@@ -201,6 +254,7 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
         manpowerEndDate: '',
       });
       setSelectedDependencies([]);
+      setSelectedWorkers([]);
 
       onOpenChange(false);
       onSuccess();
@@ -227,7 +281,7 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create New Task</DialogTitle>
           <DialogDescription>
@@ -323,6 +377,81 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
           </FormField>
 
           <Separator className="my-4" />
+
+          {/* Worker Assignment */}
+          {form.projectId && projectMembers.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <UserPlus className="h-4 w-4 text-muted-foreground" />
+                <h3 className="text-sm font-semibold">Assign Workers (Optional)</h3>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Select team members to work on this task.
+              </p>
+              
+              {selectedWorkers.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {selectedWorkers.map((userId) => {
+                    const member = projectMembers.find((m) => m.user_id === userId);
+                    if (!member) return null;
+                    return (
+                      <Badge key={userId} variant="secondary" className="gap-1 pl-1">
+                        <Avatar className="h-5 w-5">
+                          <AvatarImage src={member.profiles.avatar_url || undefined} />
+                          <AvatarFallback className="text-[10px]">
+                            {getInitials(member.profiles.full_name, member.profiles.email)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="ml-1">{member.profiles.full_name || member.profiles.email}</span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSelectedWorkers((prev) =>
+                              prev.filter((id) => id !== userId)
+                            )
+                          }
+                          className="ml-1 hover:text-destructive"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    );
+                  })}
+                </div>
+              )}
+
+              <Select
+                value=""
+                onValueChange={(userId) => {
+                  if (!selectedWorkers.includes(userId)) {
+                    setSelectedWorkers((prev) => [...prev, userId]);
+                  }
+                }}
+              >
+                <SelectTrigger className="min-h-[52px] bg-card border-border">
+                  <SelectValue placeholder="Add worker..." />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-border z-50 max-h-[200px]">
+                  {projectMembers
+                    .filter((member) => !selectedWorkers.includes(member.user_id))
+                    .map((member) => (
+                      <SelectItem key={member.user_id} value={member.user_id}>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-5 w-5">
+                            <AvatarImage src={member.profiles.avatar_url || undefined} />
+                            <AvatarFallback className="text-[10px]">
+                              {getInitials(member.profiles.full_name, member.profiles.email)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span>{member.profiles.full_name || member.profiles.email}</span>
+                          <span className="text-xs text-muted-foreground">({member.role})</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Dependencies */}
           {availableTasks.length > 0 && (
