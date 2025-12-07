@@ -319,13 +319,22 @@ const AccountingReceipts = () => {
 
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
+  // Check if all current page items are selected
+  const currentPageIds = receipts.map(r => r.id);
+  const allCurrentPageSelected = currentPageIds.length > 0 && currentPageIds.every(id => selectedIds.has(id));
+  const someCurrentPageSelected = currentPageIds.some(id => selectedIds.has(id));
+
   // Batch selection handlers
-  const toggleSelectAll = () => {
-    if (selectedIds.size === receipts.length) {
-      setSelectedIds(new Set());
+  const toggleSelectAllOnPage = () => {
+    const newSelected = new Set(selectedIds);
+    if (allCurrentPageSelected) {
+      // Deselect all on current page
+      currentPageIds.forEach(id => newSelected.delete(id));
     } else {
-      setSelectedIds(new Set(receipts.map(r => r.id)));
+      // Select all on current page
+      currentPageIds.forEach(id => newSelected.add(id));
     }
+    setSelectedIds(newSelected);
   };
 
   const toggleSelectOne = (id: string, e: React.MouseEvent) => {
@@ -380,10 +389,10 @@ const AccountingReceipts = () => {
     }
   };
 
-  // Clear selection when filters/page change
+  // Clear selection only when filters change (not page change - persist across pages)
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [currentPage, selectedProjects, startDate, endDate, category, uploadedBy, minAmount, maxAmount, reviewStatus]);
+  }, [selectedProjects, startDate, endDate, category, uploadedBy, minAmount, maxAmount, reviewStatus]);
 
   if (rolesLoading) {
     return (
@@ -728,15 +737,44 @@ const AccountingReceipts = () => {
           </Card>
         ) : (
           <>
+            {/* Selection Info Bar */}
+            {selectedIds.size > 0 && (
+              <div className="flex items-center justify-between p-3 bg-[#1C3B23]/5 rounded-lg border border-[#1C3B23]/20 mb-2">
+                <div className="flex items-center gap-3">
+                  <CheckSquare className="h-4 w-4 text-[#1C3B23]" />
+                  <span className="text-sm font-medium text-[#1C3B23]">
+                    {selectedIds.size} receipt{selectedIds.size !== 1 ? 's' : ''} selected
+                    {selectedIds.size > currentPageIds.length && (
+                      <span className="text-[#A0ADA3] ml-1">
+                        (across multiple pages)
+                      </span>
+                    )}
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setSelectedIds(new Set())}
+                  className="text-[#A0ADA3] hover:text-[#1C3B23]"
+                >
+                  Clear all
+                </Button>
+              </div>
+            )}
+
             {/* Desktop Table Header */}
             <div className="hidden lg:grid lg:grid-cols-[40px_60px_1fr_120px_100px_100px_100px_100px_80px] gap-4 px-4 py-2 text-sm font-medium text-[#A0ADA3] border-b border-[#A0ADA3]/20">
               <div 
                 className="flex items-center justify-center cursor-pointer"
-                onClick={toggleSelectAll}
+                onClick={toggleSelectAllOnPage}
+                title={allCurrentPageSelected ? "Deselect all on this page" : "Select all on this page"}
               >
                 <Checkbox 
-                  checked={receipts.length > 0 && selectedIds.size === receipts.length}
-                  className="border-[#A0ADA3]"
+                  checked={allCurrentPageSelected}
+                  className={cn(
+                    "border-[#A0ADA3]",
+                    someCurrentPageSelected && !allCurrentPageSelected && "data-[state=unchecked]:bg-[#A0ADA3]/30"
+                  )}
                 />
               </div>
               <span></span>
