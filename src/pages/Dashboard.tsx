@@ -19,6 +19,7 @@ import {
   SafetyWidget,
   BlockersWidget,
   AIWidget,
+  WorkloadWidget,
   DailySnapshotStrip,
   SnapshotDetailModal,
   ActiveTradesModal,
@@ -382,11 +383,12 @@ export default function Dashboard() {
       case 'safety': return <SafetyWidget formsToday={formsToday} formsThisWeek={safetyFormsThisWeek} incidents={incidents} />;
       case 'blockers': return <BlockersWidget blockers={blockers.filter(b => !b.is_resolved)} />;
       case 'ai': return <AIWidget projectId={currentProjectId} contextData={{ tasks, blockers, safetyForms }} />;
+      case 'workload': return <WorkloadWidget projectId={currentProjectId} />;
       default: return null;
     }
   };
 
-  const widgetIds = ['metrics', 'activity', 'health', 'distribution', 'myday', 'safety', 'blockers', 'ai'];
+  const widgetIds = ['metrics', 'activity', 'health', 'distribution', 'myday', 'safety', 'blockers', 'ai', 'workload'];
 
   return (
     <Layout>
