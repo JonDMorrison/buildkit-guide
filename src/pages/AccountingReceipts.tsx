@@ -22,11 +22,14 @@ import {
   ChevronLeft,
   ChevronRight,
   TrendingUp,
-  X
+  X,
+  CheckCircle2,
+  Clock,
+  CircleDot
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
-import { RECEIPT_CATEGORIES, ReceiptCategory } from '@/hooks/useReceipts';
+import { RECEIPT_CATEGORIES, ReceiptCategory, ReceiptReviewStatus } from '@/hooks/useReceipts';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
@@ -46,8 +49,12 @@ interface AccountingReceipt {
   notes: string | null;
   uploaded_at: string;
   processed_data_json: any;
+  review_status: ReceiptReviewStatus;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
   project?: { name: string } | null;
   uploader?: { full_name: string | null; email: string } | null;
+  reviewer?: { full_name: string | null; email: string } | null;
 }
 
 interface Project {
@@ -83,6 +90,7 @@ const AccountingReceipts = () => {
   const [uploadedBy, setUploadedBy] = useState<string>('all');
   const [minAmount, setMinAmount] = useState('');
   const [maxAmount, setMaxAmount] = useState('');
+  const [reviewStatus, setReviewStatus] = useState<ReceiptReviewStatus | 'all'>('all');
 
   // Table states
   const [sortBy, setSortBy] = useState<'date' | 'amount' | 'vendor'>('date');
@@ -142,7 +150,8 @@ const AccountingReceipts = () => {
         .select(`
           *,
           project:projects(name),
-          uploader:profiles!uploaded_by(full_name, email)
+          uploader:profiles!uploaded_by(full_name, email),
+          reviewer:profiles!reviewed_by(full_name, email)
         `, { count: 'exact' });
 
       // Apply filters
@@ -169,6 +178,9 @@ const AccountingReceipts = () => {
       if (maxAmount) {
         query = query.lte('amount', parseFloat(maxAmount));
       }
+      if (reviewStatus && reviewStatus !== 'all') {
+        query = query.eq('review_status', reviewStatus);
+      }
 
       // Apply sorting
       const sortColumn = sortBy === 'date' ? 'uploaded_at' : sortBy;
@@ -194,7 +206,7 @@ const AccountingReceipts = () => {
     } finally {
       setLoading(false);
     }
-  }, [hasAccess, selectedProjects, startDate, endDate, category, uploadedBy, minAmount, maxAmount, sortBy, sortOrder, currentPage]);
+  }, [hasAccess, selectedProjects, startDate, endDate, category, uploadedBy, minAmount, maxAmount, reviewStatus, sortBy, sortOrder, currentPage]);
 
   useEffect(() => {
     fetchReceipts();
@@ -229,6 +241,7 @@ const AccountingReceipts = () => {
     setUploadedBy('all');
     setMinAmount('');
     setMaxAmount('');
+    setReviewStatus('all');
     setCurrentPage(1);
   };
 
@@ -475,6 +488,22 @@ const AccountingReceipts = () => {
                   />
                 </div>
               </div>
+
+              {/* Review Status Filter */}
+              <div className="space-y-2">
+                <Label className="text-[#1C3B23]">Review Status</Label>
+                <Select value={reviewStatus} onValueChange={(v) => setReviewStatus(v as ReceiptReviewStatus | 'all')}>
+                  <SelectTrigger className="border-[#A0ADA3]/30">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All statuses</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="reviewed">Reviewed</SelectItem>
+                    <SelectItem value="processed">Processed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <Button
@@ -586,11 +615,12 @@ const AccountingReceipts = () => {
         ) : (
           <>
             {/* Desktop Table Header */}
-            <div className="hidden lg:grid lg:grid-cols-[60px_1fr_120px_100px_100px_120px_100px] gap-4 px-4 py-2 text-sm font-medium text-[#A0ADA3] border-b border-[#A0ADA3]/20">
+            <div className="hidden lg:grid lg:grid-cols-[60px_1fr_120px_100px_100px_100px_100px_80px] gap-4 px-4 py-2 text-sm font-medium text-[#A0ADA3] border-b border-[#A0ADA3]/20">
               <span></span>
               <span>Project / Vendor</span>
               <span>Amount</span>
               <span>Category</span>
+              <span>Status</span>
               <span>Uploaded By</span>
               <span>Date</span>
               <span>Task</span>
@@ -690,6 +720,32 @@ const ReceiptRow = ({ receipt, onClick }: { receipt: AccountingReceipt; onClick:
 
   const categoryLabel = RECEIPT_CATEGORIES.find(c => c.value === receipt.category)?.label || receipt.category;
 
+  const getStatusBadge = (status: ReceiptReviewStatus) => {
+    switch (status) {
+      case 'reviewed':
+        return (
+          <Badge className="text-xs bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            Reviewed
+          </Badge>
+        );
+      case 'processed':
+        return (
+          <Badge className="text-xs bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 flex items-center gap-1">
+            <CheckCircle2 className="h-3 w-3" />
+            Processed
+          </Badge>
+        );
+      default:
+        return (
+          <Badge className="text-xs bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 flex items-center gap-1">
+            <CircleDot className="h-3 w-3" />
+            Pending
+          </Badge>
+        );
+    }
+  };
+
   return (
     <Card
       className="cursor-pointer hover:bg-accent/50 transition-colors border-[#A0ADA3]/20 shadow-sm"
@@ -717,9 +773,7 @@ const ReceiptRow = ({ receipt, onClick }: { receipt: AccountingReceipt; onClick:
                   {receipt.amount ? `${receipt.currency} $${receipt.amount.toFixed(2)}` : '-'}
                 </span>
               </div>
-              <Badge className="text-xs bg-[#DC8644]/10 text-[#DC8644] border-[#DC8644]/30">
-                {categoryLabel}
-              </Badge>
+              {getStatusBadge(receipt.review_status)}
             </div>
             <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-[#A0ADA3]">
               <span>{receipt.project?.name || 'Unknown project'}</span>
@@ -731,7 +785,7 @@ const ReceiptRow = ({ receipt, onClick }: { receipt: AccountingReceipt; onClick:
       </div>
 
       {/* Desktop Layout */}
-      <div className="hidden lg:grid lg:grid-cols-[60px_1fr_120px_100px_100px_120px_100px] gap-4 p-4 items-center">
+      <div className="hidden lg:grid lg:grid-cols-[60px_1fr_120px_100px_100px_100px_100px_80px] gap-4 p-4 items-center">
         <div className="w-12 h-12 rounded-lg bg-muted overflow-hidden">
           {thumbnailUrl ? (
             <img src={thumbnailUrl} alt="Receipt" className="w-full h-full object-cover" />
@@ -751,6 +805,7 @@ const ReceiptRow = ({ receipt, onClick }: { receipt: AccountingReceipt; onClick:
         <Badge className="text-xs w-fit bg-[#DC8644]/10 text-[#DC8644] border-[#DC8644]/30">
           {categoryLabel}
         </Badge>
+        {getStatusBadge(receipt.review_status)}
         <span className="text-sm text-[#A0ADA3] truncate">
           {receipt.uploader?.full_name || receipt.uploader?.email}
         </span>
