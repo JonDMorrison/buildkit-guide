@@ -25,8 +25,11 @@ import {
   X,
   CheckCircle2,
   Clock,
-  CircleDot
+  CircleDot,
+  CheckSquare,
+  Square
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { RECEIPT_CATEGORIES, ReceiptCategory, ReceiptReviewStatus } from '@/hooks/useReceipts';
@@ -101,6 +104,10 @@ const AccountingReceipts = () => {
   const [selectedReceipt, setSelectedReceipt] = useState<AccountingReceipt | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
+
+  // Batch selection states
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchUpdating, setBatchUpdating] = useState(false);
 
   // Check if user has accounting access (cast to any to handle new role)
   const isAccounting = (roles as string[]).includes('accounting');
@@ -311,6 +318,72 @@ const AccountingReceipts = () => {
   };
 
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+
+  // Batch selection handlers
+  const toggleSelectAll = () => {
+    if (selectedIds.size === receipts.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(receipts.map(r => r.id)));
+    }
+  };
+
+  const toggleSelectOne = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleBatchStatusUpdate = async (newStatus: ReceiptReviewStatus) => {
+    if (selectedIds.size === 0) return;
+    
+    setBatchUpdating(true);
+    try {
+      const updateData: any = { review_status: newStatus };
+      
+      // Only set reviewed_by and reviewed_at when moving from pending
+      if (newStatus !== 'pending') {
+        updateData.reviewed_by = user?.id;
+        updateData.reviewed_at = new Date().toISOString();
+      } else {
+        updateData.reviewed_by = null;
+        updateData.reviewed_at = null;
+      }
+
+      const { error } = await supabase
+        .from('receipts')
+        .update(updateData)
+        .in('id', Array.from(selectedIds));
+
+      if (error) throw error;
+
+      toast({
+        title: 'Status updated',
+        description: `${selectedIds.size} receipt(s) marked as ${newStatus}.`,
+      });
+
+      setSelectedIds(new Set());
+      fetchReceipts();
+    } catch (error: any) {
+      toast({
+        title: 'Error updating receipts',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setBatchUpdating(false);
+    }
+  };
+
+  // Clear selection when filters/page change
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [currentPage, selectedProjects, startDate, endDate, category, uploadedBy, minAmount, maxAmount, reviewStatus]);
 
   if (rolesLoading) {
     return (
@@ -572,23 +645,64 @@ const AccountingReceipts = () => {
           </Card>
         </div>
 
-        {/* Sort Controls */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm text-[#A0ADA3]">Sort by:</span>
-          {(['date', 'amount', 'vendor'] as const).map((field) => (
-            <Button
-              key={field}
-              variant={sortBy === field ? 'secondary' : 'ghost'}
-              size="sm"
-              onClick={() => toggleSort(field)}
-              className="gap-1 capitalize"
-            >
-              {field}
-              {sortBy === field && (
-                <ArrowUpDown className={`h-3 w-3 ${sortOrder === 'asc' ? 'rotate-180' : ''}`} />
-              )}
-            </Button>
-          ))}
+        {/* Sort Controls & Batch Actions */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm text-[#A0ADA3]">Sort by:</span>
+            {(['date', 'amount', 'vendor'] as const).map((field) => (
+              <Button
+                key={field}
+                variant={sortBy === field ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => toggleSort(field)}
+                className="gap-1 capitalize"
+              >
+                {field}
+                {sortBy === field && (
+                  <ArrowUpDown className={`h-3 w-3 ${sortOrder === 'asc' ? 'rotate-180' : ''}`} />
+                )}
+              </Button>
+            ))}
+          </div>
+
+          {/* Batch Actions */}
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-2 p-2 bg-[#1C3B23]/5 rounded-lg border border-[#1C3B23]/20">
+              <span className="text-sm font-medium text-[#1C3B23]">
+                {selectedIds.size} selected
+              </span>
+              <div className="h-4 w-px bg-[#A0ADA3]/30" />
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={batchUpdating}
+                onClick={() => handleBatchStatusUpdate('reviewed')}
+                className="text-blue-600 border-blue-200 hover:bg-blue-50"
+              >
+                {batchUpdating ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Clock className="h-3 w-3 mr-1" />}
+                Mark Reviewed
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={batchUpdating}
+                onClick={() => handleBatchStatusUpdate('processed')}
+                className="text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+              >
+                {batchUpdating ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <CheckCircle2 className="h-3 w-3 mr-1" />}
+                Mark Processed
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={batchUpdating}
+                onClick={() => setSelectedIds(new Set())}
+                className="text-[#A0ADA3]"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Receipts Table */}
@@ -615,7 +729,16 @@ const AccountingReceipts = () => {
         ) : (
           <>
             {/* Desktop Table Header */}
-            <div className="hidden lg:grid lg:grid-cols-[60px_1fr_120px_100px_100px_100px_100px_80px] gap-4 px-4 py-2 text-sm font-medium text-[#A0ADA3] border-b border-[#A0ADA3]/20">
+            <div className="hidden lg:grid lg:grid-cols-[40px_60px_1fr_120px_100px_100px_100px_100px_80px] gap-4 px-4 py-2 text-sm font-medium text-[#A0ADA3] border-b border-[#A0ADA3]/20">
+              <div 
+                className="flex items-center justify-center cursor-pointer"
+                onClick={toggleSelectAll}
+              >
+                <Checkbox 
+                  checked={receipts.length > 0 && selectedIds.size === receipts.length}
+                  className="border-[#A0ADA3]"
+                />
+              </div>
               <span></span>
               <span>Project / Vendor</span>
               <span>Amount</span>
@@ -631,6 +754,8 @@ const AccountingReceipts = () => {
                 <ReceiptRow 
                   key={receipt.id} 
                   receipt={receipt} 
+                  isSelected={selectedIds.has(receipt.id)}
+                  onToggleSelect={(e) => toggleSelectOne(receipt.id, e)}
                   onClick={() => {
                     setSelectedReceipt(receipt);
                     setDetailOpen(true);
@@ -705,7 +830,14 @@ const AccountingReceipts = () => {
 };
 
 // Receipt row component
-const ReceiptRow = ({ receipt, onClick }: { receipt: AccountingReceipt; onClick: () => void }) => {
+interface ReceiptRowProps {
+  receipt: AccountingReceipt;
+  isSelected: boolean;
+  onToggleSelect: (e: React.MouseEvent) => void;
+  onClick: () => void;
+}
+
+const ReceiptRow = ({ receipt, isSelected, onToggleSelect, onClick }: ReceiptRowProps) => {
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -753,7 +885,16 @@ const ReceiptRow = ({ receipt, onClick }: { receipt: AccountingReceipt; onClick:
     >
       {/* Mobile Layout */}
       <div className="lg:hidden p-4">
-        <div className="flex gap-4">
+        <div className="flex gap-3">
+          <div 
+            className="flex items-start pt-1"
+            onClick={onToggleSelect}
+          >
+            <Checkbox 
+              checked={isSelected}
+              className="border-[#A0ADA3]"
+            />
+          </div>
           <div className="w-12 h-12 flex-shrink-0 rounded-lg bg-muted overflow-hidden">
             {thumbnailUrl ? (
               <img src={thumbnailUrl} alt="Receipt" className="w-full h-full object-cover" />
@@ -785,7 +926,16 @@ const ReceiptRow = ({ receipt, onClick }: { receipt: AccountingReceipt; onClick:
       </div>
 
       {/* Desktop Layout */}
-      <div className="hidden lg:grid lg:grid-cols-[60px_1fr_120px_100px_100px_100px_100px_80px] gap-4 p-4 items-center">
+      <div className="hidden lg:grid lg:grid-cols-[40px_60px_1fr_120px_100px_100px_100px_100px_80px] gap-4 p-4 items-center">
+        <div 
+          className="flex items-center justify-center"
+          onClick={onToggleSelect}
+        >
+          <Checkbox 
+            checked={isSelected}
+            className="border-[#A0ADA3]"
+          />
+        </div>
         <div className="w-12 h-12 rounded-lg bg-muted overflow-hidden">
           {thumbnailUrl ? (
             <img src={thumbnailUrl} alt="Receipt" className="w-full h-full object-cover" />
