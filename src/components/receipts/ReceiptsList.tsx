@@ -2,11 +2,10 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Receipt as ReceiptIcon, Loader2 } from 'lucide-react';
+import { Receipt as ReceiptIcon, Loader2, CheckCircle2 } from 'lucide-react';
 import { Receipt, RECEIPT_CATEGORIES } from '@/hooks/useReceipts';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
-
 interface ReceiptsListProps {
   receipts: Receipt[];
   loading: boolean;
@@ -127,6 +126,12 @@ export const ReceiptsList = ({
                     {categoryLabel}
                   </Badge>
                 </div>
+                {(receipt as any).notified_accounting_at && (
+                  <Badge variant="default" className="text-xs bg-emerald-600 hover:bg-emerald-700 shrink-0 flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Sent to Accounting
+                  </Badge>
+                )}
                 <div className="flex items-center gap-2 mt-1">
                   {receipt.project?.job_number && (
                     <Badge variant="secondary" className="text-xs font-mono">

@@ -19,6 +19,7 @@ export interface Receipt {
   processed_data_json: any;
   created_at: string;
   updated_at: string;
+  notified_accounting_at: string | null;
   // Joined data
   uploader?: {
     full_name: string | null;
