@@ -19,6 +19,7 @@ import { Badge } from '../ui/badge';
 import { TradeBadge } from '../TradeBadge';
 import { StatusBadge } from '../StatusBadge';
 import { Separator } from '../ui/separator';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import {
   Select,
   SelectContent,
@@ -39,11 +40,14 @@ import {
   Clock,
   Upload,
   Plus,
-  HardHat
+  HardHat,
+  UserPlus,
+  UserMinus
 } from 'lucide-react';
 import { FormField } from '../FormField';
 import { RequestManpowerModal } from './RequestManpowerModal';
 import { TaskDependencyManager } from './TaskDependencyManager';
+import { AssignWorkerModal } from './AssignWorkerModal';
 
 interface TaskDetailModalEnhancedProps {
   taskId: string | null;
@@ -67,11 +71,13 @@ export const TaskDetailModalEnhanced = ({
   const [activityLog, setActivityLog] = useState<any[]>([]);
   const [trades, setTrades] = useState<any[]>([]);
   const [manpowerRequests, setManpowerRequests] = useState<any[]>([]);
+  const [assignedWorkers, setAssignedWorkers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [editForm, setEditForm] = useState<any>({});
   const [saving, setSaving] = useState(false);
   const [manpowerModalOpen, setManpowerModalOpen] = useState(false);
+  const [assignWorkerModalOpen, setAssignWorkerModalOpen] = useState(false);
   
   // Get permissions using task's project_id
   const { 
@@ -169,6 +175,18 @@ export const TaskDetailModalEnhanced = ({
           .eq('is_deleted', false)
           .order('created_at', { ascending: false });
         setManpowerRequests(manpowerData || []);
+
+        // Fetch assigned workers
+        const { data: assignmentsData } = await supabase
+          .from('task_assignments')
+          .select(`
+            id,
+            user_id,
+            assigned_at,
+            profile:profiles!task_assignments_user_id_fkey(id, full_name, email, avatar_url)
+          `)
+          .eq('task_id', taskId);
+        setAssignedWorkers(assignmentsData || []);
 
       } catch (error: any) {
         toast({
@@ -449,6 +467,90 @@ export const TaskDetailModalEnhanced = ({
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Assigned Workers Section */}
+          <Separator />
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <UserPlus className="h-4 w-4 text-muted-foreground" />
+                <h3 className="text-sm font-semibold">Assigned Workers</h3>
+                {assignedWorkers.length > 0 && (
+                  <Badge variant="secondary">{assignedWorkers.length}</Badge>
+                )}
+              </div>
+              {canEditTrade && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setAssignWorkerModalOpen(true)}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Assign
+                </Button>
+              )}
+            </div>
+            {assignedWorkers.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No workers assigned to this task</p>
+            ) : (
+              <div className="space-y-2">
+                {assignedWorkers.map((assignment) => (
+                  <div key={assignment.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={assignment.profile?.avatar_url || undefined} />
+                        <AvatarFallback>
+                          {assignment.profile?.full_name
+                            ? assignment.profile.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+                            : assignment.profile?.email?.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="text-sm font-medium">
+                          {assignment.profile?.full_name || assignment.profile?.email}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Assigned {new Date(assignment.assigned_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    {canEditTrade && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={async () => {
+                          try {
+                            const { error } = await supabase
+                              .from('task_assignments')
+                              .delete()
+                              .eq('id', assignment.id);
+                            
+                            if (error) throw error;
+                            
+                            setAssignedWorkers(prev => prev.filter(a => a.id !== assignment.id));
+                            toast({
+                              title: 'Worker removed',
+                              description: 'Worker has been unassigned from this task',
+                            });
+                            onTaskUpdated?.();
+                          } catch (error: any) {
+                            toast({
+                              title: 'Error removing worker',
+                              description: error.message,
+                              variant: 'destructive',
+                            });
+                          }
+                        }}
+                      >
+                        <UserMinus className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Blockers */}
@@ -734,6 +836,32 @@ export const TaskDetailModalEnhanced = ({
               .eq('is_deleted', false)
               .order('created_at', { ascending: false })
               .then(({ data }) => setManpowerRequests(data || []));
+          }}
+        />
+      )}
+
+      {/* Assign Worker Modal */}
+      {task && (
+        <AssignWorkerModal
+          open={assignWorkerModalOpen}
+          onOpenChange={setAssignWorkerModalOpen}
+          taskId={task.id}
+          projectId={task.project_id}
+          assignedTradeId={task.assigned_trade_id}
+          currentAssignments={assignedWorkers.map(a => a.user_id)}
+          onAssignmentChanged={() => {
+            // Refetch assigned workers
+            supabase
+              .from('task_assignments')
+              .select(`
+                id,
+                user_id,
+                assigned_at,
+                profile:profiles!task_assignments_user_id_fkey(id, full_name, email, avatar_url)
+              `)
+              .eq('task_id', task.id)
+              .then(({ data }) => setAssignedWorkers(data || []));
+            onTaskUpdated?.();
           }}
         />
       )}
