@@ -1124,6 +1124,7 @@ export type Database = {
           file_path: string
           id: string
           notes: string | null
+          notified_accounting_at: string | null
           processed_data_json: Json | null
           project_id: string
           task_id: string | null
@@ -1140,6 +1141,7 @@ export type Database = {
           file_path: string
           id?: string
           notes?: string | null
+          notified_accounting_at?: string | null
           processed_data_json?: Json | null
           project_id: string
           task_id?: string | null
@@ -1156,6 +1158,7 @@ export type Database = {
           file_path?: string
           id?: string
           notes?: string | null
+          notified_accounting_at?: string | null
           processed_data_json?: Json | null
           project_id?: string
           task_id?: string | null
