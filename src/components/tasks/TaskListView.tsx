@@ -19,9 +19,22 @@ import { CSS } from '@dnd-kit/utilities';
 import { ListItem } from '../ListItem';
 import { StatusBadge } from '../StatusBadge';
 import { TradeBadge } from '../TradeBadge';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { GripVertical } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+
+interface AssignedWorker {
+  id: string;
+  user_id: string;
+  profiles: {
+    id: string;
+    full_name: string | null;
+    avatar_url: string | null;
+    email: string;
+  };
+}
 
 interface Task {
   id: string;
@@ -35,6 +48,7 @@ interface Task {
     name: string;
     trade_type: string;
   };
+  task_assignments?: AssignedWorker[];
 }
 
 interface TaskListViewProps {
@@ -49,6 +63,57 @@ interface SortableTaskItemProps {
   onTaskClick: (taskId: string) => void;
   canReorder: boolean;
 }
+
+const getInitials = (name: string | null, email: string) => {
+  if (name) {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  }
+  return email.substring(0, 2).toUpperCase();
+};
+
+const AssignedWorkersAvatars = ({ assignments }: { assignments?: AssignedWorker[] }) => {
+  if (!assignments || assignments.length === 0) return null;
+
+  const maxDisplay = 3;
+  const displayWorkers = assignments.slice(0, maxDisplay);
+  const remainingCount = assignments.length - maxDisplay;
+
+  return (
+    <TooltipProvider>
+      <div className="flex -space-x-2">
+        {displayWorkers.map((assignment) => (
+          <Tooltip key={assignment.id}>
+            <TooltipTrigger asChild>
+              <Avatar className="h-6 w-6 border-2 border-background">
+                <AvatarImage src={assignment.profiles.avatar_url || undefined} />
+                <AvatarFallback className="text-xs bg-primary text-primary-foreground">
+                  {getInitials(assignment.profiles.full_name, assignment.profiles.email)}
+                </AvatarFallback>
+              </Avatar>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{assignment.profiles.full_name || assignment.profiles.email}</p>
+            </TooltipContent>
+          </Tooltip>
+        ))}
+        {remainingCount > 0 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Avatar className="h-6 w-6 border-2 border-background">
+                <AvatarFallback className="text-xs bg-muted text-muted-foreground">
+                  +{remainingCount}
+                </AvatarFallback>
+              </Avatar>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{remainingCount} more assigned</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+      </div>
+    </TooltipProvider>
+  );
+};
 
 const SortableTaskItem = ({ task, onTaskClick, canReorder }: SortableTaskItemProps) => {
   const {
@@ -107,7 +172,10 @@ const SortableTaskItem = ({ task, onTaskClick, canReorder }: SortableTaskItemPro
           }
           leading={<StatusBadge status={getStatusBadgeType(task.status)} dotOnly />}
           trailing={
-            task.trades && <TradeBadge trade={task.trades.trade_type as any} />
+            <div className="flex items-center gap-2">
+              <AssignedWorkersAvatars assignments={task.task_assignments} />
+              {task.trades && <TradeBadge trade={task.trades.trade_type as any} />}
+            </div>
           }
           onClick={() => onTaskClick(task.id)}
         />
@@ -115,7 +183,6 @@ const SortableTaskItem = ({ task, onTaskClick, canReorder }: SortableTaskItemPro
     </div>
   );
 };
-
 export const TaskListView = ({ tasks, onTaskClick, canReorder = false, onTasksReordered }: TaskListViewProps) => {
   const { toast } = useToast();
   const [localTasks, setLocalTasks] = useState(tasks);

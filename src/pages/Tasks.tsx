@@ -47,7 +47,8 @@ const Tasks = () => {
         .select(`
           *,
           trades(name, trade_type, company_name),
-          projects(name)
+          projects(name),
+          task_assignments(id, user_id, profiles(id, full_name, avatar_url, email))
         `)
         .eq('is_deleted', false)
         .order('sort_order', { ascending: true })
