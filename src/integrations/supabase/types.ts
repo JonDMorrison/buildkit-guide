@@ -1127,6 +1127,9 @@ export type Database = {
           notified_accounting_at: string | null
           processed_data_json: Json | null
           project_id: string
+          review_status: Database["public"]["Enums"]["receipt_review_status"]
+          reviewed_at: string | null
+          reviewed_by: string | null
           task_id: string | null
           updated_at: string
           uploaded_at: string
@@ -1144,6 +1147,9 @@ export type Database = {
           notified_accounting_at?: string | null
           processed_data_json?: Json | null
           project_id: string
+          review_status?: Database["public"]["Enums"]["receipt_review_status"]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           task_id?: string | null
           updated_at?: string
           uploaded_at?: string
@@ -1161,6 +1167,9 @@ export type Database = {
           notified_accounting_at?: string | null
           processed_data_json?: Json | null
           project_id?: string
+          review_status?: Database["public"]["Enums"]["receipt_review_status"]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           task_id?: string | null
           updated_at?: string
           uploaded_at?: string
@@ -1173,6 +1182,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipts_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -1636,6 +1652,7 @@ export type Database = {
         | "meals"
         | "lodging"
         | "other"
+      receipt_review_status: "pending" | "reviewed" | "processed"
       safety_status: "draft" | "submitted" | "reviewed"
       task_status: "not_started" | "in_progress" | "blocked" | "done"
     }
@@ -1795,6 +1812,7 @@ export const Constants = {
         "lodging",
         "other",
       ],
+      receipt_review_status: ["pending", "reviewed", "processed"],
       safety_status: ["draft", "submitted", "reviewed"],
       task_status: ["not_started", "in_progress", "blocked", "done"],
     },

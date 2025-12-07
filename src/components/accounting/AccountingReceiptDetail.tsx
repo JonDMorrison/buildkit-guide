@@ -6,10 +6,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, Save, ExternalLink, Download } from 'lucide-react';
+import { Loader2, Save, Download, CheckCircle2, Clock, CircleDot } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { RECEIPT_CATEGORIES, ReceiptCategory } from '@/hooks/useReceipts';
+import { useAuth } from '@/hooks/useAuth';
+import { RECEIPT_CATEGORIES, ReceiptCategory, ReceiptReviewStatus } from '@/hooks/useReceipts';
 import { format } from 'date-fns';
 
 interface Receipt {
@@ -25,8 +26,12 @@ interface Receipt {
   notes: string | null;
   uploaded_at: string;
   processed_data_json: any;
+  review_status: ReceiptReviewStatus;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
   project?: { name: string } | null;
   uploader?: { full_name: string | null; email: string } | null;
+  reviewer?: { full_name: string | null; email: string } | null;
 }
 
 interface AccountingReceiptDetailProps {
@@ -36,6 +41,12 @@ interface AccountingReceiptDetailProps {
   onUpdate?: () => void;
 }
 
+const REVIEW_STATUSES: { value: ReceiptReviewStatus; label: string; icon: React.ReactNode; color: string }[] = [
+  { value: 'pending', label: 'Pending', icon: <CircleDot className="h-4 w-4" />, color: 'bg-amber-100 text-amber-700 border-amber-200' },
+  { value: 'reviewed', label: 'Reviewed', icon: <Clock className="h-4 w-4" />, color: 'bg-blue-100 text-blue-700 border-blue-200' },
+  { value: 'processed', label: 'Processed', icon: <CheckCircle2 className="h-4 w-4" />, color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+];
+
 export const AccountingReceiptDetail = ({
   receipt,
   open,
@@ -43,14 +54,17 @@ export const AccountingReceiptDetail = ({
   onUpdate,
 }: AccountingReceiptDetailProps) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   // Editable fields
   const [vendor, setVendor] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<ReceiptCategory>('other');
+  const [reviewStatus, setReviewStatus] = useState<ReceiptReviewStatus>('pending');
 
   // Load image
   useEffect(() => {
@@ -70,6 +84,7 @@ export const AccountingReceiptDetail = ({
     setVendor(receipt.vendor || '');
     setAmount(receipt.amount?.toString() || '');
     setCategory(receipt.category);
+    setReviewStatus(receipt.review_status || 'pending');
   }, [receipt]);
 
   const handleSave = async () => {
@@ -106,6 +121,47 @@ export const AccountingReceiptDetail = ({
     }
   };
 
+  const handleStatusChange = async (newStatus: ReceiptReviewStatus) => {
+    if (!receipt || !user) return;
+
+    setUpdatingStatus(true);
+    try {
+      const updateData: any = {
+        review_status: newStatus,
+      };
+
+      // Set reviewed_by and reviewed_at when status changes from pending
+      if (receipt.review_status === 'pending' && newStatus !== 'pending') {
+        updateData.reviewed_by = user.id;
+        updateData.reviewed_at = new Date().toISOString();
+      }
+
+      const { error } = await supabase
+        .from('receipts')
+        .update(updateData)
+        .eq('id', receipt.id);
+
+      if (error) throw error;
+
+      setReviewStatus(newStatus);
+      toast({
+        title: 'Status updated',
+        description: `Receipt marked as ${newStatus}.`,
+      });
+
+      onUpdate?.();
+    } catch (error: any) {
+      console.error('Error updating status:', error);
+      toast({
+        title: 'Error updating status',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
   const handleDownload = () => {
     if (imageUrl) {
       window.open(imageUrl, '_blank');
@@ -115,6 +171,7 @@ export const AccountingReceiptDetail = ({
   if (!receipt) return null;
 
   const parsedData = receipt.processed_data_json;
+  const currentStatusConfig = REVIEW_STATUSES.find(s => s.value === reviewStatus) || REVIEW_STATUSES[0];
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -153,6 +210,43 @@ export const AccountingReceiptDetail = ({
             <Download className="h-4 w-4 mr-2" />
             Download Image
           </Button>
+
+          <Separator />
+
+          {/* Review Status Section */}
+          <div className="space-y-3">
+            <h3 className="font-semibold text-[#1C3B23]">Review Status</h3>
+            <div className="flex gap-2">
+              {REVIEW_STATUSES.map((status) => (
+                <Button
+                  key={status.value}
+                  variant={reviewStatus === status.value ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => handleStatusChange(status.value)}
+                  disabled={updatingStatus}
+                  className={reviewStatus === status.value 
+                    ? 'bg-[#1C3B23] hover:bg-[#3D7237]' 
+                    : ''
+                  }
+                >
+                  {updatingStatus ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      {status.icon}
+                      <span className="ml-1">{status.label}</span>
+                    </>
+                  )}
+                </Button>
+              ))}
+            </div>
+            {receipt.reviewed_at && receipt.reviewer && (
+              <p className="text-xs text-[#A0ADA3]">
+                Last reviewed by {receipt.reviewer.full_name || receipt.reviewer.email} on{' '}
+                {format(new Date(receipt.reviewed_at), 'MMM d, yyyy h:mm a')}
+              </p>
+            )}
+          </div>
 
           <Separator />
 

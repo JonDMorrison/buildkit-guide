@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 export type ReceiptCategory = 'fuel' | 'materials' | 'tools' | 'meals' | 'lodging' | 'other';
+export type ReceiptReviewStatus = 'pending' | 'reviewed' | 'processed';
 
 export interface Receipt {
   id: string;
@@ -20,6 +21,9 @@ export interface Receipt {
   created_at: string;
   updated_at: string;
   notified_accounting_at: string | null;
+  review_status: ReceiptReviewStatus;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
   // Joined data
   uploader?: {
     full_name: string | null;
@@ -31,6 +35,10 @@ export interface Receipt {
   project?: {
     name: string;
     job_number: string | null;
+  } | null;
+  reviewer?: {
+    full_name: string | null;
+    email: string;
   } | null;
 }
 
