@@ -45,7 +45,6 @@ import {
   FileText,
 } from "lucide-react";
 import { QuickAddModal } from "@/components/dashboard/QuickAddModal";
-import { AIInsightsChip } from "@/components/ai-assist/AIInsightsChip";
 import { EODReportModal } from "@/components/ai-assist/EODReportModal";
 import { format, isAfter, isBefore, addDays, startOfDay, subDays } from "date-fns";
 import { Responsive, WidthProvider, Layout as GridLayout } from "react-grid-layout";
@@ -463,7 +462,6 @@ export default function Dashboard() {
               </div>
 
               <div className="flex items-center gap-2">
-                <AIInsightsChip projectId={currentProjectId} />
                 <Button 
                   variant="outline"
                   size="sm"
