@@ -42,10 +42,10 @@ export const useAiAssist = (projectId: string | null) => {
   const sendMessage = useCallback(async (
     userMessage?: string,
     quickAction?: QuickAction
-  ) => {
+  ): Promise<string | null> => {
     if (!projectId) {
       setError('No project selected');
-      return;
+      return null;
     }
 
     setIsLoading(true);
@@ -84,15 +84,19 @@ export const useAiAssist = (projectId: string | null) => {
         setPressingIssues(data.pressing_issues);
       }
 
+      const answer = data.answer || 'I could not generate a response.';
+
       // Add AI response to chat
       const assistantMsg: ChatMessage = {
         id: generateId(),
         role: 'assistant',
-        content: data.answer || 'I could not generate a response.',
+        content: answer,
         actions: data.actions || [],
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, assistantMsg]);
+
+      return answer;
 
     } catch (err) {
       console.error('AI Assist error:', err);
@@ -113,6 +117,8 @@ export const useAiAssist = (projectId: string | null) => {
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, errorMsg]);
+      
+      return null;
     } finally {
       setIsLoading(false);
     }

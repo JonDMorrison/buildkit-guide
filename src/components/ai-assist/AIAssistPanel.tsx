@@ -1,18 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  X, Send, Sparkles, AlertTriangle, 
-  Clock, Shield, Receipt, FileWarning, Users, Loader2,
-  ChevronRight, Mic, Square
+  X, Sparkles, AlertTriangle, 
+  Clock, Shield, Receipt, FileText, Users, Loader2,
+  ClipboardList, CalendarDays
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useAiAssist, ChatMessage, ActionSuggestion, PressingIssues } from '@/hooks/useAiAssist';
+import { useAiAssist } from '@/hooks/useAiAssist';
 import { useProjectRole } from '@/hooks/useProjectRole';
-import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 
@@ -23,116 +21,80 @@ interface AIAssistPanelProps {
   projectName?: string;
 }
 
-const SUGGESTED_PROMPTS = [
-  { label: 'What is blocking progress?', icon: AlertTriangle },
-  { label: 'Summarize tasks due this week', icon: Clock },
-  { label: 'List safety incidents this week', icon: Shield },
-  { label: 'Summarize receipts this week', icon: Receipt },
-  { label: 'What does the GC list say we owe?', icon: FileWarning },
-];
-
-const FOREMAN_PROMPTS = [
-  { label: 'What should my crew focus on first?', icon: Users },
-  { label: 'Which tasks are blocked by other trades?', icon: AlertTriangle },
+const QUICK_ACTIONS = [
+  { 
+    id: 'blockers',
+    label: 'What\'s blocking progress?', 
+    icon: AlertTriangle,
+    prompt: 'What is blocking progress right now? Give me a quick summary.',
+    color: 'text-destructive'
+  },
+  { 
+    id: 'this-week',
+    label: 'This week\'s tasks', 
+    icon: CalendarDays,
+    prompt: 'Summarize tasks due this week. What should we focus on?',
+    color: 'text-primary'
+  },
+  { 
+    id: 'safety',
+    label: 'Safety summary', 
+    icon: Shield,
+    prompt: 'Give me a safety summary for this project. Any recent incidents or concerns?',
+    color: 'text-status-success'
+  },
+  { 
+    id: 'daily-summary',
+    label: 'Daily summary', 
+    icon: ClipboardList,
+    prompt: 'Give me a quick daily summary of project status, what got done, and what\'s next.',
+    color: 'text-accent'
+  },
 ];
 
 export const AIAssistPanel = ({ isOpen, onClose, projectId, projectName }: AIAssistPanelProps) => {
   const navigate = useNavigate();
-  const [inputValue, setInputValue] = useState('');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [activeAction, setActiveAction] = useState<string | null>(null);
+  const [result, setResult] = useState<string | null>(null);
   
   const { getRoleForProject, isGlobalAdmin } = useProjectRole(projectId || undefined);
   const userRole = projectId ? getRoleForProject(projectId) : null;
   const displayRole = isGlobalAdmin ? 'Admin' : userRole?.replace('_', ' ') || 'Member';
   
   const {
-    messages,
     isLoading,
-    pressingIssues,
     sendMessage,
-    getInitialSummary,
     clearMessages,
   } = useAiAssist(projectId);
 
-  // Voice input
-  const { isRecording, isTranscribing, startRecording, stopRecording, cancelRecording } = useVoiceInput({
-    onTranscription: (text) => {
-      // Automatically send the transcribed message
-      if (text && !isLoading) {
-        sendMessage(text);
-      }
-    },
-  });
-
-  const handleVoiceToggle = async () => {
-    if (isRecording) {
-      await stopRecording();
-    } else {
-      await startRecording();
+  const handleActionClick = async (action: typeof QUICK_ACTIONS[0]) => {
+    if (isLoading || !projectId) return;
+    
+    setActiveAction(action.id);
+    setResult(null);
+    
+    // Send the message and get response
+    const response = await sendMessage(action.prompt);
+    if (response) {
+      setResult(response);
     }
   };
 
-  // Get initial summary when panel opens
-  useEffect(() => {
-    if (isOpen && projectId && messages.length === 0) {
-      getInitialSummary();
-    }
-  }, [isOpen, projectId]);
-
-  // Scroll to bottom when messages change
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  // Focus input when panel opens
-  useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 100);
-    }
-  }, [isOpen]);
-
-  const handleSend = () => {
-    if (!inputValue.trim() || isLoading) return;
-    sendMessage(inputValue.trim());
-    setInputValue('');
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-
-  const handlePromptClick = (prompt: string) => {
-    sendMessage(prompt);
-  };
-
-  const handleAction = (action: ActionSuggestion) => {
-    if (action.type === 'navigate' && action.route) {
-      // Append projectId if not present
-      let route = action.route;
-      if (projectId && !route.includes('projectId')) {
-        const separator = route.includes('?') ? '&' : '?';
-        route = `${route}${separator}projectId=${projectId}`;
-      }
-      navigate(route);
-      onClose();
-    }
-  };
-
-  const handleCloseAndClear = () => {
+  const handleClose = () => {
+    setActiveAction(null);
+    setResult(null);
+    clearMessages();
     onClose();
-    // Don't clear messages immediately, keep them for context
   };
 
-  const isForeman = userRole === 'foreman';
-  const isWorker = userRole === 'internal_worker' || userRole === 'external_trade';
-  const prompts = isForeman ? [...FOREMAN_PROMPTS, ...SUGGESTED_PROMPTS.slice(0, 3)] : SUGGESTED_PROMPTS;
+  const handleBack = () => {
+    setActiveAction(null);
+    setResult(null);
+    clearMessages();
+  };
 
   return (
-    <Sheet open={isOpen} onOpenChange={(open) => !open && handleCloseAndClear()}>
+    <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <SheetContent 
         side="right" 
         className="w-full sm:max-w-md p-0 flex flex-col h-full"
@@ -147,11 +109,11 @@ export const AIAssistPanel = ({ isOpen, onClose, projectId, projectName }: AIAss
               <div>
                 <SheetTitle className="text-base font-semibold">AI Assist</SheetTitle>
                 <p className="text-xs text-muted-foreground">
-                  Ask about this project or get suggested actions
+                  Quick insights for your project
                 </p>
               </div>
             </div>
-            <Button variant="ghost" size="icon" onClick={handleCloseAndClear}>
+            <Button variant="ghost" size="icon" onClick={handleClose}>
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -169,240 +131,83 @@ export const AIAssistPanel = ({ isOpen, onClose, projectId, projectName }: AIAss
           )}
         </SheetHeader>
 
-        {/* Pressing Issues (if any) */}
-        {pressingIssues && (pressingIssues.blocked_count > 0 || pressingIssues.overdue_count > 0 || pressingIssues.safety_incidents_count > 0) && (
-          <div className="px-4 py-3 bg-accent/5 border-b border-border flex-shrink-0">
-            <p className="text-xs font-medium text-foreground mb-2">Pressing Issues</p>
-            <div className="flex flex-wrap gap-2">
-              {pressingIssues.blocked_count > 0 && (
-                <Badge 
-                  variant="destructive" 
-                  className="cursor-pointer"
-                  onClick={() => handleAction({ label: '', type: 'navigate', route: '/tasks?status=blocked' })}
+        {/* Content */}
+        <ScrollArea className="flex-1">
+          <div className="p-4">
+            {/* Show result if we have one */}
+            {(activeAction || isLoading) ? (
+              <div className="space-y-4">
+                {/* Back button */}
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={handleBack}
+                  disabled={isLoading}
+                  className="text-muted-foreground -ml-2"
                 >
-                  <AlertTriangle className="h-3 w-3 mr-1" />
-                  {pressingIssues.blocked_count} blocked
-                </Badge>
-              )}
-              {pressingIssues.overdue_count > 0 && (
-                <Badge 
-                  variant="outline" 
-                  className="border-status-issue text-status-issue cursor-pointer"
-                  onClick={() => handleAction({ label: '', type: 'navigate', route: '/tasks' })}
-                >
-                  <Clock className="h-3 w-3 mr-1" />
-                  {pressingIssues.overdue_count} overdue
-                </Badge>
-              )}
-              {pressingIssues.due_today_count > 0 && (
-                <Badge variant="outline" className="cursor-pointer">
-                  <Clock className="h-3 w-3 mr-1" />
-                  {pressingIssues.due_today_count} due today
-                </Badge>
-              )}
-              {pressingIssues.safety_incidents_count > 0 && (
-                <Badge 
-                  variant="outline" 
-                  className="border-destructive text-destructive cursor-pointer"
-                  onClick={() => handleAction({ label: '', type: 'navigate', route: '/safety' })}
-                >
-                  <Shield className="h-3 w-3 mr-1" />
-                  {pressingIssues.safety_incidents_count} incidents
-                </Badge>
-              )}
-              {pressingIssues.pending_manpower_count > 0 && !isWorker && (
-                <Badge 
-                  variant="outline"
-                  className="cursor-pointer"
-                  onClick={() => handleAction({ label: '', type: 'navigate', route: '/manpower' })}
-                >
-                  <Users className="h-3 w-3 mr-1" />
-                  {pressingIssues.pending_manpower_count} pending requests
-                </Badge>
-              )}
-            </div>
-          </div>
-        )}
+                  ← Back to options
+                </Button>
 
-        {/* Messages */}
-        <ScrollArea className="flex-1 px-4">
-          <div className="py-4 space-y-4">
-            {/* Show prompts if no messages yet */}
-            {messages.length === 0 && !isLoading && (
+                {/* Loading state */}
+                {isLoading && (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="flex flex-col items-center gap-3">
+                      <Loader2 className="h-8 w-8 animate-spin text-accent" />
+                      <p className="text-sm text-muted-foreground">Analyzing your project...</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Result */}
+                {result && !isLoading && (
+                  <div className="bg-muted/30 rounded-lg p-4 border border-border">
+                    <div className="prose prose-sm max-w-none dark:prose-invert prose-p:my-2 prose-ul:my-2 prose-li:my-0.5 prose-headings:my-2">
+                      <ReactMarkdown>{result}</ReactMarkdown>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Action buttons grid */
               <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">Suggested questions:</p>
-                <div className="flex flex-wrap gap-2">
-                  {prompts.map((prompt, idx) => (
+                <p className="text-sm text-muted-foreground mb-4">
+                  What would you like to know?
+                </p>
+                
+                <div className="grid gap-3">
+                  {QUICK_ACTIONS.map((action) => (
                     <Button
-                      key={idx}
+                      key={action.id}
                       variant="outline"
-                      size="sm"
-                      className="text-xs h-auto py-2 px-3"
-                      onClick={() => handlePromptClick(prompt.label)}
+                      className="h-auto py-4 px-4 justify-start text-left hover:bg-muted/50"
+                      onClick={() => handleActionClick(action)}
+                      disabled={!projectId}
                     >
-                      <prompt.icon className="h-3 w-3 mr-1.5 text-muted-foreground" />
-                      {prompt.label}
+                      <div className={cn("mr-3", action.color)}>
+                        <action.icon className="h-5 w-5" />
+                      </div>
+                      <span className="font-medium">{action.label}</span>
                     </Button>
                   ))}
                 </div>
+
+                {!projectId && (
+                  <p className="text-xs text-muted-foreground text-center mt-4">
+                    Select a project to use AI Assist
+                  </p>
+                )}
               </div>
             )}
-
-            {/* Chat messages */}
-            {messages.map((msg) => (
-              <MessageBubble 
-                key={msg.id} 
-                message={msg} 
-                onAction={handleAction}
-              />
-            ))}
-
-            {/* Loading indicator */}
-            {isLoading && (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm">Thinking...</span>
-              </div>
-            )}
-
-            <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
 
-        {/* Quick prompts after conversation started */}
-        {messages.length > 0 && !isLoading && (
-          <div className="px-4 py-2 border-t border-border flex-shrink-0 overflow-x-auto">
-            <div className="flex gap-2">
-              {prompts.slice(0, 3).map((prompt, idx) => (
-                <Button
-                  key={idx}
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs whitespace-nowrap h-7 px-2"
-                  onClick={() => handlePromptClick(prompt.label)}
-                >
-                  <prompt.icon className="h-3 w-3 mr-1" />
-                  {prompt.label.split(' ').slice(0, 3).join(' ')}...
-                </Button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Input */}
-        <div className="p-4 border-t border-border flex-shrink-0">
-          {/* Voice recording indicator */}
-          {(isRecording || isTranscribing) && (
-            <div className="mb-3 flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-accent/10 border border-accent/20">
-              {isRecording && (
-                <>
-                  <span className="h-2 w-2 rounded-full bg-destructive animate-pulse" />
-                  <span className="text-sm text-foreground">Recording... tap to stop</span>
-                </>
-              )}
-              {isTranscribing && (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin text-accent" />
-                  <span className="text-sm text-foreground">Transcribing...</span>
-                </>
-              )}
-            </div>
-          )}
-
-          <div className="flex gap-2">
-            {/* Voice input button */}
-            <Button
-              onClick={handleVoiceToggle}
-              disabled={isLoading || isTranscribing || !projectId}
-              size="icon"
-              variant={isRecording ? "destructive" : "outline"}
-              className={cn(
-                "flex-shrink-0 transition-all",
-                isRecording && "animate-pulse"
-              )}
-              title={isRecording ? "Stop recording" : "Voice input"}
-            >
-              {isRecording ? (
-                <Square className="h-4 w-4" />
-              ) : (
-                <Mic className="h-4 w-4" />
-              )}
-            </Button>
-
-            <Input
-              ref={inputRef}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={isRecording ? "Listening..." : "Ask or tap mic to speak..."}
-              disabled={isLoading || isRecording || isTranscribing || !projectId}
-              className="flex-1"
-            />
-            <Button 
-              onClick={handleSend} 
-              disabled={!inputValue.trim() || isLoading || isRecording || !projectId}
-              size="icon"
-              className="bg-accent hover:bg-accent/90"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-          <p className="text-[10px] text-muted-foreground mt-1.5 text-center">
-            Tap mic to speak • Enter to send • Cmd+I to toggle
+        {/* Footer hint */}
+        <div className="p-3 border-t border-border flex-shrink-0">
+          <p className="text-[10px] text-muted-foreground text-center">
+            Press Cmd+I to toggle AI Assist
           </p>
         </div>
       </SheetContent>
     </Sheet>
-  );
-};
-
-// Message bubble component
-const MessageBubble = ({ 
-  message, 
-  onAction 
-}: { 
-  message: ChatMessage; 
-  onAction: (action: ActionSuggestion) => void;
-}) => {
-  const isUser = message.role === 'user';
-
-  return (
-    <div className={cn(
-      "flex flex-col gap-2",
-      isUser ? "items-end" : "items-start"
-    )}>
-      <div className={cn(
-        "max-w-[90%] rounded-lg px-3 py-2 text-sm",
-        isUser 
-          ? "bg-primary text-primary-foreground" 
-          : "bg-muted/50 text-foreground"
-      )}>
-        {isUser ? (
-          <p>{message.content}</p>
-        ) : (
-          <div className="prose prose-sm max-w-none dark:prose-invert prose-p:my-1 prose-ul:my-1 prose-li:my-0">
-            <ReactMarkdown>{message.content}</ReactMarkdown>
-          </div>
-        )}
-      </div>
-
-      {/* Action buttons */}
-      {!isUser && message.actions && message.actions.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {message.actions.map((action, idx) => (
-            <Button
-              key={idx}
-              variant="outline"
-              size="sm"
-              className="text-xs h-7 px-2"
-              onClick={() => onAction(action)}
-            >
-              {action.label}
-              <ChevronRight className="h-3 w-3 ml-1" />
-            </Button>
-          ))}
-        </div>
-      )}
-    </div>
   );
 };
