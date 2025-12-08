@@ -1,18 +1,18 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
 import { 
   X, Sparkles, AlertTriangle, 
-  Clock, Shield, Receipt, FileText, Users, Loader2,
-  ClipboardList, CalendarDays
+  Shield, Loader2, ClipboardList, CalendarDays, Trash2
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAiAssist } from '@/hooks/useAiAssist';
+import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { useProjectRole } from '@/hooks/useProjectRole';
 import { cn } from '@/lib/utils';
-import ReactMarkdown from 'react-markdown';
+import { ChatMessageBubble } from './ChatMessageBubble';
+import { ChatInputBar } from './ChatInputBar';
 
 interface AIAssistPanelProps {
   isOpen: boolean;
@@ -53,45 +53,52 @@ const QUICK_ACTIONS = [
 ];
 
 export const AIAssistPanel = ({ isOpen, onClose, projectId, projectName }: AIAssistPanelProps) => {
-  const navigate = useNavigate();
-  const [activeAction, setActiveAction] = useState<string | null>(null);
-  const [result, setResult] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   
   const { getRoleForProject, isGlobalAdmin } = useProjectRole(projectId || undefined);
   const userRole = projectId ? getRoleForProject(projectId) : null;
   const displayRole = isGlobalAdmin ? 'Admin' : userRole?.replace('_', ' ') || 'Member';
   
   const {
+    messages,
     isLoading,
     sendMessage,
     clearMessages,
   } = useAiAssist(projectId);
 
-  const handleActionClick = async (action: typeof QUICK_ACTIONS[0]) => {
-    if (isLoading || !projectId) return;
-    
-    setActiveAction(action.id);
-    setResult(null);
-    
-    // Send the message and get response
-    const response = await sendMessage(action.prompt);
-    if (response) {
-      setResult(response);
+  const {
+    isRecording,
+    isTranscribing,
+    startRecording,
+    stopRecording,
+  } = useVoiceInput();
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
+  }, [messages]);
+
+  const handleQuickAction = async (prompt: string) => {
+    if (isLoading || !projectId) return;
+    await sendMessage(prompt);
+  };
+
+  const handleSendMessage = async (message: string) => {
+    if (!projectId) return;
+    await sendMessage(message);
   };
 
   const handleClose = () => {
-    setActiveAction(null);
-    setResult(null);
-    clearMessages();
     onClose();
   };
 
-  const handleBack = () => {
-    setActiveAction(null);
-    setResult(null);
+  const handleClearChat = () => {
     clearMessages();
   };
+
+  const hasMessages = messages.length > 0;
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
@@ -109,13 +116,26 @@ export const AIAssistPanel = ({ isOpen, onClose, projectId, projectName }: AIAss
               <div>
                 <SheetTitle className="text-base font-semibold">AI Assist</SheetTitle>
                 <p className="text-xs text-muted-foreground">
-                  Quick insights for your project
+                  Ask anything about your project
                 </p>
               </div>
             </div>
-            <Button variant="ghost" size="icon" onClick={handleClose}>
-              <X className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              {hasMessages && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={handleClearChat}
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  title="Clear conversation"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+              <Button variant="ghost" size="icon" onClick={handleClose} className="h-8 w-8">
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
           
           {/* Context summary */}
@@ -131,80 +151,93 @@ export const AIAssistPanel = ({ isOpen, onClose, projectId, projectName }: AIAss
           )}
         </SheetHeader>
 
-        {/* Content */}
-        <ScrollArea className="flex-1">
-          <div className="p-4">
-            {/* Show result if we have one */}
-            {(activeAction || isLoading) ? (
+        {/* Chat Area */}
+        <ScrollArea className="flex-1" ref={scrollRef}>
+          <div className="p-4 space-y-4">
+            {/* Empty state with quick actions */}
+            {!hasMessages && !isLoading && (
               <div className="space-y-4">
-                {/* Back button */}
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={handleBack}
-                  disabled={isLoading}
-                  className="text-muted-foreground -ml-2"
-                >
-                  ← Back to options
-                </Button>
-
-                {/* Loading state */}
-                {isLoading && (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="flex flex-col items-center gap-3">
-                      <Loader2 className="h-8 w-8 animate-spin text-accent" />
-                      <p className="text-sm text-muted-foreground">Analyzing your project...</p>
-                    </div>
+                <div className="text-center py-6">
+                  <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-3">
+                    <Sparkles className="h-6 w-6 text-accent" />
                   </div>
-                )}
-
-                {/* Result */}
-                {result && !isLoading && (
-                  <div className="bg-muted/30 rounded-lg p-4 border border-border">
-                    <div className="prose prose-sm max-w-none dark:prose-invert prose-p:my-2 prose-ul:my-2 prose-li:my-0.5 prose-headings:my-2">
-                      <ReactMarkdown>{result}</ReactMarkdown>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              /* Action buttons grid */
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground mb-4">
-                  What would you like to know?
-                </p>
+                  <h3 className="font-medium text-foreground mb-1">How can I help?</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Ask me anything about your project or try a quick action below.
+                  </p>
+                </div>
                 
-                <div className="grid gap-3">
+                <div className="grid gap-2">
                   {QUICK_ACTIONS.map((action) => (
                     <Button
                       key={action.id}
                       variant="outline"
-                      className="h-auto py-4 px-4 justify-start text-left hover:bg-muted/50"
-                      onClick={() => handleActionClick(action)}
+                      className="h-auto py-3 px-4 justify-start text-left hover:bg-muted/50"
+                      onClick={() => handleQuickAction(action.prompt)}
                       disabled={!projectId}
                     >
                       <div className={cn("mr-3", action.color)}>
-                        <action.icon className="h-5 w-5" />
+                        <action.icon className="h-4 w-4" />
                       </div>
-                      <span className="font-medium">{action.label}</span>
+                      <span className="text-sm">{action.label}</span>
                     </Button>
                   ))}
                 </div>
 
                 {!projectId && (
-                  <p className="text-xs text-muted-foreground text-center mt-4">
+                  <p className="text-xs text-muted-foreground text-center">
                     Select a project to use AI Assist
                   </p>
                 )}
               </div>
             )}
+
+            {/* Chat messages */}
+            {hasMessages && (
+              <div className="space-y-4">
+                {messages.map((message) => (
+                  <ChatMessageBubble
+                    key={message.id}
+                    role={message.role}
+                    content={message.content}
+                    actions={message.actions}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Loading indicator */}
+            {isLoading && (
+              <div className="flex items-start gap-2">
+                <div className="h-7 w-7 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
+                  <Sparkles className="h-3.5 w-3.5 text-accent" />
+                </div>
+                <div className="bg-muted/50 rounded-2xl rounded-bl-md px-4 py-3 border border-border/50">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Thinking...</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </ScrollArea>
 
+        {/* Input bar */}
+        <ChatInputBar
+          onSend={handleSendMessage}
+          isLoading={isLoading}
+          isRecording={isRecording}
+          isTranscribing={isTranscribing}
+          onStartRecording={startRecording}
+          onStopRecording={stopRecording}
+          disabled={!projectId}
+        />
+
         {/* Footer hint */}
-        <div className="p-3 border-t border-border flex-shrink-0">
+        <div className="px-3 pb-3 pt-1 flex-shrink-0">
           <p className="text-[10px] text-muted-foreground text-center">
-            Press Cmd+I to toggle AI Assist
+            Press Cmd+I to toggle • Voice input supported
           </p>
         </div>
       </SheetContent>
