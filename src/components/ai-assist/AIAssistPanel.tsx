@@ -13,6 +13,7 @@ import { useProjectRole } from '@/hooks/useProjectRole';
 import { cn } from '@/lib/utils';
 import { ChatMessageBubble } from './ChatMessageBubble';
 import { ChatInputBar } from './ChatInputBar';
+import TypingIndicator from './TypingIndicator';
 
 interface AIAssistPanelProps {
   isOpen: boolean;
@@ -206,20 +207,8 @@ export const AIAssistPanel = ({ isOpen, onClose, projectId, projectName }: AIAss
               </div>
             )}
 
-            {/* Loading indicator */}
-            {isLoading && (
-              <div className="flex items-start gap-2">
-                <div className="h-7 w-7 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
-                  <Sparkles className="h-3.5 w-3.5 text-accent" />
-                </div>
-                <div className="bg-muted/50 rounded-2xl rounded-bl-md px-4 py-3 border border-border/50">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Thinking...</span>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Typing indicator */}
+            {isLoading && <TypingIndicator />}
           </div>
         </ScrollArea>
 
