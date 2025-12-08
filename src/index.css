@@ -2,73 +2,88 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* ============================================================
+   BUILD SENSE DESIGN SYSTEM
+   Premium Construction Dashboard Theme
+   All colors MUST be HSL for token consistency.
+============================================================ */
 
 @layer base {
   :root {
-    /* Horizon Brand Colors */
-    --brand-primary-dark: 150 30% 17%;      /* #1C3B23 */
-    --brand-primary-light: 145 35% 33%;     /* #3D7237 */
-    --brand-accent-orange: 27 60% 57%;      /* #DC8644 */
-    --brand-muted-grey: 135 10% 65%;        /* #A0ADA3 */
+    /* Brand Tokens - Customizable per company */
+    --brand-primary: 150 30% 17%;           /* Dark Forest Green #1C3B23 */
+    --brand-secondary: 145 35% 33%;         /* Fresh Green #3D7237 */
+    --brand-accent: 27 60% 57%;             /* Construction Orange #DC8644 */
+    --brand-info: 210 100% 59%;             /* Sky Blue */
+    --brand-warning: 45 93% 58%;            /* Amber Warning */
+    --brand-danger: 0 84% 60%;              /* Alert Red */
     
-    /* Base surfaces - off white and white */
-    --background: 0 0% 98%;                 /* #FAFAFA */
-    --foreground: 150 30% 17%;              /* brand dark green */
-
-    --card: 0 0% 100%;                      /* #FFFFFF */
-    --card-foreground: 150 30% 17%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 150 30% 17%;
-
-    /* Primary - Horizon Dark Green */
-    --primary: 150 30% 17%;
-    --primary-foreground: 0 0% 100%;
-
-    /* Secondary - Light Green */
-    --secondary: 145 35% 33%;
-    --secondary-foreground: 0 0% 100%;
-
-    /* Muted - Grey Green */
-    --muted: 135 10% 65%;
-    --muted-foreground: 150 30% 17%;
-
-    /* Accent - Orange */
-    --accent: 27 60% 57%;
-    --accent-foreground: 0 0% 100%;
-
-    /* Status colors - construction standard */
-    --status-complete: 145 35% 33%;         /* Light Green */
-    --status-complete-foreground: 0 0% 100%;
+    /* Surface Tokens */
+    --brand-surface: 0 0% 100%;             /* Pure White */
+    --brand-surface-alt: 0 0% 98%;          /* Off White #FAFAFA */
+    --brand-surface-elevated: 0 0% 100%;    /* Elevated cards */
     
-    --status-progress: 145 35% 33%;         /* Light Green */
-    --status-progress-foreground: 0 0% 100%;
+    /* Border Tokens */
+    --brand-border: 135 10% 88%;            /* Subtle border */
+    --brand-border-strong: 135 10% 75%;     /* Stronger border */
     
-    --status-issue: 27 60% 57%;             /* Orange */
-    --status-issue-foreground: 0 0% 100%;
-
+    /* Text Tokens */
+    --brand-text-primary: 150 30% 17%;      /* Primary text */
+    --brand-text-secondary: 150 10% 45%;    /* Secondary text */
+    --brand-text-muted: 135 10% 65%;        /* Muted text */
+    --brand-text-inverse: 0 0% 100%;        /* Text on dark */
+    
+    /* Semantic Status Colors */
+    --status-success: 145 35% 33%;
+    --status-success-bg: 145 35% 95%;
+    --status-warning: 45 93% 58%;
+    --status-warning-bg: 45 93% 95%;
+    --status-danger: 0 84% 60%;
+    --status-danger-bg: 0 84% 95%;
     --status-info: 210 100% 59%;
-    --status-info-foreground: 0 0% 100%;
-
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-
-    /* Borders and inputs - subtle */
-    --border: 135 10% 85%;
-    --input: 135 10% 85%;
-    --ring: 150 30% 17%;
-
-    --radius: 0.5rem;
-
+    --status-info-bg: 210 100% 95%;
+    
+    /* Legacy Shadcn Variables (mapped to brand) */
+    --background: var(--brand-surface-alt);
+    --foreground: var(--brand-text-primary);
+    --card: var(--brand-surface);
+    --card-foreground: var(--brand-text-primary);
+    --popover: var(--brand-surface);
+    --popover-foreground: var(--brand-text-primary);
+    --primary: var(--brand-primary);
+    --primary-foreground: var(--brand-text-inverse);
+    --secondary: var(--brand-secondary);
+    --secondary-foreground: var(--brand-text-inverse);
+    --muted: var(--brand-text-muted);
+    --muted-foreground: var(--brand-text-secondary);
+    --accent: var(--brand-accent);
+    --accent-foreground: var(--brand-text-inverse);
+    --destructive: var(--brand-danger);
+    --destructive-foreground: var(--brand-text-inverse);
+    --border: var(--brand-border);
+    --input: var(--brand-border);
+    --ring: var(--brand-primary);
+    
+    /* UI Tokens */
+    --radius: 0.75rem;
+    --radius-sm: 0.5rem;
+    --radius-lg: 1rem;
+    --radius-xl: 1.5rem;
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.03);
+    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.05), 0 2px 4px -2px hsl(0 0% 0% / 0.05);
+    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.08), 0 4px 6px -4px hsl(0 0% 0% / 0.05);
+    --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.1), 0 8px 10px -6px hsl(0 0% 0% / 0.05);
+    --shadow-glow: 0 0 20px -5px hsl(var(--brand-primary) / 0.15);
+    
     /* Navigation */
     --nav-height: 56px;
     --tab-bar-height: 64px;
     
-    /* Blueprint pattern */
-    --blueprint-grid: 150 30% 17%;
+    /* Dashboard specific */
+    --dashboard-max-width: 1600px;
+    --dashboard-padding: 1.5rem;
   }
 }
 
@@ -78,7 +93,7 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground font-sans;
+    @apply bg-background text-foreground;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -90,66 +105,287 @@ All colors MUST be HSL.
   }
 }
 
-/* Dashboard Widget System */
+/* ============================================================
+   DASHBOARD LAYOUT SYSTEM
+============================================================ */
+
 @layer components {
-  .dashboard-container {
-    @apply w-full max-w-screen-2xl mx-auto px-4 md:px-6 lg:px-8;
+  /* Main dashboard container */
+  .dashboard-layout {
+    @apply w-full max-w-[var(--dashboard-max-width)] mx-auto;
+    @apply px-4 md:px-6 lg:px-8;
   }
 
+  /* Grid background pattern */
+  .dashboard-grid-bg {
+    background-image: 
+      linear-gradient(hsl(var(--brand-border) / 0.3) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--brand-border) / 0.3) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  /* Sticky header with blur */
+  .dashboard-header {
+    @apply sticky top-0 z-30;
+    @apply bg-background/80 backdrop-blur-xl;
+    @apply border-b border-border/50;
+  }
+
+  /* Section spacing */
   .dashboard-section {
-    @apply space-y-6;
-  }
-
-  .widget-card {
-    @apply bg-card border border-border/50 rounded-xl shadow-sm p-4 flex flex-col overflow-hidden transition-all duration-200;
-  }
-
-  .widget-card:hover {
-    @apply shadow-md;
-  }
-
-  .widget-card-accent {
-    @apply bg-accent/5 border-accent/20;
-  }
-
-  .widget-card-success {
-    @apply bg-secondary/5 border-secondary/20;
-  }
-
-  .widget-card-dark {
-    @apply bg-primary text-primary-foreground border-none;
-  }
-
-  .widget-title {
-    @apply text-sm font-semibold text-foreground/80 flex items-center gap-2;
-  }
-
-  .widget-subtitle {
-    @apply text-xs text-muted-foreground;
-  }
-
-  .metric-tile {
-    @apply flex items-center gap-3 bg-muted/10 border border-border/30 rounded-lg p-3 md:p-4 transition-all duration-200;
-  }
-
-  .metric-tile:hover {
-    @apply shadow-sm -translate-y-0.5;
-  }
-
-  .metric-icon {
-    @apply w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0;
-  }
-
-  .metric-label {
-    @apply text-[10px] uppercase tracking-wider text-muted-foreground font-medium;
-  }
-
-  .metric-value {
-    @apply text-lg font-bold text-foreground tabular-nums;
+    @apply space-y-4 md:space-y-6;
   }
 }
 
-/* React Grid Layout - Clean Overrides */
+/* ============================================================
+   PREMIUM CARD SYSTEM
+============================================================ */
+
+@layer components {
+  /* Base card */
+  .premium-card {
+    @apply bg-card rounded-xl border border-border/60;
+    @apply p-4 md:p-5;
+    @apply transition-all duration-200;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .premium-card:hover {
+    box-shadow: var(--shadow-md);
+    @apply border-border;
+  }
+
+  /* Clickable card */
+  .premium-card-interactive {
+    @apply cursor-pointer;
+  }
+
+  .premium-card-interactive:hover {
+    @apply -translate-y-0.5;
+    box-shadow: var(--shadow-lg);
+    @apply border-primary/30;
+  }
+
+  /* Dark themed card (for AI widget etc) */
+  .premium-card-dark {
+    @apply bg-primary text-primary-foreground;
+    @apply border-primary;
+  }
+
+  /* Accent gradient card */
+  .premium-card-gradient {
+    background: linear-gradient(135deg, 
+      hsl(var(--brand-surface)) 0%,
+      hsl(var(--brand-primary) / 0.03) 50%,
+      hsl(var(--brand-secondary) / 0.05) 100%
+    );
+  }
+
+  /* Status-themed cards */
+  .premium-card-warning {
+    @apply border-l-4;
+    border-left-color: hsl(var(--brand-warning));
+    background: linear-gradient(90deg, hsl(var(--status-warning-bg)) 0%, hsl(var(--brand-surface)) 20%);
+  }
+
+  .premium-card-danger {
+    @apply border-l-4;
+    border-left-color: hsl(var(--brand-danger));
+    background: linear-gradient(90deg, hsl(var(--status-danger-bg)) 0%, hsl(var(--brand-surface)) 20%);
+  }
+
+  .premium-card-success {
+    @apply border-l-4;
+    border-left-color: hsl(var(--brand-secondary));
+    background: linear-gradient(90deg, hsl(var(--status-success-bg)) 0%, hsl(var(--brand-surface)) 20%);
+  }
+}
+
+/* ============================================================
+   METRIC CARDS
+============================================================ */
+
+@layer components {
+  .metric-card {
+    @apply premium-card premium-card-interactive;
+    @apply flex items-center gap-4;
+    @apply group;
+  }
+
+  .metric-card-icon {
+    @apply w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0;
+    @apply bg-primary/10 text-primary;
+    @apply transition-transform duration-200;
+  }
+
+  .metric-card:hover .metric-card-icon {
+    @apply scale-105;
+  }
+
+  .metric-card-content {
+    @apply flex-1 min-w-0;
+  }
+
+  .metric-card-label {
+    @apply text-[11px] uppercase tracking-wider font-medium;
+    color: hsl(var(--brand-text-muted));
+  }
+
+  .metric-card-value {
+    @apply text-2xl font-bold tabular-nums;
+    color: hsl(var(--brand-text-primary));
+  }
+
+  .metric-card-chevron {
+    @apply w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity;
+    color: hsl(var(--brand-text-muted));
+  }
+
+  /* Warning variant */
+  .metric-card-warning .metric-card-icon {
+    @apply bg-orange-100 text-orange-600;
+  }
+}
+
+/* ============================================================
+   WIDGET SYSTEM (for react-grid-layout)
+============================================================ */
+
+@layer components {
+  .widget-card {
+    @apply premium-card h-full flex flex-col overflow-hidden;
+  }
+
+  .widget-header {
+    @apply flex items-start justify-between mb-4 flex-shrink-0;
+  }
+
+  .widget-title {
+    @apply text-sm font-semibold flex items-center gap-2;
+    color: hsl(var(--brand-text-primary));
+  }
+
+  .widget-subtitle {
+    @apply text-xs mt-0.5;
+    color: hsl(var(--brand-text-muted));
+  }
+
+  .widget-body {
+    @apply flex-1 min-h-0 overflow-auto;
+  }
+
+  .widget-footer {
+    @apply pt-3 mt-auto flex-shrink-0 border-t border-border/50;
+  }
+}
+
+/* ============================================================
+   SKELETON LOADING
+============================================================ */
+
+@layer components {
+  .skeleton-shimmer {
+    @apply animate-pulse bg-muted/30 rounded;
+  }
+
+  .skeleton-card {
+    @apply premium-card;
+  }
+
+  .skeleton-card-content {
+    @apply space-y-3;
+  }
+}
+
+/* ============================================================
+   CHART STYLES
+============================================================ */
+
+@layer components {
+  .chart-container {
+    @apply w-full h-full min-h-[200px];
+  }
+
+  /* Recharts customization */
+  .recharts-cartesian-grid-horizontal line,
+  .recharts-cartesian-grid-vertical line {
+    stroke: hsl(var(--brand-border)) !important;
+    stroke-opacity: 0.5;
+  }
+
+  .recharts-tooltip-wrapper {
+    @apply outline-none;
+  }
+}
+
+/* ============================================================
+   PROGRESS BARS
+============================================================ */
+
+@layer components {
+  .progress-bar-track {
+    @apply w-full h-2 rounded-full overflow-hidden;
+    background: hsl(var(--brand-border) / 0.3);
+  }
+
+  .progress-bar-fill {
+    @apply h-full rounded-full transition-all duration-500;
+  }
+
+  .progress-bar-success {
+    background: hsl(var(--brand-secondary));
+  }
+
+  .progress-bar-warning {
+    background: hsl(var(--brand-warning));
+  }
+
+  .progress-bar-danger {
+    background: hsl(var(--brand-danger));
+  }
+}
+
+/* ============================================================
+   STATUS INDICATORS
+============================================================ */
+
+@layer components {
+  .status-dot {
+    @apply w-2 h-2 rounded-full flex-shrink-0;
+  }
+
+  .status-dot-success {
+    @apply bg-secondary;
+  }
+
+  .status-dot-warning {
+    @apply bg-orange-500;
+  }
+
+  .status-dot-danger {
+    @apply bg-red-500;
+  }
+
+  .status-dot-muted {
+    background: hsl(var(--brand-text-muted));
+  }
+
+  .status-dot-animated {
+    @apply relative;
+  }
+
+  .status-dot-animated::before {
+    content: '';
+    @apply absolute inset-0 rounded-full animate-ping;
+    background: inherit;
+    opacity: 0.4;
+  }
+}
+
+/* ============================================================
+   REACT GRID LAYOUT OVERRIDES
+============================================================ */
+
 .react-grid-layout {
   position: relative;
 }
@@ -158,19 +394,14 @@ All colors MUST be HSL.
   transition: all 200ms ease;
   transition-property: left, top, width, height;
   overflow: hidden;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-lg);
 }
 
 .react-grid-item.cssTransforms {
   transition-property: transform, width, height;
 }
 
-.react-grid-item.resizing {
-  transition: none;
-  z-index: 100;
-  will-change: width, height;
-}
-
+.react-grid-item.resizing,
 .react-grid-item.react-draggable-dragging {
   transition: none;
   z-index: 100;
@@ -182,13 +413,13 @@ All colors MUST be HSL.
 }
 
 .react-grid-item.react-grid-placeholder {
-  background: hsl(var(--primary) / 0.1);
+  background: hsl(var(--brand-primary) / 0.1);
   opacity: 0.8;
   transition-duration: 100ms;
   z-index: 2;
   user-select: none;
-  border-radius: 0.75rem;
-  border: 2px dashed hsl(var(--primary) / 0.5);
+  border-radius: var(--radius-lg);
+  border: 2px dashed hsl(var(--brand-primary) / 0.5);
 }
 
 .react-grid-item > .react-resizable-handle {
@@ -204,15 +435,15 @@ All colors MUST be HSL.
   bottom: 4px;
   width: 6px;
   height: 6px;
-  border-right: 2px solid hsl(var(--primary) / 0.4);
-  border-bottom: 2px solid hsl(var(--primary) / 0.4);
+  border-right: 2px solid hsl(var(--brand-primary) / 0.4);
+  border-bottom: 2px solid hsl(var(--brand-primary) / 0.4);
 }
 
 .react-resizable-hide > .react-resizable-handle {
   display: none;
 }
 
-/* Widget container fills grid item */
+/* Widget wrapper fills grid item */
 .widget-wrapper {
   width: 100%;
   height: 100%;
@@ -225,4 +456,38 @@ All colors MUST be HSL.
   flex: 1;
   min-height: 0;
   overflow: hidden;
+}
+
+/* ============================================================
+   ANIMATIONS
+============================================================ */
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.3s ease-out forwards;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.2s ease-out forwards;
 }
