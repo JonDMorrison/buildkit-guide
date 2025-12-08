@@ -209,7 +209,6 @@
   .metric-card {
     @apply premium-card premium-card-interactive;
     @apply flex items-center gap-4;
-    @apply group;
   }
 
   .metric-card-icon {
