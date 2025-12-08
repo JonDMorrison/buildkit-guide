@@ -17,7 +17,6 @@ export const AIAssistButton = ({ onClick, hasNotification, className }: AIAssist
         "fixed z-50 h-14 w-14 rounded-full shadow-lg",
         "bg-accent hover:bg-accent/90 text-accent-foreground",
         "transition-all duration-300 hover:scale-105",
-        "animate-pulse hover:animate-none",
         // Desktop: bottom right
         "bottom-6 right-6",
         // Mobile: centered above tab bar
