@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { TopNav } from "./TopNav";
 import { TabBar } from "./TabBar";
+import { GlobalAIAssist } from "./ai-assist/GlobalAIAssist";
 
 interface LayoutProps {
   children: ReactNode;
@@ -14,6 +15,7 @@ export const Layout = ({ children }: LayoutProps) => {
         {children}
       </main>
       <TabBar />
+      <GlobalAIAssist />
     </div>
   );
 };
