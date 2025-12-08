@@ -18,7 +18,6 @@ import {
   MyDayWidget,
   SafetyWidget,
   BlockersWidget,
-  WorkloadWidget,
   DailySnapshotStrip,
   SnapshotDetailModal,
   ActiveTradesModal,
@@ -384,12 +383,11 @@ export default function Dashboard() {
       case 'myday': return <MyDayWidget priorityTasks={priorityTasks} />;
       case 'safety': return <SafetyWidget formsToday={formsToday} formsThisWeek={safetyFormsThisWeek} incidents={incidents} />;
       case 'blockers': return <BlockersWidget blockers={blockers.filter(b => !b.is_resolved)} />;
-      case 'workload': return <WorkloadWidget projectId={currentProjectId} />;
       default: return null;
     }
   };
 
-  const widgetIds = ['metrics', 'activity', 'health', 'distribution', 'myday', 'safety', 'blockers', 'workload'];
+  const widgetIds = ['metrics', 'activity', 'health', 'distribution', 'myday', 'safety', 'blockers'];
 
   return (
     <Layout>
