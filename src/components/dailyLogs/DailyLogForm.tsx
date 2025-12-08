@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { FormField } from "@/components/FormField";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2 } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 
 interface DailyLogFormProps {
   projectId: string;
@@ -38,11 +38,13 @@ export const DailyLogForm = ({
 }: DailyLogFormProps) => {
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
+  const [autoFilling, setAutoFilling] = useState(false);
 
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<DailyLogFormData>({
     defaultValues: existingLog || {
@@ -56,6 +58,61 @@ export const DailyLogForm = ({
       safety_notes: '',
     },
   });
+
+  const handleAutoFill = async () => {
+    setAutoFilling(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-assist', {
+        body: {
+          project_id: projectId,
+          quick_action: 'daily_log_autofill',
+        },
+      });
+
+      if (error) throw error;
+
+      // Parse the response to extract structured data
+      const answer = data?.answer || '';
+      
+      // Try to extract sections from the AI response
+      let workPerformed = '';
+      let issues = '';
+      let nextDayPlan = '';
+
+      // Parse sections from the answer
+      const workMatch = answer.match(/(?:Work Performed|Completed Today|Work Summary)[:\s]*([^]*?)(?=(?:Issues|Delays|Problems|Next Day|Tomorrow|$))/i);
+      const issuesMatch = answer.match(/(?:Issues|Delays|Problems|Blockers)[:\s]*([^]*?)(?=(?:Next Day|Tomorrow|Plan|$))/i);
+      const planMatch = answer.match(/(?:Next Day|Tomorrow|Plan)[:\s]*([^]*?)$/i);
+
+      if (workMatch) workPerformed = workMatch[1].trim();
+      if (issuesMatch) issues = issuesMatch[1].trim();
+      if (planMatch) nextDayPlan = planMatch[1].trim();
+
+      // If parsing failed, use the full answer for work_performed
+      if (!workPerformed && !issues && !nextDayPlan) {
+        workPerformed = answer;
+      }
+
+      // Update form fields
+      if (workPerformed) setValue('work_performed', workPerformed);
+      if (issues) setValue('issues', issues);
+      if (nextDayPlan) setValue('next_day_plan', nextDayPlan);
+
+      toast({
+        title: 'Auto-filled from today\'s activity',
+        description: 'Review and edit before saving',
+      });
+    } catch (error: any) {
+      console.error('Error auto-filling:', error);
+      toast({
+        title: 'Error auto-filling',
+        description: error.message || 'Please try again or fill manually',
+        variant: 'destructive',
+      });
+    } finally {
+      setAutoFilling(false);
+    }
+  };
 
   const onSubmit = async (data: DailyLogFormData) => {
     setSubmitting(true);
@@ -164,13 +221,36 @@ export const DailyLogForm = ({
             />
           </FormField>
 
-          <FormField label="Work Performed" required error={errors.work_performed?.message}>
-            <Textarea
-              {...register('work_performed', { required: 'This field is required' })}
-              placeholder="Describe the work completed today..."
-              className="min-h-[100px]"
-            />
-          </FormField>
+          <div className="flex items-center justify-between">
+            <FormField label="Work Performed" required error={errors.work_performed?.message}>
+              <span></span>
+            </FormField>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleAutoFill}
+              disabled={autoFilling || submitting}
+              className="gap-1.5 text-xs h-7"
+            >
+              {autoFilling ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-3 w-3" />
+                  Auto-fill from Today
+                </>
+              )}
+            </Button>
+          </div>
+          <Textarea
+            {...register('work_performed', { required: 'This field is required' })}
+            placeholder="Describe the work completed today..."
+            className="min-h-[100px]"
+          />
 
           <FormField label="Issues / Delays">
             <Textarea

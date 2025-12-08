@@ -1,13 +1,17 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Camera, X, Upload, Loader2 } from "lucide-react";
+import { Camera, X, Upload, Loader2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface PhotoUploadProps {
   photos: File[];
   onPhotosChange: (photos: File[]) => void;
   maxPhotos?: number;
   disabled?: boolean;
+  projectId?: string;
+  onAiDescription?: (data: { title: string; description: string; priority: string; location: string | null }) => void;
 }
 
 // Compress image to reduce file size for field use
@@ -67,11 +71,15 @@ export const PhotoUpload = ({
   onPhotosChange,
   maxPhotos = 10,
   disabled = false,
+  projectId,
+  onAiDescription,
 }: PhotoUploadProps) => {
   const [previews, setPreviews] = useState<string[]>([]);
   const [compressing, setCompressing] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   const handleFileSelect = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -116,6 +124,53 @@ export const PhotoUpload = ({
   };
 
   const canAddMore = photos.length < maxPhotos;
+
+  const analyzeWithAI = async () => {
+    if (photos.length === 0 || !projectId || !onAiDescription) return;
+    
+    setAnalyzing(true);
+    try {
+      // Get the first photo and convert to base64
+      const photo = photos[0];
+      const reader = new FileReader();
+      
+      const base64 = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(photo);
+      });
+
+      const { data, error } = await supabase.functions.invoke('ai-analyze-photo', {
+        body: {
+          image_base64: base64,
+          project_id: projectId,
+        },
+      });
+
+      if (error) throw error;
+
+      onAiDescription({
+        title: data.suggested_title || '',
+        description: data.suggested_description || '',
+        priority: data.suggested_priority || '3',
+        location: data.suggested_location || null,
+      });
+
+      toast({
+        title: 'AI description generated',
+        description: 'Review and edit before saving',
+      });
+    } catch (error: any) {
+      console.error('Error analyzing photo:', error);
+      toast({
+        title: 'Error analyzing photo',
+        description: error.message || 'Please describe manually',
+        variant: 'destructive',
+      });
+    } finally {
+      setAnalyzing(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -201,9 +256,32 @@ export const PhotoUpload = ({
         </div>
       )}
 
+      {/* AI Describe Button - show when photos exist */}
+      {photos.length > 0 && projectId && onAiDescription && (
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={analyzeWithAI}
+          disabled={disabled || analyzing}
+          className="w-full h-10 gap-2"
+        >
+          {analyzing ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Analyzing photo...
+            </>
+          ) : (
+            <>
+              <Sparkles className="h-4 w-4" />
+              Describe with AI
+            </>
+          )}
+        </Button>
+      )}
+
       {/* Photo Counter */}
       <p className="text-xs text-muted-foreground text-center">
-        {photos.length} of {maxPhotos} photos {compressing && "(compressing...)"}
+        {photos.length} of {maxPhotos} photos {compressing && "(compressing...)"} {analyzing && "(analyzing...)"}
       </p>
     </div>
   );
