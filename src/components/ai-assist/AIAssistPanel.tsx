@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  X, Send, Sparkles, AlertTriangle, CheckCircle2, 
+  X, Send, Sparkles, AlertTriangle, 
   Clock, Shield, Receipt, FileWarning, Users, Loader2,
-  ChevronRight
+  ChevronRight, Mic, Square
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAiAssist, ChatMessage, ActionSuggestion, PressingIssues } from '@/hooks/useAiAssist';
 import { useProjectRole } from '@/hooks/useProjectRole';
+import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 
@@ -53,6 +54,24 @@ export const AIAssistPanel = ({ isOpen, onClose, projectId, projectName }: AIAss
     getInitialSummary,
     clearMessages,
   } = useAiAssist(projectId);
+
+  // Voice input
+  const { isRecording, isTranscribing, startRecording, stopRecording, cancelRecording } = useVoiceInput({
+    onTranscription: (text) => {
+      // Automatically send the transcribed message
+      if (text && !isLoading) {
+        sendMessage(text);
+      }
+    },
+  });
+
+  const handleVoiceToggle = async () => {
+    if (isRecording) {
+      await stopRecording();
+    } else {
+      await startRecording();
+    }
+  };
 
   // Get initial summary when panel opens
   useEffect(() => {
@@ -272,19 +291,56 @@ export const AIAssistPanel = ({ isOpen, onClose, projectId, projectName }: AIAss
 
         {/* Input */}
         <div className="p-4 border-t border-border flex-shrink-0">
+          {/* Voice recording indicator */}
+          {(isRecording || isTranscribing) && (
+            <div className="mb-3 flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-accent/10 border border-accent/20">
+              {isRecording && (
+                <>
+                  <span className="h-2 w-2 rounded-full bg-destructive animate-pulse" />
+                  <span className="text-sm text-foreground">Recording... tap to stop</span>
+                </>
+              )}
+              {isTranscribing && (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin text-accent" />
+                  <span className="text-sm text-foreground">Transcribing...</span>
+                </>
+              )}
+            </div>
+          )}
+
           <div className="flex gap-2">
+            {/* Voice input button */}
+            <Button
+              onClick={handleVoiceToggle}
+              disabled={isLoading || isTranscribing || !projectId}
+              size="icon"
+              variant={isRecording ? "destructive" : "outline"}
+              className={cn(
+                "flex-shrink-0 transition-all",
+                isRecording && "animate-pulse"
+              )}
+              title={isRecording ? "Stop recording" : "Voice input"}
+            >
+              {isRecording ? (
+                <Square className="h-4 w-4" />
+              ) : (
+                <Mic className="h-4 w-4" />
+              )}
+            </Button>
+
             <Input
               ref={inputRef}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask about tasks, blockers, safety, receipts..."
-              disabled={isLoading || !projectId}
+              placeholder={isRecording ? "Listening..." : "Ask or tap mic to speak..."}
+              disabled={isLoading || isRecording || isTranscribing || !projectId}
               className="flex-1"
             />
             <Button 
               onClick={handleSend} 
-              disabled={!inputValue.trim() || isLoading || !projectId}
+              disabled={!inputValue.trim() || isLoading || isRecording || !projectId}
               size="icon"
               className="bg-accent hover:bg-accent/90"
             >
@@ -292,7 +348,7 @@ export const AIAssistPanel = ({ isOpen, onClose, projectId, projectName }: AIAss
             </Button>
           </div>
           <p className="text-[10px] text-muted-foreground mt-1.5 text-center">
-            Press Enter to send • Cmd+I to open
+            Tap mic to speak • Enter to send • Cmd+I to toggle
           </p>
         </div>
       </SheetContent>
