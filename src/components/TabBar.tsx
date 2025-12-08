@@ -1,5 +1,5 @@
 import { NavLink } from "./NavLink";
-import { Home, CheckSquare, Calendar, Users, AlertCircle, Shield, MessageSquare, Receipt } from "lucide-react";
+import { Home, CheckSquare, Calendar, Users, AlertCircle, Shield, Receipt } from "lucide-react";
 import { useProjectRole } from "@/hooks/useProjectRole";
 
 const tabs = [
@@ -10,7 +10,6 @@ const tabs = [
   { name: "Deficiencies", path: "/deficiencies", icon: AlertCircle, workerAccess: false },
   { name: "Safety", path: "/safety", icon: Shield, workerAccess: false },
   { name: "Receipts", path: "/receipts", icon: Receipt, workerAccess: true },
-  { name: "AI", path: "/ai", icon: MessageSquare, workerAccess: true },
 ];
 
 export const TabBar = () => {
