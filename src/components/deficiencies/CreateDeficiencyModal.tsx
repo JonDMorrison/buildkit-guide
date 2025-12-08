@@ -288,6 +288,21 @@ export const CreateDeficiencyModal = ({
               onPhotosChange={setPhotos}
               maxPhotos={10}
               disabled={loading}
+              projectId={formData.project_id}
+              onAiDescription={(data) => {
+                if (data.title && !formData.title) {
+                  setFormData(prev => ({ ...prev, title: data.title }));
+                }
+                if (data.description && !formData.description) {
+                  setFormData(prev => ({ ...prev, description: data.description }));
+                }
+                if (data.priority) {
+                  setFormData(prev => ({ ...prev, priority: data.priority }));
+                }
+                if (data.location && !formData.location) {
+                  setFormData(prev => ({ ...prev, location: data.location }));
+                }
+              }}
             />
           </div>
 

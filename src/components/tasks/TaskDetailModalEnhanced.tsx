@@ -42,12 +42,14 @@ import {
   Plus,
   HardHat,
   UserPlus,
-  UserMinus
+  UserMinus,
+  Mail
 } from 'lucide-react';
 import { FormField } from '../FormField';
 import { RequestManpowerModal } from './RequestManpowerModal';
 import { TaskDependencyManager } from './TaskDependencyManager';
 import { AssignWorkerModal } from './AssignWorkerModal';
+import { EscalationEmailModal } from '../ai-assist/EscalationEmailModal';
 
 interface TaskDetailModalEnhancedProps {
   taskId: string | null;
@@ -78,6 +80,7 @@ export const TaskDetailModalEnhanced = ({
   const [saving, setSaving] = useState(false);
   const [manpowerModalOpen, setManpowerModalOpen] = useState(false);
   const [assignWorkerModalOpen, setAssignWorkerModalOpen] = useState(false);
+  const [escalationEmailOpen, setEscalationEmailOpen] = useState(false);
   
   // Get permissions using task's project_id
   const { 
@@ -558,10 +561,23 @@ export const TaskDetailModalEnhanced = ({
             <>
               <Separator />
               <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <AlertTriangle className="h-4 w-4 text-status-issue" />
-                  <h3 className="text-sm font-semibold">Active Blockers</h3>
-                  <Badge variant="destructive">{blockers.length}</Badge>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-status-issue" />
+                    <h3 className="text-sm font-semibold">Active Blockers</h3>
+                    <Badge variant="destructive">{blockers.length}</Badge>
+                  </div>
+                  {canEdit && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setEscalationEmailOpen(true)}
+                      className="gap-1.5 text-xs"
+                    >
+                      <Mail className="h-3 w-3" />
+                      Draft Escalation
+                    </Button>
+                  )}
                 </div>
                 <div className="space-y-2">
                   {blockers.map((blocker) => (
@@ -863,6 +879,18 @@ export const TaskDetailModalEnhanced = ({
               .then(({ data }) => setAssignedWorkers(data || []));
             onTaskUpdated?.();
           }}
+        />
+      )}
+
+      {/* Escalation Email Modal */}
+      {task && blockers.length > 0 && (
+        <EscalationEmailModal
+          open={escalationEmailOpen}
+          onOpenChange={setEscalationEmailOpen}
+          projectId={task.project_id}
+          blockerId={blockers[0]?.id}
+          blockerReason={blockers[0]?.reason || ''}
+          taskTitle={task.title}
         />
       )}
     </Dialog>

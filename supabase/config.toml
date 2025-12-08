@@ -35,3 +35,9 @@ verify_jwt = false
 
 [functions.ai-assist]
 verify_jwt = false
+
+[functions.ai-analyze-photo]
+verify_jwt = false
+
+[functions.ai-generate-email]
+verify_jwt = false
