@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { OrganizationProvider } from "@/hooks/useOrganization";
+import { OrganizationSelectionModal } from "@/components/OrganizationSelectionModal";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { PublicRoute } from "@/components/PublicRoute";
 import { TimeTrackingGate } from "@/components/TimeTrackingGate";
@@ -44,7 +45,8 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <OrganizationProvider>
-          <Routes>
+            <OrganizationSelectionModal />
+            <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route
               path="/"
@@ -234,7 +236,7 @@ const App = () => (
             />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
-          </Routes>
+            </Routes>
           </OrganizationProvider>
         </AuthProvider>
       </BrowserRouter>
