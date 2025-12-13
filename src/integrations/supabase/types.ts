@@ -788,6 +788,66 @@ export type Database = {
         }
         Relationships: []
       }
+      job_sites: {
+        Row: {
+          address: string | null
+          created_at: string
+          geofence_radius_meters: number
+          id: string
+          is_active: boolean
+          latitude: number | null
+          longitude: number | null
+          name: string
+          normalized_address: string | null
+          organization_id: string
+          project_id: string
+          timezone_override: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          geofence_radius_meters?: number
+          id?: string
+          is_active?: boolean
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          normalized_address?: string | null
+          organization_id: string
+          project_id: string
+          timezone_override?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          geofence_radius_meters?: number
+          id?: string
+          is_active?: boolean
+          latitude?: number | null
+          longitude?: number | null
+          name?: string
+          normalized_address?: string | null
+          organization_id?: string
+          project_id?: string
+          timezone_override?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_sites_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_sites_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       manpower_requests: {
         Row: {
           approved_at: string | null
@@ -1070,6 +1130,66 @@ export type Database = {
           slug?: string | null
         }
         Relationships: []
+      }
+      payroll_exports: {
+        Row: {
+          created_at: string
+          date_from: string
+          date_to: string
+          entry_count: number
+          export_type: string
+          file_path: string | null
+          file_url: string | null
+          flagged_count: number
+          generated_by: string
+          id: string
+          organization_id: string
+          storage_bucket: string
+        }
+        Insert: {
+          created_at?: string
+          date_from: string
+          date_to: string
+          entry_count?: number
+          export_type: string
+          file_path?: string | null
+          file_url?: string | null
+          flagged_count?: number
+          generated_by: string
+          id?: string
+          organization_id: string
+          storage_bucket?: string
+        }
+        Update: {
+          created_at?: string
+          date_from?: string
+          date_to?: string
+          entry_count?: number
+          export_type?: string
+          file_path?: string | null
+          file_url?: string | null
+          flagged_count?: number
+          generated_by?: string
+          id?: string
+          organization_id?: string
+          storage_bucket?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_exports_generated_by_fkey"
+            columns: ["generated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_exports_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -1561,6 +1681,269 @@ export type Database = {
           },
         ]
       }
+      time_entries: {
+        Row: {
+          check_in_at: string
+          check_in_latitude: number | null
+          check_in_longitude: number | null
+          check_out_at: string | null
+          check_out_latitude: number | null
+          check_out_longitude: number | null
+          closed_by: string | null
+          closed_method: string
+          created_at: string
+          duration_hours: number | null
+          duration_minutes: number | null
+          flag_reason: string | null
+          id: string
+          is_flagged: boolean
+          job_site_id: string | null
+          notes: string | null
+          organization_id: string
+          project_id: string
+          project_timezone: string
+          source: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          check_in_at: string
+          check_in_latitude?: number | null
+          check_in_longitude?: number | null
+          check_out_at?: string | null
+          check_out_latitude?: number | null
+          check_out_longitude?: number | null
+          closed_by?: string | null
+          closed_method?: string
+          created_at?: string
+          duration_hours?: number | null
+          duration_minutes?: number | null
+          flag_reason?: string | null
+          id?: string
+          is_flagged?: boolean
+          job_site_id?: string | null
+          notes?: string | null
+          organization_id: string
+          project_id: string
+          project_timezone: string
+          source?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          check_in_at?: string
+          check_in_latitude?: number | null
+          check_in_longitude?: number | null
+          check_out_at?: string | null
+          check_out_latitude?: number | null
+          check_out_longitude?: number | null
+          closed_by?: string | null
+          closed_method?: string
+          created_at?: string
+          duration_hours?: number | null
+          duration_minutes?: number | null
+          flag_reason?: string | null
+          id?: string
+          is_flagged?: boolean
+          job_site_id?: string | null
+          notes?: string | null
+          organization_id?: string
+          project_id?: string
+          project_timezone?: string
+          source?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_entries_closed_by_fkey"
+            columns: ["closed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_job_site_id_fkey"
+            columns: ["job_site_id"]
+            isOneToOne: false
+            referencedRelation: "job_sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      time_entry_adjustments: {
+        Row: {
+          adjusted_by: string
+          adjustment_type: string
+          affects_pay: boolean
+          created_at: string
+          id: string
+          new_values: Json
+          organization_id: string
+          previous_values: Json
+          reason: string
+          time_entry_id: string
+        }
+        Insert: {
+          adjusted_by: string
+          adjustment_type: string
+          affects_pay?: boolean
+          created_at?: string
+          id?: string
+          new_values: Json
+          organization_id: string
+          previous_values: Json
+          reason: string
+          time_entry_id: string
+        }
+        Update: {
+          adjusted_by?: string
+          adjustment_type?: string
+          affects_pay?: boolean
+          created_at?: string
+          id?: string
+          new_values?: Json
+          organization_id?: string
+          previous_values?: Json
+          reason?: string
+          time_entry_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_entry_adjustments_adjusted_by_fkey"
+            columns: ["adjusted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entry_adjustments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entry_adjustments_time_entry_id_fkey"
+            columns: ["time_entry_id"]
+            isOneToOne: false
+            referencedRelation: "time_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entry_adjustments_time_entry_id_fkey"
+            columns: ["time_entry_id"]
+            isOneToOne: false
+            referencedRelation: "v_time_entries_enriched"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      time_events: {
+        Row: {
+          actor_id: string
+          created_at: string
+          event_type: string
+          id: string
+          job_site_id: string | null
+          latitude: number | null
+          longitude: number | null
+          metadata: Json
+          occurred_at: string
+          organization_id: string
+          project_id: string
+          source: string
+          user_id: string
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          event_type: string
+          id?: string
+          job_site_id?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          metadata?: Json
+          occurred_at?: string
+          organization_id: string
+          project_id: string
+          source: string
+          user_id: string
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          job_site_id?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          metadata?: Json
+          occurred_at?: string
+          organization_id?: string
+          project_id?: string
+          source?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_events_job_site_id_fkey"
+            columns: ["job_site_id"]
+            isOneToOne: false
+            referencedRelation: "job_sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_events_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trades: {
         Row: {
           company_name: string
@@ -1673,7 +2056,76 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_time_entries_enriched: {
+        Row: {
+          check_in_at: string | null
+          check_in_latitude: number | null
+          check_in_longitude: number | null
+          check_out_at: string | null
+          check_out_latitude: number | null
+          check_out_longitude: number | null
+          closed_by: string | null
+          closed_by_display_name: string | null
+          closed_method: string | null
+          created_at: string | null
+          duration_hours: number | null
+          duration_minutes: number | null
+          flag_reason: string | null
+          id: string | null
+          is_flagged: boolean | null
+          job_site_address: string | null
+          job_site_id: string | null
+          job_site_name: string | null
+          notes: string | null
+          organization_id: string | null
+          project_id: string | null
+          project_job_number: string | null
+          project_name: string | null
+          project_timezone: string | null
+          source: string | null
+          status: string | null
+          user_display_name: string | null
+          user_email: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_entries_closed_by_fkey"
+            columns: ["closed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_job_site_id_fkey"
+            columns: ["job_site_id"]
+            isOneToOne: false
+            referencedRelation: "job_sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       can_manage_project: {
