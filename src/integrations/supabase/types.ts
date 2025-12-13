@@ -1694,6 +1694,11 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_org_membership: { Args: { _org_id: string }; Returns: boolean }
+      has_project_membership: {
+        Args: { _project_id: string }
+        Returns: boolean
+      }
       has_project_role: {
         Args: {
           _project_id: string
@@ -1726,6 +1731,7 @@ export type Database = {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
       }
+      org_role: { Args: { _org_id: string }; Returns: string }
       user_wants_notification: {
         Args: { _notification_type: string; _user_id: string }
         Returns: boolean

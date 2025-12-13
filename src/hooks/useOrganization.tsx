@@ -23,6 +23,7 @@ interface OrganizationContextType {
   loading: boolean;
   isOrgAdmin: boolean;
   orgRole: string | null;
+  requiresOrgSelection: boolean;
 }
 
 const OrganizationContext = createContext<OrganizationContextType | undefined>(undefined);
@@ -132,6 +133,7 @@ export const OrganizationProvider = ({ children }: { children: ReactNode }) => {
 
   const activeOrganization = organizations.find(o => o.id === activeOrganizationId) || null;
   const isOrgAdmin = orgRole === 'admin';
+  const requiresOrgSelection = !loading && organizations.length > 1 && !activeOrganizationId;
 
   return (
     <OrganizationContext.Provider
@@ -143,6 +145,7 @@ export const OrganizationProvider = ({ children }: { children: ReactNode }) => {
         loading,
         isOrgAdmin,
         orgRole,
+        requiresOrgSelection,
       }}
     >
       {children}
