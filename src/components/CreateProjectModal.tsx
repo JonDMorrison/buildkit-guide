@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { z } from 'zod';
 import { useAuth } from '@/hooks/useAuth';
+import { useOrganization } from '@/hooks/useOrganization';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -35,6 +36,7 @@ interface CreateProjectModalProps {
 
 export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProjectModalProps) => {
   const { user } = useAuth();
+  const { activeOrganizationId } = useOrganization();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState<ProjectForm>({
@@ -66,6 +68,7 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
           end_date: validatedData.endDate || null,
           status: 'planning',
           created_by: user?.id,
+          organization_id: activeOrganizationId,
         })
         .select()
         .single();

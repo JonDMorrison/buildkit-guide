@@ -983,6 +983,94 @@ export type Database = {
           },
         ]
       }
+      organization_memberships: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          organization_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          organization_id: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          organization_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_memberships_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_settings: {
+        Row: {
+          created_at: string
+          default_timezone: string
+          organization_id: string
+          time_tracking_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_timezone?: string
+          organization_id: string
+          time_tracking_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_timezone?: string
+          organization_id?: string
+          time_tracking_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_settings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          slug: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          slug?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          slug?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -1073,6 +1161,7 @@ export type Database = {
           job_number: string | null
           location: string
           name: string
+          organization_id: string
           start_date: string | null
           status: string
           updated_at: string
@@ -1087,6 +1176,7 @@ export type Database = {
           job_number?: string | null
           location: string
           name: string
+          organization_id: string
           start_date?: string | null
           status?: string
           updated_at?: string
@@ -1101,6 +1191,7 @@ export type Database = {
           job_number?: string | null
           location?: string
           name?: string
+          organization_id?: string
           start_date?: string | null
           status?: string
           updated_at?: string
@@ -1111,6 +1202,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -1583,6 +1681,7 @@ export type Database = {
         Returns: boolean
       }
       get_task_project_id: { Args: { _task_id: string }; Returns: string }
+      get_user_organizations: { Args: { _user_id: string }; Returns: string[] }
       get_user_project_role: {
         Args: { _project_id: string; _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -1613,6 +1712,14 @@ export type Database = {
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_assigned_to_task: {
         Args: { _task_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_org_admin: {
+        Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_org_member: {
+        Args: { _org_id: string; _user_id: string }
         Returns: boolean
       }
       is_project_member: {
