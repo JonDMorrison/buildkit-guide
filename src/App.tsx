@@ -4,8 +4,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { OrganizationProvider } from "@/hooks/useOrganization";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { PublicRoute } from "@/components/PublicRoute";
+import { TimeTrackingGate } from "@/components/TimeTrackingGate";
 import Landing from "./pages/Landing";
 import HowItWorks from "./pages/HowItWorks";
 import Dashboard from "./pages/Dashboard";
@@ -28,6 +30,8 @@ import Receipts from "./pages/Receipts";
 import ProjectReceipts from "./pages/ProjectReceipts";
 import AccountingReceipts from "./pages/AccountingReceipts";
 import DeficiencyImport from "./pages/DeficiencyImport";
+import TimeTracking from "./pages/TimeTracking";
+import TimeTrackingNotEnabled from "./pages/TimeTrackingNotEnabled";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,6 +43,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <OrganizationProvider>
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route
@@ -209,9 +214,28 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/time"
+              element={
+                <ProtectedRoute>
+                  <TimeTrackingGate>
+                    <TimeTracking />
+                  </TimeTrackingGate>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/time-tracking-not-enabled"
+              element={
+                <ProtectedRoute>
+                  <TimeTrackingNotEnabled />
+                </ProtectedRoute>
+              }
+            />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </OrganizationProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
