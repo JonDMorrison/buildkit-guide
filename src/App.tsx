@@ -33,6 +33,8 @@ import AccountingReceipts from "./pages/AccountingReceipts";
 import DeficiencyImport from "./pages/DeficiencyImport";
 import TimeTracking from "./pages/TimeTracking";
 import TimeTrackingNotEnabled from "./pages/TimeTrackingNotEnabled";
+import TimeRequestsReview from "./pages/TimeRequestsReview";
+import TimesheetPeriods from "./pages/TimesheetPeriods";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -231,6 +233,22 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <TimeTrackingNotEnabled />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/time/requests"
+              element={
+                <ProtectedRoute>
+                  <TimeRequestsReview />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/time/periods"
+              element={
+                <ProtectedRoute>
+                  <TimesheetPeriods />
                 </ProtectedRoute>
               }
             />

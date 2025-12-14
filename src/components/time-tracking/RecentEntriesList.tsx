@@ -1,6 +1,7 @@
-import { Clock, MapPin, AlertTriangle, Check, XCircle, Timer, Edit } from 'lucide-react';
+import { Clock, MapPin, AlertTriangle, Check, XCircle, Timer, Edit, HelpCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { TimeEntry } from '@/hooks/useRecentTimeEntries';
 import { format, parseISO } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -8,6 +9,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 interface RecentEntriesListProps {
   entries: TimeEntry[];
   isLoading: boolean;
+  onEntryClick?: (entry: TimeEntry) => void;
+  onRequestAdjustment?: (entry: TimeEntry) => void;
 }
 
 function getStatusBadge(entry: TimeEntry) {
@@ -16,6 +19,15 @@ function getStatusBadge(entry: TimeEntry) {
       <Badge variant="default" className="bg-primary/20 text-primary border-primary/30">
         <Timer className="h-3 w-3 mr-1" />
         Active
+      </Badge>
+    );
+  }
+
+  if (entry.is_flagged) {
+    return (
+      <Badge variant="destructive">
+        <AlertTriangle className="h-3 w-3 mr-1" />
+        Flagged
       </Badge>
     );
   }
@@ -29,7 +41,7 @@ function getStatusBadge(entry: TimeEntry) {
     );
   }
 
-  if (entry.closed_method === 'adjusted') {
+  if (entry.closed_method === 'adjusted' || entry.closed_method === 'manual_adjustment') {
     return (
       <Badge variant="secondary" className="bg-muted text-muted-foreground">
         <Edit className="h-3 w-3 mr-1" />
@@ -54,7 +66,12 @@ function formatDuration(hours: number | null, minutes: number | null) {
   return `${h}h ${m}m`;
 }
 
-export function RecentEntriesList({ entries, isLoading }: RecentEntriesListProps) {
+export function RecentEntriesList({
+  entries,
+  isLoading,
+  onEntryClick,
+  onRequestAdjustment,
+}: RecentEntriesListProps) {
   if (isLoading) {
     return (
       <Card>
@@ -121,7 +138,10 @@ export function RecentEntriesList({ entries, isLoading }: RecentEntriesListProps
               {dayEntries.map((entry) => (
                 <div
                   key={entry.id}
-                  className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                  className={`flex items-start gap-3 p-3 rounded-lg border bg-card transition-colors ${
+                    onEntryClick ? 'hover:bg-muted/50 cursor-pointer' : ''
+                  }`}
+                  onClick={() => onEntryClick?.(entry)}
                 >
                   <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
                     <Clock className="h-5 w-5 text-muted-foreground" />
@@ -152,6 +172,22 @@ export function RecentEntriesList({ entries, isLoading }: RecentEntriesListProps
                         )}
                       </span>
                     </div>
+
+                    {/* Something wrong? link */}
+                    {onRequestAdjustment && entry.status !== 'open' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="mt-2 h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRequestAdjustment(entry);
+                        }}
+                      >
+                        <HelpCircle className="h-3 w-3 mr-1" />
+                        Something wrong?
+                      </Button>
+                    )}
                   </div>
 
                   <div className="flex flex-col items-end gap-2">
