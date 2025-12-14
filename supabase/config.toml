@@ -53,3 +53,21 @@ verify_jwt = true
 
 [functions.time-adjust]
 verify_jwt = true
+
+[functions.time-period-ensure]
+verify_jwt = true
+
+[functions.time-period-submit]
+verify_jwt = true
+
+[functions.time-period-approve]
+verify_jwt = true
+
+[functions.time-period-lock]
+verify_jwt = true
+
+[functions.time-request-cancel]
+verify_jwt = true
+
+[functions.time-request-review]
+verify_jwt = true
