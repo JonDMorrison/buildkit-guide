@@ -35,6 +35,7 @@ import TimeTracking from "./pages/TimeTracking";
 import TimeTrackingNotEnabled from "./pages/TimeTrackingNotEnabled";
 import TimeRequestsReview from "./pages/TimeRequestsReview";
 import TimesheetPeriods from "./pages/TimesheetPeriods";
+import TimeDiagnostics from "./pages/TimeDiagnostics";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -249,6 +250,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <TimesheetPeriods />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/time-diagnostics"
+              element={
+                <ProtectedRoute>
+                  <TimeDiagnostics />
                 </ProtectedRoute>
               }
             />

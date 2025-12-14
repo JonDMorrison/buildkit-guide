@@ -89,3 +89,6 @@ verify_jwt = false
 
 [functions.time-tracking]
 verify_jwt = true
+
+[functions.time-diagnostics]
+verify_jwt = true
