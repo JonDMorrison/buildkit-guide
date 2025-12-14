@@ -23,10 +23,12 @@ export const OrganizationSwitcher = () => {
   }
 
   // Only show to roles above internal_worker
-  const allowedRoles = ['admin', 'project_manager', 'foreman'];
+  const allowedRoles = ['admin', 'project_manager', 'foreman', 'accounting'];
   if (orgRole && !allowedRoles.includes(orgRole)) {
     return null;
   }
+
+  console.log('OrganizationSwitcher - orgs:', organizations.length, 'role:', orgRole);
 
   return (
     <DropdownMenu>
