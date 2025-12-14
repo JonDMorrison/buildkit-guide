@@ -2603,6 +2603,10 @@ export type Database = {
         Args: { p_actor_id: string; p_org_id: string; p_target_id: string }
         Returns: boolean
       }
+      upsert_cron_job: {
+        Args: { p_command: string; p_job_name: string; p_schedule: string }
+        Returns: undefined
+      }
       user_wants_notification: {
         Args: { _notification_type: string; _user_id: string }
         Returns: boolean
