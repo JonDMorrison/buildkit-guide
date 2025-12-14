@@ -33,10 +33,10 @@ Deno.serve(async (req) => {
       const reminderMinutes = org.time_reminder_after_minutes || 30;
       const thresholdTime = new Date(Date.now() - reminderMinutes * 60 * 1000).toISOString();
 
-      // Find users with open entries past the reminder threshold
+      // Find users with open entries past the reminder threshold (include id for dedupe)
       const { data: openEntries, error: entriesError } = await supabase
         .from('time_entries')
-        .select('user_id, project_id, check_in_at, job_site_id')
+        .select('id, user_id, project_id, check_in_at, job_site_id')
         .eq('organization_id', org.organization_id)
         .is('check_out_at', null)
         .lt('check_in_at', thresholdTime);
@@ -50,7 +50,19 @@ Deno.serve(async (req) => {
       const userIds = [...new Set(openEntries?.map(e => e.user_id) || [])];
 
       for (const userId of userIds) {
-        // Check dedupe - was reminder sent recently?
+        // Get entry details for notification
+        const userEntry = openEntries?.find(e => e.user_id === userId);
+        if (!userEntry) continue;
+
+        // Check event dedupe - prevent duplicate time_events on reminder
+        const eventDedupeKey = `reminder:${userEntry.id}`;
+        const { data: existingEventDedupe } = await supabase
+          .from('event_dedupe')
+          .select('id')
+          .eq('dedupe_key', eventDedupeKey)
+          .maybeSingle();
+
+        // Check notification dedupe - was reminder sent recently?
         const { data: recentDedupe } = await supabase
           .from('notification_dedupe')
           .select('last_sent_at')
@@ -60,22 +72,18 @@ Deno.serve(async (req) => {
           .gt('last_sent_at', dedupeThreshold)
           .maybeSingle();
 
-        if (recentDedupe) {
-          console.log(`Skipping reminder for user ${userId} - sent recently`);
+        if (recentDedupe || existingEventDedupe) {
+          console.log(`Skipping reminder for user ${userId} - sent recently or event already logged`);
           continue;
         }
-
-        // Get entry details for notification
-        const entry = openEntries?.find(e => e.user_id === userId);
-        if (!entry) continue;
 
         const { data: project } = await supabase
           .from('projects')
           .select('name')
-          .eq('id', entry.project_id)
+          .eq('id', userEntry.project_id)
           .single();
 
-        const checkInTime = new Date(entry.check_in_at);
+        const checkInTime = new Date(userEntry.check_in_at);
         const elapsedMinutes = Math.floor((Date.now() - checkInTime.getTime()) / (1000 * 60));
         const elapsedHours = Math.floor(elapsedMinutes / 60);
         const elapsedMins = elapsedMinutes % 60;
@@ -83,14 +91,22 @@ Deno.serve(async (req) => {
         // Create notification
         await supabase.from('notifications').insert({
           user_id: userId,
-          project_id: entry.project_id,
+          project_id: userEntry.project_id,
           type: 'general',
           title: 'Still Clocked In',
           message: `You've been clocked in for ${elapsedHours}h ${elapsedMins}m on ${project?.name || 'project'}. Did you forget to check out?`,
           link_url: '/time',
         });
 
-        // Update or insert dedupe record
+        // Insert event dedupe to prevent duplicate events on double-run
+        await supabase.from('event_dedupe').upsert({
+          dedupe_key: eventDedupeKey,
+          event_type: 'reminder',
+          last_occurred_at: new Date().toISOString(),
+          metadata: { time_entry_id: userEntry.id, user_id: userId },
+        }, { onConflict: 'dedupe_key' });
+
+        // Update or insert notification dedupe record
         await supabase
           .from('notification_dedupe')
           .upsert({
@@ -98,7 +114,7 @@ Deno.serve(async (req) => {
             user_id: userId,
             notification_type: 'check_out_reminder',
             last_sent_at: new Date().toISOString(),
-            metadata: { entry_check_in: entry.check_in_at },
+            metadata: { entry_check_in: userEntry.check_in_at },
           }, {
             onConflict: 'organization_id,user_id,notification_type',
           });

@@ -552,6 +552,30 @@ export type Database = {
           },
         ]
       }
+      event_dedupe: {
+        Row: {
+          dedupe_key: string
+          event_type: string
+          id: string
+          last_occurred_at: string
+          metadata: Json | null
+        }
+        Insert: {
+          dedupe_key: string
+          event_type: string
+          id?: string
+          last_occurred_at?: string
+          metadata?: Json | null
+        }
+        Update: {
+          dedupe_key?: string
+          event_type?: string
+          id?: string
+          last_occurred_at?: string
+          metadata?: Json | null
+        }
+        Relationships: []
+      }
       gc_column_mappings: {
         Row: {
           created_at: string
@@ -2408,6 +2432,7 @@ export type Database = {
         Returns: boolean
       }
       get_task_project_id: { Args: { _task_id: string }; Returns: string }
+      get_time_cron_secret: { Args: never; Returns: string }
       get_user_organizations: { Args: { _user_id: string }; Returns: string[] }
       get_user_project_role: {
         Args: { _project_id: string; _user_id: string }

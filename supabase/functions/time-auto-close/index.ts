@@ -50,6 +50,19 @@ Deno.serve(async (req) => {
       console.log(`Org ${org.organization_id}: Found ${staleEntries?.length || 0} stale entries`);
 
       for (const entry of staleEntries || []) {
+        // Check event dedupe - prevent duplicate time_events on double-run
+        const dedupeKey = `auto_close:${entry.id}`;
+        const { data: existingDedupe } = await supabase
+          .from('event_dedupe')
+          .select('id')
+          .eq('dedupe_key', dedupeKey)
+          .maybeSingle();
+
+        if (existingDedupe) {
+          console.log(`Skipping entry ${entry.id} - already auto-closed (dedupe)`);
+          continue;
+        }
+
         const now = new Date();
         const checkInTime = new Date(entry.check_in_at);
         const durationMs = now.getTime() - checkInTime.getTime();
@@ -87,6 +100,14 @@ Deno.serve(async (req) => {
           console.error(`Error closing entry ${entry.id}:`, updateError);
           continue;
         }
+
+        // Insert event dedupe record first (prevents duplicates on double-run)
+        await supabase.from('event_dedupe').upsert({
+          dedupe_key: dedupeKey,
+          event_type: 'auto_close',
+          last_occurred_at: now.toISOString(),
+          metadata: { time_entry_id: entry.id },
+        }, { onConflict: 'dedupe_key' });
 
         // Log time_event
         await supabase.from('time_events').insert({

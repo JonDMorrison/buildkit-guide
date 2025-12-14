@@ -87,7 +87,15 @@ Deno.serve(async (req) => {
       const today = new Date().toISOString().split('T')[0];
 
       for (const entry of openEntries || []) {
-        // Check if already sent today
+        // Check event dedupe - prevent duplicate events
+        const eventDedupeKey = `eod:${entry.user_id}:${today}`;
+        const { data: existingEventDedupe } = await supabase
+          .from('event_dedupe')
+          .select('id')
+          .eq('dedupe_key', eventDedupeKey)
+          .maybeSingle();
+
+        // Check if already sent today via notification_dedupe
         const { data: recentDedupe } = await supabase
           .from('notification_dedupe')
           .select('last_sent_at')
@@ -97,7 +105,7 @@ Deno.serve(async (req) => {
           .gte('last_sent_at', `${today}T00:00:00Z`)
           .maybeSingle();
 
-        if (recentDedupe) {
+        if (recentDedupe || existingEventDedupe) {
           console.log(`Skipping EOD nudge for user ${entry.user_id} - already sent today`);
           continue;
         }
@@ -118,7 +126,15 @@ Deno.serve(async (req) => {
           link_url: '/time',
         });
 
-        // Update dedupe
+        // Insert event dedupe to prevent duplicate events
+        await supabase.from('event_dedupe').upsert({
+          dedupe_key: eventDedupeKey,
+          event_type: 'eod_nudge',
+          last_occurred_at: new Date().toISOString(),
+          metadata: { user_id: entry.user_id, date: today },
+        }, { onConflict: 'dedupe_key' });
+
+        // Update notification dedupe
         await supabase
           .from('notification_dedupe')
           .upsert({
