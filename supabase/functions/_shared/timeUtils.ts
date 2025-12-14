@@ -5,7 +5,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // ============================================
 export const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, idempotency-key, x-offline-replay',
 };
 
 // ============================================
@@ -20,6 +20,10 @@ export function json(body: unknown, status = 200): Response {
 
 export function badRequest(code: string, message: string, details?: unknown): Response {
   return json({ error: { code, message, details } }, 400);
+}
+
+export function conflict(code: string, message: string, details?: unknown): Response {
+  return json({ error: { code, message, details } }, 409);
 }
 
 export function forbidden(code: string, message: string, details?: unknown): Response {
@@ -175,13 +179,14 @@ export async function assertTimeTrackingEnabled(orgId: string): Promise<true | R
 
 export async function getOrgSettings(orgId: string): Promise<{ 
   default_timezone: string; 
-  time_tracking_enabled: boolean 
+  time_tracking_enabled: boolean;
+  time_gps_accuracy_warn_meters: number;
 } | null> {
   const supabase = serviceClient();
   
   const { data, error } = await supabase
     .from('organization_settings')
-    .select('default_timezone, time_tracking_enabled')
+    .select('default_timezone, time_tracking_enabled, time_gps_accuracy_warn_meters')
     .eq('organization_id', orgId)
     .maybeSingle();
   
@@ -190,7 +195,11 @@ export async function getOrgSettings(orgId: string): Promise<{
     return null;
   }
   
-  return data || { default_timezone: 'America/Vancouver', time_tracking_enabled: false };
+  return data || { 
+    default_timezone: 'America/Vancouver', 
+    time_tracking_enabled: false,
+    time_gps_accuracy_warn_meters: 100,
+  };
 }
 
 // ============================================
@@ -370,4 +379,233 @@ export function validateCronSecret(req: Request): Response | null {
   }
   
   return null; // Validation passed
+}
+
+// ============================================
+// Location & Geofence Helpers
+// ============================================
+export interface LocationPayload {
+  latitude: number | null;
+  longitude: number | null;
+  accuracy_meters: number | null;
+  location_source: string | null;
+}
+
+export function normalizeLocationPayload(body: Record<string, unknown>): LocationPayload {
+  const latitude = typeof body.latitude === 'number' ? body.latitude : null;
+  const longitude = typeof body.longitude === 'number' ? body.longitude : null;
+  const accuracy_meters = typeof body.accuracy_meters === 'number' ? body.accuracy_meters : null;
+  const location_source = typeof body.location_source === 'string' ? body.location_source : null;
+  
+  return { latitude, longitude, accuracy_meters, location_source };
+}
+
+export interface GeofenceDecision {
+  allowed: boolean;
+  flags: string[];
+  errorResponse?: Response;
+  distance_meters?: number;
+}
+
+export function makeGeofenceDecision(
+  location: LocationPayload,
+  jobSite: { latitude: number | null; longitude: number | null; geofence_radius_meters: number } | null,
+  gpsAccuracyThreshold: number = 100
+): GeofenceDecision {
+  const flags: string[] = [];
+  
+  // Case 1: No location provided
+  if (location.latitude === null || location.longitude === null) {
+    flags.push('location_unverified');
+    if (jobSite) {
+      flags.push('geofence_not_verified');
+    }
+    return { allowed: true, flags };
+  }
+  
+  // Case 2: Location provided but accuracy is poor
+  if (location.accuracy_meters !== null && location.accuracy_meters > gpsAccuracyThreshold) {
+    flags.push('gps_accuracy_low');
+  }
+  
+  // Case 3: Job site with coordinates - check geofence
+  if (jobSite && jobSite.latitude !== null && jobSite.longitude !== null) {
+    const distance = distanceMeters(
+      location.latitude,
+      location.longitude,
+      jobSite.latitude,
+      jobSite.longitude
+    );
+    
+    if (distance > jobSite.geofence_radius_meters) {
+      // Reject with geofence violation
+      return {
+        allowed: false,
+        flags,
+        distance_meters: Math.round(distance),
+        errorResponse: forbidden('OUTSIDE_GEOFENCE', 'User is outside the job site geofence', {
+          distance_meters: Math.round(distance),
+          radius_meters: jobSite.geofence_radius_meters,
+        }),
+      };
+    }
+  }
+  
+  return { allowed: true, flags };
+}
+
+// ============================================
+// Flag Management Helpers
+// ============================================
+export interface AddFlagParams {
+  orgId: string;
+  timeEntryId: string;
+  projectId: string;
+  userId: string;
+  flagCode: string;
+  severity?: 'info' | 'warning' | 'critical';
+  metadata?: Record<string, unknown>;
+  createdBy?: string | null;
+  createdSource?: 'user' | 'system' | 'admin' | 'foreman';
+}
+
+export async function addFlag(params: AddFlagParams): Promise<{ success: boolean; error?: string }> {
+  const supabase = serviceClient();
+  
+  const { error } = await supabase
+    .from('time_entry_flags')
+    .upsert({
+      organization_id: params.orgId,
+      time_entry_id: params.timeEntryId,
+      project_id: params.projectId,
+      user_id: params.userId,
+      flag_code: params.flagCode,
+      severity: params.severity || 'warning',
+      metadata: params.metadata || {},
+      created_by: params.createdBy || null,
+      created_source: params.createdSource || 'system',
+    }, {
+      onConflict: 'organization_id,time_entry_id,flag_code',
+      ignoreDuplicates: true,
+    });
+  
+  if (error) {
+    console.error(`Error adding flag ${params.flagCode}:`, error);
+    return { success: false, error: error.message };
+  }
+  
+  return { success: true };
+}
+
+export async function addFlags(flagsList: AddFlagParams[]): Promise<void> {
+  for (const params of flagsList) {
+    await addFlag(params);
+  }
+}
+
+// ============================================
+// Idempotency Helpers
+// ============================================
+function hashString(str: string): string {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(str);
+  // Simple hash for Deno
+  let hash = 0;
+  for (let i = 0; i < data.length; i++) {
+    const char = data[i];
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return Math.abs(hash).toString(16);
+}
+
+export interface IdempotencyResult {
+  found: boolean;
+  response?: Response;
+}
+
+export async function getIdempotentResponse(
+  route: string,
+  orgId: string,
+  userId: string,
+  idempotencyKey: string,
+  requestBody: unknown
+): Promise<IdempotencyResult> {
+  if (!idempotencyKey) {
+    return { found: false };
+  }
+  
+  const supabase = serviceClient();
+  const requestHash = hashString(JSON.stringify(requestBody || {}));
+  
+  const { data, error } = await supabase
+    .from('api_idempotency_keys')
+    .select('response, request_hash, expires_at')
+    .eq('organization_id', orgId)
+    .eq('user_id', userId)
+    .eq('route', route)
+    .eq('idempotency_key', idempotencyKey)
+    .maybeSingle();
+  
+  if (error || !data) {
+    return { found: false };
+  }
+  
+  // Check if expired
+  if (new Date(data.expires_at) < new Date()) {
+    return { found: false };
+  }
+  
+  // Check if request hash matches
+  if (data.request_hash !== requestHash) {
+    return {
+      found: true,
+      response: conflict('IDEMPOTENCY_CONFLICT', 'Idempotency key reused with different request body'),
+    };
+  }
+  
+  // Return cached response
+  return {
+    found: true,
+    response: json(data.response, 200),
+  };
+}
+
+export async function saveIdempotentResponse(
+  route: string,
+  orgId: string,
+  userId: string,
+  idempotencyKey: string,
+  requestBody: unknown,
+  responseBody: unknown
+): Promise<void> {
+  if (!idempotencyKey) return;
+  
+  const supabase = serviceClient();
+  const requestHash = hashString(JSON.stringify(requestBody || {}));
+  
+  await supabase
+    .from('api_idempotency_keys')
+    .upsert({
+      organization_id: orgId,
+      user_id: userId,
+      route: route,
+      idempotency_key: idempotencyKey,
+      request_hash: requestHash,
+      response: responseBody,
+      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    }, {
+      onConflict: 'organization_id,user_id,route,idempotency_key',
+    });
+}
+
+// ============================================
+// Offline Replay Detection
+// ============================================
+export function isOfflineReplay(req: Request): boolean {
+  return req.headers.get('X-Offline-Replay')?.toLowerCase() === 'true';
+}
+
+export function getIdempotencyKey(req: Request): string | null {
+  return req.headers.get('Idempotency-Key') || null;
 }

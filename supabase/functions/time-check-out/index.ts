@@ -13,6 +13,13 @@ import {
   getOpenEntry,
   findOpenEntryAcrossOrgs,
   computeDuration,
+  normalizeLocationPayload,
+  addFlag,
+  addFlags,
+  getIdempotentResponse,
+  saveIdempotentResponse,
+  isOfflineReplay,
+  getIdempotencyKey,
 } from "../_shared/timeUtils.ts";
 
 serve(async (req) => {
@@ -32,7 +39,14 @@ serve(async (req) => {
 
     // 2. Parse input
     const body = await req.json();
-    const { project_id, latitude, longitude } = body;
+    const { project_id } = body;
+    
+    // Get idempotency key and offline replay flag
+    const idempotencyKey = getIdempotencyKey(req);
+    const offlineReplay = isOfflineReplay(req);
+    
+    // Normalize location
+    const location = normalizeLocationPayload(body);
 
     let orgId: string;
     let openEntry: any;
@@ -83,37 +97,64 @@ serve(async (req) => {
       return notFound('NO_OPEN_ENTRY', 'No open time entry found');
     }
 
+    // 4. Check idempotency - return cached response if exists
+    if (idempotencyKey) {
+      const idempotencyResult = await getIdempotentResponse('time-check-out', orgId!, userId, idempotencyKey, body);
+      if (idempotencyResult.found && idempotencyResult.response) {
+        console.log('[time-check-out] Returning idempotent response for key:', idempotencyKey);
+        return idempotencyResult.response;
+      }
+    }
+
     console.log('[time-check-out] Found open entry:', openEntry.id);
 
-    // 4. Compute duration
+    // 5. Compute duration
     const now = new Date().toISOString();
     const { duration_minutes, duration_hours } = computeDuration(openEntry.check_in_at, now);
     console.log('[time-check-out] Duration:', duration_minutes, 'minutes');
 
-    // 5. Determine if flagged for long shift (> 16 hours = 960 minutes)
-    let isFlagged = openEntry.is_flagged;
-    let flagReason = openEntry.flag_reason;
+    // 6. Collect flags
+    const flagsToAdd: string[] = [];
+    
+    // Check for location issues at checkout
+    if (location.latitude === null || location.longitude === null) {
+      flagsToAdd.push('checkout_location_missing');
+    }
+    
+    // Check for offline replay
+    if (offlineReplay) {
+      flagsToAdd.push('offline_sync');
+    }
+    
+    // Check for long shift (> 16 hours = 960 minutes)
     if (duration_minutes > 960) {
-      isFlagged = true;
-      flagReason = flagReason ? `${flagReason}, long_shift` : 'long_shift';
+      flagsToAdd.push('long_shift');
     }
 
-    // 6. Update time_entry
+    // 7. Determine flag state - merge with existing flags
+    let isFlagged = openEntry.is_flagged || flagsToAdd.length > 0;
+    let flagReason = openEntry.flag_reason || '';
+    if (flagsToAdd.length > 0) {
+      const newFlags = flagsToAdd.join(', ');
+      flagReason = flagReason ? `${flagReason}, ${newFlags}` : newFlags;
+    }
+
+    // 8. Update time_entry
     const supabase = serviceClient();
 
     const { data: updatedEntry, error: updateError } = await supabase
       .from('time_entries')
       .update({
         check_out_at: now,
-        check_out_latitude: latitude || null,
-        check_out_longitude: longitude || null,
+        check_out_latitude: location.latitude,
+        check_out_longitude: location.longitude,
         duration_minutes,
         duration_hours,
         status: 'closed',
         closed_by: userId,
         closed_method: 'self',
         is_flagged: isFlagged,
-        flag_reason: flagReason,
+        flag_reason: flagReason || null,
       })
       .eq('id', openEntry.id)
       .select()
@@ -124,7 +165,7 @@ serve(async (req) => {
       return serverError('ENTRY_UPDATE_FAILED', 'Failed to update time entry');
     }
 
-    // 7. Insert time_event
+    // 9. Insert time_event
     const { error: eventError } = await supabase
       .from('time_events')
       .insert({
@@ -134,13 +175,17 @@ serve(async (req) => {
         job_site_id: openEntry.job_site_id,
         event_type: 'check_out',
         occurred_at: now,
-        latitude: latitude || null,
-        longitude: longitude || null,
+        latitude: location.latitude,
+        longitude: location.longitude,
         actor_id: userId,
-        source: 'user',
+        source: offlineReplay ? 'offline_sync' : 'user',
         metadata: { 
           duration_minutes,
           duration_hours,
+          accuracy_meters: location.accuracy_meters,
+          location_source: location.location_source,
+          offline_replay: offlineReplay,
+          idempotency_key: idempotencyKey,
         },
       });
 
@@ -149,9 +194,39 @@ serve(async (req) => {
       // Don't fail the whole operation, entry is already updated
     }
 
-    console.log('[time-check-out] Successfully checked out:', updatedEntry.id);
+    // 10. Insert detailed flags into time_entry_flags table
+    const flagParams = flagsToAdd.map(flagCode => ({
+      orgId: orgId!,
+      timeEntryId: openEntry.id,
+      projectId: openEntry.project_id,
+      userId,
+      flagCode,
+      severity: (flagCode === 'offline_sync' ? 'info' : flagCode === 'long_shift' ? 'critical' : 'warning') as 'info' | 'warning' | 'critical',
+      metadata: {
+        created_at_check_out: true,
+        duration_minutes,
+        accuracy_meters: location.accuracy_meters,
+        offline_replay: offlineReplay,
+      },
+      createdSource: 'system' as const,
+    }));
+    
+    await addFlags(flagParams);
 
-    return json({ status: 'checked_out', entry: updatedEntry });
+    console.log('[time-check-out] Successfully checked out:', updatedEntry.id, 'Flags:', flagsToAdd);
+
+    const responseBody = { 
+      status: 'checked_out', 
+      entry: updatedEntry,
+      flags: flagsToAdd,
+    };
+
+    // 11. Save idempotent response
+    if (idempotencyKey) {
+      await saveIdempotentResponse('time-check-out', orgId!, userId, idempotencyKey, body, responseBody);
+    }
+
+    return json(responseBody);
 
   } catch (error: unknown) {
     console.error('[time-check-out] Unexpected error:', error);

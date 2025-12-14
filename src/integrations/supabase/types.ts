@@ -59,6 +59,50 @@ export type Database = {
           },
         ]
       }
+      api_idempotency_keys: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          idempotency_key: string
+          organization_id: string
+          request_hash: string
+          response: Json
+          route: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          idempotency_key: string
+          organization_id: string
+          request_hash: string
+          response: Json
+          route: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          idempotency_key?: string
+          organization_id?: string
+          request_hash?: string
+          response?: Json
+          route?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_idempotency_keys_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attachments: {
         Row: {
           created_at: string
@@ -1164,6 +1208,7 @@ export type Database = {
           time_auto_close_hours: number | null
           time_end_of_day_reminder_enabled: boolean | null
           time_end_of_day_reminder_time_local: string | null
+          time_gps_accuracy_warn_meters: number | null
           time_reminder_after_minutes: number | null
           time_reminders_enabled: boolean | null
           time_tracking_enabled: boolean
@@ -1181,6 +1226,7 @@ export type Database = {
           time_auto_close_hours?: number | null
           time_end_of_day_reminder_enabled?: boolean | null
           time_end_of_day_reminder_time_local?: string | null
+          time_gps_accuracy_warn_meters?: number | null
           time_reminder_after_minutes?: number | null
           time_reminders_enabled?: boolean | null
           time_tracking_enabled?: boolean
@@ -1198,6 +1244,7 @@ export type Database = {
           time_auto_close_hours?: number | null
           time_end_of_day_reminder_enabled?: boolean | null
           time_end_of_day_reminder_time_local?: string | null
+          time_gps_accuracy_warn_meters?: number | null
           time_reminder_after_minutes?: number | null
           time_reminders_enabled?: boolean | null
           time_tracking_enabled?: boolean
@@ -2195,6 +2242,30 @@ export type Database = {
           },
         ]
       }
+      time_flag_codes: {
+        Row: {
+          code: string
+          created_at: string
+          description: string
+          is_active: boolean
+          severity: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description: string
+          is_active?: boolean
+          severity: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string
+          is_active?: boolean
+          severity?: string
+        }
+        Relationships: []
+      }
       timesheet_periods: {
         Row: {
           approved_at: string | null
@@ -2431,6 +2502,7 @@ export type Database = {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
       }
+      cleanup_expired_idempotency_keys: { Args: never; Returns: number }
       get_task_project_id: { Args: { _task_id: string }; Returns: string }
       get_time_cron_secret: { Args: never; Returns: string }
       get_user_organizations: { Args: { _user_id: string }; Returns: string[] }
