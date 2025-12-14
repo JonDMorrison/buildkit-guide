@@ -344,3 +344,30 @@ export function computeDuration(checkInAt: string, checkOutAt: string): {
   const duration_hours = Math.round((diffMs / 3600000) * 100) / 100;
   return { duration_minutes, duration_hours };
 }
+
+// ============================================
+// Cron Security Helper
+// ============================================
+export function unauthorized(message = 'Unauthorized'): Response {
+  return new Response(JSON.stringify({ error: message }), {
+    status: 401,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
+export function validateCronSecret(req: Request): Response | null {
+  const cronSecret = req.headers.get('X-Cron-Secret');
+  const expectedSecret = Deno.env.get('TIME_CRON_SECRET');
+  
+  if (!expectedSecret) {
+    console.error('TIME_CRON_SECRET not configured');
+    return serverError('CONFIG_ERROR', 'Cron secret not configured');
+  }
+  
+  if (!cronSecret || cronSecret !== expectedSecret) {
+    console.warn('Invalid or missing X-Cron-Secret header');
+    return unauthorized('Invalid or missing cron secret');
+  }
+  
+  return null; // Validation passed
+}

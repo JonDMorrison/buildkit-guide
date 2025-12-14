@@ -1,19 +1,16 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { corsHeaders, json, validateCronSecret, serviceClient } from '../_shared/timeUtils.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Validate cron secret - reject if invalid
+  const secretError = validateCronSecret(req);
+  if (secretError) return secretError;
+
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = serviceClient();
 
     console.log('Starting time-auto-close job...');
 
@@ -99,7 +96,7 @@ Deno.serve(async (req) => {
           job_site_id: entry.job_site_id,
           event_type: 'check_out',
           occurred_at: now.toISOString(),
-          actor_id: entry.user_id, // No actor for system actions
+          actor_id: entry.user_id,
           source: 'system',
           metadata: {
             action: 'auto_close',
@@ -113,7 +110,7 @@ Deno.serve(async (req) => {
         await supabase.from('time_entry_adjustments').insert({
           organization_id: entry.organization_id,
           time_entry_id: entry.id,
-          adjusted_by: entry.user_id, // System but use user_id for now
+          adjusted_by: entry.user_id,
           adjustment_type: 'system_close',
           previous_values: previousValues,
           new_values: {
@@ -169,14 +166,9 @@ Deno.serve(async (req) => {
 
     console.log(`Auto-close job complete. Closed ${totalClosed} entries.`);
 
-    return new Response(JSON.stringify({ success: true, entriesClosed: totalClosed }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return json({ success: true, entriesClosed: totalClosed });
   } catch (error) {
     console.error('Auto-close error:', error);
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return json({ error: error instanceof Error ? error.message : 'Unknown error' }, 500);
   }
 });
