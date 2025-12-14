@@ -1,7 +1,7 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
-import { LogIn, LogOut, Loader2, MapPin, AlertTriangle, Plus, ClipboardList, Lock, Clock, Flag } from 'lucide-react';
+import { LogIn, LogOut, Loader2, MapPin, AlertTriangle, Plus, ClipboardList, Lock, Clock, Flag, WifiOff, MapPinOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -20,6 +20,8 @@ import { GeofenceErrorModal } from '@/components/time-tracking/GeofenceErrorModa
 import { TimeEntryDetailDrawer } from '@/components/time-tracking/TimeEntryDetailDrawer';
 import { AdjustmentRequestModal } from '@/components/time-tracking/AdjustmentRequestModal';
 import { MyRequestsList } from '@/components/time-tracking/MyRequestsList';
+import { WorkerStatusBanner } from '@/components/time-tracking/WorkerStatusBanner';
+import { LocationWarningBanner } from '@/components/time-tracking/LocationWarningBanner';
 
 interface GeofenceError {
   distance?: number;
@@ -27,7 +29,7 @@ interface GeofenceError {
   jobSiteName?: string;
 }
 
-const STALE_ENTRY_HOURS = 4; // Show warning if entry is older than this
+const STALE_ENTRY_HOURS = 4;
 
 export default function TimeTracking() {
   const navigate = useNavigate();
@@ -44,7 +46,8 @@ export default function TimeTracking() {
   const [pendingLocation, setPendingLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [showGeofenceError, setShowGeofenceError] = useState(false);
   const [geofenceError, setGeofenceError] = useState<GeofenceError>({});
-  const [locationError, setLocationError] = useState<string | null>(null);
+  const [locationWarning, setLocationWarning] = useState<'location_unavailable' | 'offline' | null>(null);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   // Detail drawer and adjustment modal
   const [selectedEntry, setSelectedEntry] = useState<TimeEntry | null>(null);
@@ -52,33 +55,37 @@ export default function TimeTracking() {
   const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
   const [adjustmentEntry, setAdjustmentEntry] = useState<TimeEntry | null>(null);
 
+  // Track online/offline status
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   const refetchAll = useCallback(() => {
     refetchActive();
     refetchRecent();
   }, [refetchActive, refetchRecent]);
 
-  const getLocation = (): Promise<{ lat: number; lng: number }> => {
+  const getLocation = (): Promise<{ lat: number; lng: number; accuracy: number }> => {
     return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
-        reject(new Error('Geolocation is not supported by your browser'));
+        reject(new Error('location_unavailable'));
         return;
       }
       navigator.geolocation.getCurrentPosition(
-        (position) => resolve({ lat: position.coords.latitude, lng: position.coords.longitude }),
+        (position) => resolve({ 
+          lat: position.coords.latitude, 
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy
+        }),
         (error) => {
-          switch (error.code) {
-            case error.PERMISSION_DENIED:
-              reject(new Error('Location permission denied. Please enable location access.'));
-              break;
-            case error.POSITION_UNAVAILABLE:
-              reject(new Error('Location information unavailable. Please try again.'));
-              break;
-            case error.TIMEOUT:
-              reject(new Error('Location request timed out. Please try again.'));
-              break;
-            default:
-              reject(new Error('An error occurred getting your location.'));
-          }
+          reject(new Error('location_unavailable'));
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
@@ -90,29 +97,49 @@ export default function TimeTracking() {
       toast({ title: 'No project selected', description: 'Please select a project before checking in.', variant: 'destructive' });
       return;
     }
-    setLocationError(null);
+    
+    setLocationWarning(null);
     setIsProcessing(true);
+    
     try {
       const location = await getLocation();
-      setPendingLocation(location);
+      
+      // Warn if accuracy is poor (>100m)
+      if (location.accuracy > 100) {
+        setLocationWarning('location_unavailable');
+      }
+      
+      setPendingLocation({ lat: location.lat, lng: location.lng });
       setShowJobSiteModal(true);
     } catch (error) {
-      setLocationError(error instanceof Error ? error.message : 'Failed to get location');
-      toast({ title: 'Location Required', description: error instanceof Error ? error.message : 'Failed to get location', variant: 'destructive' });
+      // Allow check-in without location, but flag it
+      setLocationWarning('location_unavailable');
+      setPendingLocation(null);
+      setShowJobSiteModal(true);
     } finally {
       setIsProcessing(false);
     }
   };
 
   const handleJobSiteSelect = async (jobSiteId: string | null) => {
-    if (!currentProjectId || !pendingLocation) return;
+    if (!currentProjectId) return;
     setShowJobSiteModal(false);
     setIsProcessing(true);
+    
     try {
       const { data, error } = await supabase.functions.invoke('time-check-in', {
-        body: { project_id: currentProjectId, job_site_id: jobSiteId, latitude: pendingLocation.lat, longitude: pendingLocation.lng },
+        body: { 
+          project_id: currentProjectId, 
+          job_site_id: jobSiteId, 
+          latitude: pendingLocation?.lat, 
+          longitude: pendingLocation?.lng,
+          // Flag if location was unavailable
+          location_unavailable: locationWarning === 'location_unavailable'
+        },
       });
+      
       if (error) throw error;
+      
       if (data?.error) {
         if (data.code === 'OUTSIDE_GEOFENCE') {
           setGeofenceError({ distance: data.distance, radius: data.radius, jobSiteName: data.jobSiteName });
@@ -126,7 +153,17 @@ export default function TimeTracking() {
         }
         throw new Error(data.error);
       }
-      toast({ title: 'Checked In', description: 'Your time is now being tracked.' });
+      
+      if (locationWarning) {
+        toast({ 
+          title: 'Checked In', 
+          description: 'Your time is now being tracked. Location was flagged for review.' 
+        });
+      } else {
+        toast({ title: 'Checked In', description: 'Your time is now being tracked.' });
+      }
+      
+      setLocationWarning(null);
       refetchAll();
     } catch (error) {
       console.error('Check-in error:', error);
@@ -142,11 +179,17 @@ export default function TimeTracking() {
     setIsProcessing(true);
     try {
       let location: { lat: number; lng: number } | null = null;
-      try { location = await getLocation(); } catch { /* optional */ }
+      try { 
+        const loc = await getLocation(); 
+        location = { lat: loc.lat, lng: loc.lng };
+      } catch { /* optional for check-out */ }
+      
       const { data, error } = await supabase.functions.invoke('time-check-out', {
         body: { project_id: activeEntry.project_id, latitude: location?.lat, longitude: location?.lng },
       });
+      
       if (error) throw error;
+      
       if (data?.error) {
         if (data.code === 'NO_OPEN_ENTRY') {
           toast({ title: 'No Active Entry', description: "You don't have an active time entry to close." });
@@ -155,6 +198,7 @@ export default function TimeTracking() {
         }
         throw new Error(data.error);
       }
+      
       toast({ title: 'Checked Out', description: `Total time: ${data.entry?.duration_hours || 0}h ${data.entry?.duration_minutes || 0}m` });
       refetchAll();
     } catch (error) {
@@ -183,13 +227,23 @@ export default function TimeTracking() {
   const isLoading = activeLoading || entriesLoading;
   const hasActiveEntry = !!activeEntry;
   
-  // Check for stale active entry (older than threshold)
+  // Check for stale active entry
   const isActiveEntryStale = useMemo(() => {
     if (!activeEntry) return false;
     const checkInTime = new Date(activeEntry.check_in_at);
     const hoursElapsed = (Date.now() - checkInTime.getTime()) / (1000 * 60 * 60);
     return hoursElapsed > STALE_ENTRY_HOURS;
   }, [activeEntry]);
+  
+  // Find most recent auto-closed entry for banner
+  const lastAutoClosedEntry = useMemo(() => {
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    return recentEntries.find(
+      entry => 
+        (entry.closed_method === 'auto_closed' || entry.closed_method === 'force_closed') &&
+        new Date(entry.check_in_at) > yesterday
+    );
+  }, [recentEntries]);
   
   // Check for flagged entries this week
   const flaggedEntriesThisWeek = useMemo(() => {
@@ -229,32 +283,44 @@ export default function TimeTracking() {
           </div>
         </div>
 
-        {locationError && (
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>{locationError}</AlertDescription>
-          </Alert>
+        {/* Offline warning */}
+        {!isOnline && (
+          <LocationWarningBanner type="offline" />
+        )}
+
+        {/* Location warning during check-in flow */}
+        {locationWarning === 'location_unavailable' && showJobSiteModal && (
+          <LocationWarningBanner type="location_unavailable" />
+        )}
+
+        {/* Auto-closed entry banner - prominent and actionable */}
+        {!hasActiveEntry && lastAutoClosedEntry && (
+          <WorkerStatusBanner
+            state="auto_checked_out"
+            autoCheckOutTime={lastAutoClosedEntry.check_out_at || undefined}
+            onRequestCorrection={() => handleRequestAdjustment(lastAutoClosedEntry)}
+          />
         )}
 
         {/* Stale entry warning */}
         {isActiveEntryStale && (
-          <Alert variant="default" className="border-amber-500 bg-amber-500/10">
-            <Clock className="h-4 w-4 text-amber-500" />
-            <AlertTitle className="text-amber-600">Long Active Shift</AlertTitle>
-            <AlertDescription className="text-amber-600/80">
-              You've been clocked in for over {STALE_ENTRY_HOURS} hours. Don't forget to check out when you're done!
+          <Alert variant="default" className="border-amber-500/30 bg-amber-500/5 [&>svg]:text-amber-600">
+            <Clock className="h-4 w-4" />
+            <AlertTitle>Long Active Shift</AlertTitle>
+            <AlertDescription>
+              You've been clocked in for over {STALE_ENTRY_HOURS} hours. Don't forget to check out when you're done.
             </AlertDescription>
           </Alert>
         )}
 
         {/* Flagged entries warning */}
         {flaggedEntriesThisWeek.length > 0 && (
-          <Alert variant="default" className="border-destructive/50 bg-destructive/10">
-            <Flag className="h-4 w-4 text-destructive" />
-            <AlertTitle className="text-destructive">Needs Attention</AlertTitle>
-            <AlertDescription className="text-destructive/80">
+          <Alert variant="default" className="border-destructive/30 bg-destructive/5 [&>svg]:text-destructive">
+            <Flag className="h-4 w-4" />
+            <AlertTitle>Needs Attention</AlertTitle>
+            <AlertDescription>
               You have {flaggedEntriesThisWeek.length} flagged time {flaggedEntriesThisWeek.length === 1 ? 'entry' : 'entries'} this week. 
-              Review them below and submit adjustment requests if needed.
+              Tap on them below to review and request corrections if needed.
             </AlertDescription>
           </Alert>
         )}
@@ -277,7 +343,8 @@ export default function TimeTracking() {
               <div className="space-y-4">
                 <div className="text-center py-4">
                   <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-muted-foreground">You're not clocked in. Tap below to start tracking your time.</p>
+                  <p className="text-lg font-medium mb-1">Not Clocked In</p>
+                  <p className="text-muted-foreground">Tap below to start tracking your time</p>
                 </div>
                 <Button onClick={handleCheckInClick} disabled={isProcessing || !currentProjectId} size="lg" className="w-full h-14 text-lg">
                   {isProcessing ? (<><Loader2 className="h-5 w-5 mr-2 animate-spin" />Getting Location...</>) : (<><LogIn className="h-5 w-5 mr-2" />Check In</>)}
@@ -291,7 +358,14 @@ export default function TimeTracking() {
         <MyRequestsList />
         <RecentEntriesList entries={recentEntries} isLoading={entriesLoading} onEntryClick={handleEntryClick} onRequestAdjustment={handleRequestAdjustment} />
 
-        <JobSiteSelectionModal open={showJobSiteModal} onOpenChange={setShowJobSiteModal} jobSites={jobSites} isLoading={jobSitesLoading} onSelect={handleJobSiteSelect} />
+        <JobSiteSelectionModal 
+          open={showJobSiteModal} 
+          onOpenChange={setShowJobSiteModal} 
+          jobSites={jobSites} 
+          isLoading={jobSitesLoading} 
+          onSelect={handleJobSiteSelect}
+          locationUnavailable={locationWarning === 'location_unavailable'}
+        />
         <GeofenceErrorModal open={showGeofenceError} onOpenChange={setShowGeofenceError} distance={geofenceError.distance} radius={geofenceError.radius} jobSiteName={geofenceError.jobSiteName} />
         <TimeEntryDetailDrawer entry={selectedEntry} open={showDetailDrawer} onOpenChange={setShowDetailDrawer} onRequestAdjustment={handleRequestAdjustment} />
         {currentProjectId && (
