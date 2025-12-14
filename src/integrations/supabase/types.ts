@@ -1176,13 +1176,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "payroll_exports_generated_by_fkey"
-            columns: ["generated_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "payroll_exports_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
@@ -1756,13 +1749,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "time_entries_closed_by_fkey"
-            columns: ["closed_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "time_entries_job_site_id_fkey"
             columns: ["job_site_id"]
             isOneToOne: false
@@ -1781,13 +1767,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "time_entries_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1830,13 +1809,6 @@ export type Database = {
           time_entry_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "time_entry_adjustments_adjusted_by_fkey"
-            columns: ["adjusted_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "time_entry_adjustments_organization_id_fkey"
             columns: ["organization_id"]
@@ -1908,13 +1880,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "time_events_actor_id_fkey"
-            columns: ["actor_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "time_events_job_site_id_fkey"
             columns: ["job_site_id"]
             isOneToOne: false
@@ -1933,13 +1898,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "time_events_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -2090,13 +2048,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "time_entries_closed_by_fkey"
-            columns: ["closed_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "time_entries_job_site_id_fkey"
             columns: ["job_site_id"]
             isOneToOne: false
@@ -2115,13 +2066,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "time_entries_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
