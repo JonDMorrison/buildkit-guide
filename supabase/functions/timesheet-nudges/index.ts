@@ -83,7 +83,15 @@ Deno.serve(async (req) => {
         const isOpen = !period || period.status === 'open';
         
         if (isOpen && isSubmissionDay) {
-          // Check dedupe - only nudge once per period
+          // Check event dedupe - prevent duplicate events
+          const eventDedupeKey = `timesheet_nudge:${userId}:${periodStart.toISOString().split('T')[0]}`;
+          const { data: existingEventDedupe } = await supabase
+            .from('event_dedupe')
+            .select('id')
+            .eq('dedupe_key', eventDedupeKey)
+            .maybeSingle();
+
+          // Check notification dedupe - only nudge once per period
           const { data: recentDedupe } = await supabase
             .from('notification_dedupe')
             .select('last_sent_at')
@@ -93,7 +101,7 @@ Deno.serve(async (req) => {
             .gte('last_sent_at', periodStart.toISOString())
             .maybeSingle();
 
-          if (!recentDedupe) {
+          if (!recentDedupe && !existingEventDedupe) {
             // Send nudge to worker
             await supabase.from('notifications').insert({
               user_id: userId,
@@ -102,6 +110,14 @@ Deno.serve(async (req) => {
               message: 'Today is timesheet submission day. Please review and submit your hours for this week.',
               link_url: '/time',
             });
+
+            // Insert event dedupe
+            await supabase.from('event_dedupe').upsert({
+              dedupe_key: eventDedupeKey,
+              event_type: 'timesheet_nudge',
+              last_occurred_at: new Date().toISOString(),
+              metadata: { user_id: userId, period_start: periodStart.toISOString().split('T')[0] },
+            }, { onConflict: 'dedupe_key' });
 
             await supabase.from('notification_dedupe').upsert({
               organization_id: org.organization_id,
