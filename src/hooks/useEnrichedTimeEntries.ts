@@ -26,12 +26,6 @@ export interface EnrichedTimeEntry {
   project_timezone: string;
   created_at: string;
   
-  // From view joins
-  project_name: string | null;
-  job_site_name: string | null;
-  user_name: string | null;
-  user_email: string | null;
-  
   // Aggregated flags from time_entry_flags
   flags: string[];
   max_severity: 'info' | 'warning' | 'critical' | null;
@@ -41,7 +35,7 @@ export interface EnrichedTimeEntry {
   has_auto_closed: boolean;
   has_location_unverified: boolean;
   has_offline: boolean;
-  has_gps_accuracy_low: boolean;
+  has_gps_low: boolean;
   has_missing_job_site: boolean;
   has_edited_after_submission: boolean;
   has_long_shift: boolean;
@@ -108,21 +102,17 @@ export function useEnrichedTimeEntries(options: UseEnrichedTimeEntriesOptions = 
         notes: entry.notes,
         project_timezone: entry.project_timezone,
         created_at: entry.created_at,
-        project_name: entry.project_name,
-        job_site_name: entry.job_site_name,
-        user_name: entry.user_name,
-        user_email: entry.user_email,
         flags: entry.flags || [],
         max_severity: entry.max_severity as 'info' | 'warning' | 'critical' | null,
         has_manual: entry.has_manual || false,
         has_auto_closed: entry.has_auto_closed || false,
         has_location_unverified: entry.has_location_unverified || false,
         has_offline: entry.has_offline || false,
-        has_gps_accuracy_low: entry.has_gps_accuracy_low || false,
+        has_gps_low: entry.has_gps_low || false,
         has_missing_job_site: entry.has_missing_job_site || false,
         has_edited_after_submission: entry.has_edited_after_submission || false,
         has_long_shift: entry.has_long_shift || false,
-        flag_count: entry.flag_count || 0,
+        flag_count: (entry.flags || []).length,
         is_stale: entry.is_stale || false,
       }));
     },
@@ -177,21 +167,17 @@ export function useEnrichedTimeEntry(entryId: string | null) {
         notes: data.notes,
         project_timezone: data.project_timezone,
         created_at: data.created_at,
-        project_name: data.project_name,
-        job_site_name: data.job_site_name,
-        user_name: data.user_name,
-        user_email: data.user_email,
         flags: data.flags || [],
         max_severity: data.max_severity as 'info' | 'warning' | 'critical' | null,
         has_manual: data.has_manual || false,
         has_auto_closed: data.has_auto_closed || false,
         has_location_unverified: data.has_location_unverified || false,
         has_offline: data.has_offline || false,
-        has_gps_accuracy_low: data.has_gps_accuracy_low || false,
+        has_gps_low: data.has_gps_low || false,
         has_missing_job_site: data.has_missing_job_site || false,
         has_edited_after_submission: data.has_edited_after_submission || false,
         has_long_shift: data.has_long_shift || false,
-        flag_count: data.flag_count || 0,
+        flag_count: (data.flags || []).length,
         is_stale: data.is_stale || false,
       };
     },

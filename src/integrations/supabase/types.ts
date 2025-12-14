@@ -2520,17 +2520,21 @@ export type Database = {
       v_time_entries_status: {
         Row: {
           check_in_at: string | null
+          check_in_latitude: number | null
+          check_in_longitude: number | null
           check_out_at: string | null
+          check_out_latitude: number | null
+          check_out_longitude: number | null
+          closed_by: string | null
           closed_method: string | null
           created_at: string | null
           duration_hours: number | null
           duration_minutes: number | null
-          flag_count: number | null
           flag_reason: string | null
           flags: string[] | null
           has_auto_closed: boolean | null
           has_edited_after_submission: boolean | null
-          has_gps_accuracy_low: boolean | null
+          has_gps_low: boolean | null
           has_location_unverified: boolean | null
           has_long_shift: boolean | null
           has_manual: boolean | null
@@ -2540,18 +2544,87 @@ export type Database = {
           is_flagged: boolean | null
           is_stale: boolean | null
           job_site_id: string | null
-          job_site_name: string | null
           max_severity: string | null
+          max_severity_level: number | null
           notes: string | null
           organization_id: string | null
           project_id: string | null
-          project_name: string | null
           project_timezone: string | null
           source: string | null
           status: string | null
-          user_email: string | null
           user_id: string | null
-          user_name: string | null
+        }
+        Insert: {
+          check_in_at?: string | null
+          check_in_latitude?: number | null
+          check_in_longitude?: number | null
+          check_out_at?: string | null
+          check_out_latitude?: number | null
+          check_out_longitude?: number | null
+          closed_by?: string | null
+          closed_method?: string | null
+          created_at?: string | null
+          duration_hours?: number | null
+          duration_minutes?: number | null
+          flag_reason?: string | null
+          flags?: never
+          has_auto_closed?: never
+          has_edited_after_submission?: never
+          has_gps_low?: never
+          has_location_unverified?: never
+          has_long_shift?: never
+          has_manual?: never
+          has_missing_job_site?: never
+          has_offline?: never
+          id?: string | null
+          is_flagged?: boolean | null
+          is_stale?: never
+          job_site_id?: string | null
+          max_severity?: never
+          max_severity_level?: never
+          notes?: string | null
+          organization_id?: string | null
+          project_id?: string | null
+          project_timezone?: string | null
+          source?: string | null
+          status?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          check_in_at?: string | null
+          check_in_latitude?: number | null
+          check_in_longitude?: number | null
+          check_out_at?: string | null
+          check_out_latitude?: number | null
+          check_out_longitude?: number | null
+          closed_by?: string | null
+          closed_method?: string | null
+          created_at?: string | null
+          duration_hours?: number | null
+          duration_minutes?: number | null
+          flag_reason?: string | null
+          flags?: never
+          has_auto_closed?: never
+          has_edited_after_submission?: never
+          has_gps_low?: never
+          has_location_unverified?: never
+          has_long_shift?: never
+          has_manual?: never
+          has_missing_job_site?: never
+          has_offline?: never
+          id?: string | null
+          is_flagged?: boolean | null
+          is_stale?: never
+          job_site_id?: string | null
+          max_severity?: never
+          max_severity_level?: never
+          notes?: string | null
+          organization_id?: string | null
+          project_id?: string | null
+          project_timezone?: string | null
+          source?: string | null
+          status?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
