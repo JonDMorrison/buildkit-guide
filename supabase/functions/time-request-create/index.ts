@@ -265,9 +265,24 @@ Deno.serve(async (req) => {
       // Don't fail the request, just log warning
     }
 
-    console.log('Created adjustment request:', request.id);
+    // Debug logging for verification
+    console.log('Created adjustment request:', {
+      request_id: request.id,
+      actor_user_id: user.id,
+      organization_id: project.organization_id,
+      request_type,
+      project_id,
+    });
 
-    return new Response(JSON.stringify({ success: true, request }), {
+    return new Response(JSON.stringify({ 
+      success: true, 
+      request,
+      debug: {
+        actor_user_id: user.id,
+        organization_id: project.organization_id,
+        request_id: request.id,
+      }
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
