@@ -320,6 +320,24 @@ export type Database = {
           },
         ]
       }
+      cron_secrets: {
+        Row: {
+          created_at: string | null
+          name: string
+          secret: string
+        }
+        Insert: {
+          created_at?: string | null
+          name: string
+          secret: string
+        }
+        Update: {
+          created_at?: string | null
+          name?: string
+          secret?: string
+        }
+        Relationships: []
+      }
       daily_logs: {
         Row: {
           created_at: string
