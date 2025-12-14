@@ -71,3 +71,6 @@ verify_jwt = true
 
 [functions.time-request-review]
 verify_jwt = true
+
+[functions.time-request-create]
+verify_jwt = true

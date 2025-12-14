@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
-import { LogIn, LogOut, Loader2, MapPin, AlertTriangle, Plus } from 'lucide-react';
+import { LogIn, LogOut, Loader2, MapPin, AlertTriangle, Plus, ClipboardList, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -9,6 +10,7 @@ import { useCurrentProject } from '@/hooks/useCurrentProject';
 import { useActiveTimeEntry } from '@/hooks/useActiveTimeEntry';
 import { useRecentTimeEntries, TimeEntry } from '@/hooks/useRecentTimeEntries';
 import { useJobSites } from '@/hooks/useJobSites';
+import { useOrganizationRole } from '@/hooks/useOrganizationRole';
 import { supabase } from '@/integrations/supabase/client';
 import { ActiveTimerCard } from '@/components/time-tracking/ActiveTimerCard';
 import { RecentEntriesList } from '@/components/time-tracking/RecentEntriesList';
@@ -26,8 +28,10 @@ interface GeofenceError {
 }
 
 export default function TimeTracking() {
+  const navigate = useNavigate();
   const { currentProjectId } = useCurrentProject();
   const { toast } = useToast();
+  const { canReviewRequests, canLockPeriods } = useOrganizationRole();
 
   const { data: activeEntry, isLoading: activeLoading, refetch: refetchActive } = useActiveTimeEntry();
   const { data: recentEntries = [], isLoading: entriesLoading, refetch: refetchRecent } = useRecentTimeEntries();
@@ -180,17 +184,31 @@ export default function TimeTracking() {
   return (
     <Layout>
       <div className="p-4 md:p-6 space-y-6 max-w-2xl mx-auto">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
             <h1 className="text-2xl font-bold">Time Tracking</h1>
             <p className="text-muted-foreground">Track your work hours</p>
           </div>
-          {!hasActiveEntry && (
-            <Button variant="outline" size="sm" onClick={handleNewAdjustment}>
-              <Plus className="h-4 w-4 mr-1" />
-              Add Entry
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {canReviewRequests && (
+              <Button variant="outline" size="sm" onClick={() => navigate('/time/requests')}>
+                <ClipboardList className="h-4 w-4 mr-1" />
+                Review Requests
+              </Button>
+            )}
+            {canLockPeriods && (
+              <Button variant="outline" size="sm" onClick={() => navigate('/time/periods')}>
+                <Lock className="h-4 w-4 mr-1" />
+                Timesheet Periods
+              </Button>
+            )}
+            {!hasActiveEntry && (
+              <Button variant="outline" size="sm" onClick={handleNewAdjustment}>
+                <Plus className="h-4 w-4 mr-1" />
+                Add Entry
+              </Button>
+            )}
+          </div>
         </div>
 
         {locationError && (
