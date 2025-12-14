@@ -3,7 +3,7 @@ import {
   corsHeaders,
   json,
   badRequest,
-  forbidden,
+  conflict,
   notFound,
   serverError,
   requireAuthUser,
@@ -15,7 +15,14 @@ import {
   getOrgSettings,
   getJobSite,
   getOpenEntry,
-  distanceMeters,
+  normalizeLocationPayload,
+  makeGeofenceDecision,
+  addFlag,
+  addFlags,
+  getIdempotentResponse,
+  saveIdempotentResponse,
+  isOfflineReplay,
+  getIdempotencyKey,
 } from "../_shared/timeUtils.ts";
 
 serve(async (req) => {
@@ -35,13 +42,14 @@ serve(async (req) => {
 
     // 2. Parse input
     const body = await req.json();
-    const { project_id, job_site_id, latitude, longitude, notes } = body;
+    const { project_id, job_site_id, notes } = body;
+    
+    // Get idempotency key and offline replay flag
+    const idempotencyKey = getIdempotencyKey(req);
+    const offlineReplay = isOfflineReplay(req);
 
     if (!project_id) {
       return badRequest('MISSING_PROJECT_ID', 'project_id is required');
-    }
-    if (latitude === undefined || longitude === undefined) {
-      return badRequest('MISSING_LOCATION', 'latitude and longitude are required');
     }
 
     // 3. Load project and derive org_id
@@ -52,64 +60,105 @@ serve(async (req) => {
     const orgId = project.organization_id;
     console.log('[time-check-in] Project:', project.name, 'Org:', orgId);
 
-    // 4. Assert org membership
+    // 4. Check idempotency - return cached response if exists
+    if (idempotencyKey) {
+      const idempotencyResult = await getIdempotentResponse('time-check-in', orgId, userId, idempotencyKey, body);
+      if (idempotencyResult.found && idempotencyResult.response) {
+        console.log('[time-check-in] Returning idempotent response for key:', idempotencyKey);
+        return idempotencyResult.response;
+      }
+    }
+
+    // 5. Assert org membership
     const orgResult = await assertOrgMember(orgId, userId);
     if (orgResult instanceof Response) return orgResult;
     console.log('[time-check-in] User org role:', orgResult.role);
 
-    // 5. Assert time tracking enabled
+    // 6. Assert time tracking enabled
     const ttResult = await assertTimeTrackingEnabled(orgId);
     if (ttResult instanceof Response) return ttResult;
 
-    // 6. Assert project membership
+    // 7. Assert project membership
     const projResult = await assertProjectMember(project_id, userId);
     if (projResult instanceof Response) return projResult;
 
-    // 7. Check no open entry exists
+    // 8. Check no open entry exists
     const { entry: existingEntry, error: openError } = await getOpenEntry(orgId, userId);
     if (openError === 'MULTIPLE_OPEN_ENTRIES') {
       return badRequest('MULTIPLE_OPEN_ENTRIES', 'User has multiple open time entries. Contact admin.');
     }
     if (existingEntry) {
-      return badRequest('ALREADY_CHECKED_IN', 'User already has an open time entry', {
+      // Add duplicate tap flag to existing entry
+      await addFlag({
+        orgId,
+        timeEntryId: existingEntry.id,
+        projectId: existingEntry.project_id,
+        userId,
+        flagCode: 'duplicate_tap_prevented',
+        severity: 'warning',
+        metadata: { 
+          attempted_at: new Date().toISOString(),
+          attempted_project_id: project_id,
+        },
+        createdSource: 'system',
+      });
+      
+      return conflict('ALREADY_CHECKED_IN', 'User already has an open time entry', {
         existing_entry_id: existingEntry.id,
         checked_in_at: existingEntry.check_in_at,
       });
     }
 
-    // 8. If job_site_id provided, validate and check geofence
-    let isFlagged = false;
-    let flagReason: string | null = null;
-    let resolvedJobSiteId = job_site_id || null;
+    // 9. Normalize location payload
+    const location = normalizeLocationPayload(body);
+    console.log('[time-check-in] Location:', location);
 
+    // 10. Get org settings for GPS accuracy threshold
+    const orgSettings = await getOrgSettings(orgId);
+    const gpsAccuracyThreshold = orgSettings?.time_gps_accuracy_warn_meters || 100;
+    const projectTimezone = orgSettings?.default_timezone || 'America/Vancouver';
+
+    // 11. Validate job site and check geofence
+    let resolvedJobSiteId = job_site_id || null;
+    const flagsToAdd: string[] = [];
+    
     if (job_site_id) {
       const { jobSite, error: siteError } = await getJobSite(job_site_id, orgId, project_id);
       if (siteError) {
         return badRequest('INVALID_JOB_SITE', siteError);
       }
       
-      if (jobSite && jobSite.latitude != null && jobSite.longitude != null) {
-        const distance = distanceMeters(latitude, longitude, jobSite.latitude, jobSite.longitude);
-        console.log('[time-check-in] Distance from job site:', distance, 'Radius:', jobSite.geofence_radius_meters);
-        
-        if (distance > jobSite.geofence_radius_meters) {
-          return forbidden('OUTSIDE_GEOFENCE', 'User is outside the job site geofence', {
-            distance_meters: Math.round(distance),
-            radius_meters: jobSite.geofence_radius_meters,
-          });
-        }
+      // Make geofence decision
+      const geofenceResult = makeGeofenceDecision(location, jobSite, gpsAccuracyThreshold);
+      
+      if (!geofenceResult.allowed && geofenceResult.errorResponse) {
+        return geofenceResult.errorResponse;
       }
+      
+      // Collect flags from geofence check
+      flagsToAdd.push(...geofenceResult.flags);
     } else {
       // No job site provided - flag the entry
-      isFlagged = true;
-      flagReason = 'missing_job_site';
+      flagsToAdd.push('missing_job_site');
+    }
+    
+    // Add location flags based on payload
+    if (location.latitude === null || location.longitude === null) {
+      if (!flagsToAdd.includes('location_unverified')) {
+        flagsToAdd.push('location_unverified');
+      }
+    }
+    
+    // Add offline sync flag if this is a replay
+    if (offlineReplay) {
+      flagsToAdd.push('offline_sync');
     }
 
-    // 9. Get org settings for timezone
-    const orgSettings = await getOrgSettings(orgId);
-    const projectTimezone = orgSettings?.default_timezone || 'America/Vancouver';
+    // 12. Determine initial flag state
+    const isFlagged = flagsToAdd.length > 0;
+    const flagReason = flagsToAdd.join(', ') || null;
 
-    // 10. Insert time_event (service client)
+    // 13. Insert time_event (service client)
     const supabase = serviceClient();
     const now = new Date().toISOString();
 
@@ -122,11 +171,17 @@ serve(async (req) => {
         job_site_id: resolvedJobSiteId,
         event_type: 'check_in',
         occurred_at: now,
-        latitude,
-        longitude,
+        latitude: location.latitude,
+        longitude: location.longitude,
         actor_id: userId,
-        source: 'user',
-        metadata: { notes: notes || null },
+        source: offlineReplay ? 'offline_sync' : 'user',
+        metadata: { 
+          notes: notes || null,
+          accuracy_meters: location.accuracy_meters,
+          location_source: location.location_source,
+          offline_replay: offlineReplay,
+          idempotency_key: idempotencyKey,
+        },
       });
 
     if (eventError) {
@@ -134,7 +189,7 @@ serve(async (req) => {
       return serverError('EVENT_INSERT_FAILED', 'Failed to record check-in event');
     }
 
-    // 11. Insert time_entry (service client)
+    // 14. Insert time_entry (service client)
     const { data: newEntry, error: entryError } = await supabase
       .from('time_entries')
       .insert({
@@ -144,13 +199,13 @@ serve(async (req) => {
         job_site_id: resolvedJobSiteId,
         project_timezone: projectTimezone,
         check_in_at: now,
-        check_in_latitude: latitude,
-        check_in_longitude: longitude,
+        check_in_latitude: location.latitude,
+        check_in_longitude: location.longitude,
         status: 'open',
         is_flagged: isFlagged,
         flag_reason: flagReason,
         notes: notes || null,
-        source: 'app',
+        source: offlineReplay ? 'offline_sync' : 'app',
       })
       .select()
       .single();
@@ -160,9 +215,38 @@ serve(async (req) => {
       return serverError('ENTRY_INSERT_FAILED', 'Failed to create time entry');
     }
 
-    console.log('[time-check-in] Successfully created entry:', newEntry.id);
+    // 15. Insert detailed flags into time_entry_flags table
+    const flagParams = flagsToAdd.map(flagCode => ({
+      orgId,
+      timeEntryId: newEntry.id,
+      projectId: project_id,
+      userId,
+      flagCode,
+      severity: flagCode === 'offline_sync' ? 'info' as const : 'warning' as const,
+      metadata: {
+        created_at_check_in: true,
+        accuracy_meters: location.accuracy_meters,
+        offline_replay: offlineReplay,
+      },
+      createdSource: 'system' as const,
+    }));
+    
+    await addFlags(flagParams);
 
-    return json({ status: 'checked_in', entry: newEntry });
+    console.log('[time-check-in] Successfully created entry:', newEntry.id, 'Flags:', flagsToAdd);
+
+    const responseBody = { 
+      status: 'checked_in', 
+      entry: newEntry,
+      flags: flagsToAdd,
+    };
+
+    // 16. Save idempotent response
+    if (idempotencyKey) {
+      await saveIdempotentResponse('time-check-in', orgId, userId, idempotencyKey, body, responseBody);
+    }
+
+    return json(responseBody);
 
   } catch (error: unknown) {
     console.error('[time-check-in] Unexpected error:', error);
