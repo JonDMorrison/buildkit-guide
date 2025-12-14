@@ -1932,6 +1932,13 @@ export type Database = {
             referencedRelation: "v_time_entries_enriched"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "time_adjustment_requests_time_entry_id_fkey"
+            columns: ["time_entry_id"]
+            isOneToOne: false
+            referencedRelation: "v_time_entries_status"
+            referencedColumns: ["id"]
+          },
         ]
       }
       time_entries: {
@@ -2090,6 +2097,13 @@ export type Database = {
             referencedRelation: "v_time_entries_enriched"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "time_entry_adjustments_time_entry_id_fkey"
+            columns: ["time_entry_id"]
+            isOneToOne: false
+            referencedRelation: "v_time_entries_status"
+            referencedColumns: ["id"]
+          },
         ]
       }
       time_entry_flags: {
@@ -2168,6 +2182,13 @@ export type Database = {
             columns: ["time_entry_id"]
             isOneToOne: false
             referencedRelation: "v_time_entries_enriched"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entry_flags_time_entry_id_fkey"
+            columns: ["time_entry_id"]
+            isOneToOne: false
+            referencedRelation: "v_time_entries_status"
             referencedColumns: ["id"]
           },
         ]
@@ -2496,6 +2517,66 @@ export type Database = {
           },
         ]
       }
+      v_time_entries_status: {
+        Row: {
+          check_in_at: string | null
+          check_out_at: string | null
+          closed_method: string | null
+          created_at: string | null
+          duration_hours: number | null
+          duration_minutes: number | null
+          flag_count: number | null
+          flag_reason: string | null
+          flags: string[] | null
+          has_auto_closed: boolean | null
+          has_edited_after_submission: boolean | null
+          has_gps_accuracy_low: boolean | null
+          has_location_unverified: boolean | null
+          has_long_shift: boolean | null
+          has_manual: boolean | null
+          has_missing_job_site: boolean | null
+          has_offline: boolean | null
+          id: string | null
+          is_flagged: boolean | null
+          is_stale: boolean | null
+          job_site_id: string | null
+          job_site_name: string | null
+          max_severity: string | null
+          notes: string | null
+          organization_id: string | null
+          project_id: string | null
+          project_name: string | null
+          project_timezone: string | null
+          source: string | null
+          status: string | null
+          user_email: string | null
+          user_id: string | null
+          user_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_entries_job_site_id_fkey"
+            columns: ["job_site_id"]
+            isOneToOne: false
+            referencedRelation: "job_sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       can_manage_project: {
@@ -2713,6 +2794,14 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      rpc_time_diagnostics_rls_probe: {
+        Args: { p_org_id: string }
+        Returns: Json
+      }
+      rpc_time_diagnostics_summary: {
+        Args: { p_org_id: string }
+        Returns: Json
       }
       shares_any_project: {
         Args: { p_actor_id: string; p_org_id: string; p_target_id: string }
