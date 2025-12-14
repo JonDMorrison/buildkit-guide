@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { z } from 'zod';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useOrganization } from '@/hooks/useOrganization';
 import { supabase } from '@/integrations/supabase/client';
@@ -38,6 +39,7 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
   const { user } = useAuth();
   const { activeOrganizationId } = useOrganization();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState<ProjectForm>({
     name: '',
@@ -89,7 +91,9 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
         description: `${validatedData.name} has been created successfully.`,
       });
 
-      // Reset form
+      // Invalidate project queries so lists update instantly
+      queryClient.invalidateQueries({ queryKey: ['user-projects'] });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
       setForm({
         name: '',
         jobNumber: '',
