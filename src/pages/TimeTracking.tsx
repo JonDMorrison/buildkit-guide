@@ -43,7 +43,7 @@ export default function TimeTracking() {
   const { data: jobSites = [], isLoading: jobSitesLoading } = useJobSites(currentProjectId);
   
   // Offline queue
-  const { queue, isSyncing, isOnline, syncNow, enqueueCheckIn, enqueueCheckOut } = useOfflineTimeQueue();
+  const { queuedActions, isSyncing, isOnline, syncNow, enqueueCheckIn, enqueueCheckOut } = useOfflineTimeQueue();
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [showJobSiteModal, setShowJobSiteModal] = useState(false);
@@ -119,11 +119,7 @@ export default function TimeTracking() {
     
     // If offline, queue the action
     if (!isOnline) {
-      enqueueCheckIn(currentProjectId, jobSiteId, {
-        latitude: pendingLocation?.lat,
-        longitude: pendingLocation?.lng,
-        accuracy_meters: pendingLocation?.accuracy,
-      });
+      enqueueCheckIn(currentProjectId, jobSiteId, pendingLocation);
       toast({ title: 'Queued', description: 'Check-in will sync when online.' });
       setIsProcessing(false);
       setPendingLocation(null);
@@ -149,11 +145,7 @@ export default function TimeTracking() {
       if (error) {
         // Network error - queue for later
         if (error.message?.includes('fetch') || error.message?.includes('network')) {
-          enqueueCheckIn(currentProjectId, jobSiteId, {
-            latitude: pendingLocation?.lat,
-            longitude: pendingLocation?.lng,
-            accuracy_meters: pendingLocation?.accuracy,
-          });
+          enqueueCheckIn(currentProjectId, jobSiteId, pendingLocation);
           toast({ title: 'Queued', description: 'Check-in will sync when online.' });
           return;
         }
@@ -228,11 +220,7 @@ export default function TimeTracking() {
       if (error) {
         // Network error - queue for later
         if (error.message?.includes('fetch') || error.message?.includes('network')) {
-          enqueueCheckOut(activeEntry.project_id, {
-            latitude: location?.lat,
-            longitude: location?.lng,
-            accuracy_meters: location?.accuracy,
-          });
+          enqueueCheckOut(activeEntry.project_id, location);
           toast({ title: 'Queued', description: 'Check-out will sync when online.' });
           return;
         }
@@ -277,7 +265,7 @@ export default function TimeTracking() {
 
   const isLoading = activeLoading || entriesLoading;
   const hasActiveEntry = !!activeEntry;
-  const hasQueuedItems = queue.length > 0;
+  const hasQueuedItems = queuedActions.length > 0;
   
   // Check for stale active entry
   const isActiveEntryStale = useMemo(() => {
@@ -352,7 +340,7 @@ export default function TimeTracking() {
             <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
             <AlertTitle>Pending Sync</AlertTitle>
             <AlertDescription className="flex items-center justify-between">
-              <span>{queue.length} action{queue.length > 1 ? 's' : ''} queued</span>
+              <span>{queuedActions.length} action{queuedActions.length > 1 ? 's' : ''} queued</span>
               {isOnline && (
                 <Button variant="outline" size="sm" onClick={syncNow} disabled={isSyncing}>
                   {isSyncing ? 'Syncing...' : 'Sync Now'}
