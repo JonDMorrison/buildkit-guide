@@ -101,8 +101,8 @@ export default function TimesheetPeriods() {
 
       if (error) throw error;
 
-      if (!data?.ok) {
-        throw new Error(data?.error?.message || `Failed to ${actionType} period`);
+      if (data?.error) {
+        throw new Error(data.error);
       }
 
       toast({

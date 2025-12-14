@@ -188,14 +188,14 @@ export function AdjustmentRequestModal({
         body.proposed_notes = proposedNotes.trim();
       }
 
-      const { data, error } = await supabase.functions.invoke('time-adjust', {
+      const { data, error } = await supabase.functions.invoke('time-request-create', {
         body,
       });
 
       if (error) throw error;
 
-      if (!data?.ok) {
-        throw new Error(data?.error?.message || 'Failed to submit request');
+      if (data?.error) {
+        throw new Error(data.error);
       }
 
       toast({
