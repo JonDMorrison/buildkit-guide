@@ -2339,6 +2339,10 @@ export type Database = {
         Returns: boolean
       }
       has_org_membership: { Args: { _org_id: string }; Returns: boolean }
+      has_org_membership_for_user: {
+        Args: { p_org_id: string; p_user_id: string }
+        Returns: boolean
+      }
       has_project_membership: {
         Args: { _project_id: string }
         Returns: boolean
@@ -2376,6 +2380,164 @@ export type Database = {
         Returns: boolean
       }
       org_role: { Args: { _org_id: string }; Returns: string }
+      org_role_for_user: {
+        Args: { p_org_id: string; p_user_id: string }
+        Returns: string
+      }
+      rpc_approve_timesheet_period: {
+        Args: { p_actor_id: string; p_period_id: string }
+        Returns: {
+          approved_at: string | null
+          approved_by: string | null
+          attestation_text: string | null
+          created_at: string
+          id: string
+          locked_at: string | null
+          locked_by: string | null
+          notes: string | null
+          organization_id: string
+          period_end: string
+          period_start: string
+          status: string
+          submitted_at: string | null
+          submitted_by: string | null
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "timesheet_periods"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      rpc_cancel_time_adjustment_request: {
+        Args: { p_actor_id: string; p_request_id: string }
+        Returns: {
+          created_at: string
+          id: string
+          job_site_id: string | null
+          organization_id: string
+          project_id: string
+          proposed_check_in_at: string | null
+          proposed_check_out_at: string | null
+          proposed_job_site_id: string | null
+          proposed_notes: string | null
+          reason: string
+          request_type: string
+          requester_user_id: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          target_user_id: string
+          time_entry_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "time_adjustment_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      rpc_ensure_timesheet_period: {
+        Args: {
+          p_period_end: string
+          p_period_start: string
+          p_user_id: string
+        }
+        Returns: {
+          approved_at: string | null
+          approved_by: string | null
+          attestation_text: string | null
+          created_at: string
+          id: string
+          locked_at: string | null
+          locked_by: string | null
+          notes: string | null
+          organization_id: string
+          period_end: string
+          period_start: string
+          status: string
+          submitted_at: string | null
+          submitted_by: string | null
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "timesheet_periods"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      rpc_lock_timesheet_period: {
+        Args: { p_actor_id: string; p_period_id: string }
+        Returns: {
+          approved_at: string | null
+          approved_by: string | null
+          attestation_text: string | null
+          created_at: string
+          id: string
+          locked_at: string | null
+          locked_by: string | null
+          notes: string | null
+          organization_id: string
+          period_end: string
+          period_start: string
+          status: string
+          submitted_at: string | null
+          submitted_by: string | null
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "timesheet_periods"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      rpc_review_time_adjustment_request: {
+        Args: {
+          p_actor_id: string
+          p_decision: string
+          p_request_id: string
+          p_review_note: string
+        }
+        Returns: Json
+      }
+      rpc_submit_timesheet_period: {
+        Args: {
+          p_actor_id: string
+          p_attestation_text: string
+          p_period_id: string
+        }
+        Returns: {
+          approved_at: string | null
+          approved_by: string | null
+          attestation_text: string | null
+          created_at: string
+          id: string
+          locked_at: string | null
+          locked_by: string | null
+          notes: string | null
+          organization_id: string
+          period_end: string
+          period_start: string
+          status: string
+          submitted_at: string | null
+          submitted_by: string | null
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "timesheet_periods"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      shares_any_project: {
+        Args: { p_actor_id: string; p_org_id: string; p_target_id: string }
+        Returns: boolean
+      }
       user_wants_notification: {
         Args: { _notification_type: string; _user_id: string }
         Returns: boolean
