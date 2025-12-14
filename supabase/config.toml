@@ -41,3 +41,15 @@ verify_jwt = false
 
 [functions.ai-generate-email]
 verify_jwt = false
+
+[functions.time-check-in]
+verify_jwt = true
+
+[functions.time-check-out]
+verify_jwt = true
+
+[functions.time-force-check-out]
+verify_jwt = true
+
+[functions.time-adjust]
+verify_jwt = true
