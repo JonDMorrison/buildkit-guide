@@ -1674,6 +1674,112 @@ export type Database = {
           },
         ]
       }
+      time_adjustment_requests: {
+        Row: {
+          created_at: string
+          id: string
+          job_site_id: string | null
+          organization_id: string
+          project_id: string
+          proposed_check_in_at: string | null
+          proposed_check_out_at: string | null
+          proposed_job_site_id: string | null
+          proposed_notes: string | null
+          reason: string
+          request_type: string
+          requester_user_id: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          target_user_id: string
+          time_entry_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          job_site_id?: string | null
+          organization_id: string
+          project_id: string
+          proposed_check_in_at?: string | null
+          proposed_check_out_at?: string | null
+          proposed_job_site_id?: string | null
+          proposed_notes?: string | null
+          reason: string
+          request_type: string
+          requester_user_id: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          target_user_id: string
+          time_entry_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          job_site_id?: string | null
+          organization_id?: string
+          project_id?: string
+          proposed_check_in_at?: string | null
+          proposed_check_out_at?: string | null
+          proposed_job_site_id?: string | null
+          proposed_notes?: string | null
+          reason?: string
+          request_type?: string
+          requester_user_id?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          target_user_id?: string
+          time_entry_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_adjustment_requests_job_site_id_fkey"
+            columns: ["job_site_id"]
+            isOneToOne: false
+            referencedRelation: "job_sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_adjustment_requests_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_adjustment_requests_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_adjustment_requests_proposed_job_site_id_fkey"
+            columns: ["proposed_job_site_id"]
+            isOneToOne: false
+            referencedRelation: "job_sites"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_adjustment_requests_time_entry_id_fkey"
+            columns: ["time_entry_id"]
+            isOneToOne: false
+            referencedRelation: "time_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_adjustment_requests_time_entry_id_fkey"
+            columns: ["time_entry_id"]
+            isOneToOne: false
+            referencedRelation: "v_time_entries_enriched"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       time_entries: {
         Row: {
           check_in_at: string
@@ -1832,6 +1938,86 @@ export type Database = {
           },
         ]
       }
+      time_entry_flags: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          created_source: string
+          flag_code: string
+          id: string
+          metadata: Json
+          organization_id: string
+          project_id: string
+          resolution_note: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          time_entry_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          created_source?: string
+          flag_code: string
+          id?: string
+          metadata?: Json
+          organization_id: string
+          project_id: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          time_entry_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          created_source?: string
+          flag_code?: string
+          id?: string
+          metadata?: Json
+          organization_id?: string
+          project_id?: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          time_entry_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_entry_flags_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entry_flags_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entry_flags_time_entry_id_fkey"
+            columns: ["time_entry_id"]
+            isOneToOne: false
+            referencedRelation: "time_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entry_flags_time_entry_id_fkey"
+            columns: ["time_entry_id"]
+            isOneToOne: false
+            referencedRelation: "v_time_entries_enriched"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       time_events: {
         Row: {
           actor_id: string
@@ -1898,6 +2084,68 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      timesheet_periods: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          attestation_text: string | null
+          created_at: string
+          id: string
+          locked_at: string | null
+          locked_by: string | null
+          notes: string | null
+          organization_id: string
+          period_end: string
+          period_start: string
+          status: string
+          submitted_at: string | null
+          submitted_by: string | null
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          attestation_text?: string | null
+          created_at?: string
+          id?: string
+          locked_at?: string | null
+          locked_by?: string | null
+          notes?: string | null
+          organization_id: string
+          period_end: string
+          period_start: string
+          status?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          attestation_text?: string | null
+          created_at?: string
+          id?: string
+          locked_at?: string | null
+          locked_by?: string | null
+          notes?: string | null
+          organization_id?: string
+          period_end?: string
+          period_start?: string
+          status?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timesheet_periods_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
