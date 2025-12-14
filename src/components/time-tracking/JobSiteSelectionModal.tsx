@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MapPin, AlertTriangle, Building2 } from 'lucide-react';
+import { MapPin, AlertTriangle, Building2, MapPinOff } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { JobSite } from '@/hooks/useJobSites';
 
 interface JobSiteSelectionModalProps {
@@ -19,6 +19,7 @@ interface JobSiteSelectionModalProps {
   jobSites: JobSite[];
   isLoading: boolean;
   onSelect: (jobSiteId: string | null) => void;
+  locationUnavailable?: boolean;
 }
 
 export function JobSiteSelectionModal({
@@ -27,6 +28,7 @@ export function JobSiteSelectionModal({
   jobSites,
   isLoading,
   onSelect,
+  locationUnavailable = false,
 }: JobSiteSelectionModalProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -43,11 +45,23 @@ export function JobSiteSelectionModal({
             Select Job Site
           </DialogTitle>
           <DialogDescription>
-            Choose the job site you're checking in at.
+            Choose the job site you're checking in at
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {/* Location warning banner */}
+          {locationUnavailable && (
+            <Alert variant="default" className="border-amber-500/30 bg-amber-500/5 [&>svg]:text-amber-600">
+              <MapPinOff className="h-4 w-4" />
+              <AlertTitle>Location unavailable</AlertTitle>
+              <AlertDescription>
+                We couldn't confirm your location. Your check-in will still be recorded, 
+                but flagged for supervisor review. You can continue working normally.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {isLoading ? (
             <div className="text-center py-4 text-muted-foreground">
               Loading job sites...
@@ -93,7 +107,7 @@ export function JobSiteSelectionModal({
                 <RadioGroupItem value="" id="no-site" className="mt-1" />
                 <Label htmlFor="no-site" className="flex-1 cursor-pointer">
                   <div className="flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4 text-warning" />
+                    <AlertTriangle className="h-4 w-4 text-amber-600" />
                     <span className="font-medium">No job site</span>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">

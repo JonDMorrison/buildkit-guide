@@ -1,8 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
 import {
   Lock,
-  Unlock,
   CheckCircle,
   Clock,
   FileText,
@@ -11,6 +10,7 @@ import {
   User,
   Calendar,
   Filter,
+  Shield,
 } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,6 +41,7 @@ import { useOrganizationRole } from '@/hooks/useOrganizationRole';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { NoAccess } from '@/components/NoAccess';
+import { ApprovalSummaryCard } from '@/components/time-tracking/ApprovalSummaryCard';
 
 function getStatusBadge(status: string) {
   switch (status) {
@@ -53,7 +54,7 @@ function getStatusBadge(status: string) {
       );
     case 'submitted':
       return (
-        <Badge className="bg-warning/20 text-warning border-warning/30">
+        <Badge className="bg-amber-500/20 text-amber-600 border-amber-500/30">
           <FileText className="h-3 w-3 mr-1" />
           Submitted
         </Badge>
@@ -69,7 +70,7 @@ function getStatusBadge(status: string) {
       return (
         <Badge className="bg-muted text-muted-foreground">
           <Lock className="h-3 w-3 mr-1" />
-          Locked
+          Payroll Ready
         </Badge>
       );
     default:
@@ -87,6 +88,14 @@ export default function TimesheetPeriods() {
   const [actionPeriod, setActionPeriod] = useState<TimesheetPeriod | null>(null);
   const [actionType, setActionType] = useState<'approve' | 'lock' | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Summary stats for HR/admin confidence
+  const summaryStats = useMemo(() => {
+    const submittedCount = periods.filter(p => p.status === 'submitted').length;
+    const approvedCount = periods.filter(p => p.status === 'approved').length;
+    const lockedCount = periods.filter(p => p.status === 'locked').length;
+    return { submittedCount, approvedCount, lockedCount };
+  }, [periods]);
 
   const handleAction = async () => {
     if (!actionPeriod || !actionType) return;
@@ -110,7 +119,7 @@ export default function TimesheetPeriods() {
         description:
           actionType === 'approve'
             ? 'The timesheet period has been approved.'
-            : 'The timesheet period has been locked for payroll.',
+            : 'The timesheet period is now locked for payroll.',
       });
 
       setActionPeriod(null);
@@ -165,10 +174,34 @@ export default function TimesheetPeriods() {
               <SelectItem value="open">Open</SelectItem>
               <SelectItem value="submitted">Submitted</SelectItem>
               <SelectItem value="approved">Approved</SelectItem>
-              <SelectItem value="locked">Locked</SelectItem>
+              <SelectItem value="locked">Payroll Ready</SelectItem>
             </SelectContent>
           </Select>
         </div>
+
+        {/* Summary stats for quick confidence */}
+        {periods.length > 0 && (
+          <div className="grid grid-cols-3 gap-4">
+            <Card>
+              <CardContent className="p-4 text-center">
+                <p className="text-2xl font-bold">{summaryStats.submittedCount}</p>
+                <p className="text-sm text-muted-foreground">Awaiting Approval</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <p className="text-2xl font-bold">{summaryStats.approvedCount}</p>
+                <p className="text-sm text-muted-foreground">Approved</p>
+              </CardContent>
+            </Card>
+            <Card className="border-primary/20 bg-primary/5">
+              <CardContent className="p-4 text-center">
+                <p className="text-2xl font-bold text-primary">{summaryStats.lockedCount}</p>
+                <p className="text-sm text-muted-foreground">Payroll Ready</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {isLoading ? (
           <Card>
@@ -192,8 +225,8 @@ export default function TimesheetPeriods() {
                 <h3 className="text-lg font-medium mb-2">No Timesheet Periods</h3>
                 <p className="text-muted-foreground text-sm">
                   {statusFilter !== 'all'
-                    ? `No periods with status "${statusFilter}" found.`
-                    : 'No timesheet periods have been created yet.'}
+                    ? `No periods with status "${statusFilter}" found`
+                    : 'No timesheet periods have been created yet'}
                 </p>
               </div>
             </CardContent>
@@ -201,7 +234,7 @@ export default function TimesheetPeriods() {
         ) : (
           <div className="space-y-4">
             {periods.map((period) => (
-              <Card key={period.id}>
+              <Card key={period.id} className={period.status === 'locked' ? 'border-muted bg-muted/20' : ''}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-4">
@@ -225,8 +258,9 @@ export default function TimesheetPeriods() {
                           </p>
                         )}
                         {period.locked_at && period.locker_name && (
-                          <p className="text-xs text-muted-foreground">
-                            Locked by {period.locker_name}
+                          <p className="text-xs text-primary flex items-center gap-1">
+                            <Shield className="h-3 w-3" />
+                            Locked for payroll by {period.locker_name}
                           </p>
                         )}
                       </div>
@@ -259,7 +293,7 @@ export default function TimesheetPeriods() {
                             }}
                           >
                             <Lock className="h-4 w-4 mr-1" />
-                            Lock
+                            Lock for Payroll
                           </Button>
                         )}
                       </div>
@@ -289,7 +323,7 @@ export default function TimesheetPeriods() {
                 ) : (
                   <Lock className="h-5 w-5" />
                 )}
-                {actionType === 'approve' ? 'Approve Timesheet Period' : 'Lock Timesheet Period'}
+                {actionType === 'approve' ? 'Approve Timesheet' : 'Lock for Payroll'}
               </DialogTitle>
               <DialogDescription>
                 {actionPeriod && (
@@ -303,11 +337,12 @@ export default function TimesheetPeriods() {
             </DialogHeader>
 
             {actionType === 'lock' && (
-              <Alert>
-                <AlertTriangle className="h-4 w-4" />
+              <Alert className="border-primary/30 bg-primary/5 [&>svg]:text-primary">
+                <Shield className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>Warning:</strong> Locked periods cannot be edited by supervisors. Only
-                  HR/Admin can make adjustments after locking.
+                  <strong>Payroll Ready:</strong> Once locked, this timesheet cannot be edited 
+                  by supervisors. Only HR/Admin can make post-payroll adjustments, 
+                  which will be clearly flagged.
                 </AlertDescription>
               </Alert>
             )}
@@ -326,7 +361,7 @@ export default function TimesheetPeriods() {
               <Button
                 onClick={handleAction}
                 disabled={isSubmitting}
-                variant={actionType === 'lock' ? 'secondary' : 'default'}
+                variant={actionType === 'lock' ? 'default' : 'default'}
               >
                 {isSubmitting ? (
                   <>
@@ -336,7 +371,10 @@ export default function TimesheetPeriods() {
                 ) : actionType === 'approve' ? (
                   'Confirm Approval'
                 ) : (
-                  'Confirm Lock'
+                  <>
+                    <Lock className="h-4 w-4 mr-2" />
+                    Confirm Lock
+                  </>
                 )}
               </Button>
             </DialogFooter>

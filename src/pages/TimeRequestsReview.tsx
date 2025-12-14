@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
 import {
   Clock,
@@ -7,10 +7,11 @@ import {
   Loader2,
   AlertTriangle,
   User,
-  Calendar,
-  MapPin,
   ChevronDown,
   ArrowRightLeft,
+  Edit,
+  MapPinOff,
+  RefreshCw,
 } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,6 +40,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { NoAccess } from '@/components/NoAccess';
 import { useCurrentProject } from '@/hooks/useCurrentProject';
+import { ApprovalSummaryCard } from '@/components/time-tracking/ApprovalSummaryCard';
 
 const REQUEST_TYPE_LABELS: Record<string, string> = {
   missed_check_in: 'Missed Check-In',
@@ -55,11 +57,17 @@ function getWarningBadges(request: TimeAdjustmentRequest) {
   // Manual entry warning
   if (request.request_type === 'add_manual_entry') {
     badges.push(
-      <Badge key="manual" variant="outline" className="text-xs">
+      <Badge key="manual" variant="outline" className="text-xs gap-1 text-amber-600 bg-amber-500/10 border-amber-500/20">
+        <Edit className="h-3 w-3" />
         Manual Entry
       </Badge>
     );
   }
+
+  // TODO: Add more badges based on request metadata when available
+  // - Location unverified
+  // - Offline sync
+  // - Long duration
 
   return badges;
 }
@@ -74,6 +82,18 @@ export default function TimeRequestsReview() {
   const [reviewDecision, setReviewDecision] = useState<'approved' | 'denied' | null>(null);
   const [reviewNote, setReviewNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Calculate summary stats
+  const summaryStats = useMemo(() => {
+    let manualEntries = 0;
+    let totalRequests = requests.length;
+    
+    requests.forEach(req => {
+      if (req.request_type === 'add_manual_entry') manualEntries++;
+    });
+
+    return { manualEntries, totalRequests };
+  }, [requests]);
 
   const handleReview = async () => {
     if (!reviewingRequest || !reviewDecision) return;
@@ -151,6 +171,13 @@ export default function TimeRequestsReview() {
           </p>
         </div>
 
+        {/* Summary card for quick awareness */}
+        {requests.length > 0 && (
+          <ApprovalSummaryCard
+            manualEntries={summaryStats.manualEntries}
+          />
+        )}
+
         {isLoading ? (
           <Card>
             <CardHeader>
@@ -173,9 +200,9 @@ export default function TimeRequestsReview() {
             <CardContent className="py-12">
               <div className="flex flex-col items-center justify-center text-center">
                 <CheckCircle className="h-12 w-12 text-primary/50 mb-4" />
-                <h3 className="text-lg font-medium mb-2">No Pending Requests</h3>
+                <h3 className="text-lg font-medium mb-2">All Caught Up</h3>
                 <p className="text-muted-foreground text-sm">
-                  All time adjustment requests have been reviewed.
+                  No pending time adjustment requests to review
                 </p>
               </div>
             </CardContent>
@@ -211,7 +238,7 @@ export default function TimeRequestsReview() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Badge className="bg-warning/20 text-warning border-warning/30">
+                          <Badge className="bg-amber-500/20 text-amber-600 border-amber-500/30">
                             <Clock className="h-3 w-3 mr-1" />
                             Pending
                           </Badge>
@@ -227,14 +254,16 @@ export default function TimeRequestsReview() {
                     <CollapsibleContent>
                       <div className="border-t px-4 py-4 space-y-4">
                         {/* Warning Badges */}
-                        <div className="flex flex-wrap gap-2">
-                          {getWarningBadges(request)}
-                        </div>
+                        {getWarningBadges(request).length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {getWarningBadges(request)}
+                          </div>
+                        )}
 
                         {/* Request Details */}
                         <div className="grid gap-3">
                           <div>
-                            <p className="text-xs text-muted-foreground">Reason</p>
+                            <p className="text-xs text-muted-foreground">Reason given</p>
                             <p className="text-sm">{request.reason}</p>
                           </div>
 

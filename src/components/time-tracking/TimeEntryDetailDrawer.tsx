@@ -1,5 +1,5 @@
 import { format, parseISO } from 'date-fns';
-import { Clock, MapPin, AlertTriangle, Calendar, User, FileText, X } from 'lucide-react';
+import { Clock, MapPin, Calendar, User, FileText, X, HelpCircle } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -7,10 +7,10 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { TimeEntry } from '@/hooks/useRecentTimeEntries';
+import { EntryStatusIndicator, getEntryIndicators } from './EntryStatusIndicator';
 
 interface TimeEntryDetailDrawerProps {
   entry: TimeEntry | null;
@@ -35,18 +35,29 @@ export function TimeEntryDetailDrawer({
     return `${h}h ${m}m`;
   };
 
-  const getStatusBadge = () => {
+  const indicators = getEntryIndicators(entry);
+
+  // Human-readable closure explanation
+  const getClosureExplanation = () => {
     if (entry.status === 'open') {
-      return <Badge className="bg-primary/20 text-primary">Active</Badge>;
+      return 'Timer is currently running';
     }
-    if (entry.is_flagged) {
-      return <Badge variant="destructive">Flagged</Badge>;
+    switch (entry.closed_method) {
+      case 'auto_closed':
+        return 'You were automatically checked out by the system';
+      case 'force_closed':
+        return 'A supervisor closed this entry';
+      case 'adjusted':
+      case 'manual_adjustment':
+        return 'This entry was manually adjusted';
+      case 'self':
+        return 'You checked out normally';
+      default:
+        return null;
     }
-    if (entry.closed_method === 'adjusted') {
-      return <Badge variant="secondary">Adjusted</Badge>;
-    }
-    return <Badge variant="secondary">Closed</Badge>;
   };
+
+  const closureExplanation = getClosureExplanation();
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -71,7 +82,17 @@ export function TimeEntryDetailDrawer({
         <div className="mt-6 space-y-6">
           {/* Status & Duration */}
           <div className="flex items-center justify-between">
-            {getStatusBadge()}
+            <div className="flex flex-wrap gap-1">
+              {entry.status === 'open' ? (
+                <EntryStatusIndicator type="normal" />
+              ) : indicators.length > 0 ? (
+                indicators.map((indicator, index) => (
+                  <EntryStatusIndicator key={index} type={indicator} />
+                ))
+              ) : (
+                <EntryStatusIndicator type="normal" />
+              )}
+            </div>
             <span className="text-2xl font-bold tabular-nums">
               {formatDuration(entry.duration_hours, entry.duration_minutes)}
             </span>
@@ -125,31 +146,31 @@ export function TimeEntryDetailDrawer({
             </div>
           </div>
 
-          {/* Flags */}
-          {entry.is_flagged && entry.flag_reason && (
-            <>
-              <Separator />
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm text-destructive">
-                  <AlertTriangle className="h-4 w-4" />
-                  <span>Flagged</span>
-                </div>
-                <p className="text-sm text-muted-foreground">{entry.flag_reason}</p>
-              </div>
-            </>
-          )}
-
-          {/* Closure Method */}
-          {entry.closed_method && entry.closed_method !== 'self' && (
+          {/* Closure Explanation */}
+          {closureExplanation && entry.status !== 'open' && (
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <User className="h-4 w-4" />
-                <span>Closed By</span>
+                <span>How it was closed</span>
               </div>
-              <p className="text-sm capitalize">
-                {entry.closed_method.replace('_', ' ')}
-              </p>
+              <p className="text-sm">{closureExplanation}</p>
             </div>
+          )}
+
+          {/* Flag Reason - human-friendly */}
+          {entry.is_flagged && entry.flag_reason && (
+            <>
+              <Separator />
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 space-y-2">
+                <p className="text-sm font-medium text-amber-700">
+                  This entry needs review
+                </p>
+                <p className="text-sm text-muted-foreground">{entry.flag_reason}</p>
+                <p className="text-xs text-muted-foreground">
+                  Don't worry — you can request a correction below if something's not right.
+                </p>
+              </div>
+            </>
           )}
 
           <Separator />
@@ -163,8 +184,8 @@ export function TimeEntryDetailDrawer({
               onOpenChange(false);
             }}
           >
-            <AlertTriangle className="h-4 w-4 mr-2" />
-            Something wrong? Request adjustment
+            <HelpCircle className="h-4 w-4 mr-2" />
+            Something wrong? Request correction
           </Button>
         </div>
       </SheetContent>
