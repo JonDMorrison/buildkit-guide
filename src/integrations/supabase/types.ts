@@ -938,6 +938,41 @@ export type Database = {
           },
         ]
       }
+      notification_dedupe: {
+        Row: {
+          id: string
+          last_sent_at: string
+          metadata: Json | null
+          notification_type: string
+          organization_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          last_sent_at?: string
+          metadata?: Json | null
+          notification_type: string
+          organization_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          last_sent_at?: string
+          metadata?: Json | null
+          notification_type?: string
+          organization_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_dedupe_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_preferences: {
         Row: {
           blocker_added: boolean
@@ -1083,21 +1118,51 @@ export type Database = {
           created_at: string
           default_timezone: string
           organization_id: string
+          time_auto_close_enabled: boolean | null
+          time_auto_close_hours: number | null
+          time_end_of_day_reminder_enabled: boolean | null
+          time_end_of_day_reminder_time_local: string | null
+          time_reminder_after_minutes: number | null
+          time_reminders_enabled: boolean | null
           time_tracking_enabled: boolean
+          timesheet_escalation_after_hours: number | null
+          timesheet_escalation_enabled: boolean | null
+          timesheet_submission_day: number | null
+          timesheet_submission_time_local: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
           default_timezone?: string
           organization_id: string
+          time_auto_close_enabled?: boolean | null
+          time_auto_close_hours?: number | null
+          time_end_of_day_reminder_enabled?: boolean | null
+          time_end_of_day_reminder_time_local?: string | null
+          time_reminder_after_minutes?: number | null
+          time_reminders_enabled?: boolean | null
           time_tracking_enabled?: boolean
+          timesheet_escalation_after_hours?: number | null
+          timesheet_escalation_enabled?: boolean | null
+          timesheet_submission_day?: number | null
+          timesheet_submission_time_local?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
           default_timezone?: string
           organization_id?: string
+          time_auto_close_enabled?: boolean | null
+          time_auto_close_hours?: number | null
+          time_end_of_day_reminder_enabled?: boolean | null
+          time_end_of_day_reminder_time_local?: string | null
+          time_reminder_after_minutes?: number | null
+          time_reminders_enabled?: boolean | null
           time_tracking_enabled?: boolean
+          timesheet_escalation_after_hours?: number | null
+          timesheet_escalation_enabled?: boolean | null
+          timesheet_submission_day?: number | null
+          timesheet_submission_time_local?: string | null
           updated_at?: string
         }
         Relationships: [
