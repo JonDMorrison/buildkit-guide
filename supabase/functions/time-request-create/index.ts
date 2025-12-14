@@ -221,13 +221,13 @@ Deno.serve(async (req) => {
         organization_id: project.organization_id,
         time_entry_id: time_entry_id || null,
         job_site_id: job_site_id || null,
-        requester_user_id: user.id,
+        requester_user_id: user.id, // Always derived from auth user
         target_user_id: user.id, // Worker requesting for themselves
-        reason,
+        reason: reason.trim(),
         proposed_check_in_at: proposed_check_in_at || null,
         proposed_check_out_at: proposed_check_out_at || null,
         proposed_job_site_id: proposed_job_site_id || null,
-        proposed_notes: proposed_notes || null,
+        proposed_notes: proposed_notes?.trim() || null,
         status: 'pending',
       })
       .select()
@@ -239,6 +239,30 @@ Deno.serve(async (req) => {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // Log time_event for request creation
+    const { error: eventError } = await supabase
+      .from('time_events')
+      .insert({
+        organization_id: project.organization_id,
+        user_id: user.id,
+        project_id,
+        job_site_id: job_site_id || null,
+        event_type: 'adjustment',
+        occurred_at: new Date().toISOString(),
+        actor_id: user.id,
+        source: 'worker',
+        metadata: {
+          action: 'request_created',
+          request_id: request.id,
+          request_type,
+        },
+      });
+
+    if (eventError) {
+      console.warn('Failed to log time_event:', eventError);
+      // Don't fail the request, just log warning
     }
 
     console.log('Created adjustment request:', request.id);
