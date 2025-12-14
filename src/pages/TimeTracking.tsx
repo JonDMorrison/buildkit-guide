@@ -1,10 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
-import { LogIn, LogOut, Loader2, MapPin, AlertTriangle, Plus, ClipboardList, Lock } from 'lucide-react';
+import { LogIn, LogOut, Loader2, MapPin, AlertTriangle, Plus, ClipboardList, Lock, Clock, Flag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrentProject } from '@/hooks/useCurrentProject';
 import { useActiveTimeEntry } from '@/hooks/useActiveTimeEntry';
@@ -26,6 +26,8 @@ interface GeofenceError {
   radius?: number;
   jobSiteName?: string;
 }
+
+const STALE_ENTRY_HOURS = 4; // Show warning if entry is older than this
 
 export default function TimeTracking() {
   const navigate = useNavigate();
@@ -180,6 +182,22 @@ export default function TimeTracking() {
 
   const isLoading = activeLoading || entriesLoading;
   const hasActiveEntry = !!activeEntry;
+  
+  // Check for stale active entry (older than threshold)
+  const isActiveEntryStale = useMemo(() => {
+    if (!activeEntry) return false;
+    const checkInTime = new Date(activeEntry.check_in_at);
+    const hoursElapsed = (Date.now() - checkInTime.getTime()) / (1000 * 60 * 60);
+    return hoursElapsed > STALE_ENTRY_HOURS;
+  }, [activeEntry]);
+  
+  // Check for flagged entries this week
+  const flaggedEntriesThisWeek = useMemo(() => {
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    return recentEntries.filter(
+      entry => entry.is_flagged && new Date(entry.check_in_at) > weekAgo
+    );
+  }, [recentEntries]);
 
   return (
     <Layout>
@@ -215,6 +233,29 @@ export default function TimeTracking() {
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>{locationError}</AlertDescription>
+          </Alert>
+        )}
+
+        {/* Stale entry warning */}
+        {isActiveEntryStale && (
+          <Alert variant="default" className="border-amber-500 bg-amber-500/10">
+            <Clock className="h-4 w-4 text-amber-500" />
+            <AlertTitle className="text-amber-600">Long Active Shift</AlertTitle>
+            <AlertDescription className="text-amber-600/80">
+              You've been clocked in for over {STALE_ENTRY_HOURS} hours. Don't forget to check out when you're done!
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Flagged entries warning */}
+        {flaggedEntriesThisWeek.length > 0 && (
+          <Alert variant="default" className="border-destructive/50 bg-destructive/10">
+            <Flag className="h-4 w-4 text-destructive" />
+            <AlertTitle className="text-destructive">Needs Attention</AlertTitle>
+            <AlertDescription className="text-destructive/80">
+              You have {flaggedEntriesThisWeek.length} flagged time {flaggedEntriesThisWeek.length === 1 ? 'entry' : 'entries'} this week. 
+              Review them below and submit adjustment requests if needed.
+            </AlertDescription>
           </Alert>
         )}
 

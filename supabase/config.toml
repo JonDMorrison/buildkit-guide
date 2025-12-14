@@ -74,3 +74,18 @@ verify_jwt = true
 
 [functions.time-request-create]
 verify_jwt = true
+
+[functions.time-auto-close]
+verify_jwt = false
+
+[functions.time-send-reminders]
+verify_jwt = false
+
+[functions.time-end-of-day-nudge]
+verify_jwt = false
+
+[functions.timesheet-nudges]
+verify_jwt = false
+
+[functions.time-tracking]
+verify_jwt = true
