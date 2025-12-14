@@ -1,9 +1,4 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { corsHeaders, json, validateCronSecret, serviceClient } from '../_shared/timeUtils.ts';
 
 // Simple timezone offset mapping for common timezones
 const timezoneOffsets: Record<string, number> = {
@@ -37,10 +32,12 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Validate cron secret - reject if invalid
+  const secretError = validateCronSecret(req);
+  if (secretError) return secretError;
+
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = serviceClient();
 
     console.log('Starting time-end-of-day-nudge job...');
 
@@ -140,14 +137,9 @@ Deno.serve(async (req) => {
 
     console.log(`EOD nudge job complete. Sent ${nudgesSent} nudges.`);
 
-    return new Response(JSON.stringify({ success: true, nudgesSent }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return json({ success: true, nudgesSent });
   } catch (error) {
     console.error('EOD nudge error:', error);
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return json({ error: error instanceof Error ? error.message : 'Unknown error' }, 500);
   }
 });
