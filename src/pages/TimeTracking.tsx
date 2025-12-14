@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
-import { LogIn, LogOut, Loader2, MapPin, AlertTriangle, Plus, ClipboardList, Lock, Clock, Flag, WifiOff, MapPinOff } from 'lucide-react';
+import { LogIn, LogOut, Loader2, MapPin, Plus, ClipboardList, Lock, Clock, Flag, WifiOff, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -11,6 +11,7 @@ import { useActiveTimeEntry } from '@/hooks/useActiveTimeEntry';
 import { useRecentTimeEntries, TimeEntry } from '@/hooks/useRecentTimeEntries';
 import { useJobSites } from '@/hooks/useJobSites';
 import { useOrganizationRole } from '@/hooks/useOrganizationRole';
+import { useOfflineTimeQueue } from '@/hooks/useOfflineTimeQueue';
 import { supabase } from '@/integrations/supabase/client';
 import { ActiveTimerCard } from '@/components/time-tracking/ActiveTimerCard';
 import { RecentEntriesList } from '@/components/time-tracking/RecentEntriesList';
@@ -40,32 +41,22 @@ export default function TimeTracking() {
   const { data: activeEntry, isLoading: activeLoading, refetch: refetchActive } = useActiveTimeEntry();
   const { data: recentEntries = [], isLoading: entriesLoading, refetch: refetchRecent } = useRecentTimeEntries();
   const { data: jobSites = [], isLoading: jobSitesLoading } = useJobSites(currentProjectId);
+  
+  // Offline queue
+  const { queue, isSyncing, isOnline, syncNow, enqueueCheckIn, enqueueCheckOut } = useOfflineTimeQueue();
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [showJobSiteModal, setShowJobSiteModal] = useState(false);
-  const [pendingLocation, setPendingLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [pendingLocation, setPendingLocation] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
   const [showGeofenceError, setShowGeofenceError] = useState(false);
   const [geofenceError, setGeofenceError] = useState<GeofenceError>({});
   const [locationWarning, setLocationWarning] = useState<'location_unavailable' | 'offline' | null>(null);
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   // Detail drawer and adjustment modal
   const [selectedEntry, setSelectedEntry] = useState<TimeEntry | null>(null);
   const [showDetailDrawer, setShowDetailDrawer] = useState(false);
   const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
   const [adjustmentEntry, setAdjustmentEntry] = useState<TimeEntry | null>(null);
-
-  // Track online/offline status
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
 
   const refetchAll = useCallback(() => {
     refetchActive();
@@ -84,7 +75,7 @@ export default function TimeTracking() {
           lng: position.coords.longitude,
           accuracy: position.coords.accuracy
         }),
-        (error) => {
+        () => {
           reject(new Error('location_unavailable'));
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
@@ -109,9 +100,9 @@ export default function TimeTracking() {
         setLocationWarning('location_unavailable');
       }
       
-      setPendingLocation({ lat: location.lat, lng: location.lng });
+      setPendingLocation(location);
       setShowJobSiteModal(true);
-    } catch (error) {
+    } catch {
       // Allow check-in without location, but flag it
       setLocationWarning('location_unavailable');
       setPendingLocation(null);
@@ -126,38 +117,67 @@ export default function TimeTracking() {
     setShowJobSiteModal(false);
     setIsProcessing(true);
     
+    // If offline, queue the action
+    if (!isOnline) {
+      enqueueCheckIn(currentProjectId, jobSiteId, {
+        latitude: pendingLocation?.lat,
+        longitude: pendingLocation?.lng,
+        accuracy_meters: pendingLocation?.accuracy,
+      });
+      toast({ title: 'Queued', description: 'Check-in will sync when online.' });
+      setIsProcessing(false);
+      setPendingLocation(null);
+      setLocationWarning(null);
+      return;
+    }
+    
     try {
+      const idempotencyKey = crypto.randomUUID();
       const { data, error } = await supabase.functions.invoke('time-check-in', {
         body: { 
           project_id: currentProjectId, 
           job_site_id: jobSiteId, 
           latitude: pendingLocation?.lat, 
           longitude: pendingLocation?.lng,
-          // Flag if location was unavailable
-          location_unavailable: locationWarning === 'location_unavailable'
+          accuracy_meters: pendingLocation?.accuracy,
+        },
+        headers: {
+          'Idempotency-Key': idempotencyKey,
         },
       });
       
-      if (error) throw error;
+      if (error) {
+        // Network error - queue for later
+        if (error.message?.includes('fetch') || error.message?.includes('network')) {
+          enqueueCheckIn(currentProjectId, jobSiteId, {
+            latitude: pendingLocation?.lat,
+            longitude: pendingLocation?.lng,
+            accuracy_meters: pendingLocation?.accuracy,
+          });
+          toast({ title: 'Queued', description: 'Check-in will sync when online.' });
+          return;
+        }
+        throw error;
+      }
       
       if (data?.error) {
-        if (data.code === 'OUTSIDE_GEOFENCE') {
-          setGeofenceError({ distance: data.distance, radius: data.radius, jobSiteName: data.jobSiteName });
+        if (data.error.code === 'OUTSIDE_GEOFENCE') {
+          setGeofenceError({ distance: data.error.details?.distance, radius: data.error.details?.radius, jobSiteName: data.error.details?.jobSiteName });
           setShowGeofenceError(true);
           return;
         }
-        if (data.code === 'ALREADY_CHECKED_IN') {
+        if (data.error.code === 'ALREADY_CHECKED_IN') {
           toast({ title: 'Already Checked In', description: 'You have an active time entry. Check out first.', variant: 'destructive' });
           refetchAll();
           return;
         }
-        throw new Error(data.error);
+        throw new Error(data.error.message || data.error);
       }
       
-      if (locationWarning) {
+      if (locationWarning || data?.flags_created?.length > 0) {
         toast({ 
           title: 'Checked In', 
-          description: 'Your time is now being tracked. Location was flagged for review.' 
+          description: 'Your time is now being tracked. Some details flagged for review.' 
         });
       } else {
         toast({ title: 'Checked In', description: 'Your time is now being tracked.' });
@@ -177,29 +197,60 @@ export default function TimeTracking() {
   const handleCheckOut = async () => {
     if (!activeEntry) return;
     setIsProcessing(true);
+    
+    // If offline, queue the action
+    if (!isOnline) {
+      enqueueCheckOut(activeEntry.project_id, {});
+      toast({ title: 'Queued', description: 'Check-out will sync when online.' });
+      setIsProcessing(false);
+      return;
+    }
+    
     try {
-      let location: { lat: number; lng: number } | null = null;
+      let location: { lat: number; lng: number; accuracy: number } | null = null;
       try { 
-        const loc = await getLocation(); 
-        location = { lat: loc.lat, lng: loc.lng };
+        location = await getLocation(); 
       } catch { /* optional for check-out */ }
       
+      const idempotencyKey = crypto.randomUUID();
       const { data, error } = await supabase.functions.invoke('time-check-out', {
-        body: { project_id: activeEntry.project_id, latitude: location?.lat, longitude: location?.lng },
+        body: { 
+          project_id: activeEntry.project_id, 
+          latitude: location?.lat, 
+          longitude: location?.lng,
+          accuracy_meters: location?.accuracy,
+        },
+        headers: {
+          'Idempotency-Key': idempotencyKey,
+        },
       });
       
-      if (error) throw error;
+      if (error) {
+        // Network error - queue for later
+        if (error.message?.includes('fetch') || error.message?.includes('network')) {
+          enqueueCheckOut(activeEntry.project_id, {
+            latitude: location?.lat,
+            longitude: location?.lng,
+            accuracy_meters: location?.accuracy,
+          });
+          toast({ title: 'Queued', description: 'Check-out will sync when online.' });
+          return;
+        }
+        throw error;
+      }
       
       if (data?.error) {
-        if (data.code === 'NO_OPEN_ENTRY') {
+        if (data.error.code === 'NO_OPEN_ENTRY') {
           toast({ title: 'No Active Entry', description: "You don't have an active time entry to close." });
           refetchAll();
           return;
         }
-        throw new Error(data.error);
+        throw new Error(data.error.message || data.error);
       }
       
-      toast({ title: 'Checked Out', description: `Total time: ${data.entry?.duration_hours || 0}h ${data.entry?.duration_minutes || 0}m` });
+      const hours = data.entry?.duration_hours || 0;
+      const mins = data.entry?.duration_minutes ? data.entry.duration_minutes % 60 : 0;
+      toast({ title: 'Checked Out', description: `Total time: ${Math.floor(hours)}h ${mins}m` });
       refetchAll();
     } catch (error) {
       console.error('Check-out error:', error);
@@ -226,6 +277,7 @@ export default function TimeTracking() {
 
   const isLoading = activeLoading || entriesLoading;
   const hasActiveEntry = !!activeEntry;
+  const hasQueuedItems = queue.length > 0;
   
   // Check for stale active entry
   const isActiveEntryStale = useMemo(() => {
@@ -240,7 +292,7 @@ export default function TimeTracking() {
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
     return recentEntries.find(
       entry => 
-        (entry.closed_method === 'auto_closed' || entry.closed_method === 'force_closed') &&
+        (entry.closed_method === 'auto_closed' || entry.closed_method === 'force_closed' || entry.closed_method === 'force') &&
         new Date(entry.check_in_at) > yesterday
     );
   }, [recentEntries]);
@@ -283,9 +335,31 @@ export default function TimeTracking() {
           </div>
         </div>
 
-        {/* Offline warning */}
+        {/* Offline warning with sync button */}
         {!isOnline && (
-          <LocationWarningBanner type="offline" />
+          <Alert variant="default" className="border-blue-500/30 bg-blue-500/5 [&>svg]:text-blue-600">
+            <WifiOff className="h-4 w-4" />
+            <AlertTitle>You're Offline</AlertTitle>
+            <AlertDescription>
+              Actions will be queued and synced when you're back online.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Queued items banner */}
+        {hasQueuedItems && (
+          <Alert variant="default" className="border-blue-500/30 bg-blue-500/5 [&>svg]:text-blue-600">
+            <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+            <AlertTitle>Pending Sync</AlertTitle>
+            <AlertDescription className="flex items-center justify-between">
+              <span>{queue.length} action{queue.length > 1 ? 's' : ''} queued</span>
+              {isOnline && (
+                <Button variant="outline" size="sm" onClick={syncNow} disabled={isSyncing}>
+                  {isSyncing ? 'Syncing...' : 'Sync Now'}
+                </Button>
+              )}
+            </AlertDescription>
+          </Alert>
         )}
 
         {/* Location warning during check-in flow */}
