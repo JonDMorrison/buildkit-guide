@@ -1,16 +1,18 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
-import { LogIn, LogOut, Loader2, MapPin, Plus, ClipboardList, Lock, Clock, Flag, WifiOff } from 'lucide-react';
+import { LogIn, LogOut, Loader2, MapPin, Plus, ClipboardList, Lock, Clock, Flag, WifiOff, Building2, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrentProject } from '@/hooks/useCurrentProject';
 import { useActiveTimeEntry } from '@/hooks/useActiveTimeEntry';
 import { useRecentTimeEntries, TimeEntry } from '@/hooks/useRecentTimeEntries';
 import { useJobSites } from '@/hooks/useJobSites';
 import { useOrganizationRole } from '@/hooks/useOrganizationRole';
+import { useOrganization } from '@/hooks/useOrganization';
 import { useOfflineTimeSync } from '@/hooks/useOfflineTimeSync';
 import { offlineQueue, createCheckInAction, createCheckOutAction, QueuedTimeAction } from '@/lib/offlineQueue';
 import { supabase } from '@/integrations/supabase/client';
@@ -27,6 +29,7 @@ import { LocationWarningBanner } from '@/components/time-tracking/LocationWarnin
 import { CheckInSuccessAnimation } from '@/components/time-tracking/CheckInSuccessAnimation';
 import { PendingSyncPanel } from '@/components/time-tracking/PendingSyncPanel';
 import { QueueConflictModal } from '@/components/time-tracking/QueueConflictModal';
+import { useQuery } from '@tanstack/react-query';
 
 interface GeofenceError {
   distance?: number;
@@ -38,9 +41,27 @@ const STALE_ENTRY_HOURS = 4;
 
 export default function TimeTracking() {
   const navigate = useNavigate();
-  const { currentProjectId } = useCurrentProject();
+  const { currentProjectId, setCurrentProject } = useCurrentProject();
   const { toast } = useToast();
   const { canReviewRequests, canLockPeriods } = useOrganizationRole();
+  const { activeOrganizationId } = useOrganization();
+
+  // Fetch user's projects for selector
+  const { data: userProjects = [], isLoading: projectsLoading } = useQuery({
+    queryKey: ['user-projects', activeOrganizationId],
+    queryFn: async () => {
+      if (!activeOrganizationId) return [];
+      const { data, error } = await supabase
+        .from('projects')
+        .select('id, name, job_number')
+        .eq('organization_id', activeOrganizationId)
+        .eq('is_deleted', false)
+        .order('name');
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!activeOrganizationId,
+  });
 
   const { data: activeEntry, isLoading: activeLoading, refetch: refetchActive } = useActiveTimeEntry();
   const { data: recentEntries = [], isLoading: entriesLoading, refetch: refetchRecent } = useRecentTimeEntries();
@@ -466,8 +487,45 @@ export default function TimeTracking() {
                 <div className="text-center py-4">
                   <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
                   <p className="text-lg font-medium mb-1">Not Clocked In</p>
-                  <p className="text-muted-foreground">Tap below to start tracking your time</p>
+                  <p className="text-muted-foreground">
+                    {!currentProjectId ? 'Select a project to check in' : 'Tap below to start tracking your time'}
+                  </p>
                 </div>
+                
+                {/* Project Selector */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">Project</label>
+                  <Select 
+                    value={currentProjectId || ''} 
+                    onValueChange={(value) => setCurrentProject(value)}
+                    disabled={projectsLoading}
+                  >
+                    <SelectTrigger className="w-full h-12">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                        <SelectValue placeholder="Select a project..." />
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {userProjects.map((project) => (
+                        <SelectItem key={project.id} value={project.id}>
+                          <div className="flex items-center gap-2">
+                            <span>{project.name}</span>
+                            {project.job_number && (
+                              <span className="text-xs text-muted-foreground">#{project.job_number}</span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                      {userProjects.length === 0 && !projectsLoading && (
+                        <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                          No projects available
+                        </div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
                 <Button onClick={handleCheckInClick} disabled={isProcessing || !currentProjectId} size="lg" className="w-full h-14 text-lg">
                   {isProcessing ? (<><Loader2 className="h-5 w-5 mr-2 animate-spin" />Getting Location...</>) : (<><LogIn className="h-5 w-5 mr-2" />Check In</>)}
                 </Button>
