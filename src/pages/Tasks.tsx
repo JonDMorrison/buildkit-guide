@@ -9,7 +9,7 @@ import { TaskFilters, TaskFilters as TaskFiltersType } from "@/components/tasks/
 import { TaskListView } from "@/components/tasks/TaskListView";
 import { TaskKanbanView } from "@/components/tasks/TaskKanbanView";
 import { TaskCalendarView } from "@/components/tasks/TaskCalendarView";
-import { TaskDetailModalEnhanced } from "@/components/tasks/TaskDetailModalEnhanced";
+import { TaskDetailView } from "@/components/tasks/TaskDetailView";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
 import { VoiceToTaskModal } from "@/components/tasks/VoiceToTaskModal";
 import { supabase } from "@/integrations/supabase/client";
@@ -310,7 +310,7 @@ const Tasks = () => {
           projectId={selectedProjectId}
         />
 
-        <TaskDetailModalEnhanced
+        <TaskDetailView
           taskId={selectedTaskId}
           open={detailModalOpen}
           onOpenChange={setDetailModalOpen}
