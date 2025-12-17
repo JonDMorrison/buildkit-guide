@@ -12,12 +12,14 @@ import { SafetyFormDetailModal } from "@/components/safety/SafetyFormDetailModal
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthRole } from "@/hooks/useAuthRole";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
+import { useUserRole } from "@/hooks/useUserRole";
 import { ShieldCheck, Plus } from "lucide-react";
 import { format, subDays } from "date-fns";
 
 const Safety = () => {
   const { currentProjectId } = useCurrentProject();
   const { can, loading: roleLoading } = useAuthRole(currentProjectId || undefined);
+  const { isAdmin, loading: globalRoleLoading } = useUserRole();
   const [forms, setForms] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isTypeSelectorOpen, setIsTypeSelectorOpen] = useState(false);
@@ -33,9 +35,9 @@ const Safety = () => {
     missingForms: [] as Array<{ type: string; dueDate: string }>,
   });
 
-  // Permission checks
-  const canViewSafety = currentProjectId ? can('view_safety', currentProjectId) : false;
-  const canCreateSafety = currentProjectId ? can('create_safety', currentProjectId) : false;
+  // Permission checks - admins can always view, otherwise need project-specific permission
+  const canViewSafety = isAdmin || (currentProjectId ? can('view_safety', currentProjectId) : false);
+  const canCreateSafety = isAdmin || (currentProjectId ? can('create_safety', currentProjectId) : false);
 
   useEffect(() => {
     fetchForms();
@@ -150,7 +152,7 @@ const Safety = () => {
     setIsDetailModalOpen(true);
   };
 
-  if (roleLoading || loading) {
+  if (roleLoading || globalRoleLoading || loading) {
     return (
       <Layout>
         <div className="container max-w-4xl mx-auto px-4 py-6">
