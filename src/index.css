@@ -32,9 +32,9 @@ All colors MUST be HSL.
     --secondary: 145 35% 33%;
     --secondary-foreground: 0 0% 100%;
 
-    /* Muted - Grey Green */
-    --muted: 135 10% 65%;
-    --muted-foreground: 150 30% 17%;
+    /* Muted - Neutral Grey */
+    --muted: 0 0% 90%;
+    --muted-foreground: 0 0% 40%;
 
     /* Accent - Orange */
     --accent: 27 60% 57%;
