@@ -48,17 +48,29 @@ export default function TimeTracking() {
 
   // Fetch user's projects for selector
   const { data: userProjects = [], isLoading: projectsLoading } = useQuery({
-    queryKey: ['user-projects', activeOrganizationId],
+    queryKey: ['user-member-projects', activeOrganizationId],
     queryFn: async () => {
       if (!activeOrganizationId) return [];
+      
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+      
+      // Get projects where user has membership
       const { data, error } = await supabase
-        .from('projects')
-        .select('id, name, job_number')
-        .eq('organization_id', activeOrganizationId)
-        .eq('is_deleted', false)
-        .order('name');
+        .from('project_members')
+        .select('project:projects!inner(id, name, job_number, is_deleted, organization_id)')
+        .eq('user_id', user.id);
+      
       if (error) throw error;
-      return data || [];
+      
+      // Filter to active projects in the current org and extract project data
+      return (data || [])
+        .map(pm => pm.project)
+        .filter((p): p is { id: string; name: string; job_number: string | null; is_deleted: boolean; organization_id: string } => 
+          p !== null && !p.is_deleted && p.organization_id === activeOrganizationId
+        )
+        .sort((a, b) => a.name.localeCompare(b.name));
     },
     enabled: !!activeOrganizationId,
   });
