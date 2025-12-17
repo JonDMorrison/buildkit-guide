@@ -48,7 +48,7 @@ interface EntryStatusIndicatorProps {
   className?: string;
 }
 
-const INDICATOR_CONFIG: Record<
+export const INDICATOR_CONFIG: Record<
   EntryIndicatorType,
   {
     icon: typeof Check;
