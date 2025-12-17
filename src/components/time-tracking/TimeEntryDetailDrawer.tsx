@@ -10,7 +10,20 @@ import {
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { TimeEntry } from '@/hooks/useRecentTimeEntries';
-import { EntryStatusIndicator, getEntryIndicators } from './EntryStatusIndicator';
+import { EntryStatusIndicator, getEntryIndicators, INDICATOR_CONFIG, EntryIndicatorType } from './EntryStatusIndicator';
+
+// Convert raw flag codes to human-readable text
+function formatFlagReason(flagReason: string): string {
+  const codes = flagReason.split(',').map(s => s.trim());
+  const labels = codes
+    .map(code => {
+      const config = INDICATOR_CONFIG[code as EntryIndicatorType];
+      return config?.description || null;
+    })
+    .filter(Boolean);
+  
+  return labels.length > 0 ? labels.join('. ') : flagReason;
+}
 
 interface TimeEntryDetailDrawerProps {
   entry: TimeEntry | null;
@@ -165,7 +178,7 @@ export function TimeEntryDetailDrawer({
                 <p className="text-sm font-medium text-amber-700">
                   This entry needs review
                 </p>
-                <p className="text-sm text-muted-foreground">{entry.flag_reason}</p>
+                <p className="text-sm text-muted-foreground">{formatFlagReason(entry.flag_reason)}</p>
                 <p className="text-xs text-muted-foreground">
                   Don't worry — you can request a correction below if something's not right.
                 </p>
