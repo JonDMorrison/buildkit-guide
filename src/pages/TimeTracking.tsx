@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { LogIn, LogOut, Loader2, MapPin, Plus, ClipboardList, Lock, Clock, Flag, WifiOff, RefreshCw } from 'lucide-react';
@@ -23,6 +23,7 @@ import { AdjustmentRequestModal } from '@/components/time-tracking/AdjustmentReq
 import { MyRequestsList } from '@/components/time-tracking/MyRequestsList';
 import { WorkerStatusBanner } from '@/components/time-tracking/WorkerStatusBanner';
 import { LocationWarningBanner } from '@/components/time-tracking/LocationWarningBanner';
+import { CheckInSuccessAnimation } from '@/components/time-tracking/CheckInSuccessAnimation';
 
 interface GeofenceError {
   distance?: number;
@@ -57,6 +58,9 @@ export default function TimeTracking() {
   const [showDetailDrawer, setShowDetailDrawer] = useState(false);
   const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
   const [adjustmentEntry, setAdjustmentEntry] = useState<TimeEntry | null>(null);
+
+  // Success animation state
+  const [successAnimation, setSuccessAnimation] = useState<{ show: boolean; type: 'check_in' | 'check_out' }>({ show: false, type: 'check_in' });
 
   const refetchAll = useCallback(() => {
     refetchActive();
@@ -112,14 +116,14 @@ export default function TimeTracking() {
     }
   };
 
-  const handleJobSiteSelect = async (jobSiteId: string | null) => {
+  const handleJobSiteSelect = async (jobSiteId: string | null, notes?: string) => {
     if (!currentProjectId) return;
     setShowJobSiteModal(false);
     setIsProcessing(true);
     
     // If offline, queue the action
     if (!isOnline) {
-      enqueueCheckIn(currentProjectId, jobSiteId, pendingLocation);
+      enqueueCheckIn(currentProjectId, jobSiteId, pendingLocation, notes);
       toast({ title: 'Queued', description: 'Check-in will sync when online.' });
       setIsProcessing(false);
       setPendingLocation(null);
@@ -136,6 +140,7 @@ export default function TimeTracking() {
           latitude: pendingLocation?.lat, 
           longitude: pendingLocation?.lng,
           accuracy_meters: pendingLocation?.accuracy,
+          notes: notes || undefined,
         },
         headers: {
           'Idempotency-Key': idempotencyKey,
@@ -145,7 +150,7 @@ export default function TimeTracking() {
       if (error) {
         // Network error - queue for later
         if (error.message?.includes('fetch') || error.message?.includes('network')) {
-          enqueueCheckIn(currentProjectId, jobSiteId, pendingLocation);
+          enqueueCheckIn(currentProjectId, jobSiteId, pendingLocation, notes);
           toast({ title: 'Queued', description: 'Check-in will sync when online.' });
           return;
         }
@@ -166,14 +171,8 @@ export default function TimeTracking() {
         throw new Error(data.error.message || data.error);
       }
       
-      if (locationWarning || data?.flags_created?.length > 0) {
-        toast({ 
-          title: 'Checked In', 
-          description: 'Your time is now being tracked. Some details flagged for review.' 
-        });
-      } else {
-        toast({ title: 'Checked In', description: 'Your time is now being tracked.' });
-      }
+      // Show success animation
+      setSuccessAnimation({ show: true, type: 'check_in' });
       
       setLocationWarning(null);
       refetchAll();
@@ -236,9 +235,16 @@ export default function TimeTracking() {
         throw new Error(data.error.message || data.error);
       }
       
+      // Show success animation with duration info
+      setSuccessAnimation({ show: true, type: 'check_out' });
+      
       const hours = data.entry?.duration_hours || 0;
       const mins = data.entry?.duration_minutes ? data.entry.duration_minutes % 60 : 0;
-      toast({ title: 'Checked Out', description: `Total time: ${Math.floor(hours)}h ${mins}m` });
+      // Toast after animation
+      setTimeout(() => {
+        toast({ title: 'Shift Complete', description: `Total time: ${Math.floor(hours)}h ${mins}m` });
+      }, 1200);
+      
       refetchAll();
     } catch (error) {
       console.error('Check-out error:', error);
@@ -427,12 +433,21 @@ export default function TimeTracking() {
           isLoading={jobSitesLoading} 
           onSelect={handleJobSiteSelect}
           locationUnavailable={locationWarning === 'location_unavailable'}
+          userLocation={pendingLocation}
+          autoSelectSingle={true}
         />
         <GeofenceErrorModal open={showGeofenceError} onOpenChange={setShowGeofenceError} distance={geofenceError.distance} radius={geofenceError.radius} jobSiteName={geofenceError.jobSiteName} />
         <TimeEntryDetailDrawer entry={selectedEntry} open={showDetailDrawer} onOpenChange={setShowDetailDrawer} onRequestAdjustment={handleRequestAdjustment} />
         {currentProjectId && (
           <AdjustmentRequestModal open={showAdjustmentModal} onOpenChange={setShowAdjustmentModal} entry={adjustmentEntry} projectId={currentProjectId} jobSites={jobSites} onSuccess={refetchAll} />
         )}
+        
+        {/* Success animation overlay */}
+        <CheckInSuccessAnimation 
+          type={successAnimation.type}
+          show={successAnimation.show}
+          onComplete={() => setSuccessAnimation({ ...successAnimation, show: false })}
+        />
       </div>
     </Layout>
   );
