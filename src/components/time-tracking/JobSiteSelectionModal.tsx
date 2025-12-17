@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { MapPin, AlertTriangle, Building2, MapPinOff } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { MapPin, AlertTriangle, Building2, MapPinOff, Zap } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -12,14 +12,18 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { JobSite } from '@/hooks/useJobSites';
+import { LocationPreviewMap } from './LocationPreviewMap';
+import { VoiceNotesInput } from './VoiceNotesInput';
 
 interface JobSiteSelectionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   jobSites: JobSite[];
   isLoading: boolean;
-  onSelect: (jobSiteId: string | null) => void;
+  onSelect: (jobSiteId: string | null, notes?: string) => void;
   locationUnavailable?: boolean;
+  userLocation?: { lat: number; lng: number; accuracy: number } | null;
+  autoSelectSingle?: boolean;
 }
 
 export function JobSiteSelectionModal({
@@ -29,27 +33,66 @@ export function JobSiteSelectionModal({
   isLoading,
   onSelect,
   locationUnavailable = false,
+  userLocation = null,
+  autoSelectSingle = true,
 }: JobSiteSelectionModalProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [notes, setNotes] = useState('');
+
+  // Auto-select if only one job site and autoSelectSingle is true
+  useEffect(() => {
+    if (open && autoSelectSingle && jobSites.length === 1 && !isLoading) {
+      setSelectedId(jobSites[0].id);
+    }
+  }, [open, autoSelectSingle, jobSites, isLoading]);
+
+  // Reset state when modal opens
+  useEffect(() => {
+    if (open) {
+      setSelectedId(jobSites.length === 1 ? jobSites[0].id : null);
+      setNotes('');
+    }
+  }, [open, jobSites.length]);
 
   const handleConfirm = () => {
-    onSelect(selectedId);
+    onSelect(selectedId, notes || undefined);
   };
+
+  // Get selected job site location for map
+  const selectedJobSite = jobSites.find(s => s.id === selectedId);
+  const jobSiteLocation = selectedJobSite?.latitude && selectedJobSite?.longitude
+    ? { 
+        lat: selectedJobSite.latitude, 
+        lng: selectedJobSite.longitude, 
+        radius: selectedJobSite.geofence_radius_meters || 100 
+      }
+    : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MapPin className="h-5 w-5" />
             Select Job Site
           </DialogTitle>
           <DialogDescription>
-            Choose the job site you're checking in at
+            {jobSites.length === 1 
+              ? "Confirm your job site to check in"
+              : "Choose the job site you're checking in at"
+            }
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {/* Location preview map */}
+          {!locationUnavailable && userLocation && (
+            <LocationPreviewMap
+              userLocation={userLocation}
+              jobSiteLocation={jobSiteLocation}
+            />
+          )}
+
           {/* Location warning banner */}
           {locationUnavailable && (
             <Alert variant="default" className="border-amber-500/30 bg-amber-500/5 [&>svg]:text-amber-600">
@@ -74,57 +117,94 @@ export function JobSiteSelectionModal({
               </AlertDescription>
             </Alert>
           ) : (
-            <RadioGroup
-              value={selectedId || ''}
-              onValueChange={(value) => setSelectedId(value || null)}
-              className="space-y-3"
-            >
-              {jobSites.map((site) => (
-                <div
-                  key={site.id}
-                  className="flex items-start space-x-3 rounded-lg border p-4 cursor-pointer hover:bg-muted/50 transition-colors"
-                  onClick={() => setSelectedId(site.id)}
-                >
-                  <RadioGroupItem value={site.id} id={site.id} className="mt-1" />
-                  <Label htmlFor={site.id} className="flex-1 cursor-pointer">
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">{site.name}</span>
+            <>
+              {/* Single job site - simplified view */}
+              {jobSites.length === 1 ? (
+                <div className="rounded-lg border bg-primary/5 border-primary/20 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-full bg-primary/10 p-2">
+                      <Building2 className="h-5 w-5 text-primary" />
                     </div>
-                    {site.address && (
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {site.address}
-                      </p>
-                    )}
-                  </Label>
-                </div>
-              ))}
-
-              <div
-                className="flex items-start space-x-3 rounded-lg border border-dashed p-4 cursor-pointer hover:bg-muted/50 transition-colors"
-                onClick={() => setSelectedId(null)}
-              >
-                <RadioGroupItem value="" id="no-site" className="mt-1" />
-                <Label htmlFor="no-site" className="flex-1 cursor-pointer">
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4 text-amber-600" />
-                    <span className="font-medium">No job site</span>
+                    <div className="flex-1">
+                      <p className="font-medium">{jobSites[0].name}</p>
+                      {jobSites[0].address && (
+                        <p className="text-sm text-muted-foreground">{jobSites[0].address}</p>
+                      )}
+                    </div>
+                    <Zap className="h-5 w-5 text-primary" />
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Entry will be flagged for review
-                  </p>
-                </Label>
-              </div>
-            </RadioGroup>
+                </div>
+              ) : (
+                /* Multiple job sites - radio selection */
+                <RadioGroup
+                  value={selectedId || ''}
+                  onValueChange={(value) => setSelectedId(value || null)}
+                  className="space-y-3"
+                >
+                  {jobSites.map((site) => (
+                    <div
+                      key={site.id}
+                      className="flex items-start space-x-3 rounded-lg border p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => setSelectedId(site.id)}
+                    >
+                      <RadioGroupItem value={site.id} id={site.id} className="mt-1" />
+                      <Label htmlFor={site.id} className="flex-1 cursor-pointer">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">{site.name}</span>
+                        </div>
+                        {site.address && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {site.address}
+                          </p>
+                        )}
+                      </Label>
+                    </div>
+                  ))}
+
+                  <div
+                    className="flex items-start space-x-3 rounded-lg border border-dashed p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => setSelectedId(null)}
+                  >
+                    <RadioGroupItem value="" id="no-site" className="mt-1" />
+                    <Label htmlFor="no-site" className="flex-1 cursor-pointer">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-amber-600" />
+                        <span className="font-medium">No job site</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Entry will be flagged for review
+                      </p>
+                    </Label>
+                  </div>
+                </RadioGroup>
+              )}
+            </>
           )}
+
+          {/* Voice notes input */}
+          <div className="pt-2 border-t">
+            <VoiceNotesInput
+              value={notes}
+              onChange={setNotes}
+              placeholder="Add notes about your check-in (optional)..."
+            />
+          </div>
         </div>
 
         <div className="flex justify-end gap-3">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleConfirm} disabled={isLoading}>
-            Confirm Check In
+          <Button onClick={handleConfirm} disabled={isLoading} size="lg">
+            {jobSites.length === 1 ? (
+              <>
+                <Zap className="h-4 w-4 mr-1.5" />
+                Quick Check In
+              </>
+            ) : (
+              'Confirm Check In'
+            )}
           </Button>
         </div>
       </DialogContent>
