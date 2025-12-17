@@ -14,6 +14,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { JobSite } from '@/hooks/useJobSites';
 import { LocationPreviewMap } from './LocationPreviewMap';
 import { VoiceNotesInput } from './VoiceNotesInput';
+import { SmartJobSiteSuggestion } from './SmartJobSiteSuggestion';
 
 interface JobSiteSelectionModalProps {
   open: boolean;
@@ -135,49 +136,57 @@ export function JobSiteSelectionModal({
                   </div>
                 </div>
               ) : (
-                /* Multiple job sites - radio selection */
-                <RadioGroup
-                  value={selectedId || ''}
-                  onValueChange={(value) => setSelectedId(value || null)}
-                  className="space-y-3"
-                >
-                  {jobSites.map((site) => (
+                <>
+                  {/* Smart job site suggestion */}
+                  <SmartJobSiteSuggestion 
+                    jobSites={jobSites} 
+                    onSelect={(id) => setSelectedId(id)} 
+                  />
+                  
+                  {/* Multiple job sites - radio selection */}
+                  <RadioGroup
+                    value={selectedId || ''}
+                    onValueChange={(value) => setSelectedId(value || null)}
+                    className="space-y-3"
+                  >
+                    {jobSites.map((site) => (
+                      <div
+                        key={site.id}
+                        className="flex items-start space-x-3 rounded-lg border p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => setSelectedId(site.id)}
+                      >
+                        <RadioGroupItem value={site.id} id={site.id} className="mt-1" />
+                        <Label htmlFor={site.id} className="flex-1 cursor-pointer">
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium">{site.name}</span>
+                          </div>
+                          {site.address && (
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {site.address}
+                            </p>
+                          )}
+                        </Label>
+                      </div>
+                    ))}
+
                     <div
-                      key={site.id}
-                      className="flex items-start space-x-3 rounded-lg border p-4 cursor-pointer hover:bg-muted/50 transition-colors"
-                      onClick={() => setSelectedId(site.id)}
+                      className="flex items-start space-x-3 rounded-lg border border-dashed p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => setSelectedId(null)}
                     >
-                      <RadioGroupItem value={site.id} id={site.id} className="mt-1" />
-                      <Label htmlFor={site.id} className="flex-1 cursor-pointer">
+                      <RadioGroupItem value="" id="no-site" className="mt-1" />
+                      <Label htmlFor="no-site" className="flex-1 cursor-pointer">
                         <div className="flex items-center gap-2">
-                          <Building2 className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">{site.name}</span>
+                          <AlertTriangle className="h-4 w-4 text-amber-600" />
+                          <span className="font-medium">No job site</span>
                         </div>
-                        {site.address && (
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {site.address}
-                          </p>
-                        )}
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Entry will be flagged for review
+                        </p>
                       </Label>
                     </div>
-                  ))}
-
-                  <div
-                    className="flex items-start space-x-3 rounded-lg border border-dashed p-4 cursor-pointer hover:bg-muted/50 transition-colors"
-                    onClick={() => setSelectedId(null)}
-                  >
-                    <RadioGroupItem value="" id="no-site" className="mt-1" />
-                    <Label htmlFor="no-site" className="flex-1 cursor-pointer">
-                      <div className="flex items-center gap-2">
-                        <AlertTriangle className="h-4 w-4 text-amber-600" />
-                        <span className="font-medium">No job site</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Entry will be flagged for review
-                      </p>
-                    </Label>
-                  </div>
-                </RadioGroup>
+                  </RadioGroup>
+                </>
               )}
             </>
           )}
