@@ -1,7 +1,7 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
-import { LogIn, LogOut, Loader2, MapPin, Plus, ClipboardList, Lock, Clock, Flag, WifiOff, RefreshCw } from 'lucide-react';
+import { LogIn, LogOut, Loader2, MapPin, Plus, ClipboardList, Lock, Clock, Flag, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -11,7 +11,8 @@ import { useActiveTimeEntry } from '@/hooks/useActiveTimeEntry';
 import { useRecentTimeEntries, TimeEntry } from '@/hooks/useRecentTimeEntries';
 import { useJobSites } from '@/hooks/useJobSites';
 import { useOrganizationRole } from '@/hooks/useOrganizationRole';
-import { useOfflineTimeQueue } from '@/hooks/useOfflineTimeQueue';
+import { useOfflineTimeSync } from '@/hooks/useOfflineTimeSync';
+import { offlineQueue, createCheckInAction, createCheckOutAction, QueuedTimeAction } from '@/lib/offlineQueue';
 import { supabase } from '@/integrations/supabase/client';
 import { ActiveTimerCard } from '@/components/time-tracking/ActiveTimerCard';
 import { RecentEntriesList } from '@/components/time-tracking/RecentEntriesList';
@@ -24,6 +25,8 @@ import { MyRequestsList } from '@/components/time-tracking/MyRequestsList';
 import { WorkerStatusBanner } from '@/components/time-tracking/WorkerStatusBanner';
 import { LocationWarningBanner } from '@/components/time-tracking/LocationWarningBanner';
 import { CheckInSuccessAnimation } from '@/components/time-tracking/CheckInSuccessAnimation';
+import { PendingSyncPanel } from '@/components/time-tracking/PendingSyncPanel';
+import { QueueConflictModal } from '@/components/time-tracking/QueueConflictModal';
 
 interface GeofenceError {
   distance?: number;
@@ -43,8 +46,18 @@ export default function TimeTracking() {
   const { data: recentEntries = [], isLoading: entriesLoading, refetch: refetchRecent } = useRecentTimeEntries();
   const { data: jobSites = [], isLoading: jobSitesLoading } = useJobSites(currentProjectId);
   
-  // Offline queue
-  const { queuedActions, isSyncing, isOnline, syncNow, enqueueCheckIn, enqueueCheckOut } = useOfflineTimeQueue();
+  // IndexedDB-based offline queue
+  const { 
+    queuedActions, 
+    isSyncing, 
+    isOnline, 
+    syncNow, 
+    discardItem, 
+    discardAll, 
+    refreshQueue,
+    pendingCount,
+    failedCount,
+  } = useOfflineTimeSync();
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [showJobSiteModal, setShowJobSiteModal] = useState(false);
@@ -62,10 +75,21 @@ export default function TimeTracking() {
   // Success animation state
   const [successAnimation, setSuccessAnimation] = useState<{ show: boolean; type: 'check_in' | 'check_out' }>({ show: false, type: 'check_in' });
 
+  // Queue conflict modal state
+  const [showConflictModal, setShowConflictModal] = useState(false);
+  const [conflictingAction, setConflictingAction] = useState<QueuedTimeAction | null>(null);
+
   const refetchAll = useCallback(() => {
     refetchActive();
     refetchRecent();
   }, [refetchActive, refetchRecent]);
+
+  // Refetch data after successful sync
+  useEffect(() => {
+    if (!isSyncing && queuedActions.length === 0) {
+      refetchAll();
+    }
+  }, [isSyncing, queuedActions.length]);
 
   const getLocation = (): Promise<{ lat: number; lng: number; accuracy: number }> => {
     return new Promise((resolve, reject) => {
@@ -92,6 +116,14 @@ export default function TimeTracking() {
       toast({ title: 'No project selected', description: 'Please select a project before checking in.', variant: 'destructive' });
       return;
     }
+
+    // Check for queue conflicts before proceeding
+    const conflict = await offlineQueue.getConflictingAction(currentProjectId, 'check_in');
+    if (conflict) {
+      setConflictingAction(conflict);
+      setShowConflictModal(true);
+      return;
+    }
     
     setLocationWarning(null);
     setIsProcessing(true);
@@ -116,6 +148,20 @@ export default function TimeTracking() {
     }
   };
 
+  const enqueueCheckIn = async (projectId: string, jobSiteId: string | null, location: { lat?: number; lng?: number; accuracy?: number } | null, notes?: string) => {
+    const action = createCheckInAction(projectId, jobSiteId, location, notes);
+    await offlineQueue.add(action);
+    await refreshQueue();
+    toast({ title: 'Queued', description: 'Check-in will sync when online.' });
+  };
+
+  const enqueueCheckOut = async (projectId: string, location: { lat?: number; lng?: number; accuracy?: number } | null) => {
+    const action = createCheckOutAction(projectId, location);
+    await offlineQueue.add(action);
+    await refreshQueue();
+    toast({ title: 'Queued', description: 'Check-out will sync when online.' });
+  };
+
   const handleJobSiteSelect = async (jobSiteId: string | null, notes?: string) => {
     if (!currentProjectId) return;
     setShowJobSiteModal(false);
@@ -123,8 +169,7 @@ export default function TimeTracking() {
     
     // If offline, queue the action
     if (!isOnline) {
-      enqueueCheckIn(currentProjectId, jobSiteId, pendingLocation, notes);
-      toast({ title: 'Queued', description: 'Check-in will sync when online.' });
+      await enqueueCheckIn(currentProjectId, jobSiteId, pendingLocation, notes);
       setIsProcessing(false);
       setPendingLocation(null);
       setLocationWarning(null);
@@ -150,8 +195,7 @@ export default function TimeTracking() {
       if (error) {
         // Network error - queue for later
         if (error.message?.includes('fetch') || error.message?.includes('network')) {
-          enqueueCheckIn(currentProjectId, jobSiteId, pendingLocation, notes);
-          toast({ title: 'Queued', description: 'Check-in will sync when online.' });
+          await enqueueCheckIn(currentProjectId, jobSiteId, pendingLocation, notes);
           return;
         }
         throw error;
@@ -187,12 +231,20 @@ export default function TimeTracking() {
 
   const handleCheckOut = async () => {
     if (!activeEntry) return;
+
+    // Check for queue conflicts
+    const conflict = await offlineQueue.getConflictingAction(activeEntry.project_id, 'check_out');
+    if (conflict) {
+      setConflictingAction(conflict);
+      setShowConflictModal(true);
+      return;
+    }
+
     setIsProcessing(true);
     
     // If offline, queue the action
     if (!isOnline) {
-      enqueueCheckOut(activeEntry.project_id, {});
-      toast({ title: 'Queued', description: 'Check-out will sync when online.' });
+      await enqueueCheckOut(activeEntry.project_id, null);
       setIsProcessing(false);
       return;
     }
@@ -219,8 +271,7 @@ export default function TimeTracking() {
       if (error) {
         // Network error - queue for later
         if (error.message?.includes('fetch') || error.message?.includes('network')) {
-          enqueueCheckOut(activeEntry.project_id, location);
-          toast({ title: 'Queued', description: 'Check-out will sync when online.' });
+          await enqueueCheckOut(activeEntry.project_id, location);
           return;
         }
         throw error;
@@ -251,6 +302,13 @@ export default function TimeTracking() {
       toast({ title: 'Check-out Failed', description: error instanceof Error ? error.message : 'An error occurred', variant: 'destructive' });
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleConflictDiscard = async () => {
+    if (conflictingAction) {
+      await discardItem(conflictingAction.id);
+      setConflictingAction(null);
     }
   };
 
@@ -301,7 +359,7 @@ export default function TimeTracking() {
 
   return (
     <Layout>
-      <div className="p-4 md:p-6 space-y-6 max-w-2xl mx-auto">
+      <div className="p-4 md:p-6 space-y-4 max-w-2xl mx-auto">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
             <h1 className="text-2xl font-bold">Time Tracking</h1>
@@ -329,7 +387,7 @@ export default function TimeTracking() {
           </div>
         </div>
 
-        {/* Offline warning with sync button */}
+        {/* Offline warning */}
         {!isOnline && (
           <Alert variant="default" className="border-blue-500/30 bg-blue-500/5 [&>svg]:text-blue-600">
             <WifiOff className="h-4 w-4" />
@@ -340,20 +398,16 @@ export default function TimeTracking() {
           </Alert>
         )}
 
-        {/* Queued items banner */}
+        {/* Enhanced pending sync panel with queue details */}
         {hasQueuedItems && (
-          <Alert variant="default" className="border-blue-500/30 bg-blue-500/5 [&>svg]:text-blue-600">
-            <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
-            <AlertTitle>Pending Sync</AlertTitle>
-            <AlertDescription className="flex items-center justify-between">
-              <span>{queuedActions.length} action{queuedActions.length > 1 ? 's' : ''} queued</span>
-              {isOnline && (
-                <Button variant="outline" size="sm" onClick={syncNow} disabled={isSyncing}>
-                  {isSyncing ? 'Syncing...' : 'Sync Now'}
-                </Button>
-              )}
-            </AlertDescription>
-          </Alert>
+          <PendingSyncPanel
+            queuedActions={queuedActions}
+            isOnline={isOnline}
+            isSyncing={isSyncing}
+            onSync={syncNow}
+            onDiscard={discardItem}
+            onDiscardAll={discardAll}
+          />
         )}
 
         {/* Location warning during check-in flow */}
@@ -441,6 +495,16 @@ export default function TimeTracking() {
         {currentProjectId && (
           <AdjustmentRequestModal open={showAdjustmentModal} onOpenChange={setShowAdjustmentModal} entry={adjustmentEntry} projectId={currentProjectId} jobSites={jobSites} onSuccess={refetchAll} />
         )}
+        
+        {/* Queue conflict modal */}
+        <QueueConflictModal
+          open={showConflictModal}
+          onOpenChange={setShowConflictModal}
+          conflictingAction={conflictingAction}
+          onSyncNow={syncNow}
+          onDiscard={handleConflictDiscard}
+          isSyncing={isSyncing}
+        />
         
         {/* Success animation overlay */}
         <CheckInSuccessAnimation 
