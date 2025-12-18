@@ -42,6 +42,9 @@ verify_jwt = false
 [functions.ai-generate-email]
 verify_jwt = false
 
+[functions.ai-safety-suggest]
+verify_jwt = false
+
 [functions.time-check-in]
 verify_jwt = true
 
