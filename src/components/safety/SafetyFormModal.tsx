@@ -9,7 +9,9 @@ import { SignatureCapture } from "./SignatureCapture";
 import { PhotoUpload } from "../deficiencies/PhotoUpload";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Save } from "lucide-react";
+import { useSafetyLogAutoFill } from "@/hooks/useSafetyLogAutoFill";
+import { Loader2, Save, Wand2, Copy, Cloud, Users, AlertTriangle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface SafetyFormModalProps {
   isOpen: boolean;
@@ -98,9 +100,19 @@ export const SafetyFormModal = ({
   const [signature, setSignature] = useState<string | null>(null);
   const [photos, setPhotos] = useState<File[]>([]);
   const [projectId, setProjectId] = useState("");
+  const [autoFillApplied, setAutoFillApplied] = useState(false);
   const { toast } = useToast();
 
+  const {
+    weather,
+    crewCount,
+    yesterdayLog,
+    loading: autoFillLoading,
+    fetchAll: fetchAutoFillData,
+  } = useSafetyLogAutoFill(projectId || null);
+
   const template = formTemplates[formType] || formTemplates["daily_safety_log"];
+  const isDailySafetyLog = formType === "daily_safety_log";
 
   useEffect(() => {
     if (isOpen) {
@@ -115,8 +127,16 @@ export const SafetyFormModal = ({
         }
       });
       setFormData(initialData);
+      setAutoFillApplied(false);
     }
   }, [isOpen, formType]);
+
+  // Fetch auto-fill data when project is selected
+  useEffect(() => {
+    if (projectId && isDailySafetyLog && isOpen) {
+      fetchAutoFillData();
+    }
+  }, [projectId, isDailySafetyLog, isOpen, fetchAutoFillData]);
 
   const fetchProjects = async () => {
     const { data, error } = await supabase
@@ -130,6 +150,72 @@ export const SafetyFormModal = ({
       return;
     }
     setProjects(data || []);
+  };
+
+  const handleAutoFill = () => {
+    const updates: Record<string, string> = {};
+    
+    if (weather) {
+      updates.weather = weather.description;
+    }
+    
+    if (crewCount !== null) {
+      updates.crew_count = crewCount.toString();
+    }
+    
+    setFormData(prev => ({ ...prev, ...updates }));
+    setAutoFillApplied(true);
+    
+    const filledFields = [];
+    if (weather) filledFields.push('weather');
+    if (crewCount !== null) filledFields.push('crew count');
+    
+    if (filledFields.length > 0) {
+      toast({
+        title: "Auto-filled",
+        description: `Updated: ${filledFields.join(', ')}`,
+      });
+    } else {
+      toast({
+        title: "No data available",
+        description: "Could not auto-fill. Try selecting a project with check-ins.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCopyFromYesterday = () => {
+    if (!yesterdayLog) {
+      toast({
+        title: "No previous log found",
+        description: "No safety log from yesterday exists for this project.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Copy relevant fields, but keep today's date and fresh weather/crew count
+    const updates: Record<string, string> = {};
+    
+    // Copy hazards if they existed (they might still be relevant)
+    if (yesterdayLog.hazards_identified) {
+      updates.hazards_identified = `[From yesterday] ${yesterdayLog.hazards_identified}`;
+    }
+    
+    // Copy PPE compliance as default
+    if (yesterdayLog.ppe_compliance) {
+      updates.ppe_compliance = yesterdayLog.ppe_compliance;
+    }
+    
+    // Don't copy incidents - those are day-specific
+    // Don't copy corrective actions - those should be confirmed as still needed
+    
+    setFormData(prev => ({ ...prev, ...updates }));
+    
+    toast({
+      title: "Copied from yesterday",
+      description: "Hazards and PPE compliance carried forward. Review and update as needed.",
+    });
   };
 
   const saveDraft = async () => {
@@ -351,6 +437,80 @@ export const SafetyFormModal = ({
               </SelectContent>
             </Select>
           </div>
+
+          {/* AI Auto-fill Section - Only for Daily Safety Log */}
+          {isDailySafetyLog && projectId && (
+            <div className="bg-muted/50 rounded-lg p-4 space-y-3 border border-border">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Wand2 className="h-4 w-4 text-primary" />
+                  <span className="font-medium text-sm">Quick Fill</span>
+                </div>
+                {autoFillLoading && (
+                  <Badge variant="secondary" className="gap-1">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Loading...
+                  </Badge>
+                )}
+              </div>
+              
+              {/* Available data indicators */}
+              <div className="flex flex-wrap gap-2">
+                {weather && (
+                  <Badge variant="outline" className="gap-1.5">
+                    <Cloud className="h-3 w-3" />
+                    {weather.description}
+                  </Badge>
+                )}
+                {crewCount !== null && crewCount > 0 && (
+                  <Badge variant="outline" className="gap-1.5">
+                    <Users className="h-3 w-3" />
+                    {crewCount} checked in
+                  </Badge>
+                )}
+                {yesterdayLog && (
+                  <Badge variant="outline" className="gap-1.5">
+                    <AlertTriangle className="h-3 w-3" />
+                    Yesterday's log available
+                  </Badge>
+                )}
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleAutoFill}
+                  disabled={autoFillLoading || (!weather && crewCount === null)}
+                  className="gap-1.5"
+                >
+                  <Wand2 className="h-3.5 w-3.5" />
+                  Auto-fill Weather & Crew
+                </Button>
+                
+                {yesterdayLog && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCopyFromYesterday}
+                    className="gap-1.5"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    Copy from Yesterday
+                  </Button>
+                )}
+              </div>
+              
+              {autoFillApplied && (
+                <p className="text-xs text-muted-foreground">
+                  Fields auto-filled. Review and adjust as needed.
+                </p>
+              )}
+            </div>
+          )}
 
           {template.fields.map((field) => (
             <div key={field.name} className="space-y-2">
