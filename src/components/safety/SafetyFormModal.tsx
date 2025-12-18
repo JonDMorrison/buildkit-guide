@@ -9,9 +9,13 @@ import { SignatureCapture } from "./SignatureCapture";
 import { PhotoUpload } from "../deficiencies/PhotoUpload";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useSafetyLogAutoFill } from "@/hooks/useSafetyLogAutoFill";
-import { Loader2, Save, Wand2, Copy, Cloud, Users, AlertTriangle } from "lucide-react";
+import { useSafetyLogAutoFill, HazardSuggestion } from "@/hooks/useSafetyLogAutoFill";
+import { 
+  Loader2, Save, Wand2, Copy, Cloud, Users, AlertTriangle, 
+  Sparkles, ShieldAlert, Zap, HardHat, Flame, Wind, X, Plus
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 interface SafetyFormModalProps {
   isOpen: boolean;
@@ -87,6 +91,26 @@ const formTemplates: Record<string, { title: string; fields: Array<{ name: strin
   },
 };
 
+// Category icons and colors
+const getCategoryIcon = (category: string) => {
+  switch (category) {
+    case 'electrical': return <Zap className="h-3.5 w-3.5" />;
+    case 'fire': return <Flame className="h-3.5 w-3.5" />;
+    case 'weather': return <Wind className="h-3.5 w-3.5" />;
+    case 'ppe': return <HardHat className="h-3.5 w-3.5" />;
+    default: return <ShieldAlert className="h-3.5 w-3.5" />;
+  }
+};
+
+const getSeverityColor = (severity: string) => {
+  switch (severity) {
+    case 'critical': return 'bg-destructive/10 text-destructive border-destructive/30';
+    case 'high': return 'bg-orange-500/10 text-orange-600 border-orange-500/30';
+    case 'medium': return 'bg-yellow-500/10 text-yellow-600 border-yellow-500/30';
+    default: return 'bg-muted text-muted-foreground border-border';
+  }
+};
+
 export const SafetyFormModal = ({
   isOpen,
   onClose,
@@ -101,13 +125,17 @@ export const SafetyFormModal = ({
   const [photos, setPhotos] = useState<File[]>([]);
   const [projectId, setProjectId] = useState("");
   const [autoFillApplied, setAutoFillApplied] = useState(false);
+  const [selectedHazards, setSelectedHazards] = useState<HazardSuggestion[]>([]);
+  const [expandedHazard, setExpandedHazard] = useState<string | null>(null);
   const { toast } = useToast();
 
   const {
     weather,
     crewCount,
     yesterdayLog,
+    hazardSuggestions,
     loading: autoFillLoading,
+    hazardsLoading,
     fetchAll: fetchAutoFillData,
   } = useSafetyLogAutoFill(projectId || null);
 
@@ -128,6 +156,8 @@ export const SafetyFormModal = ({
       });
       setFormData(initialData);
       setAutoFillApplied(false);
+      setSelectedHazards([]);
+      setExpandedHazard(null);
     }
   }, [isOpen, formType]);
 
@@ -137,6 +167,16 @@ export const SafetyFormModal = ({
       fetchAutoFillData();
     }
   }, [projectId, isDailySafetyLog, isOpen, fetchAutoFillData]);
+
+  // Update hazards field when selected hazards change
+  useEffect(() => {
+    if (selectedHazards.length > 0) {
+      const hazardText = selectedHazards
+        .map(h => `• [${h.severity.toUpperCase()}] ${h.title}: ${h.description}`)
+        .join('\n\n');
+      setFormData(prev => ({ ...prev, hazards_identified: hazardText }));
+    }
+  }, [selectedHazards]);
 
   const fetchProjects = async () => {
     const { data, error } = await supabase
@@ -194,27 +234,32 @@ export const SafetyFormModal = ({
       return;
     }
 
-    // Copy relevant fields, but keep today's date and fresh weather/crew count
     const updates: Record<string, string> = {};
     
-    // Copy hazards if they existed (they might still be relevant)
     if (yesterdayLog.hazards_identified) {
       updates.hazards_identified = `[From yesterday] ${yesterdayLog.hazards_identified}`;
     }
     
-    // Copy PPE compliance as default
     if (yesterdayLog.ppe_compliance) {
       updates.ppe_compliance = yesterdayLog.ppe_compliance;
     }
-    
-    // Don't copy incidents - those are day-specific
-    // Don't copy corrective actions - those should be confirmed as still needed
     
     setFormData(prev => ({ ...prev, ...updates }));
     
     toast({
       title: "Copied from yesterday",
       description: "Hazards and PPE compliance carried forward. Review and update as needed.",
+    });
+  };
+
+  const toggleHazard = (hazard: HazardSuggestion) => {
+    setSelectedHazards(prev => {
+      const isSelected = prev.some(h => h.id === hazard.id);
+      if (isSelected) {
+        return prev.filter(h => h.id !== hazard.id);
+      } else {
+        return [...prev, hazard];
+      }
     });
   };
 
@@ -233,7 +278,6 @@ export const SafetyFormModal = ({
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error("Not authenticated");
 
-      // Create draft form
       const { data: form, error: formError } = await supabase
         .from("safety_forms")
         .insert({
@@ -249,7 +293,6 @@ export const SafetyFormModal = ({
 
       if (formError) throw formError;
 
-      // Save form entries
       const entries = Object.entries(formData).map(([fieldName, fieldValue]) => ({
         safety_form_id: form.id,
         field_name: fieldName,
@@ -300,7 +343,6 @@ export const SafetyFormModal = ({
       return;
     }
 
-    // Validate required fields
     const missingFields = template.fields
       .filter(field => field.required && !formData[field.name])
       .map(field => field.label);
@@ -320,7 +362,6 @@ export const SafetyFormModal = ({
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error("Not authenticated");
 
-      // Create form
       const { data: form, error: formError } = await supabase
         .from("safety_forms")
         .insert({
@@ -336,7 +377,6 @@ export const SafetyFormModal = ({
 
       if (formError) throw formError;
 
-      // Save form entries
       const entries = Object.entries(formData).map(([fieldName, fieldValue]) => ({
         safety_form_id: form.id,
         field_name: fieldName,
@@ -359,7 +399,6 @@ export const SafetyFormModal = ({
         if (entriesError) throw entriesError;
       }
 
-      // Upload photos
       if (photos.length > 0) {
         const uploadPromises = photos.map(async (photo, index) => {
           const fileExt = photo.name.split(".").pop();
@@ -398,6 +437,7 @@ export const SafetyFormModal = ({
       setSignature(null);
       setPhotos([]);
       setProjectId("");
+      setSelectedHazards([]);
       onCreate();
       onClose();
     } catch (error: any) {
@@ -440,16 +480,16 @@ export const SafetyFormModal = ({
 
           {/* AI Auto-fill Section - Only for Daily Safety Log */}
           {isDailySafetyLog && projectId && (
-            <div className="bg-muted/50 rounded-lg p-4 space-y-3 border border-border">
+            <div className="bg-muted/50 rounded-lg p-4 space-y-4 border border-border">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Wand2 className="h-4 w-4 text-primary" />
-                  <span className="font-medium text-sm">Quick Fill</span>
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <span className="font-medium text-sm">AI Quick Fill</span>
                 </div>
-                {autoFillLoading && (
+                {(autoFillLoading || hazardsLoading) && (
                   <Badge variant="secondary" className="gap-1">
                     <Loader2 className="h-3 w-3 animate-spin" />
-                    Loading...
+                    {hazardsLoading ? 'Analyzing hazards...' : 'Loading...'}
                   </Badge>
                 )}
               </div>
@@ -503,6 +543,72 @@ export const SafetyFormModal = ({
                   </Button>
                 )}
               </div>
+
+              {/* AI Hazard Suggestions */}
+              {hazardSuggestions.length > 0 && (
+                <div className="space-y-2 pt-2 border-t border-border">
+                  <div className="flex items-center gap-2">
+                    <ShieldAlert className="h-4 w-4 text-orange-500" />
+                    <span className="text-sm font-medium">Suggested Hazards</span>
+                    <span className="text-xs text-muted-foreground">(tap to add)</span>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-2">
+                    {hazardSuggestions.map((hazard) => {
+                      const isSelected = selectedHazards.some(h => h.id === hazard.id);
+                      const isExpanded = expandedHazard === hazard.id;
+                      
+                      return (
+                        <div key={hazard.id} className="relative">
+                          <button
+                            type="button"
+                            onClick={() => toggleHazard(hazard)}
+                            onMouseEnter={() => setExpandedHazard(hazard.id)}
+                            onMouseLeave={() => setExpandedHazard(null)}
+                            className={cn(
+                              "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all",
+                              isSelected 
+                                ? "bg-primary text-primary-foreground border-primary" 
+                                : getSeverityColor(hazard.severity),
+                              "hover:scale-105"
+                            )}
+                          >
+                            {getCategoryIcon(hazard.category)}
+                            <span>{hazard.title}</span>
+                            {isSelected ? (
+                              <X className="h-3 w-3 ml-1" />
+                            ) : (
+                              <Plus className="h-3 w-3 ml-1" />
+                            )}
+                          </button>
+                          
+                          {/* Expanded tooltip */}
+                          {isExpanded && !isSelected && (
+                            <div className="absolute bottom-full left-0 mb-2 w-64 p-3 bg-popover border rounded-lg shadow-lg z-50 text-sm">
+                              <p className="font-medium mb-1">{hazard.title}</p>
+                              <p className="text-muted-foreground text-xs">{hazard.description}</p>
+                              <div className="flex gap-2 mt-2">
+                                <Badge variant="outline" className="text-xs">
+                                  {hazard.severity}
+                                </Badge>
+                                <Badge variant="outline" className="text-xs">
+                                  {hazard.source}
+                                </Badge>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  {selectedHazards.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {selectedHazards.length} hazard{selectedHazards.length !== 1 ? 's' : ''} selected - will be added to Hazards Identified field
+                    </p>
+                  )}
+                </div>
+              )}
               
               {autoFillApplied && (
                 <p className="text-xs text-muted-foreground">

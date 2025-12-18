@@ -17,10 +17,20 @@ interface YesterdayLog {
   corrective_actions: string;
 }
 
+export interface HazardSuggestion {
+  id: string;
+  category: string;
+  title: string;
+  description: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  source: 'weather' | 'task' | 'trade' | 'history' | 'general';
+}
+
 interface AutoFillData {
   weather: WeatherData | null;
   crewCount: number | null;
   yesterdayLog: YesterdayLog | null;
+  hazardSuggestions: HazardSuggestion[];
 }
 
 // Weather condition mapping from Open-Meteo codes
@@ -41,10 +51,12 @@ const getConditionFromCode = (code: number): string => {
 
 export function useSafetyLogAutoFill(projectId: string | null) {
   const [loading, setLoading] = useState(false);
+  const [hazardsLoading, setHazardsLoading] = useState(false);
   const [data, setData] = useState<AutoFillData>({
     weather: null,
     crewCount: null,
     yesterdayLog: null,
+    hazardSuggestions: [],
   });
 
   const fetchWeather = useCallback(async (): Promise<WeatherData | null> => {
@@ -182,6 +194,29 @@ export function useSafetyLogAutoFill(projectId: string | null) {
     }
   }, [projectId]);
 
+  const fetchHazardSuggestions = useCallback(async (weatherDescription?: string): Promise<HazardSuggestion[]> => {
+    if (!projectId) return [];
+
+    setHazardsLoading(true);
+    try {
+      const { data: result, error } = await supabase.functions.invoke('ai-safety-suggest', {
+        body: {
+          project_id: projectId,
+          weather_conditions: weatherDescription,
+          date: format(new Date(), 'yyyy-MM-dd'),
+        },
+      });
+
+      if (error) throw error;
+      return result?.suggestions || [];
+    } catch (error) {
+      console.error('Error fetching hazard suggestions:', error);
+      return [];
+    } finally {
+      setHazardsLoading(false);
+    }
+  }, [projectId]);
+
   const fetchAll = useCallback(async () => {
     if (!projectId) return;
 
@@ -193,18 +228,24 @@ export function useSafetyLogAutoFill(projectId: string | null) {
         fetchYesterdayLog(),
       ]);
 
-      setData({ weather, crewCount, yesterdayLog });
+      setData(prev => ({ ...prev, weather, crewCount, yesterdayLog }));
+
+      // Fetch hazard suggestions with weather context (runs separately for better UX)
+      const hazardSuggestions = await fetchHazardSuggestions(weather?.description);
+      setData(prev => ({ ...prev, hazardSuggestions }));
     } finally {
       setLoading(false);
     }
-  }, [projectId, fetchWeather, fetchCrewCount, fetchYesterdayLog]);
+  }, [projectId, fetchWeather, fetchCrewCount, fetchYesterdayLog, fetchHazardSuggestions]);
 
   return {
     ...data,
     loading,
+    hazardsLoading,
     fetchAll,
     fetchWeather,
     fetchCrewCount,
     fetchYesterdayLog,
+    fetchHazardSuggestions,
   };
 }
