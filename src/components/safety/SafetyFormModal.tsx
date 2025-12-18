@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,8 @@ import { SignatureCapture } from "./SignatureCapture";
 import { PhotoUpload } from "../deficiencies/PhotoUpload";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useSafetyLogAutoFill, HazardSuggestion } from "@/hooks/useSafetyLogAutoFill";
+import { useSafetyLogAutoFill, HazardSuggestion, PPERequirement } from "@/hooks/useSafetyLogAutoFill";
+import { PPEChecklistSection } from "./PPEChecklistSection";
 import { 
   Loader2, Save, Wand2, Copy, Cloud, Users, AlertTriangle, 
   Sparkles, ShieldAlert, Zap, HardHat, Flame, Wind, X, Plus
@@ -134,10 +135,17 @@ export const SafetyFormModal = ({
     crewCount,
     yesterdayLog,
     hazardSuggestions,
+    ppeRequirements,
+    tradesOnSite,
     loading: autoFillLoading,
     hazardsLoading,
     fetchAll: fetchAutoFillData,
   } = useSafetyLogAutoFill(projectId || null);
+
+  const handlePPEComplianceChange = useCallback((compliance: string, percentage: number) => {
+    const status = percentage === 100 ? 'full' : percentage >= 50 ? 'partial' : 'none';
+    setFormData(prev => ({ ...prev, ppe_compliance: status }));
+  }, []);
 
   const template = formTemplates[formType] || formTemplates["daily_safety_log"];
   const isDailySafetyLog = formType === "daily_safety_log";
@@ -618,7 +626,30 @@ export const SafetyFormModal = ({
             </div>
           )}
 
-          {template.fields.map((field) => (
+          {/* PPE Checklist Section - Only for Daily Safety Log */}
+          {isDailySafetyLog && projectId && ppeRequirements.length > 0 && (
+            <div className="bg-muted/50 rounded-lg p-4 border border-border">
+              <div className="flex items-center gap-2 mb-4">
+                <HardHat className="h-4 w-4 text-primary" />
+                <span className="font-medium text-sm">PPE Checklist</span>
+                <span className="text-xs text-muted-foreground">(based on trades on site)</span>
+              </div>
+              <PPEChecklistSection
+                ppeRequirements={ppeRequirements}
+                tradesOnSite={tradesOnSite}
+                onComplianceChange={handlePPEComplianceChange}
+                loading={autoFillLoading}
+              />
+            </div>
+          )}
+
+          {template.fields.filter(field => {
+            // Skip ppe_compliance field for daily safety log when using checklist
+            if (isDailySafetyLog && field.name === 'ppe_compliance' && ppeRequirements.length > 0) {
+              return false;
+            }
+            return true;
+          }).map((field) => (
             <div key={field.name} className="space-y-2">
               <Label className="text-base font-semibold">
                 {field.label}
