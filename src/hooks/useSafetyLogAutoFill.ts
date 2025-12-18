@@ -26,11 +26,21 @@ export interface HazardSuggestion {
   source: 'weather' | 'task' | 'trade' | 'history' | 'general';
 }
 
+export interface PPERequirement {
+  id: string;
+  trade_type: string;
+  ppe_item: string;
+  is_mandatory: boolean;
+  description: string | null;
+}
+
 interface AutoFillData {
   weather: WeatherData | null;
   crewCount: number | null;
   yesterdayLog: YesterdayLog | null;
   hazardSuggestions: HazardSuggestion[];
+  ppeRequirements: PPERequirement[];
+  tradesOnSite: string[];
 }
 
 // Weather condition mapping from Open-Meteo codes
@@ -57,6 +67,8 @@ export function useSafetyLogAutoFill(projectId: string | null) {
     crewCount: null,
     yesterdayLog: null,
     hazardSuggestions: [],
+    ppeRequirements: [],
+    tradesOnSite: [],
   });
 
   const fetchWeather = useCallback(async (): Promise<WeatherData | null> => {
@@ -194,6 +206,60 @@ export function useSafetyLogAutoFill(projectId: string | null) {
     }
   }, [projectId]);
 
+  const fetchPPERequirements = useCallback(async (): Promise<PPERequirement[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('trade_ppe_requirements')
+        .select('*')
+        .order('trade_type')
+        .order('is_mandatory', { ascending: false })
+        .order('ppe_item');
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching PPE requirements:', error);
+      return [];
+    }
+  }, []);
+
+  const fetchTradesOnSite = useCallback(async (): Promise<string[]> => {
+    if (!projectId) return [];
+
+    try {
+      const today = format(new Date(), 'yyyy-MM-dd');
+      
+      // Get unique trades from users who checked in today
+      const { data: entries, error } = await supabase
+        .from('time_entries')
+        .select(`
+          user_id,
+          project_members!inner(
+            trade_id,
+            trades(name, trade_type)
+          )
+        `)
+        .eq('project_id', projectId)
+        .gte('check_in_at', `${today}T00:00:00`)
+        .lte('check_in_at', `${today}T23:59:59`);
+
+      if (error) throw error;
+
+      // Extract unique trade types
+      const tradeTypes = new Set<string>();
+      entries?.forEach((entry: any) => {
+        if (entry.project_members?.trades?.trade_type) {
+          tradeTypes.add(entry.project_members.trades.trade_type);
+        }
+      });
+
+      return Array.from(tradeTypes);
+    } catch (error) {
+      console.error('Error fetching trades on site:', error);
+      return [];
+    }
+  }, [projectId]);
+
   const fetchHazardSuggestions = useCallback(async (weatherDescription?: string): Promise<HazardSuggestion[]> => {
     if (!projectId) return [];
 
@@ -222,13 +288,15 @@ export function useSafetyLogAutoFill(projectId: string | null) {
 
     setLoading(true);
     try {
-      const [weather, crewCount, yesterdayLog] = await Promise.all([
+      const [weather, crewCount, yesterdayLog, ppeRequirements, tradesOnSite] = await Promise.all([
         fetchWeather(),
         fetchCrewCount(),
         fetchYesterdayLog(),
+        fetchPPERequirements(),
+        fetchTradesOnSite(),
       ]);
 
-      setData(prev => ({ ...prev, weather, crewCount, yesterdayLog }));
+      setData(prev => ({ ...prev, weather, crewCount, yesterdayLog, ppeRequirements, tradesOnSite }));
 
       // Fetch hazard suggestions with weather context (runs separately for better UX)
       const hazardSuggestions = await fetchHazardSuggestions(weather?.description);
@@ -236,7 +304,7 @@ export function useSafetyLogAutoFill(projectId: string | null) {
     } finally {
       setLoading(false);
     }
-  }, [projectId, fetchWeather, fetchCrewCount, fetchYesterdayLog, fetchHazardSuggestions]);
+  }, [projectId, fetchWeather, fetchCrewCount, fetchYesterdayLog, fetchPPERequirements, fetchTradesOnSite, fetchHazardSuggestions]);
 
   return {
     ...data,
@@ -246,6 +314,8 @@ export function useSafetyLogAutoFill(projectId: string | null) {
     fetchWeather,
     fetchCrewCount,
     fetchYesterdayLog,
+    fetchPPERequirements,
+    fetchTradesOnSite,
     fetchHazardSuggestions,
   };
 }

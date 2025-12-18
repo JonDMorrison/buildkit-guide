@@ -2349,6 +2349,33 @@ export type Database = {
           },
         ]
       }
+      trade_ppe_requirements: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_mandatory: boolean
+          ppe_item: string
+          trade_type: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_mandatory?: boolean
+          ppe_item: string
+          trade_type: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_mandatory?: boolean
+          ppe_item?: string
+          trade_type?: string
+        }
+        Relationships: []
+      }
       trades: {
         Row: {
           company_name: string
