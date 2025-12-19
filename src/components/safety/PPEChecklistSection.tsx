@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
@@ -30,7 +30,10 @@ export interface PPERequirement {
 interface PPEChecklistSectionProps {
   ppeRequirements: PPERequirement[];
   tradesOnSite: string[];
-  onComplianceChange: (compliance: string, percentage: number) => void;
+  checkedItems: Record<string, boolean>;
+  onToggleItem: (id: string) => void;
+  onSelectAll: () => void;
+  onSelectMandatory: () => void;
   loading?: boolean;
 }
 
@@ -51,19 +54,13 @@ const getPPEIcon = (item: string) => {
 export const PPEChecklistSection = ({
   ppeRequirements,
   tradesOnSite,
-  onComplianceChange,
+  checkedItems,
+  onToggleItem,
+  onSelectAll,
+  onSelectMandatory,
   loading = false
 }: PPEChecklistSectionProps) => {
-  const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
-  const onComplianceChangeRef = useRef(onComplianceChange);
-  const lastComplianceRef = useRef<{ complianceText: string; percentage: number } | null>(null);
-
-  // Keep ref updated without causing re-renders
-  useEffect(() => {
-    onComplianceChangeRef.current = onComplianceChange;
-  }, [onComplianceChange]);
-
-  // Memoize derived lists so our compliance effect doesn't re-run on every parent re-render
+  // Memoize derived lists
   const tradesKey = useMemo(
     () => tradesOnSite.map((t) => t.toLowerCase()).sort().join("|"),
     [tradesOnSite]
@@ -101,60 +98,9 @@ export const PPEChecklistSection = ({
     };
   }, [ppeRequirements, tradesKey]);
 
-  // Calculate compliance (guarded to avoid parent-child render loops)
-  useEffect(() => {
-    if (sortedPPE.length === 0) {
-      const next = { complianceText: "No PPE requirements", percentage: 100 };
-      const prev = lastComplianceRef.current;
-      if (!prev || prev.complianceText !== next.complianceText || prev.percentage !== next.percentage) {
-        lastComplianceRef.current = next;
-        onComplianceChangeRef.current(next.complianceText, next.percentage);
-      }
-      return;
-    }
-
-    const mandatoryChecked = mandatoryItems.filter((p) => checkedItems[p.id]).length;
-    const optionalChecked = optionalItems.filter((p) => checkedItems[p.id]).length;
-    const totalChecked = mandatoryChecked + optionalChecked;
-
-    const mandatoryPercentage =
-      mandatoryItems.length > 0 ? Math.round((mandatoryChecked / mandatoryItems.length) * 100) : 100;
-
-    const complianceText =
-      mandatoryPercentage === 100
-        ? `Full compliance (${totalChecked}/${sortedPPE.length} items)`
-        : `${mandatoryChecked}/${mandatoryItems.length} mandatory items`;
-
-    const next = { complianceText, percentage: mandatoryPercentage };
-    const prev = lastComplianceRef.current;
-    if (prev && prev.complianceText === next.complianceText && prev.percentage === next.percentage) return;
-
-    lastComplianceRef.current = next;
-    onComplianceChangeRef.current(next.complianceText, next.percentage);
-  }, [checkedItems, sortedPPE, mandatoryItems, optionalItems]);
-
-  const toggleItem = (id: string) => {
-    setCheckedItems(prev => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
-  };
-
-  const selectAll = () => {
-    const allChecked: Record<string, boolean> = {};
-    sortedPPE.forEach(ppe => {
-      allChecked[ppe.id] = true;
-    });
-    setCheckedItems(allChecked);
-  };
-
-  const selectMandatory = () => {
-    const mandatoryChecked: Record<string, boolean> = {};
-    mandatoryItems.forEach(ppe => {
-      mandatoryChecked[ppe.id] = true;
-    });
-    setCheckedItems(mandatoryChecked);
-  };
+  const handleToggle = useCallback((id: string) => {
+    onToggleItem(id);
+  }, [onToggleItem]);
 
   if (loading) {
     return (
@@ -212,14 +158,14 @@ export const PPEChecklistSection = ({
         <Badge 
           variant="outline" 
           className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
-          onClick={selectAll}
+          onClick={onSelectAll}
         >
           Select All
         </Badge>
         <Badge 
           variant="outline" 
           className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
-          onClick={selectMandatory}
+          onClick={onSelectMandatory}
         >
           Select Mandatory
         </Badge>
@@ -251,7 +197,7 @@ export const PPEChecklistSection = ({
               return (
                 <div
                   key={ppe.id}
-                  onClick={() => toggleItem(ppe.id)}
+                  onClick={() => handleToggle(ppe.id)}
                   className={cn(
                     "flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-all",
                     isChecked 
@@ -303,7 +249,7 @@ export const PPEChecklistSection = ({
               return (
                 <div
                   key={ppe.id}
-                  onClick={() => toggleItem(ppe.id)}
+                  onClick={() => handleToggle(ppe.id)}
                   className={cn(
                     "flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-all",
                     isChecked 
@@ -336,3 +282,41 @@ export const PPEChecklistSection = ({
     </div>
   );
 };
+
+// Helper to compute compliance from checked items - used by parent
+export function computePPECompliance(
+  ppeRequirements: PPERequirement[],
+  tradesOnSite: string[],
+  checkedItems: Record<string, boolean>
+): { status: string; percentage: number } {
+  const relevantTrades = ["general", ...tradesOnSite.map(t => t.toLowerCase())];
+  
+  const relevantPPE = ppeRequirements.filter((ppe) =>
+    relevantTrades.some((trade) => ppe.trade_type.toLowerCase().includes(trade))
+  );
+
+  // Deduplicate
+  const uniquePPE = relevantPPE.reduce((acc, ppe) => {
+    const existing = acc.find((p) => p.ppe_item === ppe.ppe_item);
+    if (!existing) {
+      acc.push(ppe);
+    } else if (ppe.is_mandatory && !existing.is_mandatory) {
+      const idx = acc.indexOf(existing);
+      acc[idx] = ppe;
+    }
+    return acc;
+  }, [] as PPERequirement[]);
+
+  const mandatoryItems = uniquePPE.filter(p => p.is_mandatory);
+  
+  if (mandatoryItems.length === 0) {
+    return { status: 'full', percentage: 100 };
+  }
+
+  const mandatoryChecked = mandatoryItems.filter(p => checkedItems[p.id]).length;
+  const percentage = Math.round((mandatoryChecked / mandatoryItems.length) * 100);
+  
+  const status = percentage === 100 ? 'full' : percentage >= 50 ? 'partial' : 'none';
+  
+  return { status, percentage };
+}

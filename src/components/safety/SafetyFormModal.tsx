@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,8 +9,8 @@ import { SignatureCapture } from "./SignatureCapture";
 import { PhotoUpload } from "../deficiencies/PhotoUpload";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useSafetyLogAutoFill, HazardSuggestion, PPERequirement } from "@/hooks/useSafetyLogAutoFill";
-import { PPEChecklistSection } from "./PPEChecklistSection";
+import { useSafetyLogAutoFill, HazardSuggestion } from "@/hooks/useSafetyLogAutoFill";
+import { PPEChecklistSection, computePPECompliance } from "./PPEChecklistSection";
 import { 
   Loader2, Save, Wand2, Copy, Cloud, Users, AlertTriangle, 
   Sparkles, ShieldAlert, Zap, HardHat, Flame, Wind, X, Plus
@@ -128,6 +128,7 @@ export const SafetyFormModal = ({
   const [autoFillApplied, setAutoFillApplied] = useState(false);
   const [selectedHazards, setSelectedHazards] = useState<HazardSuggestion[]>([]);
   const [expandedHazard, setExpandedHazard] = useState<string | null>(null);
+  const [ppeCheckedItems, setPPECheckedItems] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
 
   const {
@@ -142,10 +143,41 @@ export const SafetyFormModal = ({
     fetchAll: fetchAutoFillData,
   } = useSafetyLogAutoFill(projectId || null);
 
-  const handlePPEComplianceChange = useCallback((compliance: string, percentage: number) => {
-    const status = percentage === 100 ? "full" : percentage >= 50 ? "partial" : "none";
-    setFormData((prev) => (prev.ppe_compliance === status ? prev : { ...prev, ppe_compliance: status }));
+  // PPE item toggle handler (parent owns state)
+  const handlePPEToggle = useCallback((id: string) => {
+    setPPECheckedItems(prev => ({ ...prev, [id]: !prev[id] }));
   }, []);
+
+  // Select all PPE items
+  const handlePPESelectAll = useCallback(() => {
+    const allChecked: Record<string, boolean> = {};
+    ppeRequirements.forEach(ppe => {
+      allChecked[ppe.id] = true;
+    });
+    setPPECheckedItems(allChecked);
+  }, [ppeRequirements]);
+
+  // Select mandatory PPE items only
+  const handlePPESelectMandatory = useCallback(() => {
+    const mandatoryChecked: Record<string, boolean> = {};
+    ppeRequirements.filter(p => p.is_mandatory).forEach(ppe => {
+      mandatoryChecked[ppe.id] = true;
+    });
+    setPPECheckedItems(mandatoryChecked);
+  }, [ppeRequirements]);
+
+  // Compute compliance from checked items (pure function, no side effects)
+  const ppeCompliance = useMemo(() => {
+    return computePPECompliance(ppeRequirements, tradesOnSite, ppeCheckedItems);
+  }, [ppeRequirements, tradesOnSite, ppeCheckedItems]);
+
+  // Update form data when compliance changes (only setState when value changes)
+  useEffect(() => {
+    setFormData(prev => {
+      if (prev.ppe_compliance === ppeCompliance.status) return prev;
+      return { ...prev, ppe_compliance: ppeCompliance.status };
+    });
+  }, [ppeCompliance.status]);
 
   const template = formTemplates[formType] || formTemplates["daily_safety_log"];
   const isDailySafetyLog = formType === "daily_safety_log";
@@ -637,7 +669,10 @@ export const SafetyFormModal = ({
               <PPEChecklistSection
                 ppeRequirements={ppeRequirements}
                 tradesOnSite={tradesOnSite}
-                onComplianceChange={handlePPEComplianceChange}
+                checkedItems={ppeCheckedItems}
+                onToggleItem={handlePPEToggle}
+                onSelectAll={handlePPESelectAll}
+                onSelectMandatory={handlePPESelectMandatory}
                 loading={autoFillLoading}
               />
             </div>

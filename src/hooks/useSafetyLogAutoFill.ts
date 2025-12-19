@@ -229,27 +229,44 @@ export function useSafetyLogAutoFill(projectId: string | null) {
     try {
       const today = format(new Date(), 'yyyy-MM-dd');
       
-      // Get unique trades from users who checked in today
-      const { data: entries, error } = await supabase
+      // Step 1: Get unique user_ids who checked in today
+      const { data: timeEntries, error: timeError } = await supabase
         .from('time_entries')
-        .select(`
-          user_id,
-          project_members!inner(
-            trade_id,
-            trades(name, trade_type)
-          )
-        `)
+        .select('user_id')
         .eq('project_id', projectId)
         .gte('check_in_at', `${today}T00:00:00`)
         .lte('check_in_at', `${today}T23:59:59`);
 
-      if (error) throw error;
+      if (timeError) {
+        console.error('Error fetching time entries:', timeError);
+        return [];
+      }
+
+      if (!timeEntries || timeEntries.length === 0) {
+        return [];
+      }
+
+      // Get unique user IDs
+      const userIds = [...new Set(timeEntries.map(e => e.user_id))];
+      
+      // Step 2: Get project members with those user IDs and their trades
+      const { data: members, error: membersError } = await supabase
+        .from('project_members')
+        .select('trade_id, trades(name, trade_type)')
+        .eq('project_id', projectId)
+        .in('user_id', userIds)
+        .not('trade_id', 'is', null);
+
+      if (membersError) {
+        console.error('Error fetching project members:', membersError);
+        return [];
+      }
 
       // Extract unique trade types
       const tradeTypes = new Set<string>();
-      entries?.forEach((entry: any) => {
-        if (entry.project_members?.trades?.trade_type) {
-          tradeTypes.add(entry.project_members.trades.trade_type);
+      members?.forEach((member: any) => {
+        if (member.trades?.trade_type) {
+          tradeTypes.add(member.trades.trade_type);
         }
       });
 
