@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AIAssistButton } from './AIAssistButton';
 import { AIAssistPanel } from './AIAssistPanel';
@@ -13,12 +13,12 @@ export const GlobalAIAssist = () => {
   const [projectName, setProjectName] = useState<string | undefined>();
   const [hasNotification, setHasNotification] = useState(false);
 
-  // Get current project from URL
+  const urlProjectId = useMemo(() => searchParams.get('projectId'), [searchParams]);
+
+  // Get current project from URL (avoid depending on the URLSearchParams object identity)
   useEffect(() => {
-    const urlProjectId = searchParams.get('projectId');
     setProjectId(urlProjectId);
 
-    // Fetch project name
     if (urlProjectId) {
       supabase
         .from('projects')
@@ -31,14 +31,14 @@ export const GlobalAIAssist = () => {
     } else {
       setProjectName(undefined);
     }
-  }, [searchParams]);
+  }, [urlProjectId]);
 
   // Keyboard shortcut (Cmd+I or Ctrl+I)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'i') {
         e.preventDefault();
-        setIsOpen(prev => !prev);
+        setIsOpen((prev) => !prev);
       }
     };
 
@@ -62,16 +62,9 @@ export const GlobalAIAssist = () => {
 
   return (
     <>
-      <AIAssistButton 
-        onClick={handleOpen} 
-        hasNotification={hasNotification}
-      />
-      <AIAssistPanel
-        isOpen={isOpen}
-        onClose={handleClose}
-        projectId={projectId}
-        projectName={projectName}
-      />
+      <AIAssistButton onClick={handleOpen} hasNotification={hasNotification} />
+      <AIAssistPanel isOpen={isOpen} onClose={handleClose} projectId={projectId} projectName={projectName} />
     </>
   );
 };
+
