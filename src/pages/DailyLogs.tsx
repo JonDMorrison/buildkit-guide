@@ -6,12 +6,14 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DailyLogForm } from '@/components/dailyLogs/DailyLogForm';
+import { EODReportModal } from '@/components/ai-assist/EODReportModal';
 import { useCurrentProject } from '@/hooks/useCurrentProject';
 import { useAuthRole } from '@/hooks/useAuthRole';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { Plus, Calendar, Cloud, Users, FileText } from 'lucide-react';
+import { Plus, Calendar, Cloud, Users, FileText, Mail } from 'lucide-react';
 import { EmptyState } from '@/components/EmptyState';
 import { NoAccess } from '@/components/NoAccess';
 
@@ -23,6 +25,23 @@ export default function DailyLogs() {
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [selectedLog, setSelectedLog] = useState<any>(null);
+  const [eodReportOpen, setEodReportOpen] = useState(false);
+
+  // Fetch project details for EOD Report
+  const { data: currentProject } = useQuery({
+    queryKey: ['project-details', currentProjectId],
+    queryFn: async () => {
+      if (!currentProjectId) return null;
+      const { data, error } = await supabase
+        .from('projects')
+        .select('name, job_number')
+        .eq('id', currentProjectId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!currentProjectId,
+  });
 
   const canViewLogs = currentProjectId && can('view_safety', currentProjectId);
   const canCreateLogs = currentProjectId && can('create_safety', currentProjectId);
@@ -117,6 +136,19 @@ export default function DailyLogs() {
         }
       />
 
+      {/* EOD Report Action */}
+      <div className="flex justify-end mb-4">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => setEodReportOpen(true)}
+          className="gap-2"
+        >
+          <Mail className="h-4 w-4" />
+          Generate EOD Report
+        </Button>
+      </div>
+
       {logs.length === 0 ? (
         <EmptyState
           icon={<FileText className="h-8 w-8" />}
@@ -207,6 +239,14 @@ export default function DailyLogs() {
         onOpenChange={setFormOpen}
         onSuccess={fetchLogs}
         existingLog={selectedLog}
+      />
+
+      <EODReportModal
+        open={eodReportOpen}
+        onOpenChange={setEodReportOpen}
+        projectId={currentProjectId || ''}
+        projectName={currentProject?.name || ''}
+        jobNumber={currentProject?.job_number}
       />
     </Layout>
   );
