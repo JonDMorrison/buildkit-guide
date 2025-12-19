@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format, parseISO } from 'date-fns';
 import { AlertTriangle, Loader2, Clock, MapPin, FileText, Calendar } from 'lucide-react';
 import {
@@ -27,7 +27,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { TimeEntry } from '@/hooks/useRecentTimeEntries';
 import { JobSite } from '@/hooks/useJobSites';
 
-type RequestType =
+export type RequestType =
   | 'missed_check_in'
   | 'missed_check_out'
   | 'change_times'
@@ -42,6 +42,7 @@ interface AdjustmentRequestModalProps {
   projectId: string;
   jobSites: JobSite[];
   onSuccess: () => void;
+  defaultRequestType?: RequestType | null; // Pre-select based on flag type
 }
 
 const REQUEST_TYPE_LABELS: Record<RequestType, { label: string; description: string }> = {
@@ -78,6 +79,7 @@ export function AdjustmentRequestModal({
   projectId,
   jobSites,
   onSuccess,
+  defaultRequestType,
 }: AdjustmentRequestModalProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -87,6 +89,20 @@ export function AdjustmentRequestModal({
   const [proposedCheckOut, setProposedCheckOut] = useState('');
   const [proposedJobSiteId, setProposedJobSiteId] = useState('');
   const [proposedNotes, setProposedNotes] = useState('');
+
+  // Pre-select request type when modal opens with a default
+  useEffect(() => {
+    if (open && defaultRequestType) {
+      // Only pre-select if the type is available for this context
+      const availableTypes: RequestType[] = entry
+        ? ['missed_check_out', 'change_times', 'change_job_site', 'add_note']
+        : ['missed_check_in', 'add_manual_entry'];
+      
+      if (availableTypes.includes(defaultRequestType)) {
+        setRequestType(defaultRequestType);
+      }
+    }
+  }, [open, defaultRequestType, entry]);
 
   const resetForm = () => {
     setRequestType(null);

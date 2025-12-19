@@ -22,7 +22,7 @@ import { TimeTrackingSummary } from '@/components/time-tracking/TimeTrackingSumm
 import { JobSiteSelectionModal } from '@/components/time-tracking/JobSiteSelectionModal';
 import { GeofenceErrorModal } from '@/components/time-tracking/GeofenceErrorModal';
 import { TimeEntryDetailDrawer } from '@/components/time-tracking/TimeEntryDetailDrawer';
-import { AdjustmentRequestModal } from '@/components/time-tracking/AdjustmentRequestModal';
+import { AdjustmentRequestModal, RequestType } from '@/components/time-tracking/AdjustmentRequestModal';
 import { MyRequestsList } from '@/components/time-tracking/MyRequestsList';
 import { WorkerStatusBanner } from '@/components/time-tracking/WorkerStatusBanner';
 import { LocationWarningBanner } from '@/components/time-tracking/LocationWarningBanner';
@@ -104,6 +104,7 @@ export default function TimeTracking() {
   const [showDetailDrawer, setShowDetailDrawer] = useState(false);
   const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
   const [adjustmentEntry, setAdjustmentEntry] = useState<TimeEntry | null>(null);
+  const [suggestedRequestType, setSuggestedRequestType] = useState<RequestType | null>(null);
 
   // Success animation state
   const [successAnimation, setSuccessAnimation] = useState<{ show: boolean; type: 'check_in' | 'check_out' }>({ show: false, type: 'check_in' });
@@ -350,13 +351,15 @@ export default function TimeTracking() {
     setShowDetailDrawer(true);
   };
 
-  const handleRequestAdjustment = (entry: TimeEntry) => {
+  const handleRequestAdjustment = (entry: TimeEntry, suggestedType?: RequestType | null) => {
     setAdjustmentEntry(entry);
+    setSuggestedRequestType(suggestedType || null);
     setShowAdjustmentModal(true);
   };
 
   const handleNewAdjustment = () => {
     setAdjustmentEntry(null);
+    setSuggestedRequestType(null);
     setShowAdjustmentModal(true);
   };
 
@@ -563,7 +566,15 @@ export default function TimeTracking() {
         <GeofenceErrorModal open={showGeofenceError} onOpenChange={setShowGeofenceError} distance={geofenceError.distance} radius={geofenceError.radius} jobSiteName={geofenceError.jobSiteName} />
         <TimeEntryDetailDrawer entry={selectedEntry} open={showDetailDrawer} onOpenChange={setShowDetailDrawer} onRequestAdjustment={handleRequestAdjustment} />
         {currentProjectId && (
-          <AdjustmentRequestModal open={showAdjustmentModal} onOpenChange={setShowAdjustmentModal} entry={adjustmentEntry} projectId={currentProjectId} jobSites={jobSites} onSuccess={refetchAll} />
+          <AdjustmentRequestModal 
+            open={showAdjustmentModal} 
+            onOpenChange={setShowAdjustmentModal} 
+            entry={adjustmentEntry} 
+            projectId={currentProjectId} 
+            jobSites={jobSites} 
+            onSuccess={refetchAll}
+            defaultRequestType={suggestedRequestType}
+          />
         )}
         
         {/* Queue conflict modal */}
