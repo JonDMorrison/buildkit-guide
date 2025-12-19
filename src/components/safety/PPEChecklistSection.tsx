@@ -56,7 +56,8 @@ export const PPEChecklistSection = ({
 }: PPEChecklistSectionProps) => {
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
   const onComplianceChangeRef = useRef(onComplianceChange);
-  
+  const lastComplianceRef = useRef<{ complianceText: string; percentage: number } | null>(null);
+
   // Keep ref updated without causing re-renders
   useEffect(() => {
     onComplianceChangeRef.current = onComplianceChange;
@@ -64,20 +65,20 @@ export const PPEChecklistSection = ({
 
   // Memoize derived lists so our compliance effect doesn't re-run on every parent re-render
   const tradesKey = useMemo(
-    () => tradesOnSite.map(t => t.toLowerCase()).sort().join('|'),
+    () => tradesOnSite.map((t) => t.toLowerCase()).sort().join("|"),
     [tradesOnSite]
   );
 
   const { sortedPPE, mandatoryItems, optionalItems } = useMemo(() => {
-    const relevantTrades = ['general', ...(tradesKey ? tradesKey.split('|') : [])];
+    const relevantTrades = ["general", ...(tradesKey ? tradesKey.split("|") : [])];
 
-    const relevantPPE = ppeRequirements.filter(ppe =>
-      relevantTrades.some(trade => ppe.trade_type.toLowerCase().includes(trade))
+    const relevantPPE = ppeRequirements.filter((ppe) =>
+      relevantTrades.some((trade) => ppe.trade_type.toLowerCase().includes(trade))
     );
 
     // Deduplicate by ppe_item (keep mandatory if exists)
     const uniquePPE = relevantPPE.reduce((acc, ppe) => {
-      const existing = acc.find(p => p.ppe_item === ppe.ppe_item);
+      const existing = acc.find((p) => p.ppe_item === ppe.ppe_item);
       if (!existing) {
         acc.push(ppe);
       } else if (ppe.is_mandatory && !existing.is_mandatory) {
@@ -95,31 +96,41 @@ export const PPEChecklistSection = ({
 
     return {
       sortedPPE: sorted,
-      mandatoryItems: sorted.filter(p => p.is_mandatory),
-      optionalItems: sorted.filter(p => !p.is_mandatory),
+      mandatoryItems: sorted.filter((p) => p.is_mandatory),
+      optionalItems: sorted.filter((p) => !p.is_mandatory),
     };
   }, [ppeRequirements, tradesKey]);
 
-  // Calculate compliance - use ref to avoid infinite loop
+  // Calculate compliance (guarded to avoid parent-child render loops)
   useEffect(() => {
     if (sortedPPE.length === 0) {
-      onComplianceChangeRef.current('No PPE requirements', 100);
+      const next = { complianceText: "No PPE requirements", percentage: 100 };
+      const prev = lastComplianceRef.current;
+      if (!prev || prev.complianceText !== next.complianceText || prev.percentage !== next.percentage) {
+        lastComplianceRef.current = next;
+        onComplianceChangeRef.current(next.complianceText, next.percentage);
+      }
       return;
     }
 
-    const mandatoryChecked = mandatoryItems.filter(p => checkedItems[p.id]).length;
-    const optionalChecked = optionalItems.filter(p => checkedItems[p.id]).length;
+    const mandatoryChecked = mandatoryItems.filter((p) => checkedItems[p.id]).length;
+    const optionalChecked = optionalItems.filter((p) => checkedItems[p.id]).length;
     const totalChecked = mandatoryChecked + optionalChecked;
-    
-    const mandatoryPercentage = mandatoryItems.length > 0 
-      ? Math.round((mandatoryChecked / mandatoryItems.length) * 100)
-      : 100;
 
-    const complianceText = mandatoryPercentage === 100
-      ? `Full compliance (${totalChecked}/${sortedPPE.length} items)`
-      : `${mandatoryChecked}/${mandatoryItems.length} mandatory items`;
+    const mandatoryPercentage =
+      mandatoryItems.length > 0 ? Math.round((mandatoryChecked / mandatoryItems.length) * 100) : 100;
 
-    onComplianceChangeRef.current(complianceText, mandatoryPercentage);
+    const complianceText =
+      mandatoryPercentage === 100
+        ? `Full compliance (${totalChecked}/${sortedPPE.length} items)`
+        : `${mandatoryChecked}/${mandatoryItems.length} mandatory items`;
+
+    const next = { complianceText, percentage: mandatoryPercentage };
+    const prev = lastComplianceRef.current;
+    if (prev && prev.complianceText === next.complianceText && prev.percentage === next.percentage) return;
+
+    lastComplianceRef.current = next;
+    onComplianceChangeRef.current(next.complianceText, next.percentage);
   }, [checkedItems, sortedPPE, mandatoryItems, optionalItems]);
 
   const toggleItem = (id: string) => {
