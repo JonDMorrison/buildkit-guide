@@ -8,6 +8,7 @@ import { useSafetyLogAutoFill, type HazardSuggestion } from "@/hooks/useSafetyLo
 import { WizardStepOne } from "./WizardStepOne";
 import { WizardStepTwo } from "./WizardStepTwo";
 import { WizardStepThree } from "./WizardStepThree";
+import { WorkerAcknowledgmentStep } from "./WorkerAcknowledgmentStep";
 import type { SelectedAttendee, Attendee } from "./AttendeeSelector";
 import { ChevronLeft, ChevronRight, Loader2, Check, AlertTriangle } from "lucide-react";
 import { computePPECompliance } from "./PPEChecklistSection";
@@ -193,10 +194,15 @@ export const DailySafetyWizard = ({
   const ppeCompliance = computePPECompliance(ppeRequirements, selectedTrades, ppeCheckedItems);
   const hasPPEWarning = ppeCompliance.percentage < 100;
 
+  // Count non-foreman workers for acknowledgments
+  const workersToAcknowledge = selectedAttendees.filter((a) => !a.is_foreman).length;
+  const acknowledgedCount = workerAcknowledgments.filter((a) => a.acknowledged).length;
+
   const canProceed = () => {
     if (step === 1) return !!projectId;
     if (step === 2) return true; // Allow proceeding with warning
     if (step === 3) return selectedAttendees.some((a) => a.is_foreman) && foremanSignature;
+    if (step === 4) return true; // Acknowledgments are optional but encouraged
     return false;
   };
 
@@ -301,8 +307,8 @@ export const DailySafetyWizard = ({
         <DialogHeader className="p-6 pb-4 border-b sticky top-0 bg-background z-10">
           <DialogTitle className="text-xl">Daily Safety Log</DialogTitle>
           <div className="flex items-center gap-2 mt-2">
-            <Progress value={(step / 3) * 100} className="h-2 flex-1" />
-            <span className="text-sm text-muted-foreground">Step {step}/3</span>
+            <Progress value={(step / 4) * 100} className="h-2 flex-1" />
+            <span className="text-sm text-muted-foreground">Step {step}/4</span>
           </div>
         </DialogHeader>
 
@@ -354,6 +360,15 @@ export const DailySafetyWizard = ({
               onWorkerRepSignatureChange={setWorkerRepSignature}
             />
           )}
+
+          {step === 4 && (
+            <WorkerAcknowledgmentStep
+              attendees={attendees}
+              selectedAttendees={selectedAttendees}
+              acknowledgments={workerAcknowledgments}
+              onAcknowledgmentsChange={setWorkerAcknowledgments}
+            />
+          )}
         </div>
 
         {/* Navigation */}
@@ -365,7 +380,7 @@ export const DailySafetyWizard = ({
             </Button>
           )}
           <div className="flex-1" />
-          {step < 3 ? (
+          {step < 4 ? (
             <div className="flex items-center gap-2">
               {step === 2 && hasPPEWarning && (
                 <div className="flex items-center gap-1 text-amber-500 text-sm">
@@ -373,16 +388,28 @@ export const DailySafetyWizard = ({
                   <span className="hidden sm:inline">PPE incomplete</span>
                 </div>
               )}
+              {step === 3 && workersToAcknowledge > 0 && (
+                <span className="text-xs text-muted-foreground hidden sm:inline">
+                  {workersToAcknowledge} worker{workersToAcknowledge > 1 ? "s" : ""} to acknowledge
+                </span>
+              )}
               <Button onClick={() => setStep(step + 1)} disabled={!canProceed()} className="h-12 px-6">
                 Next
                 <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             </div>
           ) : (
-            <Button onClick={handleSubmit} disabled={!canProceed() || submitting} className="h-12 px-6">
-              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
-              Submit
-            </Button>
+            <div className="flex items-center gap-2">
+              {workersToAcknowledge > 0 && acknowledgedCount < workersToAcknowledge && (
+                <span className="text-xs text-amber-500 hidden sm:inline">
+                  {acknowledgedCount}/{workersToAcknowledge} acknowledged
+                </span>
+              )}
+              <Button onClick={handleSubmit} disabled={!canProceed() || submitting} className="h-12 px-6">
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+                Submit
+              </Button>
+            </div>
           )}
         </div>
       </DialogContent>
