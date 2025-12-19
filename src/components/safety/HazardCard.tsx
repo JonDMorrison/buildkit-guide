@@ -1,13 +1,14 @@
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { Zap, Flame, Wind, HardHat, ShieldAlert, AlertTriangle, Truck, Wrench } from "lucide-react";
+import { Zap, Flame, Wind, HardHat, ShieldAlert, AlertTriangle, Truck, Wrench, Bot } from "lucide-react";
 import type { HazardSuggestion } from "@/hooks/useSafetyLogAutoFill";
 
 interface HazardCardProps {
   hazard: HazardSuggestion;
   selected: boolean;
   onToggle: () => void;
+  isAISuggested?: boolean;
 }
 
 const getCategoryIcon = (category: string) => {
@@ -56,7 +57,7 @@ const getSeverityStyles = (severity: string) => {
   }
 };
 
-export const HazardCard = ({ hazard, selected, onToggle }: HazardCardProps) => {
+export const HazardCard = ({ hazard, selected, onToggle, isAISuggested = true }: HazardCardProps) => {
   const styles = getSeverityStyles(hazard.severity);
 
   return (
@@ -69,6 +70,16 @@ export const HazardCard = ({ hazard, selected, onToggle }: HazardCardProps) => {
         styles.card
       )}
     >
+      {/* AI Suggested Badge */}
+      {isAISuggested && (
+        <div className="absolute top-2 right-2">
+          <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 gap-1 bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300 border-violet-200 dark:border-violet-800">
+            <Bot className="h-3 w-3" />
+            AI
+          </Badge>
+        </div>
+      )}
+
       {/* Checkbox */}
       <Checkbox
         checked={selected}
@@ -83,7 +94,7 @@ export const HazardCard = ({ hazard, selected, onToggle }: HazardCardProps) => {
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 pr-12">
         <div className="flex items-center gap-2 mb-1 flex-wrap">
           <h4 className="font-medium text-foreground">{hazard.title}</h4>
           <Badge variant="outline" className={cn("text-xs uppercase", styles.badge)}>

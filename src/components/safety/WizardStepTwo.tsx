@@ -153,6 +153,9 @@ export const WizardStepTwo = ({
     [additionalNotes, onNotesChange]
   );
 
+  // Check if hazards are AI-generated
+  const hasAISuggestions = hazardSuggestions.length > 0;
+
   return (
     <div className="space-y-6">
       {/* Hazard Suggestions Header */}
@@ -182,6 +185,16 @@ export const WizardStepTwo = ({
           AI Suggest
         </Button>
       </div>
+
+      {/* AI Disclaimer */}
+      {hasAISuggestions && (
+        <div className="bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-lg p-3">
+          <p className="text-xs text-violet-700 dark:text-violet-300">
+            <strong>AI-Generated Suggestions:</strong> These hazards are suggested based on project data and weather conditions. 
+            Review carefully and modify as needed. You are responsible for the final assessment.
+          </p>
+        </div>
+      )}
 
       {/* Quick Actions */}
       <div className="flex gap-2">
@@ -218,6 +231,7 @@ export const WizardStepTwo = ({
                   hazard={hazard}
                   selected={!!selected}
                   onToggle={() => toggleHazard(hazard)}
+                  isAISuggested={hasAISuggestions && hazard.source !== "general"}
                 />
 
                 {/* Controls for selected hazard */}
