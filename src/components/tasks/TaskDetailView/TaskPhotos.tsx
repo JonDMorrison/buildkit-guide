@@ -65,18 +65,18 @@ export const TaskPhotos = ({
     try {
       // Upload to storage
       const fileExt = file.name.split('.').pop();
-      const fileName = `${taskId}/${Date.now()}.${fileExt}`;
-      const filePath = `task-photos/${fileName}`;
+      const fileName = `${projectId}/${taskId}/${Date.now()}.${fileExt}`;
+      const filePath = fileName;
 
       const { error: uploadError } = await supabase.storage
-        .from('deficiency-photos')
+        .from('task-photos')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
       // Get public URL
       const { data: urlData } = supabase.storage
-        .from('deficiency-photos')
+        .from('task-photos')
         .getPublicUrl(filePath);
 
       // Create attachment record
