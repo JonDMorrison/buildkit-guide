@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 /**
@@ -8,23 +8,28 @@ import { useSearchParams } from 'react-router-dom';
 export const useCurrentProject = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Derive the current project id from URL params in a stable way
-  const urlProjectId = useMemo(() => searchParams.get('projectId'), [searchParams]);
+  // Use lazy initializer for first render
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(
+    () => searchParams.get('projectId')
+  );
 
-  const [currentProjectId, setCurrentProjectId] = useState<string | null>(urlProjectId);
-
+  // Sync state with URL when it changes externally (e.g., browser navigation)
   useEffect(() => {
+    const urlProjectId = searchParams.get('projectId');
     setCurrentProjectId(urlProjectId);
-  }, [urlProjectId]);
+  }, [searchParams]);
 
+  // Stable setter function that updates URL (state will sync via useEffect)
   const setCurrentProject = useCallback(
     (projectId: string | null) => {
-      // IMPORTANT: never mutate the URLSearchParams instance in-place.
-      // Mutating can cause render loops in some environments.
+      // Use functional update to avoid mutating URLSearchParams in-place
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
-        if (projectId) next.set('projectId', projectId);
-        else next.delete('projectId');
+        if (projectId) {
+          next.set('projectId', projectId);
+        } else {
+          next.delete('projectId');
+        }
         return next;
       });
     },
@@ -36,4 +41,3 @@ export const useCurrentProject = () => {
     setCurrentProject,
   };
 };
-
