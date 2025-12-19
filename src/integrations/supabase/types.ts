@@ -1610,6 +1610,51 @@ export type Database = {
           },
         ]
       }
+      safety_form_acknowledgments: {
+        Row: {
+          acknowledged_at: string
+          attestation_text: string | null
+          created_at: string | null
+          id: string
+          safety_form_id: string
+          signature_url: string | null
+          user_id: string
+        }
+        Insert: {
+          acknowledged_at?: string
+          attestation_text?: string | null
+          created_at?: string | null
+          id?: string
+          safety_form_id: string
+          signature_url?: string | null
+          user_id: string
+        }
+        Update: {
+          acknowledged_at?: string
+          attestation_text?: string | null
+          created_at?: string | null
+          id?: string
+          safety_form_id?: string
+          signature_url?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "safety_form_acknowledgments_safety_form_id_fkey"
+            columns: ["safety_form_id"]
+            isOneToOne: false
+            referencedRelation: "safety_forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "safety_form_acknowledgments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       safety_form_amendments: {
         Row: {
           approved_snapshot: Json | null
@@ -1733,6 +1778,8 @@ export type Database = {
           is_deleted: boolean
           project_id: string
           record_hash: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           status: Database["public"]["Enums"]["safety_status"]
           title: string
           updated_at: string
@@ -1747,6 +1794,8 @@ export type Database = {
           is_deleted?: boolean
           project_id: string
           record_hash?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: Database["public"]["Enums"]["safety_status"]
           title: string
           updated_at?: string
@@ -1761,6 +1810,8 @@ export type Database = {
           is_deleted?: boolean
           project_id?: string
           record_hash?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: Database["public"]["Enums"]["safety_status"]
           title?: string
           updated_at?: string
@@ -1778,6 +1829,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "safety_forms_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

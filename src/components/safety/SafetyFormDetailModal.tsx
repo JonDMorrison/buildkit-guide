@@ -11,10 +11,14 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
-import { FileText, Camera, Download, Share2, Loader2 } from "lucide-react";
+import { FileText, Camera, Download, Share2, Loader2, FileEdit, Users, CheckCircle, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { downloadSafetyFormPDF, shareSafetyFormPDF } from "@/lib/safetyPdfExport";
+import { AmendmentRequestModal } from "./AmendmentRequestModal";
+import { AmendmentHistory } from "./AmendmentHistory";
+import { useProjectRole } from "@/hooks/useProjectRole";
 
 interface SafetyFormDetailModalProps {
   isOpen: boolean;
@@ -49,6 +53,17 @@ interface Attendee {
   };
 }
 
+interface Acknowledgment {
+  id: string;
+  user_id: string;
+  acknowledged_at: string;
+  signature_url: string | null;
+  profiles?: {
+    full_name: string | null;
+    email: string;
+  };
+}
+
 interface SafetyForm {
   id: string;
   title: string;
@@ -58,11 +73,17 @@ interface SafetyForm {
   created_at: string;
   created_by: string;
   project_id: string;
+  reviewed_by?: string | null;
+  reviewed_at?: string | null;
   project?: {
     name: string;
     location: string;
   };
   creator?: {
+    full_name: string | null;
+    email: string;
+  };
+  reviewer?: {
     full_name: string | null;
     email: string;
   };
@@ -101,9 +122,16 @@ export const SafetyFormDetailModal = ({
   const [entries, setEntries] = useState<FormEntry[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [attendees, setAttendees] = useState<Attendee[]>([]);
+  const [acknowledgments, setAcknowledgments] = useState<Acknowledgment[]>([]);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [showAmendmentModal, setShowAmendmentModal] = useState(false);
+  const [markingReviewed, setMarkingReviewed] = useState(false);
   const { toast } = useToast();
+  const { canSubmitSafety, canManageProject } = useProjectRole(form?.project_id);
+  
+  const canRequestAmendment = form?.project_id ? canSubmitSafety(form.project_id) : false;
+  const canReview = form?.project_id ? canManageProject(form.project_id) : false;
 
   useEffect(() => {
     if (isOpen && formId) {
@@ -116,10 +144,15 @@ export const SafetyFormDetailModal = ({
 
     setLoading(true);
     try {
-      // Fetch form with project and creator
+      // Fetch form with project, creator, and reviewer
       const { data: formData, error: formError } = await supabase
         .from("safety_forms")
-        .select("*, projects(name, location), profiles!safety_forms_created_by_fkey(full_name, email)")
+        .select(`
+          *, 
+          projects(name, location), 
+          profiles!safety_forms_created_by_fkey(full_name, email),
+          reviewer:profiles!safety_forms_reviewed_by_fkey(full_name, email)
+        `)
         .eq("id", formId)
         .single();
 
@@ -128,6 +161,7 @@ export const SafetyFormDetailModal = ({
         ...formData,
         project: formData.projects,
         creator: formData.profiles,
+        reviewer: formData.reviewer,
       });
 
       // Fetch entries
@@ -150,6 +184,13 @@ export const SafetyFormDetailModal = ({
         .select("*, profiles(full_name, email)")
         .eq("safety_form_id", formId);
       setAttendees(attendeesData || []);
+
+      // Fetch acknowledgments
+      const { data: acksData } = await supabase
+        .from("safety_form_acknowledgments")
+        .select("*, profiles(full_name, email)")
+        .eq("safety_form_id", formId);
+      setAcknowledgments(acksData || []);
     } catch (error) {
       console.error("Error fetching form details:", error);
     } finally {
@@ -180,6 +221,34 @@ export const SafetyFormDetailModal = ({
       toast({ title: "Share failed", variant: "destructive" });
     } finally {
       setExporting(false);
+    }
+  };
+
+  const handleMarkReviewed = async () => {
+    if (!form || form.reviewed_at) return;
+    
+    setMarkingReviewed(true);
+    try {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error("Not authenticated");
+
+      const { error } = await supabase
+        .from("safety_forms")
+        .update({
+          status: "reviewed",
+          reviewed_by: user.user.id,
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq("id", form.id);
+
+      if (error) throw error;
+
+      toast({ title: "Form marked as reviewed" });
+      fetchFormDetails();
+    } catch (error: any) {
+      toast({ title: "Failed to mark as reviewed", description: error.message, variant: "destructive" });
+    } finally {
+      setMarkingReviewed(false);
     }
   };
 
@@ -237,83 +306,171 @@ export const SafetyFormDetailModal = ({
   if (!form) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
-              <DialogTitle className="text-xl mb-2">{form.title}</DialogTitle>
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant="outline" className="text-xs">
-                  {getFormTypeLabel(form.form_type)}
-                </Badge>
-                <Badge className={getStatusColor(form.status)}>
-                  {form.status.charAt(0).toUpperCase() + form.status.slice(1)}
-                </Badge>
-                <span className="text-sm text-muted-foreground">
-                  {format(new Date(form.inspection_date), "MMM d, yyyy")}
-                </span>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="icon" onClick={handleSharePDF} disabled={exporting}>
-                {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
-              </Button>
-              <Button variant="outline" size="icon" onClick={handleDownloadPDF} disabled={exporting}>
-                <Download className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </DialogHeader>
-
-        <div className="space-y-6 pt-4">
-          {/* Form Entries */}
-          {entries.length > 0 && (
-            <Card className="p-4 space-y-4">
-              <div className="flex items-center gap-2 mb-2">
-                <FileText className="h-4 w-4 text-muted-foreground" />
-                <h3 className="font-semibold">Form Details</h3>
-              </div>
-              {entries.map((entry) => (
-                <div key={entry.id} className="pb-4 border-b last:border-b-0 last:pb-0">
-                  {renderFieldValue(entry)}
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <DialogTitle className="text-xl mb-2">{form.title}</DialogTitle>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge variant="outline" className="text-xs">
+                    {getFormTypeLabel(form.form_type)}
+                  </Badge>
+                  <Badge className={getStatusColor(form.status)}>
+                    {form.status.charAt(0).toUpperCase() + form.status.slice(1)}
+                  </Badge>
+                  <span className="text-sm text-muted-foreground">
+                    {format(new Date(form.inspection_date), "MMM d, yyyy")}
+                  </span>
                 </div>
-              ))}
-            </Card>
-          )}
-
-          {/* Photos */}
-          {attachments.length > 0 && (
-            <Card className="p-4">
-              <div className="flex items-center gap-2 mb-4">
-                <Camera className="h-4 w-4 text-muted-foreground" />
-                <h3 className="font-semibold">Photos ({attachments.length})</h3>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                {attachments.map((attachment) => (
-                  <div
-                    key={attachment.id}
-                    className="relative aspect-square rounded-lg overflow-hidden border border-border bg-muted"
-                  >
-                    <img
-                      src={attachment.file_url}
-                      alt={attachment.file_name}
-                      className="w-full h-full object-cover"
-                    />
+              <div className="flex gap-2">
+                <Button variant="outline" size="icon" onClick={handleSharePDF} disabled={exporting}>
+                  {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
+                </Button>
+                <Button variant="outline" size="icon" onClick={handleDownloadPDF} disabled={exporting}>
+                  <Download className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-6 pt-4">
+            {/* Review Status & Actions */}
+            {form.reviewed_at && form.reviewer ? (
+              <Card className="p-3 bg-green-500/10 border-green-500/30">
+                <div className="flex items-center gap-2 text-green-600">
+                  <CheckCircle className="h-4 w-4" />
+                  <span className="text-sm font-medium">
+                    Reviewed by {form.reviewer.full_name || form.reviewer.email}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    on {format(new Date(form.reviewed_at), "MMM d 'at' h:mm a")}
+                  </span>
+                </div>
+              </Card>
+            ) : canReview && form.status === "submitted" ? (
+              <Card className="p-3 border-amber-500/30 bg-amber-500/5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-amber-600">
+                    <Clock className="h-4 w-4" />
+                    <span className="text-sm font-medium">Pending review</span>
+                  </div>
+                  <Button size="sm" onClick={handleMarkReviewed} disabled={markingReviewed}>
+                    {markingReviewed && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    <CheckCircle className="h-4 w-4 mr-1" />
+                    Mark as Reviewed
+                  </Button>
+                </div>
+              </Card>
+            ) : null}
+
+            {/* Amendment History */}
+            <AmendmentHistory 
+              formId={form.id} 
+              projectId={form.project_id}
+              onRefresh={fetchFormDetails}
+            />
+
+            {/* Form Entries */}
+            {entries.length > 0 && (
+              <Card className="p-4 space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="font-semibold">Form Details</h3>
+                </div>
+                {entries.map((entry) => (
+                  <div key={entry.id} className="pb-4 border-b last:border-b-0 last:pb-0">
+                    {renderFieldValue(entry)}
                   </div>
                 ))}
-              </div>
-            </Card>
-          )}
+              </Card>
+            )}
 
-          {entries.length === 0 && attachments.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
-              <p>No form data available</p>
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+            {/* Worker Acknowledgments */}
+            {acknowledgments.length > 0 && (
+              <Card className="p-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="font-semibold">Worker Acknowledgments ({acknowledgments.length})</h3>
+                </div>
+                <div className="space-y-2">
+                  {acknowledgments.map((ack) => (
+                    <div key={ack.id} className="flex items-center justify-between py-2 border-b last:border-b-0">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <span className="text-sm">
+                          {ack.profiles?.full_name || ack.profiles?.email || "Unknown"}
+                        </span>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {format(new Date(ack.acknowledged_at), "h:mm a")}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
+
+            {/* Photos */}
+            {attachments.length > 0 && (
+              <Card className="p-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <Camera className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="font-semibold">Photos ({attachments.length})</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {attachments.map((attachment) => (
+                    <div
+                      key={attachment.id}
+                      className="relative aspect-square rounded-lg overflow-hidden border border-border bg-muted"
+                    >
+                      <img
+                        src={attachment.file_url}
+                        alt={attachment.file_name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
+
+            {entries.length === 0 && attachments.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p>No form data available</p>
+              </div>
+            )}
+
+            {/* Amendment Request Button */}
+            {canRequestAmendment && form.status !== "draft" && (
+              <>
+                <Separator />
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setShowAmendmentModal(true)}
+                >
+                  <FileEdit className="h-4 w-4 mr-2" />
+                  Request Amendment
+                </Button>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Amendment Request Modal */}
+      <AmendmentRequestModal
+        isOpen={showAmendmentModal}
+        onClose={() => setShowAmendmentModal(false)}
+        formId={form.id}
+        formTitle={form.title}
+        currentEntries={entries}
+        onSuccess={fetchFormDetails}
+      />
+    </>
   );
 };
