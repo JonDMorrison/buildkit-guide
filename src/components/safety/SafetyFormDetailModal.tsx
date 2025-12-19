@@ -5,13 +5,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { FileText, Camera } from "lucide-react";
+import { FileText, Camera, Download, Share2, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { downloadSafetyFormPDF, shareSafetyFormPDF } from "@/lib/safetyPdfExport";
 
 interface SafetyFormDetailModalProps {
   isOpen: boolean;
@@ -34,6 +37,18 @@ interface Attachment {
   created_at: string;
 }
 
+interface Attendee {
+  id: string;
+  user_id: string;
+  is_foreman: boolean;
+  signed_at: string | null;
+  signature_url: string | null;
+  profiles?: {
+    full_name: string | null;
+    email: string;
+  };
+}
+
 interface SafetyForm {
   id: string;
   title: string;
@@ -43,6 +58,14 @@ interface SafetyForm {
   created_at: string;
   created_by: string;
   project_id: string;
+  project?: {
+    name: string;
+    location: string;
+  };
+  creator?: {
+    full_name: string | null;
+    email: string;
+  };
 }
 
 const getFormTypeLabel = (formType: string) => {
@@ -77,7 +100,10 @@ export const SafetyFormDetailModal = ({
   const [form, setForm] = useState<SafetyForm | null>(null);
   const [entries, setEntries] = useState<FormEntry[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (isOpen && formId) {
@@ -90,37 +116,70 @@ export const SafetyFormDetailModal = ({
 
     setLoading(true);
     try {
-      // Fetch form
+      // Fetch form with project and creator
       const { data: formData, error: formError } = await supabase
         .from("safety_forms")
-        .select("*")
+        .select("*, projects(name, location), profiles!safety_forms_created_by_fkey(full_name, email)")
         .eq("id", formId)
         .single();
 
       if (formError) throw formError;
-      setForm(formData);
+      setForm({
+        ...formData,
+        project: formData.projects,
+        creator: formData.profiles,
+      });
 
       // Fetch entries
-      const { data: entriesData, error: entriesError } = await supabase
+      const { data: entriesData } = await supabase
         .from("safety_entries")
         .select("*")
         .eq("safety_form_id", formId);
-
-      if (entriesError) throw entriesError;
       setEntries(entriesData || []);
 
       // Fetch attachments
-      const { data: attachmentsData, error: attachmentsError } = await supabase
+      const { data: attachmentsData } = await supabase
         .from("attachments")
         .select("*")
         .eq("safety_form_id", formId);
-
-      if (attachmentsError) throw attachmentsError;
       setAttachments(attachmentsData || []);
+
+      // Fetch attendees
+      const { data: attendeesData } = await supabase
+        .from("safety_form_attendees")
+        .select("*, profiles(full_name, email)")
+        .eq("safety_form_id", formId);
+      setAttendees(attendeesData || []);
     } catch (error) {
       console.error("Error fetching form details:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!form) return;
+    setExporting(true);
+    try {
+      await downloadSafetyFormPDF({ form, entries, attendees });
+      toast({ title: "PDF downloaded" });
+    } catch (error) {
+      toast({ title: "Export failed", variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleSharePDF = async () => {
+    if (!form) return;
+    setExporting(true);
+    try {
+      await shareSafetyFormPDF({ form, entries, attendees });
+      toast({ title: "PDF shared" });
+    } catch (error) {
+      toast({ title: "Share failed", variant: "destructive" });
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -195,6 +254,14 @@ export const SafetyFormDetailModal = ({
                   {format(new Date(form.inspection_date), "MMM d, yyyy")}
                 </span>
               </div>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="icon" onClick={handleSharePDF} disabled={exporting}>
+                {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
+              </Button>
+              <Button variant="outline" size="icon" onClick={handleDownloadPDF} disabled={exporting}>
+                <Download className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         </DialogHeader>
