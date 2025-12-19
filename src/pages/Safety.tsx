@@ -5,6 +5,8 @@ import { SectionHeader } from "@/components/SectionHeader";
 import { SafetyLanding } from "@/components/safety/SafetyLanding";
 import { SafetyFormModal } from "@/components/safety/SafetyFormModal";
 import { SafetyFormDetailModal } from "@/components/safety/SafetyFormDetailModal";
+import { DailySafetyWizard } from "@/components/safety/DailySafetyWizard";
+import { RightToRefuseForm } from "@/components/safety/RightToRefuseForm";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthRole } from "@/hooks/useAuthRole";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
@@ -19,6 +21,8 @@ const Safety = () => {
   const [loading, setLoading] = useState(true);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isDailyWizardOpen, setIsDailyWizardOpen] = useState(false);
+  const [isR2RFormOpen, setIsR2RFormOpen] = useState(false);
   const [selectedFormType, setSelectedFormType] = useState("");
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
 
@@ -94,6 +98,17 @@ const Safety = () => {
   }, [fetchForms]);
 
   const handleCreateForm = useCallback((type: string) => {
+    // Use wizard for daily safety log
+    if (type === "daily_safety_log") {
+      setIsDailyWizardOpen(true);
+      return;
+    }
+    // Use dedicated form for right to refuse
+    if (type === "right_to_refuse") {
+      setIsR2RFormOpen(true);
+      return;
+    }
+    // Use legacy modal for other types
     setSelectedFormType(type);
     setIsFormModalOpen(true);
   }, []);
@@ -171,6 +186,20 @@ const Safety = () => {
           isOpen={isDetailModalOpen}
           onClose={() => setIsDetailModalOpen(false)}
           formId={selectedFormId}
+        />
+
+        <DailySafetyWizard
+          isOpen={isDailyWizardOpen}
+          onClose={() => setIsDailyWizardOpen(false)}
+          onSuccess={handleFormCreated}
+          initialProjectId={currentProjectId || undefined}
+        />
+
+        <RightToRefuseForm
+          isOpen={isR2RFormOpen}
+          onClose={() => setIsR2RFormOpen(false)}
+          onSuccess={handleFormCreated}
+          projectId={currentProjectId}
         />
       </div>
     </Layout>
