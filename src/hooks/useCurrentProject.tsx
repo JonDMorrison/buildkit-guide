@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 /**
@@ -7,27 +7,33 @@ import { useSearchParams } from 'react-router-dom';
  */
 export const useCurrentProject = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [currentProjectId, setCurrentProjectId] = useState<string | null>(
-    searchParams.get('projectId')
-  );
+
+  // Derive the current project id from URL params in a stable way
+  const urlProjectId = useMemo(() => searchParams.get('projectId'), [searchParams]);
+
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(urlProjectId);
 
   useEffect(() => {
-    const projectId = searchParams.get('projectId');
-    setCurrentProjectId(projectId);
-  }, [searchParams]);
+    setCurrentProjectId(urlProjectId);
+  }, [urlProjectId]);
 
-  const setCurrentProject = (projectId: string | null) => {
-    if (projectId) {
-      searchParams.set('projectId', projectId);
-    } else {
-      searchParams.delete('projectId');
-    }
-    setSearchParams(searchParams);
-    setCurrentProjectId(projectId);
-  };
+  const setCurrentProject = useCallback(
+    (projectId: string | null) => {
+      // IMPORTANT: never mutate the URLSearchParams instance in-place.
+      // Mutating can cause render loops in some environments.
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (projectId) next.set('projectId', projectId);
+        else next.delete('projectId');
+        return next;
+      });
+    },
+    [setSearchParams]
+  );
 
   return {
     currentProjectId,
     setCurrentProject,
   };
 };
+
