@@ -7,6 +7,7 @@ import { SafetyFormModal } from "@/components/safety/SafetyFormModal";
 import { SafetyFormDetailModal } from "@/components/safety/SafetyFormDetailModal";
 import { DailySafetyWizard } from "@/components/safety/DailySafetyWizard";
 import { RightToRefuseForm } from "@/components/safety/RightToRefuseForm";
+import { ToolboxMeetingWizard } from "@/components/safety/ToolboxMeetingWizard";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthRole } from "@/hooks/useAuthRole";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
@@ -23,6 +24,7 @@ const Safety = () => {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isDailyWizardOpen, setIsDailyWizardOpen] = useState(false);
   const [isR2RFormOpen, setIsR2RFormOpen] = useState(false);
+  const [isToolboxWizardOpen, setIsToolboxWizardOpen] = useState(false);
   const [selectedFormType, setSelectedFormType] = useState("");
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
 
@@ -106,6 +108,11 @@ const Safety = () => {
     // Use dedicated form for right to refuse
     if (type === "right_to_refuse") {
       setIsR2RFormOpen(true);
+      return;
+    }
+    // Use toolbox meeting wizard
+    if (type === "toolbox_meeting") {
+      setIsToolboxWizardOpen(true);
       return;
     }
     // Use legacy modal for other types
@@ -200,6 +207,12 @@ const Safety = () => {
           onClose={() => setIsR2RFormOpen(false)}
           onSuccess={handleFormCreated}
           projectId={currentProjectId}
+        />
+
+        <ToolboxMeetingWizard
+          isOpen={isToolboxWizardOpen}
+          onClose={() => setIsToolboxWizardOpen(false)}
+          onSuccess={handleFormCreated}
         />
       </div>
     </Layout>
