@@ -41,10 +41,8 @@ import {
   ChevronDown,
   MoveIcon,
   Plus,
-  FileText,
 } from "lucide-react";
 import { QuickAddModal } from "@/components/dashboard/QuickAddModal";
-import { EODReportModal } from "@/components/ai-assist/EODReportModal";
 import { format, isAfter, isBefore, addDays, startOfDay, subDays } from "date-fns";
 import { Responsive, WidthProvider, Layout as GridLayout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
@@ -67,7 +65,6 @@ export default function Dashboard() {
   const [crewPopoverOpen, setCrewPopoverOpen] = useState(false);
   const [blockersModalOpen, setBlockersModalOpen] = useState(false);
   const [quickAddModalOpen, setQuickAddModalOpen] = useState(false);
-  const [eodReportModalOpen, setEodReportModalOpen] = useState(false);
 
   const {
     layouts,
@@ -461,15 +458,6 @@ export default function Dashboard() {
 
               <div className="flex items-center gap-2">
                 <Button 
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setEodReportModalOpen(true)} 
-                  className="gap-1.5 px-2"
-                >
-                  <FileText className="h-4 w-4" />
-                  <span className="hidden sm:inline text-xs">EOD Report</span>
-                </Button>
-                <Button 
                   onClick={() => setQuickAddModalOpen(true)} 
                   size="sm" 
                   className="bg-[#DC8644] hover:bg-[#DC8644]/90 text-white px-3 w-fit"
@@ -539,13 +527,6 @@ export default function Dashboard() {
             open={quickAddModalOpen}
             onOpenChange={setQuickAddModalOpen}
             currentProjectId={currentProjectId}
-          />
-          <EODReportModal
-            open={eodReportModalOpen}
-            onOpenChange={setEodReportModalOpen}
-            projectId={currentProjectId || ''}
-            projectName={currentProject?.name || ''}
-            jobNumber={currentProject?.job_number}
           />
 
           {/* Widget Grid */}
