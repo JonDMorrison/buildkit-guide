@@ -52,6 +52,7 @@ export const DailySafetyWizard = ({
   const [presentTodayIds, setPresentTodayIds] = useState<string[]>([]);
   const [foremanSignature, setForemanSignature] = useState<string | null>(null);
   const [workerRepSignature, setWorkerRepSignature] = useState<string | null>(null);
+  const [workerAcknowledgments, setWorkerAcknowledgments] = useState<Array<{ user_id: string; acknowledged: boolean; signature_url?: string | null }>>([]);
 
   const {
     weather: autoWeather,
@@ -266,6 +267,21 @@ export const DailySafetyWizard = ({
           signature_url: a.is_foreman ? foremanSignature : null,
         }));
         await supabase.from("safety_form_attendees").insert(attendeeRecords);
+      }
+
+      // Create worker acknowledgments (BC compliance requirement)
+      if (workerAcknowledgments.length > 0) {
+        const ackRecords = workerAcknowledgments
+          .filter((a) => a.acknowledged)
+          .map((a) => ({
+            safety_form_id: form.id,
+            user_id: a.user_id,
+            signature_url: a.signature_url || null,
+            acknowledged_at: new Date().toISOString(),
+          }));
+        if (ackRecords.length > 0) {
+          await supabase.from("safety_form_acknowledgments").insert(ackRecords);
+        }
       }
 
       toast({ title: "Success", description: "Daily Safety Log submitted" });
