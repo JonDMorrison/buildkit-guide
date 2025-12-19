@@ -143,8 +143,8 @@ export const SafetyFormModal = ({
   } = useSafetyLogAutoFill(projectId || null);
 
   const handlePPEComplianceChange = useCallback((compliance: string, percentage: number) => {
-    const status = percentage === 100 ? 'full' : percentage >= 50 ? 'partial' : 'none';
-    setFormData(prev => ({ ...prev, ppe_compliance: status }));
+    const status = percentage === 100 ? "full" : percentage >= 50 ? "partial" : "none";
+    setFormData((prev) => (prev.ppe_compliance === status ? prev : { ...prev, ppe_compliance: status }));
   }, []);
 
   const template = formTemplates[formType] || formTemplates["daily_safety_log"];
