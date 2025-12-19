@@ -1,20 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Layout } from "@/components/Layout";
 import { NoAccess } from "@/components/NoAccess";
 import { SectionHeader } from "@/components/SectionHeader";
-import { EmptyState } from "@/components/EmptyState";
-import { Skeleton } from "@/components/ui/skeleton";
-import { SafetyDashboard } from "@/components/safety/SafetyDashboard";
-import { SafetyFormsList } from "@/components/safety/SafetyFormsList";
-import { FormTypeSelector } from "@/components/safety/FormTypeSelector";
+import { SafetyLanding } from "@/components/safety/SafetyLanding";
 import { SafetyFormModal } from "@/components/safety/SafetyFormModal";
 import { SafetyFormDetailModal } from "@/components/safety/SafetyFormDetailModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthRole } from "@/hooks/useAuthRole";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
 import { useUserRole } from "@/hooks/useUserRole";
-import { ShieldCheck, Plus } from "lucide-react";
-import { format, subDays } from "date-fns";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const Safety = () => {
   const { currentProjectId } = useCurrentProject();
@@ -22,22 +17,58 @@ const Safety = () => {
   const { isAdmin, loading: globalRoleLoading } = useUserRole();
   const [forms, setForms] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isTypeSelectorOpen, setIsTypeSelectorOpen] = useState(false);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedFormType, setSelectedFormType] = useState("");
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
-  const [dashboardStats, setDashboardStats] = useState({
-    totalForms: 0,
-    submittedThisWeek: 0,
-    draftForms: 0,
-    complianceRate: 0,
-    missingForms: [] as Array<{ type: string; dueDate: string }>,
-  });
 
-  // Permission checks - admins can always view, otherwise need project-specific permission
+  // Permission checks
   const canViewSafety = isAdmin || (currentProjectId ? can('view_safety', currentProjectId) : false);
   const canCreateSafety = isAdmin || (currentProjectId ? can('create_safety', currentProjectId) : false);
+
+  const fetchForms = useCallback(async () => {
+    setLoading(true);
+    try {
+      let query = supabase
+        .from("safety_forms")
+        .select(`
+          *,
+          profiles:created_by(full_name)
+        `)
+        .eq("is_deleted", false)
+        .order("created_at", { ascending: false });
+
+      // Filter by project if one is selected
+      if (currentProjectId) {
+        query = query.eq("project_id", currentProjectId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      // Fetch attachments count for each form
+      const formsWithAttachments = await Promise.all(
+        (data || []).map(async (form) => {
+          const { count } = await supabase
+            .from("attachments")
+            .select("id", { count: "exact", head: true })
+            .eq("safety_form_id", form.id);
+
+          return {
+            ...form,
+            attachments: Array(count || 0).fill({ id: '' }),
+          };
+        })
+      );
+
+      setForms(formsWithAttachments);
+    } catch (error) {
+      console.error("Error fetching forms:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentProjectId]);
 
   useEffect(() => {
     fetchForms();
@@ -60,99 +91,24 @@ const Safety = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [fetchForms]);
 
-  const fetchForms = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from("safety_forms")
-        .select("*")
-        .eq("is_deleted", false)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-
-      // Fetch attachments count for each form
-      const formsWithAttachments = await Promise.all(
-        (data || []).map(async (form) => {
-          const { data: attachments } = await supabase
-            .from("attachments")
-            .select("id")
-            .eq("safety_form_id", form.id);
-
-          return {
-            ...form,
-            attachments: attachments || [],
-          };
-        })
-      );
-
-      setForms(formsWithAttachments);
-      calculateDashboardStats(formsWithAttachments);
-    } catch (error) {
-      console.error("Error fetching forms:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const calculateDashboardStats = (formsList: any[]) => {
-    const totalForms = formsList.length;
-    const draftForms = formsList.filter((f) => f.status === "draft").length;
-    
-    const sevenDaysAgo = subDays(new Date(), 7);
-    const submittedThisWeek = formsList.filter(
-      (f) => f.status === "submitted" && new Date(f.created_at) >= sevenDaysAgo
-    ).length;
-
-    // Calculate compliance (submitted vs total in last 7 days)
-    const totalThisWeek = formsList.filter(
-      (f) => new Date(f.created_at) >= sevenDaysAgo
-    ).length;
-    const complianceRate =
-      totalThisWeek > 0 ? Math.round((submittedThisWeek / totalThisWeek) * 100) : 100;
-
-    // Check for missing daily logs (simplified - should check actual requirements)
-    const today = new Date();
-    const hasTodayLog = formsList.some(
-      (f) =>
-        f.form_type === "daily_safety_log" &&
-        f.inspection_date === format(today, "yyyy-MM-dd")
-    );
-
-    const missingForms = [];
-    if (!hasTodayLog) {
-      missingForms.push({
-        type: "Daily Safety Log",
-        dueDate: format(today, "MMM d"),
-      });
-    }
-
-    setDashboardStats({
-      totalForms,
-      submittedThisWeek,
-      draftForms,
-      complianceRate,
-      missingForms,
-    });
-  };
-
-  const handleCreateForm = () => {
-    setIsTypeSelectorOpen(true);
-  };
-
-  const handleFormTypeSelected = (type: string) => {
+  const handleCreateForm = useCallback((type: string) => {
     setSelectedFormType(type);
     setIsFormModalOpen(true);
-  };
+  }, []);
 
-  const handleFormClick = (formId: string) => {
+  const handleFormClick = useCallback((formId: string) => {
     setSelectedFormId(formId);
     setIsDetailModalOpen(true);
-  };
+  }, []);
 
-  if (roleLoading || globalRoleLoading || loading) {
+  const handleFormCreated = useCallback(() => {
+    fetchForms();
+  }, [fetchForms]);
+
+  // Show skeleton while checking permissions
+  if (roleLoading || globalRoleLoading) {
     return (
       <Layout>
         <div className="container max-w-4xl mx-auto px-4 py-6">
@@ -160,9 +116,12 @@ const Safety = () => {
             <Skeleton className="h-8 w-48 mb-4" />
           </div>
           <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-24 w-full" />
-            ))}
+            <Skeleton className="h-16 w-full" />
+            <div className="flex gap-3">
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-24 w-[140px]" />
+              ))}
+            </div>
           </div>
         </div>
       </Layout>
@@ -191,40 +150,20 @@ const Safety = () => {
         <SectionHeader
           title="Safety"
           count={forms.length}
-          action={canCreateSafety ? {
-            label: "Add Form",
-            icon: <Plus className="h-6 w-6" />,
-            onClick: handleCreateForm,
-          } : undefined}
         />
 
-        {forms.length === 0 ? (
-          <EmptyState
-            icon={<ShieldCheck className="h-8 w-8" />}
-            title="No safety forms"
-            description="Document safety incidents, inspections, and toolbox talks to maintain compliance."
-            action={{
-              label: "Create Safety Form",
-              onClick: handleCreateForm,
-            }}
-          />
-        ) : (
-          <>
-            <SafetyDashboard {...dashboardStats} />
-            <SafetyFormsList forms={forms} onFormClick={handleFormClick} />
-          </>
-        )}
-
-        <FormTypeSelector
-          isOpen={isTypeSelectorOpen}
-          onClose={() => setIsTypeSelectorOpen(false)}
-          onSelectType={handleFormTypeSelected}
+        <SafetyLanding
+          forms={forms}
+          loading={loading}
+          onCreateForm={handleCreateForm}
+          onFormClick={handleFormClick}
+          canCreate={canCreateSafety}
         />
 
         <SafetyFormModal
           isOpen={isFormModalOpen}
           onClose={() => setIsFormModalOpen(false)}
-          onCreate={fetchForms}
+          onCreate={handleFormCreated}
           formType={selectedFormType}
         />
 

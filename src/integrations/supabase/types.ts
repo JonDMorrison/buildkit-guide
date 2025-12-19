@@ -1203,6 +1203,7 @@ export type Database = {
         Row: {
           created_at: string
           default_timezone: string
+          jurisdiction_code: string | null
           organization_id: string
           time_auto_close_enabled: boolean | null
           time_auto_close_hours: number | null
@@ -1221,6 +1222,7 @@ export type Database = {
         Insert: {
           created_at?: string
           default_timezone?: string
+          jurisdiction_code?: string | null
           organization_id: string
           time_auto_close_enabled?: boolean | null
           time_auto_close_hours?: number | null
@@ -1239,6 +1241,7 @@ export type Database = {
         Update: {
           created_at?: string
           default_timezone?: string
+          jurisdiction_code?: string | null
           organization_id?: string
           time_auto_close_enabled?: boolean | null
           time_auto_close_hours?: number | null
@@ -1607,15 +1610,129 @@ export type Database = {
           },
         ]
       }
+      safety_form_amendments: {
+        Row: {
+          approved_snapshot: Json | null
+          created_at: string | null
+          id: string
+          original_snapshot: Json
+          proposed_changes: Json
+          reason: string
+          requested_by: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          safety_form_id: string
+          status: string | null
+        }
+        Insert: {
+          approved_snapshot?: Json | null
+          created_at?: string | null
+          id?: string
+          original_snapshot: Json
+          proposed_changes: Json
+          reason: string
+          requested_by: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          safety_form_id: string
+          status?: string | null
+        }
+        Update: {
+          approved_snapshot?: Json | null
+          created_at?: string | null
+          id?: string
+          original_snapshot?: Json
+          proposed_changes?: Json
+          reason?: string
+          requested_by?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          safety_form_id?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "safety_form_amendments_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "safety_form_amendments_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "safety_form_amendments_safety_form_id_fkey"
+            columns: ["safety_form_id"]
+            isOneToOne: false
+            referencedRelation: "safety_forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      safety_form_attendees: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_foreman: boolean | null
+          safety_form_id: string
+          signature_url: string | null
+          signed_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_foreman?: boolean | null
+          safety_form_id: string
+          signature_url?: string | null
+          signed_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_foreman?: boolean | null
+          safety_form_id?: string
+          signature_url?: string | null
+          signed_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "safety_form_attendees_safety_form_id_fkey"
+            columns: ["safety_form_id"]
+            isOneToOne: false
+            referencedRelation: "safety_forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "safety_form_attendees_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       safety_forms: {
         Row: {
           created_at: string
           created_by: string
+          device_info: Json | null
           form_type: string
           id: string
           inspection_date: string | null
           is_deleted: boolean
           project_id: string
+          record_hash: string | null
           status: Database["public"]["Enums"]["safety_status"]
           title: string
           updated_at: string
@@ -1623,11 +1740,13 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by: string
+          device_info?: Json | null
           form_type: string
           id?: string
           inspection_date?: string | null
           is_deleted?: boolean
           project_id: string
+          record_hash?: string | null
           status?: Database["public"]["Enums"]["safety_status"]
           title: string
           updated_at?: string
@@ -1635,11 +1754,13 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string
+          device_info?: Json | null
           form_type?: string
           id?: string
           inspection_date?: string | null
           is_deleted?: boolean
           project_id?: string
+          record_hash?: string | null
           status?: Database["public"]["Enums"]["safety_status"]
           title?: string
           updated_at?: string
