@@ -27,11 +27,30 @@ interface SafetyFormData {
   status: string;
   inspection_date: string;
   created_at: string;
+  record_hash?: string | null;
+  reviewed_at?: string | null;
   project?: {
     name: string;
     location: string;
+    job_number?: string | null;
   };
   creator?: {
+    full_name: string | null;
+    email: string;
+  };
+  reviewer?: {
+    full_name: string | null;
+    email: string;
+  };
+}
+
+interface Acknowledgment {
+  id: string;
+  user_id: string;
+  acknowledged_at: string;
+  signature_url: string | null;
+  attestation_text?: string | null;
+  profiles?: {
     full_name: string | null;
     email: string;
   };
@@ -41,6 +60,7 @@ interface ExportData {
   form: SafetyFormData;
   entries: FormEntry[];
   attendees: Attendee[];
+  acknowledgments?: Acknowledgment[];
 }
 
 const FORM_TYPE_LABELS: Record<string, string> = {
@@ -92,7 +112,7 @@ const categorizeEntries = (entries: FormEntry[]) => {
 };
 
 export const generateSafetyFormPDF = async (data: ExportData): Promise<Blob> => {
-  const { form, entries, attendees } = data;
+  const { form, entries, attendees, acknowledgments } = data;
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
@@ -148,10 +168,16 @@ export const generateSafetyFormPDF = async (data: ExportData): Promise<Blob> => 
 
   const infoItems = [
     { label: "Date", value: format(new Date(form.inspection_date), "MMMM d, yyyy") },
-    { label: "Project", value: form.project?.name || "N/A" },
+    { label: "Project", value: form.project?.job_number 
+      ? `${form.project.job_number} - ${form.project.name}` 
+      : form.project?.name || "N/A" },
     { label: "Location", value: form.project?.location || "N/A" },
     { label: "Created By", value: form.creator?.full_name || form.creator?.email || "N/A" },
     { label: "Created At", value: format(new Date(form.created_at), "MMM d, yyyy h:mm a") },
+    ...(form.reviewed_at && form.reviewer ? [{
+      label: "Reviewed By",
+      value: `${form.reviewer.full_name || form.reviewer.email} on ${format(new Date(form.reviewed_at), "MMM d, yyyy h:mm a")}`
+    }] : []),
   ];
 
   infoItems.forEach((item) => {
@@ -303,6 +329,38 @@ export const generateSafetyFormPDF = async (data: ExportData): Promise<Blob> => 
     yPos += 6;
   }
 
+  // ===== WORKER ACKNOWLEDGMENTS =====
+  if (acknowledgments && acknowledgments.length > 0) {
+    checkPageBreak(50);
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.text("Worker Acknowledgments", margin, yPos);
+    yPos += 8;
+
+    // Table header
+    doc.setFillColor(245, 245, 245);
+    doc.rect(margin, yPos - 4, contentWidth, 8, "F");
+    doc.setFontSize(9);
+    doc.text("Worker", margin + 2, yPos);
+    doc.text("Acknowledged At", margin + 80, yPos);
+    doc.text("Signature", margin + 130, yPos);
+    yPos += 6;
+
+    doc.setFont("helvetica", "normal");
+    acknowledgments.forEach((ack) => {
+      checkPageBreak(10);
+      const name = ack.profiles?.full_name || ack.profiles?.email || "Unknown";
+      const ackTime = format(new Date(ack.acknowledged_at), "h:mm a");
+      const hasSig = ack.signature_url ? "✓" : "—";
+
+      doc.text(name.substring(0, 30), margin + 2, yPos);
+      doc.text(ackTime, margin + 80, yPos);
+      doc.text(hasSig, margin + 140, yPos);
+      yPos += 5;
+    });
+    yPos += 6;
+  }
+
   // ===== SIGNATURES (visual) =====
   const signatureEntries = categorized.signatures.filter(
     (e) => e.field_value?.startsWith("data:image")
@@ -338,7 +396,7 @@ export const generateSafetyFormPDF = async (data: ExportData): Promise<Blob> => 
     }
   }
 
-  // ===== FOOTER =====
+  // ===== FOOTER WITH RECORD HASH =====
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
@@ -349,9 +407,14 @@ export const generateSafetyFormPDF = async (data: ExportData): Promise<Blob> => 
       margin,
       doc.internal.pageSize.getHeight() - 10
     );
+    
+    // Show record hash for integrity verification
+    const hashInfo = form.record_hash 
+      ? `Hash: ${form.record_hash.substring(0, 12)}...` 
+      : `ID: ${form.id.substring(0, 8)}`;
     doc.text(
-      `Form ID: ${form.id.substring(0, 8)}`,
-      pageWidth - margin - 40,
+      hashInfo,
+      pageWidth - margin - 50,
       doc.internal.pageSize.getHeight() - 10
     );
   }
