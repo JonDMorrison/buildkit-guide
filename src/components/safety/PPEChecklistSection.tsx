@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
@@ -55,6 +55,12 @@ export const PPEChecklistSection = ({
   loading = false
 }: PPEChecklistSectionProps) => {
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
+  const onComplianceChangeRef = useRef(onComplianceChange);
+  
+  // Keep ref updated without causing re-renders
+  useEffect(() => {
+    onComplianceChangeRef.current = onComplianceChange;
+  });
 
   // Get unique PPE items for trades on site + general
   const relevantTrades = ['general', ...tradesOnSite.map(t => t.toLowerCase())];
@@ -85,10 +91,10 @@ export const PPEChecklistSection = ({
   const mandatoryItems = sortedPPE.filter(p => p.is_mandatory);
   const optionalItems = sortedPPE.filter(p => !p.is_mandatory);
 
-  // Calculate compliance
+  // Calculate compliance - use ref to avoid infinite loop
   useEffect(() => {
     if (sortedPPE.length === 0) {
-      onComplianceChange('No PPE requirements', 100);
+      onComplianceChangeRef.current('No PPE requirements', 100);
       return;
     }
 
@@ -104,8 +110,8 @@ export const PPEChecklistSection = ({
       ? `Full compliance (${totalChecked}/${sortedPPE.length} items)`
       : `${mandatoryChecked}/${mandatoryItems.length} mandatory items`;
 
-    onComplianceChange(complianceText, mandatoryPercentage);
-  }, [checkedItems, sortedPPE, mandatoryItems, optionalItems, onComplianceChange]);
+    onComplianceChangeRef.current(complianceText, mandatoryPercentage);
+  }, [checkedItems, sortedPPE.length, mandatoryItems, optionalItems]);
 
   const toggleItem = (id: string) => {
     setCheckedItems(prev => ({
