@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
-import { FileText, Camera, Download, Share2, Loader2, FileEdit, Users, CheckCircle, Clock } from "lucide-react";
+import { FileText, Camera, Download, Share2, Loader2, FileEdit, Users, CheckCircle, Clock, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { downloadSafetyFormPDF, shareSafetyFormPDF } from "@/lib/safetyPdfExport";
 import { AmendmentRequestModal } from "./AmendmentRequestModal";
@@ -73,11 +73,13 @@ interface SafetyForm {
   created_at: string;
   created_by: string;
   project_id: string;
+  record_hash?: string | null;
   reviewed_by?: string | null;
   reviewed_at?: string | null;
   project?: {
     name: string;
     location: string;
+    job_number?: string | null;
   };
   creator?: {
     full_name: string | null;
@@ -149,7 +151,7 @@ export const SafetyFormDetailModal = ({
         .from("safety_forms")
         .select(`
           *, 
-          projects(name, location), 
+          projects(name, location, job_number), 
           profiles!safety_forms_created_by_fkey(full_name, email),
           reviewer:profiles!safety_forms_reviewed_by_fkey(full_name, email)
         `)
@@ -202,7 +204,7 @@ export const SafetyFormDetailModal = ({
     if (!form) return;
     setExporting(true);
     try {
-      await downloadSafetyFormPDF({ form, entries, attendees });
+      await downloadSafetyFormPDF({ form, entries, attendees, acknowledgments });
       toast({ title: "PDF downloaded" });
     } catch (error) {
       toast({ title: "Export failed", variant: "destructive" });
@@ -215,7 +217,7 @@ export const SafetyFormDetailModal = ({
     if (!form) return;
     setExporting(true);
     try {
-      await shareSafetyFormPDF({ form, entries, attendees });
+      await shareSafetyFormPDF({ form, entries, attendees, acknowledgments });
       toast({ title: "PDF shared" });
     } catch (error) {
       toast({ title: "Share failed", variant: "destructive" });
@@ -365,6 +367,19 @@ export const SafetyFormDetailModal = ({
                 </div>
               </Card>
             ) : null}
+
+            {/* Record Integrity Badge */}
+            {form.record_hash && (
+              <Card className="p-3 bg-muted/50 border-border">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <ShieldCheck className="h-4 w-4 text-green-600" />
+                  <span className="text-xs font-mono">
+                    Record Hash: {form.record_hash.substring(0, 16)}...
+                  </span>
+                  <span className="text-xs">• Tamper-evident record</span>
+                </div>
+              </Card>
+            )}
 
             {/* Amendment History */}
             <AmendmentHistory 
