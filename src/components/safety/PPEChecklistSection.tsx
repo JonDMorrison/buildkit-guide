@@ -1,6 +1,7 @@
 import { useMemo, useCallback } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { 
@@ -126,16 +127,43 @@ export const PPEChecklistSection = ({
 
   return (
     <div className="space-y-4">
+      {/* Compliance Banner */}
+      {compliancePercentage < 100 && mandatoryItems.length > 0 && (
+        <div className="flex items-center gap-3 p-3 rounded-lg bg-destructive/10 border border-destructive/30">
+          <XCircle className="h-5 w-5 text-destructive flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-destructive">
+              {mandatoryItems.length - mandatoryCheckedCount} mandatory PPE item(s) unchecked
+            </p>
+            <p className="text-xs text-muted-foreground">
+              All required PPE must be verified before proceeding
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onSelectMandatory}
+            className="flex-shrink-0 border-destructive/50 text-destructive hover:bg-destructive/10"
+          >
+            Check All
+          </Button>
+        </div>
+      )}
+
+      {compliancePercentage === 100 && mandatoryItems.length > 0 && (
+        <div className="flex items-center gap-3 p-3 rounded-lg bg-green-500/10 border border-green-500/30">
+          <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
+          <p className="text-sm font-medium text-green-600 dark:text-green-400">
+            All mandatory PPE requirements confirmed
+          </p>
+        </div>
+      )}
+
       {/* Header with compliance bar */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">PPE Compliance</span>
-            {compliancePercentage === 100 ? (
-              <CheckCircle2 className="h-4 w-4 text-green-500" />
-            ) : (
-              <XCircle className="h-4 w-4 text-destructive" />
-            )}
           </div>
           <span className={cn(
             "text-sm font-bold",

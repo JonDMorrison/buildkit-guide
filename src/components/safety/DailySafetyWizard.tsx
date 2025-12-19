@@ -9,7 +9,8 @@ import { WizardStepOne } from "./WizardStepOne";
 import { WizardStepTwo } from "./WizardStepTwo";
 import { WizardStepThree } from "./WizardStepThree";
 import type { SelectedAttendee, Attendee } from "./AttendeeSelector";
-import { ChevronLeft, ChevronRight, Loader2, Check, FileCheck } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Check, AlertTriangle } from "lucide-react";
+import { computePPECompliance } from "./PPEChecklistSection";
 import { format } from "date-fns";
 
 interface HazardWithControls extends HazardSuggestion {
@@ -99,6 +100,27 @@ export const DailySafetyWizard = ({
     }
   }, [tradesOnSite]);
 
+  // Auto-select mandatory PPE items based on trades on site
+  useEffect(() => {
+    if (ppeRequirements.length > 0 && Object.keys(ppeCheckedItems).length === 0 && selectedTrades.length > 0) {
+      const relevantTrades = ["general", ...selectedTrades.map((t) => t.toLowerCase())];
+      const mandatoryItems: Record<string, boolean> = {};
+      
+      ppeRequirements.forEach((ppe) => {
+        const tradeMatch = relevantTrades.some((trade) => 
+          ppe.trade_type.toLowerCase().includes(trade)
+        );
+        if (tradeMatch && ppe.is_mandatory) {
+          mandatoryItems[ppe.id] = true;
+        }
+      });
+      
+      if (Object.keys(mandatoryItems).length > 0) {
+        setPPECheckedItems(mandatoryItems);
+      }
+    }
+  }, [ppeRequirements, selectedTrades]);
+
   const fetchProjects = async () => {
     const { data } = await supabase
       .from("projects")
@@ -166,9 +188,13 @@ export const DailySafetyWizard = ({
     }
   }, [fetchHazardSuggestions, weather, toast]);
 
+  // Compute PPE compliance for warnings
+  const ppeCompliance = computePPECompliance(ppeRequirements, selectedTrades, ppeCheckedItems);
+  const hasPPEWarning = ppeCompliance.percentage < 100;
+
   const canProceed = () => {
     if (step === 1) return !!projectId;
-    if (step === 2) return true;
+    if (step === 2) return true; // Allow proceeding with warning
     if (step === 3) return selectedAttendees.some((a) => a.is_foreman) && foremanSignature;
     return false;
   };
@@ -198,6 +224,19 @@ export const DailySafetyWizard = ({
 
       if (formError) throw formError;
 
+      // Build PPE items list with names for better readability
+      const checkedPPEItems = ppeRequirements
+        .filter((ppe) => ppeCheckedItems[ppe.id])
+        .map((ppe) => ({ id: ppe.id, item: ppe.ppe_item, is_mandatory: ppe.is_mandatory }));
+      
+      const missingMandatoryPPE = ppeRequirements
+        .filter((ppe) => {
+          const relevantTrades = ["general", ...selectedTrades.map((t) => t.toLowerCase())];
+          const isRelevant = relevantTrades.some((trade) => ppe.trade_type.toLowerCase().includes(trade));
+          return isRelevant && ppe.is_mandatory && !ppeCheckedItems[ppe.id];
+        })
+        .map((ppe) => ppe.ppe_item);
+
       // Create entries
       const entries = [
         { safety_form_id: form.id, field_name: "weather", field_value: weather },
@@ -205,7 +244,12 @@ export const DailySafetyWizard = ({
         { safety_form_id: form.id, field_name: "trades_on_site", field_value: selectedTrades.join(", ") },
         { safety_form_id: form.id, field_name: "hazards_identified", field_value: JSON.stringify(selectedHazards) },
         { safety_form_id: form.id, field_name: "additional_notes", field_value: additionalNotes },
-        { safety_form_id: form.id, field_name: "ppe_checked", field_value: JSON.stringify(ppeCheckedItems) },
+        { safety_form_id: form.id, field_name: "ppe_compliance", field_value: JSON.stringify({
+          checked_items: checkedPPEItems,
+          missing_mandatory: missingMandatoryPPE,
+          compliance_percentage: ppeCompliance.percentage,
+          status: ppeCompliance.status,
+        }) },
         { safety_form_id: form.id, field_name: "foreman_signature", field_value: foremanSignature },
         { safety_form_id: form.id, field_name: "worker_rep_signature", field_value: workerRepSignature || "" },
       ];
@@ -306,10 +350,18 @@ export const DailySafetyWizard = ({
           )}
           <div className="flex-1" />
           {step < 3 ? (
-            <Button onClick={() => setStep(step + 1)} disabled={!canProceed()} className="h-12 px-6">
-              Next
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
+            <div className="flex items-center gap-2">
+              {step === 2 && hasPPEWarning && (
+                <div className="flex items-center gap-1 text-amber-500 text-sm">
+                  <AlertTriangle className="h-4 w-4" />
+                  <span className="hidden sm:inline">PPE incomplete</span>
+                </div>
+              )}
+              <Button onClick={() => setStep(step + 1)} disabled={!canProceed()} className="h-12 px-6">
+                Next
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
           ) : (
             <Button onClick={handleSubmit} disabled={!canProceed() || submitting} className="h-12 px-6">
               {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
