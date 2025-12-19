@@ -77,7 +77,8 @@ export const AIAssistPanel = ({ isOpen, onClose, projectId, projectName }: AIAss
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      // Scroll the parent (ScrollArea viewport) to show the bottom of the content
+      scrollRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
   }, [messages]);
 
@@ -153,8 +154,8 @@ export const AIAssistPanel = ({ isOpen, onClose, projectId, projectName }: AIAss
         </SheetHeader>
 
         {/* Chat Area */}
-        <ScrollArea className="flex-1" ref={scrollRef}>
-          <div className="p-4 space-y-4">
+        <ScrollArea className="flex-1">
+          <div className="p-4 space-y-4" ref={scrollRef}>
             {/* Empty state with quick actions */}
             {!hasMessages && !isLoading && (
               <div className="space-y-4">
