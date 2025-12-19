@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
@@ -60,36 +60,45 @@ export const PPEChecklistSection = ({
   // Keep ref updated without causing re-renders
   useEffect(() => {
     onComplianceChangeRef.current = onComplianceChange;
-  });
+  }, [onComplianceChange]);
 
-  // Get unique PPE items for trades on site + general
-  const relevantTrades = ['general', ...tradesOnSite.map(t => t.toLowerCase())];
-  
-  const relevantPPE = ppeRequirements.filter(ppe => 
-    relevantTrades.some(trade => ppe.trade_type.toLowerCase().includes(trade))
+  // Memoize derived lists so our compliance effect doesn't re-run on every parent re-render
+  const tradesKey = useMemo(
+    () => tradesOnSite.map(t => t.toLowerCase()).sort().join('|'),
+    [tradesOnSite]
   );
 
-  // Deduplicate by ppe_item (keep mandatory if exists)
-  const uniquePPE = relevantPPE.reduce((acc, ppe) => {
-    const existing = acc.find(p => p.ppe_item === ppe.ppe_item);
-    if (!existing) {
-      acc.push(ppe);
-    } else if (ppe.is_mandatory && !existing.is_mandatory) {
-      // Replace with mandatory version
-      const idx = acc.indexOf(existing);
-      acc[idx] = ppe;
-    }
-    return acc;
-  }, [] as PPERequirement[]);
+  const { sortedPPE, mandatoryItems, optionalItems } = useMemo(() => {
+    const relevantTrades = ['general', ...(tradesKey ? tradesKey.split('|') : [])];
 
-  // Sort: mandatory first, then alphabetical
-  const sortedPPE = uniquePPE.sort((a, b) => {
-    if (a.is_mandatory !== b.is_mandatory) return a.is_mandatory ? -1 : 1;
-    return a.ppe_item.localeCompare(b.ppe_item);
-  });
+    const relevantPPE = ppeRequirements.filter(ppe =>
+      relevantTrades.some(trade => ppe.trade_type.toLowerCase().includes(trade))
+    );
 
-  const mandatoryItems = sortedPPE.filter(p => p.is_mandatory);
-  const optionalItems = sortedPPE.filter(p => !p.is_mandatory);
+    // Deduplicate by ppe_item (keep mandatory if exists)
+    const uniquePPE = relevantPPE.reduce((acc, ppe) => {
+      const existing = acc.find(p => p.ppe_item === ppe.ppe_item);
+      if (!existing) {
+        acc.push(ppe);
+      } else if (ppe.is_mandatory && !existing.is_mandatory) {
+        const idx = acc.indexOf(existing);
+        acc[idx] = ppe;
+      }
+      return acc;
+    }, [] as PPERequirement[]);
+
+    // Sort: mandatory first, then alphabetical
+    const sorted = [...uniquePPE].sort((a, b) => {
+      if (a.is_mandatory !== b.is_mandatory) return a.is_mandatory ? -1 : 1;
+      return a.ppe_item.localeCompare(b.ppe_item);
+    });
+
+    return {
+      sortedPPE: sorted,
+      mandatoryItems: sorted.filter(p => p.is_mandatory),
+      optionalItems: sorted.filter(p => !p.is_mandatory),
+    };
+  }, [ppeRequirements, tradesKey]);
 
   // Calculate compliance - use ref to avoid infinite loop
   useEffect(() => {
@@ -111,7 +120,7 @@ export const PPEChecklistSection = ({
       : `${mandatoryChecked}/${mandatoryItems.length} mandatory items`;
 
     onComplianceChangeRef.current(complianceText, mandatoryPercentage);
-  }, [checkedItems, sortedPPE.length, mandatoryItems, optionalItems]);
+  }, [checkedItems, sortedPPE, mandatoryItems, optionalItems]);
 
   const toggleItem = (id: string) => {
     setCheckedItems(prev => ({
