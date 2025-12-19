@@ -85,16 +85,29 @@ serve(async (req) => {
       .or(`start_date.lte.${today},due_date.gte.${today}`)
       .limit(30);
 
-    // 2. Active trades on site (from time entries today)
+    // 2. Active trades on site (from time entries today) - 2-step query to avoid FK issues
+    // Step 1: Get user_ids from time entries
     const { data: timeEntries } = await serviceClient
       .from('time_entries')
-      .select(`
-        user_id,
-        project_members!inner(trade_id, trades(name))
-      `)
+      .select('user_id')
       .eq('project_id', project_id)
       .gte('check_in_at', `${today}T00:00:00`)
       .is('check_out_at', null);
+
+    // Step 2: Get trades from project_members for those users
+    const userIds = [...new Set(timeEntries?.map(e => e.user_id) || [])];
+    let projectMembers: any[] = [];
+    
+    if (userIds.length > 0) {
+      const { data: members } = await serviceClient
+        .from('project_members')
+        .select('trade_id, trades(name)')
+        .eq('project_id', project_id)
+        .in('user_id', userIds)
+        .not('trade_id', 'is', null);
+      
+      projectMembers = members || [];
+    }
 
     // 3. Recent incidents and safety forms
     const { data: recentSafety } = await serviceClient
@@ -120,8 +133,8 @@ serve(async (req) => {
 
     // Extract unique trades on site
     const tradesOnSite = new Set<string>();
-    timeEntries?.forEach(entry => {
-      const tradeName = (entry.project_members as any)?.trades?.name;
+    projectMembers?.forEach((member: any) => {
+      const tradeName = member.trades?.name;
       if (tradeName) tradesOnSite.add(tradeName);
     });
     tasks?.forEach(task => {
