@@ -1,7 +1,9 @@
+import { useMemo } from "react";
 import { NavLink } from "./NavLink";
 import { Home, CheckSquare, Calendar, Users, AlertCircle, Shield, Receipt, Clock } from "lucide-react";
 import { useProjectRole } from "@/hooks/useProjectRole";
 import { useTimeTrackingEnabled } from "@/hooks/useTimeTrackingEnabled";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface TabConfig {
   name: string;
@@ -23,20 +25,44 @@ const tabs: TabConfig[] = [
 ];
 
 export const TabBar = () => {
-  const { shouldShowLimitedNav } = useProjectRole();
+  const { shouldShowLimitedNav, loading: roleLoading } = useProjectRole();
   const { enabled: timeTrackingEnabled, loading: timeTrackingLoading } = useTimeTrackingEnabled();
-  const limitedNav = shouldShowLimitedNav();
 
-  // Filter tabs based on role and feature flags
-  const visibleTabs = tabs.filter(tab => {
-    // Check role-based access
-    if (limitedNav && !tab.workerAccess) return false;
+  // Determine if we're still loading critical data
+  const isLoading = roleLoading || timeTrackingLoading;
+
+  // Memoize limitedNav to prevent recalculation on every render
+  const limitedNav = useMemo(() => {
+    if (isLoading) return false; // Default to full nav while loading
+    return shouldShowLimitedNav();
+  }, [isLoading, shouldShowLimitedNav]);
+
+  // Memoize visible tabs to prevent array recreation
+  const visibleTabs = useMemo(() => {
+    if (isLoading) return tabs; // Show all tabs while loading (prevents flicker)
     
-    // Check feature flag for time tracking
-    if (tab.requiresTimeTracking && !timeTrackingEnabled && !timeTrackingLoading) return false;
-    
-    return true;
-  });
+    return tabs.filter(tab => {
+      if (limitedNav && !tab.workerAccess) return false;
+      if (tab.requiresTimeTracking && !timeTrackingEnabled) return false;
+      return true;
+    });
+  }, [limitedNav, timeTrackingEnabled, isLoading]);
+
+  // Show skeleton placeholders while loading
+  if (isLoading) {
+    return (
+      <nav className="fixed bottom-0 left-0 right-0 h-tab-bar bg-card border-t border-border overflow-x-auto">
+        <div className="flex items-center h-full px-2 min-w-max">
+          {tabs.map((tab) => (
+            <div key={tab.path} className="flex flex-col items-center justify-center gap-1 flex-1 min-w-[80px] h-full px-2">
+              <Skeleton className="h-5 w-5 rounded" />
+              <Skeleton className="h-3 w-12 rounded" />
+            </div>
+          ))}
+        </div>
+      </nav>
+    );
+  }
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 h-tab-bar bg-card border-t border-border overflow-x-auto">
