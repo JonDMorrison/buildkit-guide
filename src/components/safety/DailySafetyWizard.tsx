@@ -13,7 +13,7 @@ import type { SelectedAttendee, Attendee } from "./AttendeeSelector";
 import { ChevronLeft, ChevronRight, Loader2, Check, AlertTriangle } from "lucide-react";
 import { computePPECompliance } from "./PPEChecklistSection";
 import { format } from "date-fns";
-import { generateRecordHash } from "@/lib/recordHash";
+import { generateAndPersistRecordHash } from "@/lib/recordHash";
 
 interface HazardWithControls extends HazardSuggestion {
   controls: string[];
@@ -308,21 +308,11 @@ export const DailySafetyWizard = ({
       }
 
       // Generate record hash for tamper-evidence (BC compliance)
-      const recordHash = await generateRecordHash({
-        formId: form.id,
-        projectId,
-        formType: "daily_safety_log",
-        createdBy: user.user.id,
-        inspectionDate: format(new Date(), "yyyy-MM-dd"),
-        entries: entries.map((e) => ({ field_name: e.field_name, field_value: e.field_value })),
-        attendees: selectedAttendees.map((a) => ({ user_id: a.user_id, is_foreman: a.is_foreman })),
-      });
-
-      // Update form with record hash
-      await supabase
-        .from("safety_forms")
-        .update({ record_hash: recordHash })
-        .eq("id", form.id);
+      // Use generateAndPersistRecordHash for deterministic hashing from DB state
+      const recordHash = await generateAndPersistRecordHash(form.id);
+      if (!recordHash) {
+        console.error("[DailySafetyWizard] Failed to generate record hash");
+      }
 
       toast({ title: "Success", description: "Daily Safety Log submitted" });
       onSuccess();

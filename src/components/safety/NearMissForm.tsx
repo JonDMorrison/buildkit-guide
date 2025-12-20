@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, AlertTriangle, MapPin, Calendar, FileText, Shield, CheckCircle } from "lucide-react";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
-import { generateRecordHash } from "@/lib/recordHash";
+import { generateAndPersistRecordHash } from "@/lib/recordHash";
 
 interface NearMissFormProps {
   isOpen: boolean;
@@ -133,25 +133,12 @@ export const NearMissForm = ({
 
       if (entriesError) throw entriesError;
 
-      // Generate and store record hash for tamper evidence
-      const hashPayload = {
-        formId: form.id,
-        projectId: projectId,
-        formType: "near_miss",
-        createdBy: userData.user.id,
-        inspectionDate: formData.date,
-        entries: entries
-          .filter(e => e.field_name !== "reporter_signature")
-          .map(e => ({ field_name: e.field_name, field_value: e.field_value })),
-        attendees: [], // No attendees for near miss
-      };
-
-      const recordHash = await generateRecordHash(hashPayload);
-
-      await supabase
-        .from("safety_forms")
-        .update({ record_hash: recordHash })
-        .eq("id", form.id);
+      // Generate record hash for tamper-evidence (BC compliance)
+      // Use generateAndPersistRecordHash for deterministic hashing from DB state
+      const recordHash = await generateAndPersistRecordHash(form.id);
+      if (!recordHash) {
+        console.error("[NearMissForm] Failed to generate record hash");
+      }
 
       toast({
         title: "Near Miss Reported",
