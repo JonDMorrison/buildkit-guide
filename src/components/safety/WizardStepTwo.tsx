@@ -4,7 +4,8 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Sparkles, Loader2, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Sparkles, Loader2, ChevronDown, ChevronUp, AlertTriangle, ShieldCheck } from "lucide-react";
 import { HazardCard } from "./HazardCard";
 import { ControlChips, CONTROL_OPTIONS } from "./ControlChips";
 import { VoiceInputButton } from "./VoiceInputButton";
@@ -30,6 +31,8 @@ interface WizardStepTwoProps {
   tradesOnSite: string[];
   hazardsLoading: boolean;
   onRequestAISuggestions: () => void;
+  noHazardsConfirmed: boolean;
+  onNoHazardsConfirmedChange: (confirmed: boolean) => void;
 }
 
 // Common fallback hazards when AI is not available
@@ -90,6 +93,8 @@ export const WizardStepTwo = ({
   tradesOnSite,
   hazardsLoading,
   onRequestAISuggestions,
+  noHazardsConfirmed,
+  onNoHazardsConfirmedChange,
 }: WizardStepTwoProps) => {
   const [showAllHazards, setShowAllHazards] = useState(false);
   const [expandedHazardId, setExpandedHazardId] = useState<string | null>(null);
@@ -272,6 +277,38 @@ export const WizardStepTwo = ({
             </Button>
           )}
         </div>
+      )}
+
+      {/* No Hazards Confirmation - Only show when zero hazards selected */}
+      {selectedHazards.length === 0 && !hazardsLoading && (
+        <Card className={cn(
+          "p-4 border-2 transition-colors",
+          noHazardsConfirmed 
+            ? "border-green-500 bg-green-50 dark:bg-green-900/20" 
+            : "border-amber-500 bg-amber-50 dark:bg-amber-900/20"
+        )}>
+          <div className="flex items-start gap-3">
+            <Checkbox
+              id="no-hazards-confirmed"
+              checked={noHazardsConfirmed}
+              onCheckedChange={(checked) => onNoHazardsConfirmedChange(checked === true)}
+              className="mt-1"
+            />
+            <div className="flex-1">
+              <Label 
+                htmlFor="no-hazards-confirmed" 
+                className="text-base font-medium cursor-pointer flex items-center gap-2"
+              >
+                {noHazardsConfirmed && <ShieldCheck className="h-5 w-5 text-green-600" />}
+                No Hazards Identified Today
+              </Label>
+              <p className="text-sm text-muted-foreground mt-1">
+                I confirm that I have reviewed the work areas and activities planned for today, 
+                and no significant hazards requiring documentation were identified at the time of this assessment.
+              </p>
+            </div>
+          </div>
+        </Card>
       )}
 
       {/* Additional Notes with Voice */}
