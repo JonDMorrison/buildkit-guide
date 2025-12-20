@@ -68,6 +68,7 @@ const FORM_TYPE_LABELS: Record<string, string> = {
   toolbox_meeting: "Toolbox Meeting",
   hazard_id: "Hazard Identification",
   incident_report: "Incident Report",
+  near_miss: "Near Miss Report",
   right_to_refuse: "Right to Refuse",
   visitor_log: "Visitor Log",
 };

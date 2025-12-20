@@ -57,8 +57,14 @@ const formTypeConfig = {
     icon: Users,
     description: "Record safety meeting",
   },
+  near_miss: {
+    label: "Near Miss",
+    shortLabel: "Near Miss",
+    icon: AlertTriangle,
+    description: "Report close calls",
+  },
   incident_report: {
-    label: "Incident / Near Miss",
+    label: "Incident Report",
     shortLabel: "Incident",
     icon: FileWarning,
     description: "Document safety events",
