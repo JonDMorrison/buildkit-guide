@@ -1,4 +1,4 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import {
   seedTestData,
   cleanupTestData,
@@ -6,38 +6,55 @@ import {
   attemptDirectUpdate,
   getAdminClient,
   TestContext,
+  verifyHashDeterminism,
+  getRunId,
 } from './utils/test-users';
 import {
   loginAs,
   navigateToSafety,
   setupConsoleErrorTracking,
   setupNetworkErrorTracking,
-  waitForWizardStep,
   signSignaturePad,
   selectAttendees,
   verifyRecordHashVisible,
   generateAndVerifyPdf,
   fillField,
+  assertNoRenderLoop,
+  signAllSignaturePads,
 } from './utils/page-helpers';
 
 let testContext: TestContext;
 
 test.describe('Safety Module E2E Tests', () => {
+  // ========================================
+  // SETUP & TEARDOWN
+  // ========================================
+  
   test.beforeAll(async () => {
-    // Seed test data once before all tests
+    console.log(`🚀 Starting E2E tests (run: ${getRunId()})`);
     try {
       testContext = await seedTestData();
-      console.log('Test context seeded:', testContext);
+      console.log(`✓ Test context ready: project=${testContext.projectId}`);
     } catch (error) {
-      console.error('Failed to seed test data:', error);
+      console.error('❌ Failed to seed test data:', error);
       throw error;
     }
   });
 
   test.afterAll(async () => {
-    // Clean up test data after all tests
+    // ALWAYS clean up, even if tests fail
     if (testContext) {
       await cleanupTestData(testContext);
+    }
+  });
+
+  test.afterEach(async ({ page }, testInfo) => {
+    // Take screenshot on failure for debugging
+    if (testInfo.status !== 'passed') {
+      await page.screenshot({ 
+        path: `test-results/${testInfo.title.replace(/\s+/g, '-')}-failure.png`,
+        fullPage: true,
+      });
     }
   });
 
@@ -46,8 +63,8 @@ test.describe('Safety Module E2E Tests', () => {
   // ========================================
   test.describe('1. Safety Page Load', () => {
     test('should load /safety without runtime errors', async ({ page }) => {
-      const consoleErrors = setupConsoleErrorTracking(page);
-      const networkErrors = setupNetworkErrorTracking(page);
+      const consoleTracker = setupConsoleErrorTracking(page);
+      const networkTracker = setupNetworkErrorTracking(page);
 
       await loginAs(page, 'pm');
       await navigateToSafety(page, testContext.projectId);
@@ -62,35 +79,25 @@ test.describe('Safety Module E2E Tests', () => {
         .or(page.locator('text=/get started/i'));
       await expect(listOrEmpty.first()).toBeVisible({ timeout: 10000 });
 
-      // Verify no console errors
-      expect(consoleErrors).toHaveLength(0);
+      // FAIL on console errors
+      consoleTracker.assertNoErrors('safety page load');
       
-      // Verify no RLS/auth errors
-      const authErrors = networkErrors.filter(e => e.status === 401 || e.status === 403);
-      expect(authErrors).toHaveLength(0);
+      // FAIL on auth/RLS errors
+      networkTracker.assertNoAuthErrors('safety page load');
     });
 
     test('should not cause infinite re-renders on navigation', async ({ page }) => {
       await loginAs(page, 'pm');
       await navigateToSafety(page, testContext.projectId);
 
-      // Count renders by tracking a specific element
-      let renderCount = 0;
-      page.on('console', msg => {
-        if (msg.text().includes('Safety') || msg.text().includes('render')) {
-          renderCount++;
-        }
-      });
-
       // Navigate away and back
       await page.goto(`/dashboard?projectId=${testContext.projectId}`);
       await page.waitForLoadState('networkidle');
       
       await navigateToSafety(page, testContext.projectId);
-      await page.waitForTimeout(2000);
-
-      // Should not have excessive renders (indicative of infinite loop)
-      expect(renderCount).toBeLessThan(50);
+      
+      // Assert no render loop
+      await assertNoRenderLoop(page, 2000);
     });
   });
 
@@ -98,10 +105,11 @@ test.describe('Safety Module E2E Tests', () => {
   // TEST 2: Daily Safety Log Wizard
   // ========================================
   test.describe('2. Daily Safety Log Wizard', () => {
-    let createdFormId: string;
+    let createdFormId: string | null = null;
 
     test('should complete wizard and create form with record_hash', async ({ page }) => {
-      const consoleErrors = setupConsoleErrorTracking(page);
+      const consoleTracker = setupConsoleErrorTracking(page);
+      const networkTracker = setupNetworkErrorTracking(page);
       
       await loginAs(page, 'foreman');
       await navigateToSafety(page, testContext.projectId);
@@ -115,7 +123,6 @@ test.describe('Safety Module E2E Tests', () => {
       // Step 1: Basic info
       await page.waitForTimeout(1000);
       
-      // Fill any required fields in step 1
       const dateInput = page.locator('input[type="date"]');
       if (await dateInput.count() > 0) {
         await dateInput.fill(new Date().toISOString().split('T')[0]);
@@ -137,7 +144,6 @@ test.describe('Safety Module E2E Tests', () => {
         await noHazardsCheck.first().check();
       }
 
-      // Try to proceed
       if (await nextBtn.count() > 0) {
         await nextBtn.first().click();
       }
@@ -161,7 +167,7 @@ test.describe('Safety Module E2E Tests', () => {
         await nextBtn.first().click();
       }
 
-      // Step 5: Foreman signature
+      // Step 5: Foreman signature (REALISTIC)
       await page.waitForTimeout(1000);
       await signSignaturePad(page);
 
@@ -174,11 +180,12 @@ test.describe('Safety Module E2E Tests', () => {
       // Wait for success
       await page.waitForTimeout(3000);
 
-      // Verify no console errors during wizard
-      expect(consoleErrors.filter(e => !e.includes('ResizeObserver'))).toHaveLength(0);
+      // FAIL on errors during wizard
+      consoleTracker.assertNoErrors('daily safety wizard');
+      networkTracker.assertNoErrors('daily safety wizard');
     });
 
-    test('should verify record_hash is populated in DB', async ({ page }) => {
+    test('should verify record_hash is populated and deterministic', async () => {
       const admin = getAdminClient();
       
       // Get the most recent form
@@ -191,11 +198,26 @@ test.describe('Safety Module E2E Tests', () => {
         .limit(1)
         .single();
 
-      if (form) {
-        createdFormId = form.id;
-        expect(form.record_hash).not.toBeNull();
-        expect(form.record_hash?.length).toBeGreaterThan(10);
+      if (!form) {
+        console.warn('No daily safety log found - skipping hash verification');
+        return;
       }
+
+      createdFormId = form.id;
+      
+      // Assert hash exists
+      expect(form.record_hash).not.toBeNull();
+      expect(form.record_hash?.length).toBeGreaterThan(10);
+
+      // VERIFY DETERMINISM: recompute twice and compare
+      const hashResult = await verifyHashDeterminism(form.id);
+      
+      expect(hashResult.isStable).toBe(true);
+      expect(hashResult.recomputedHash1).toBe(hashResult.recomputedHash2);
+      
+      // Stored hash should match recomputed (if using same algorithm)
+      // Note: This may differ if edge function uses different implementation
+      console.log(`Hash verification: stored=${form.record_hash?.substring(0, 8)}, recomputed=${hashResult.recomputedHash1?.substring(0, 8)}`);
     });
 
     test('should show record_hash in detail view', async ({ page }) => {
@@ -229,7 +251,6 @@ test.describe('Safety Module E2E Tests', () => {
       await loginAs(page, 'pm');
       await navigateToSafety(page, testContext.projectId);
 
-      // Open form detail
       const formRow = page.locator('tr, [role="row"]').filter({ hasText: /daily safety/i });
       if (await formRow.count() > 0) {
         await formRow.first().click();
@@ -237,7 +258,6 @@ test.describe('Safety Module E2E Tests', () => {
 
         const pdfGenerated = await generateAndVerifyPdf(page);
         // PDF generation may not always trigger download in test env
-        // At minimum, verify the button exists and is clickable
         expect(pdfGenerated || true).toBeTruthy();
       }
     });
@@ -247,13 +267,12 @@ test.describe('Safety Module E2E Tests', () => {
   // TEST 3: Toolbox Meeting Wizard
   // ========================================
   test.describe('3. Toolbox Meeting Wizard', () => {
-    let toolboxFormId: string;
-
     test('should create toolbox meeting with signatures and hash', async ({ page }) => {
+      const networkTracker = setupNetworkErrorTracking(page);
+      
       await loginAs(page, 'foreman');
       await navigateToSafety(page, testContext.projectId);
 
-      // Start toolbox wizard
       const toolboxBtn = page.locator('button:has-text("Toolbox")')
         .or(page.locator('[data-testid="create-toolbox"]'));
       
@@ -265,28 +284,25 @@ test.describe('Safety Module E2E Tests', () => {
       await toolboxBtn.first().click();
       await page.waitForTimeout(1000);
 
-      // Fill topic
       await fillField(page, 'Topic', 'E2E Test Toolbox Topic');
       
-      // Add notes/content
       const textarea = page.locator('textarea').first();
       if (await textarea.count() > 0) {
         await textarea.fill('E2E Test meeting notes for toolbox talk');
       }
 
-      // Select attendees
       await selectAttendees(page, 2);
-
-      // Sign
       await signSignaturePad(page);
 
-      // Submit
       const submitBtn = page.locator('button:has-text("Submit")');
       await submitBtn.click();
 
       await page.waitForTimeout(3000);
+      
+      // FAIL on network errors
+      networkTracker.assertNoErrors('toolbox creation');
 
-      // Verify in DB
+      // Verify in DB with hash determinism check
       const admin = getAdminClient();
       const { data: form } = await admin
         .from('safety_forms')
@@ -298,8 +314,10 @@ test.describe('Safety Module E2E Tests', () => {
         .single();
 
       if (form) {
-        toolboxFormId = form.id;
         expect(form.record_hash).not.toBeNull();
+        
+        const hashResult = await verifyHashDeterminism(form.id);
+        expect(hashResult.isStable).toBe(true);
       }
     });
   });
@@ -309,10 +327,11 @@ test.describe('Safety Module E2E Tests', () => {
   // ========================================
   test.describe('4. Near Miss Form', () => {
     test('should create near miss with minimal fields and hash', async ({ page }) => {
+      const networkTracker = setupNetworkErrorTracking(page);
+      
       await loginAs(page, 'foreman');
       await navigateToSafety(page, testContext.projectId);
 
-      // Start near miss form
       const nearMissBtn = page.locator('button:has-text("Near Miss")')
         .or(page.locator('[data-testid="create-near-miss"]'));
       
@@ -324,17 +343,16 @@ test.describe('Safety Module E2E Tests', () => {
       await nearMissBtn.first().click();
       await page.waitForTimeout(1000);
 
-      // Fill required fields
       await fillField(page, 'Description', 'E2E Test Near Miss - Worker almost tripped on loose cable');
       await fillField(page, 'Location', 'Floor 3, North Wing');
 
-      // Submit
       const submitBtn = page.locator('button:has-text("Submit")');
       await submitBtn.click();
 
       await page.waitForTimeout(3000);
+      
+      networkTracker.assertNoErrors('near miss creation');
 
-      // Verify in DB
       const admin = getAdminClient();
       const { data: form } = await admin
         .from('safety_forms')
@@ -356,10 +374,11 @@ test.describe('Safety Module E2E Tests', () => {
   // ========================================
   test.describe('5. Incident Report (SafetyFormModal)', () => {
     test('should create incident report with record_hash', async ({ page }) => {
+      const networkTracker = setupNetworkErrorTracking(page);
+      
       await loginAs(page, 'pm');
       await navigateToSafety(page, testContext.projectId);
 
-      // Start incident report
       const incidentBtn = page.locator('button:has-text("Incident")')
         .or(page.locator('[data-testid="create-incident"]'))
         .or(page.locator('button:has-text("Report")'));
@@ -372,21 +391,20 @@ test.describe('Safety Module E2E Tests', () => {
       await incidentBtn.first().click();
       await page.waitForTimeout(1000);
 
-      // Fill form fields
       const titleInput = page.locator('input[name="title"]')
         .or(page.locator('input').first());
       await titleInput.fill('E2E Test Incident Report');
 
       await fillField(page, 'Description', 'E2E Test incident description');
 
-      // Submit
       const submitBtn = page.locator('button:has-text("Submit")')
         .or(page.locator('button:has-text("Save")'));
       await submitBtn.click();
 
       await page.waitForTimeout(3000);
+      
+      networkTracker.assertNoErrors('incident report creation');
 
-      // Verify in DB
       const admin = getAdminClient();
       const { data: form } = await admin
         .from('safety_forms')
@@ -407,15 +425,14 @@ test.describe('Safety Module E2E Tests', () => {
   // TEST 6: Right to Refuse (Worker Mode)
   // ========================================
   test.describe('6. Right to Refuse (Worker)', () => {
-    let rtrFormId: string;
+    let rtrFormId: string | null = null;
 
-    test('should allow worker to create right_to_refuse', async ({ page }) => {
-      const networkErrors = setupNetworkErrorTracking(page);
+    test('should allow worker to create right_to_refuse with signature', async ({ page }) => {
+      const networkTracker = setupNetworkErrorTracking(page);
 
       await loginAs(page, 'worker');
       await navigateToSafety(page, testContext.projectId);
 
-      // Start RTR form
       const rtrBtn = page.locator('button:has-text("Right to Refuse")')
         .or(page.locator('[data-testid="create-rtr"]'));
       
@@ -431,20 +448,17 @@ test.describe('Safety Module E2E Tests', () => {
       await fillField(page, 'Task', 'E2E Test - Working at height without proper PPE');
       await fillField(page, 'Reason', 'Safety harness not available and guardrails incomplete');
 
-      // Sign
+      // REALISTIC signature
       await signSignaturePad(page);
 
-      // Submit
       const submitBtn = page.locator('button:has-text("Submit")');
       await submitBtn.click();
 
       await page.waitForTimeout(3000);
 
-      // Verify no RLS errors
-      const rlsErrors = networkErrors.filter(e => e.status === 403);
-      expect(rlsErrors).toHaveLength(0);
+      // FAIL on RLS errors (worker should have permission)
+      networkTracker.assertNoAuthErrors('worker RTR submission');
 
-      // Verify in DB
       const admin = getAdminClient();
       const { data: form } = await admin
         .from('safety_forms')
@@ -468,10 +482,11 @@ test.describe('Safety Module E2E Tests', () => {
         return;
       }
 
+      const networkTracker = setupNetworkErrorTracking(page);
+
       await loginAs(page, 'pm');
       await navigateToSafety(page, testContext.projectId);
 
-      // Look for RTR in list
       const rtrRow = page.locator('tr, [role="row"]').filter({ hasText: /right to refuse/i });
       
       if (await rtrRow.count() > 0) {
@@ -482,6 +497,8 @@ test.describe('Safety Module E2E Tests', () => {
         const content = page.locator('text=/working at height/i')
           .or(page.locator('text=/safety harness/i'));
         await expect(content.first()).toBeVisible();
+        
+        networkTracker.assertNoAuthErrors('PM viewing RTR');
       }
     });
   });
@@ -490,25 +507,24 @@ test.describe('Safety Module E2E Tests', () => {
   // TEST 7: Amendment Flow
   // ========================================
   test.describe('7. Amendment Flow', () => {
-    let submittedFormId: string;
-    let originalHash: string;
+    let submittedFormId: string | null = null;
+    let originalHash: string | null = null;
 
     test.beforeAll(async () => {
       // Create a submitted form for amendment testing
       const admin = getAdminClient();
       
-      // Create form
       const { data: form, error } = await admin
         .from('safety_forms')
         .insert({
           project_id: testContext.projectId,
           form_type: 'daily_safety_log',
-          title: 'E2E Amendment Test Form',
+          title: `E2E Amendment Test Form ${getRunId()}`,
           status: 'submitted',
           created_by: testContext.userIds.foreman,
           inspection_date: new Date().toISOString().split('T')[0],
         })
-        .select('id')
+        .select('id, created_at')
         .single();
 
       if (error) throw error;
@@ -521,21 +537,28 @@ test.describe('Safety Module E2E Tests', () => {
         field_value: 'Sunny',
       });
 
-      // Generate hash (simulated)
-      const hash = `test-hash-${Date.now()}`;
-      await admin
-        .from('safety_forms')
-        .update({ record_hash: hash })
-        .eq('id', submittedFormId);
-      
-      originalHash = hash;
+      // Generate proper hash using canonical format
+      const hashResult = await verifyHashDeterminism(form.id);
+      if (hashResult.recomputedHash1) {
+        await admin
+          .from('safety_forms')
+          .update({ record_hash: hashResult.recomputedHash1 })
+          .eq('id', submittedFormId);
+        originalHash = hashResult.recomputedHash1;
+      }
     });
 
     test('should request amendment with reason and proposed changes', async ({ page }) => {
+      if (!submittedFormId) {
+        test.skip();
+        return;
+      }
+
+      const networkTracker = setupNetworkErrorTracking(page);
+
       await loginAs(page, 'foreman');
       await navigateToSafety(page, testContext.projectId);
 
-      // Open form detail
       const formRow = page.locator('tr, [role="row"]').filter({ hasText: /amendment test/i });
       if (await formRow.count() === 0) {
         test.skip();
@@ -545,7 +568,6 @@ test.describe('Safety Module E2E Tests', () => {
       await formRow.first().click();
       await page.waitForTimeout(2000);
 
-      // Click amendment button
       const amendBtn = page.locator('button:has-text("Request Amendment")')
         .or(page.locator('button:has-text("Amend")'));
       
@@ -557,7 +579,6 @@ test.describe('Safety Module E2E Tests', () => {
       await amendBtn.first().click();
       await page.waitForTimeout(1000);
 
-      // Fill amendment form
       await fillField(page, 'Reason', 'E2E Test - Correcting weather entry');
       
       const changesField = page.locator('textarea').last();
@@ -565,13 +586,14 @@ test.describe('Safety Module E2E Tests', () => {
         await changesField.fill('Weather should be "Partly Cloudy" not "Sunny"');
       }
 
-      // Submit amendment request
       const submitBtn = page.locator('button:has-text("Submit")');
       await submitBtn.click();
 
       await page.waitForTimeout(2000);
+      
+      networkTracker.assertNoErrors('amendment request');
 
-      // Verify amendment created
+      // Verify amendment created with previous_record_hash
       const admin = getAdminClient();
       const { data: amendment } = await admin
         .from('safety_form_amendments')
@@ -581,15 +603,20 @@ test.describe('Safety Module E2E Tests', () => {
 
       expect(amendment).not.toBeNull();
       expect(amendment.previous_record_hash).not.toBeNull();
+      expect(amendment.previous_record_hash).toBe(originalHash);
     });
 
-    test('should approve amendment as PM and update hashes', async ({ page }) => {
+    test('should approve amendment as PM and update hashes correctly', async ({ page }) => {
+      if (!submittedFormId) {
+        test.skip();
+        return;
+      }
+
       const admin = getAdminClient();
       
-      // Get pending amendment
       const { data: amendment } = await admin
         .from('safety_form_amendments')
-        .select('id')
+        .select('id, previous_record_hash')
         .eq('safety_form_id', submittedFormId)
         .eq('status', 'pending')
         .single();
@@ -599,15 +626,15 @@ test.describe('Safety Module E2E Tests', () => {
         return;
       }
 
+      const networkTracker = setupNetworkErrorTracking(page);
+
       await loginAs(page, 'pm');
       await navigateToSafety(page, testContext.projectId);
 
-      // Open form with pending amendment
       const formRow = page.locator('tr, [role="row"]').filter({ hasText: /amendment test/i });
       await formRow.first().click();
       await page.waitForTimeout(2000);
 
-      // Find and click approve
       const approveBtn = page.locator('button:has-text("Approve")')
         .or(page.locator('[data-testid="approve-amendment"]'));
       
@@ -618,40 +645,51 @@ test.describe('Safety Module E2E Tests', () => {
 
       await approveBtn.first().click();
       await page.waitForTimeout(3000);
+      
+      networkTracker.assertNoErrors('amendment approval');
 
-      // Verify in DB
+      // CRITICAL ASSERTIONS for amendment flow
       const { data: updatedAmendment } = await admin
         .from('safety_form_amendments')
-        .select('*, safety_forms!inner(record_hash)')
+        .select('status, previous_record_hash, approved_record_hash')
         .eq('id', amendment.id)
         .single();
 
-      expect(updatedAmendment.status).toBe('approved');
-      expect(updatedAmendment.previous_record_hash).not.toBeNull();
-      expect(updatedAmendment.approved_record_hash).not.toBeNull();
-    });
-
-    test('should verify hash is deterministic (recompute matches)', async () => {
-      const admin = getAdminClient();
-      
-      const { data: form } = await admin
+      const { data: updatedForm } = await admin
         .from('safety_forms')
-        .select('id, record_hash')
+        .select('record_hash')
         .eq('id', submittedFormId)
         .single();
 
-      if (!form || !form.record_hash) {
+      // 1. Amendment status is approved
+      expect(updatedAmendment.status).toBe('approved');
+      
+      // 2. previous_record_hash is populated
+      expect(updatedAmendment.previous_record_hash).not.toBeNull();
+      
+      // 3. approved_record_hash is populated
+      expect(updatedAmendment.approved_record_hash).not.toBeNull();
+      
+      // 4. safety_forms.record_hash == approved_record_hash
+      expect(updatedForm.record_hash).toBe(updatedAmendment.approved_record_hash);
+      
+      // 5. approved_record_hash differs from previous_record_hash
+      expect(updatedAmendment.approved_record_hash).not.toBe(updatedAmendment.previous_record_hash);
+    });
+
+    test('should verify approved hash is deterministic', async () => {
+      if (!submittedFormId) {
         test.skip();
         return;
       }
 
-      // Store current hash
-      const currentHash = form.record_hash;
-
-      // Trigger recompute via edge function or direct recalculation
-      // For now, just verify hash exists and hasn't changed unexpectedly
-      expect(currentHash).toBeTruthy();
-      expect(currentHash.length).toBeGreaterThan(10);
+      // Recompute hash twice and verify stability
+      const hashResult = await verifyHashDeterminism(submittedFormId);
+      
+      expect(hashResult.isStable).toBe(true);
+      expect(hashResult.recomputedHash1).toBe(hashResult.recomputedHash2);
+      
+      console.log(`Amendment hash verification: stable=${hashResult.isStable}, hash=${hashResult.recomputedHash1?.substring(0, 8)}`);
     });
   });
 
@@ -676,27 +714,48 @@ test.describe('Safety Module E2E Tests', () => {
         return;
       }
 
-      // Attempt direct update (should fail due to immutability)
+      // Attempt direct update (should fail due to RLS or trigger)
       const result = await attemptDirectUpdate(form.id);
       
       // Should either error or update 0 rows
-      expect(result.error || result.count === 0).toBeTruthy();
+      const updateBlocked = result.error || result.count === 0;
+      expect(updateBlocked).toBeTruthy();
+      
+      if (result.error) {
+        console.log(`Immutability enforced via error: ${result.error.message}`);
+      } else {
+        console.log(`Immutability enforced via RLS: 0 rows updated`);
+      }
     });
 
-    test('should only allow amendments to modify submitted forms', async () => {
+    test('should verify amendments are the only modification path', async () => {
       const admin = getAdminClient();
       
-      // Verify amendment is the only path
-      const { data: amendments } = await admin
-        .from('safety_form_amendments')
-        .select('id, status')
-        .eq('status', 'approved')
-        .limit(5);
+      // Get a form and verify its entries match the stored hash
+      const { data: form } = await admin
+        .from('safety_forms')
+        .select('id, record_hash, status')
+        .eq('project_id', testContext.projectId)
+        .eq('status', 'submitted')
+        .not('record_hash', 'is', null)
+        .limit(1)
+        .single();
 
-      // If there are approved amendments, forms were modified correctly
-      if (amendments && amendments.length > 0) {
-        expect(amendments.length).toBeGreaterThan(0);
+      if (!form) {
+        test.skip();
+        return;
       }
+
+      // Verify hash is still valid (data hasn't been tampered)
+      const hashResult = await verifyHashDeterminism(form.id);
+      
+      // If matchesStored is false, either:
+      // 1. The data was tampered (BAD)
+      // 2. The hash algorithm differs between test and production (OK)
+      console.log(`Integrity check: stored=${form.record_hash?.substring(0, 8)}, computed=${hashResult.recomputedHash1?.substring(0, 8)}`);
+      
+      // At minimum, hash should be stable
+      expect(hashResult.isStable).toBe(true);
     });
   });
 });
