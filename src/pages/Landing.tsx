@@ -53,6 +53,12 @@ export default function Landing() {
             <Button variant="ghost" onClick={handleSeeHowItWorks} className="text-base">
               How It Works
             </Button>
+            <Button variant="ghost" onClick={() => navigate('/safety-security')} className="text-base">
+              Safety & Security
+            </Button>
+            <Button variant="ghost" onClick={() => navigate('/responsible-ai')} className="text-base">
+              Responsible AI
+            </Button>
             <Button variant="ghost" onClick={handleSignIn} className="text-base">
               Sign In
             </Button>
@@ -90,10 +96,17 @@ export default function Landing() {
                   </Button>
                   <Button 
                     variant="ghost" 
-                    onClick={handleSeePricing} 
+                    onClick={() => { navigate('/safety-security'); setMobileMenuOpen(false); }} 
                     className="justify-start text-base h-12 font-medium"
                   >
-                    Pricing
+                    Safety & Security
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => { navigate('/responsible-ai'); setMobileMenuOpen(false); }} 
+                    className="justify-start text-base h-12 font-medium"
+                  >
+                    Responsible AI
                   </Button>
                   <Button 
                     variant="ghost" 
@@ -346,16 +359,24 @@ export default function Landing() {
       {/* Footer */}
       <footer className="py-12 px-4 border-t border-border">
         <div className="container mx-auto max-w-6xl">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-2">
               <img src={buildSenseLogo} alt="Build Sense" className="h-7 w-7" />
               <p className="text-sm text-muted-foreground">
                 © 2024 Build Sense. Built for the field.
               </p>
             </div>
-            <Button variant="ghost" onClick={() => navigate('/auth')}>
-              Sign In
-            </Button>
+            <div className="flex flex-wrap justify-center gap-4">
+              <Button variant="ghost" size="sm" onClick={() => navigate('/safety-security')}>
+                Safety & Security
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/responsible-ai')}>
+                Responsible AI
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/auth')}>
+                Sign In
+              </Button>
+            </div>
           </div>
         </div>
       </footer>
