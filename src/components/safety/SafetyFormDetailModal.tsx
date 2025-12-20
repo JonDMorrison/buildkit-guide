@@ -16,6 +16,7 @@ import { format } from "date-fns";
 import { FileText, Camera, Download, Share2, Loader2, FileEdit, Users, CheckCircle, Clock, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { downloadSafetyFormPDF, shareSafetyFormPDF } from "@/lib/safetyPdfExport";
+import { assertRecordHashPresent } from "@/lib/recordHash";
 import { AmendmentRequestModal } from "./AmendmentRequestModal";
 import { AmendmentHistory } from "./AmendmentHistory";
 import { RightToRefuseTimeline } from "./RightToRefuseTimeline";
@@ -162,12 +163,18 @@ export const SafetyFormDetailModal = ({
         .single();
 
       if (formError) throw formError;
-      setForm({
+      
+      const formObj = {
         ...formData,
         project: formData.projects,
         creator: formData.profiles,
         reviewer: formData.reviewer,
-      });
+      };
+      
+      // Regression check: warn if submitted/reviewed form lacks record_hash
+      assertRecordHashPresent(formObj);
+      
+      setForm(formObj);
 
       // Fetch entries
       const { data: entriesData } = await supabase
