@@ -160,6 +160,7 @@ export const RightToRefuseForm = ({
 
       // Create entries for all form fields
       // In worker mode, investigation and resolution fields are left empty for employer to fill
+      const isResolved = !isWorkerMode && (resolutionStatus.startsWith("resolved_") || resolutionStatus === "escalated");
       const entries = [
         { safety_form_id: form.id, field_name: "task_activity", field_value: taskActivity },
         { safety_form_id: form.id, field_name: "location", field_value: location },
@@ -176,6 +177,8 @@ export const RightToRefuseForm = ({
         { safety_form_id: form.id, field_name: "submitted_at", field_value: new Date().toISOString() },
         // Track if this was worker-initiated for audit purposes
         { safety_form_id: form.id, field_name: "worker_initiated", field_value: isWorkerMode ? "true" : "false" },
+        // Store resolved_at timestamp when status is resolved
+        { safety_form_id: form.id, field_name: "resolved_at", field_value: isResolved ? new Date().toISOString() : "" },
       ];
 
       await supabase.from("safety_entries").insert(entries);

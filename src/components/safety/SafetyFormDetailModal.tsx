@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { downloadSafetyFormPDF, shareSafetyFormPDF } from "@/lib/safetyPdfExport";
 import { AmendmentRequestModal } from "./AmendmentRequestModal";
 import { AmendmentHistory } from "./AmendmentHistory";
+import { RightToRefuseTimeline } from "./RightToRefuseTimeline";
 import { useProjectRole } from "@/hooks/useProjectRole";
 
 interface SafetyFormDetailModalProps {
@@ -97,6 +98,8 @@ const getFormTypeLabel = (formType: string) => {
     toolbox_meeting: "Toolbox Meeting",
     hazard_id: "Hazard ID",
     incident_report: "Incident Report",
+    near_miss: "Near Miss",
+    right_to_refuse: "Right to Refuse",
     visitor_log: "Visitor Log",
   };
   return labels[formType] || formType;
@@ -387,6 +390,14 @@ export const SafetyFormDetailModal = ({
               projectId={form.project_id}
               onRefresh={fetchFormDetails}
             />
+
+            {/* Right to Refuse Timeline */}
+            {form.form_type === "right_to_refuse" && entries.length > 0 && (
+              <RightToRefuseTimeline 
+                entries={entries.map(e => ({ field_name: e.field_name, field_value: e.field_value }))}
+                createdAt={form.created_at}
+              />
+            )}
 
             {/* Form Entries */}
             {entries.length > 0 && (
