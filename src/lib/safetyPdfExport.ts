@@ -229,7 +229,10 @@ export const generateSafetyFormPDF = async (data: ExportData): Promise<Blob> => 
   }
 
   // Hazards & Controls
-  if (categorized.hazards.length > 0) {
+  const noHazardsEntry = entries.find(e => e.field_name === "no_hazards_confirmed");
+  const noHazardsConfirmed = noHazardsEntry?.field_value === "true";
+
+  if (categorized.hazards.length > 0 || noHazardsConfirmed) {
     checkPageBreak(40);
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
@@ -237,6 +240,26 @@ export const generateSafetyFormPDF = async (data: ExportData): Promise<Blob> => 
     yPos += 6;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
+
+    // Show explicit no-hazards confirmation if applicable
+    if (noHazardsConfirmed && categorized.hazards.length === 0) {
+      doc.setDrawColor(34, 197, 94); // green
+      doc.setFillColor(240, 253, 244); // light green
+      doc.roundedRect(margin, yPos - 2, contentWidth, 14, 2, 2, "FD");
+      doc.setTextColor(22, 101, 52); // dark green
+      doc.setFont("helvetica", "bold");
+      doc.text("✓ No Hazards Identified Today", margin + 4, yPos + 6);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      yPos += 12;
+      doc.setTextColor(75, 85, 99); // gray
+      const attestation = "Confirmed: Work areas and activities reviewed. No significant hazards requiring documentation were identified.";
+      const attestLines = doc.splitTextToSize(attestation, contentWidth);
+      doc.text(attestLines, margin, yPos);
+      yPos += attestLines.length * 4 + 4;
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(10);
+    }
 
     categorized.hazards.forEach((entry) => {
       checkPageBreak(20);

@@ -47,6 +47,7 @@ export const DailySafetyWizard = ({
   const [selectedHazards, setSelectedHazards] = useState<HazardWithControls[]>([]);
   const [additionalNotes, setAdditionalNotes] = useState("");
   const [ppeCheckedItems, setPPECheckedItems] = useState<Record<string, boolean>>({});
+  const [noHazardsConfirmed, setNoHazardsConfirmed] = useState(false);
 
   // Step 3 state
   const [attendees, setAttendees] = useState<Attendee[]>([]);
@@ -260,6 +261,8 @@ export const DailySafetyWizard = ({
         }) },
         { safety_form_id: form.id, field_name: "foreman_signature", field_value: foremanSignature },
         { safety_form_id: form.id, field_name: "worker_rep_signature", field_value: workerRepSignature || "" },
+        // Store no-hazards confirmation for BC compliance
+        { safety_form_id: form.id, field_name: "no_hazards_confirmed", field_value: selectedHazards.length === 0 && noHazardsConfirmed ? "true" : "false" },
       ];
 
       await supabase.from("safety_entries").insert(entries);
@@ -363,6 +366,8 @@ export const DailySafetyWizard = ({
               tradesOnSite={selectedTrades}
               hazardsLoading={hazardsLoading}
               onRequestAISuggestions={handleRequestAI}
+              noHazardsConfirmed={noHazardsConfirmed}
+              onNoHazardsConfirmedChange={setNoHazardsConfirmed}
             />
           )}
 
