@@ -64,6 +64,23 @@ This project is built with:
 
 Simply open [Lovable](https://lovable.dev/projects/4e4098c3-e93d-49cc-9e6c-99f0c48a10e3) and click on Share -> Publish.
 
+## E2E Testing
+
+Run end-to-end tests for the safety module:
+
+```bash
+# Install Playwright (first time)
+npx playwright install chromium
+
+# Run tests
+npm run test:e2e
+
+# Run with UI
+npm run test:e2e:ui
+```
+
+See [E2E Testing Guide](docs/E2E_TESTING.md) for details.
+
 ## Can I connect a custom domain to my Lovable project?
 
 Yes, you can!
