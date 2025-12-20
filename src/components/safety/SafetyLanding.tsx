@@ -40,6 +40,7 @@ interface SafetyLandingProps {
   onCreateForm: (type: string) => void;
   onFormClick: (id: string) => void;
   canCreate: boolean;
+  isWorker?: boolean; // If true, show limited options for workers
 }
 
 const formTypeConfig = {
@@ -95,6 +96,7 @@ export const SafetyLanding = ({
   onCreateForm,
   onFormClick,
   canCreate,
+  isWorker = false,
 }: SafetyLandingProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -133,8 +135,29 @@ export const SafetyLanding = ({
 
   return (
     <div className="space-y-6">
-      {/* Primary CTA - New Daily Safety Log */}
-      {canCreate && (
+      {/* Worker-specific: Right to Refuse button only */}
+      {isWorker && (
+        <Card
+          className="p-6 cursor-pointer hover:bg-accent/50 transition-colors border-2 border-destructive/30 bg-destructive/5"
+          onClick={() => onCreateForm("right_to_refuse")}
+        >
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-lg bg-destructive/10">
+              <ShieldBan className="h-6 w-6 text-destructive" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-lg">Report Unsafe Work</h3>
+              <p className="text-sm text-muted-foreground">
+                Exercise your right to refuse work you believe is unsafe
+              </p>
+            </div>
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+          </div>
+        </Card>
+      )}
+
+      {/* Primary CTA - New Daily Safety Log (PM/Foreman only) */}
+      {canCreate && !isWorker && (
         <Button
           onClick={handleCreateDaily}
           size="lg"
@@ -145,8 +168,8 @@ export const SafetyLanding = ({
         </Button>
       )}
 
-      {/* Secondary CTAs - Horizontal scroll on mobile */}
-      {canCreate && (
+      {/* Secondary CTAs - Horizontal scroll on mobile (PM/Foreman only) */}
+      {canCreate && !isWorker && (
         <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
           {Object.entries(formTypeConfig)
             .filter(([key]) => key !== "daily_safety_log")

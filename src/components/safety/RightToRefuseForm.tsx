@@ -37,6 +37,7 @@ interface RightToRefuseFormProps {
   onClose: () => void;
   onSuccess: () => void;
   projectId: string | null;
+  isWorkerMode?: boolean; // When true, hide investigation/resolution fields
 }
 
 const REFUSAL_REASONS = [
@@ -65,6 +66,7 @@ export const RightToRefuseForm = ({
   onClose,
   onSuccess,
   projectId,
+  isWorkerMode = false,
 }: RightToRefuseFormProps) => {
   const [submitting, setSubmitting] = useState(false);
   const [showExplainer, setShowExplainer] = useState(false);
@@ -157,6 +159,7 @@ export const RightToRefuseForm = ({
       if (formError) throw formError;
 
       // Create entries for all form fields
+      // In worker mode, investigation and resolution fields are left empty for employer to fill
       const entries = [
         { safety_form_id: form.id, field_name: "task_activity", field_value: taskActivity },
         { safety_form_id: form.id, field_name: "location", field_value: location },
@@ -166,10 +169,13 @@ export const RightToRefuseForm = ({
         { safety_form_id: form.id, field_name: "supervisor_notified", field_value: supervisorNotified ? "yes" : "no" },
         { safety_form_id: form.id, field_name: "supervisor_name", field_value: supervisorName },
         { safety_form_id: form.id, field_name: "supervisor_notified_at", field_value: supervisorNotifiedAt },
-        { safety_form_id: form.id, field_name: "investigation_notes", field_value: investigationNotes },
-        { safety_form_id: form.id, field_name: "resolution_status", field_value: resolutionStatus },
+        // Only include investigation/resolution if not in worker mode (employer fills these)
+        { safety_form_id: form.id, field_name: "investigation_notes", field_value: isWorkerMode ? "" : investigationNotes },
+        { safety_form_id: form.id, field_name: "resolution_status", field_value: isWorkerMode ? "pending_investigation" : resolutionStatus },
         { safety_form_id: form.id, field_name: "worker_signature", field_value: signature },
         { safety_form_id: form.id, field_name: "submitted_at", field_value: new Date().toISOString() },
+        // Track if this was worker-initiated for audit purposes
+        { safety_form_id: form.id, field_name: "worker_initiated", field_value: isWorkerMode ? "true" : "false" },
       ];
 
       await supabase.from("safety_entries").insert(entries);
@@ -232,8 +238,13 @@ export const RightToRefuseForm = ({
         <DialogHeader className="p-6 pb-4 border-b sticky top-0 bg-background z-10">
           <DialogTitle className="text-xl flex items-center gap-2">
             <ShieldBan className="h-5 w-5 text-destructive" />
-            Right to Refuse Unsafe Work
+            {isWorkerMode ? "Report Unsafe Work" : "Right to Refuse Unsafe Work"}
           </DialogTitle>
+          {isWorkerMode && (
+            <p className="text-sm text-muted-foreground mt-1">
+              Submit your refusal. Your supervisor will be notified to investigate.
+            </p>
+          )}
         </DialogHeader>
 
         <div className="p-6 space-y-6">
@@ -421,36 +432,40 @@ export const RightToRefuseForm = ({
             )}
           </Card>
 
-          {/* Investigation Notes */}
-          <div className="space-y-2">
-            <Label className="text-base font-medium">Investigation Notes</Label>
-            <div className="flex gap-2">
-              <Textarea
-                value={investigationNotes}
-                onChange={(e) => setInvestigationNotes(e.target.value)}
-                placeholder="Notes from investigation, discussions, or follow-up actions..."
-                className="min-h-[80px] flex-1"
-              />
-              <VoiceInputButton onTranscription={(t) => handleVoiceInput("notes", t)} />
+          {/* Investigation Notes - Only visible to PM/Foreman, not workers */}
+          {!isWorkerMode && (
+            <div className="space-y-2">
+              <Label className="text-base font-medium">Investigation Notes</Label>
+              <div className="flex gap-2">
+                <Textarea
+                  value={investigationNotes}
+                  onChange={(e) => setInvestigationNotes(e.target.value)}
+                  placeholder="Notes from investigation, discussions, or follow-up actions..."
+                  className="min-h-[80px] flex-1"
+                />
+                <VoiceInputButton onTranscription={(t) => handleVoiceInput("notes", t)} />
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Resolution Status */}
-          <div className="space-y-2">
-            <Label className="text-base font-medium">Resolution Status</Label>
-            <Select value={resolutionStatus} onValueChange={setResolutionStatus}>
-              <SelectTrigger className="h-12">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {RESOLUTION_STATUS.map((status) => (
-                  <SelectItem key={status.id} value={status.id}>
-                    {status.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Resolution Status - Only visible to PM/Foreman, not workers */}
+          {!isWorkerMode && (
+            <div className="space-y-2">
+              <Label className="text-base font-medium">Resolution Status</Label>
+              <Select value={resolutionStatus} onValueChange={setResolutionStatus}>
+                <SelectTrigger className="h-12">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {RESOLUTION_STATUS.map((status) => (
+                    <SelectItem key={status.id} value={status.id}>
+                      {status.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Worker Signature */}
           <Card className="p-4">

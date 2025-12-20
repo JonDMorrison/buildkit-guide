@@ -16,7 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const Safety = () => {
   const { currentProjectId } = useCurrentProject();
-  const { can, loading: roleLoading } = useAuthRole(currentProjectId || undefined);
+  const { can, isWorker, loading: roleLoading } = useAuthRole(currentProjectId || undefined);
   const { isAdmin, loading: globalRoleLoading } = useUserRole();
   const [forms, setForms] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,7 +29,9 @@ const Safety = () => {
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
 
   // Permission checks
-  const canViewSafety = isAdmin || (currentProjectId ? can('view_safety', currentProjectId) : false);
+  // Workers can access safety page specifically for Right to Refuse (BC compliance)
+  const isWorkerOnProject = currentProjectId ? isWorker(currentProjectId) : false;
+  const canViewSafety = isAdmin || (currentProjectId ? can('view_safety', currentProjectId) : false) || isWorkerOnProject;
   const canCreateSafety = isAdmin || (currentProjectId ? can('create_safety', currentProjectId) : false);
 
   const fetchForms = useCallback(async () => {
@@ -150,7 +152,7 @@ const Safety = () => {
     );
   }
 
-  // Show no access if user cannot view safety
+  // Show no access if user cannot view safety (but workers CAN access for R2R)
   if (!canViewSafety) {
     return (
       <Layout>
@@ -180,6 +182,7 @@ const Safety = () => {
           onCreateForm={handleCreateForm}
           onFormClick={handleFormClick}
           canCreate={canCreateSafety}
+          isWorker={isWorkerOnProject && !canCreateSafety}
         />
 
         <SafetyFormModal
@@ -207,6 +210,7 @@ const Safety = () => {
           onClose={() => setIsR2RFormOpen(false)}
           onSuccess={handleFormCreated}
           projectId={currentProjectId}
+          isWorkerMode={isWorkerOnProject && !canCreateSafety}
         />
 
         <ToolboxMeetingWizard
