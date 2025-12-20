@@ -95,3 +95,6 @@ verify_jwt = true
 
 [functions.time-diagnostics]
 verify_jwt = true
+
+[functions.backfill-safety-hashes]
+verify_jwt = true
