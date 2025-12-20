@@ -50,7 +50,13 @@ interface Acknowledgment {
   acknowledged_at: string;
   signature_url: string | null;
   attestation_text?: string | null;
+  initiated_by_user_id?: string | null;
+  initiation_method?: string | null;
   profiles?: {
+    full_name: string | null;
+    email: string;
+  };
+  initiator?: {
     full_name: string | null;
     email: string;
   };
@@ -487,8 +493,9 @@ export const generateSafetyFormPDF = async (data: ExportData): Promise<Blob> => 
     doc.rect(margin, yPos - 4, contentWidth, 8, "F");
     doc.setFontSize(9);
     doc.text("Worker", margin + 2, yPos);
-    doc.text("Acknowledged At", margin + 80, yPos);
-    doc.text("Signature", margin + 130, yPos);
+    doc.text("Acknowledged At", margin + 60, yPos);
+    doc.text("Method", margin + 105, yPos);
+    doc.text("Signature", margin + 140, yPos);
     yPos += 6;
 
     doc.setFont("helvetica", "normal");
@@ -497,9 +504,17 @@ export const generateSafetyFormPDF = async (data: ExportData): Promise<Blob> => 
       const name = ack.profiles?.full_name || ack.profiles?.email || "Unknown";
       const ackTime = format(new Date(ack.acknowledged_at), "h:mm a");
       const hasSig = ack.signature_url ? "✓" : "—";
+      const method = ack.initiation_method === "foreman_proxy" ? "Proxy" : "Self";
 
-      doc.text(name.substring(0, 30), margin + 2, yPos);
-      doc.text(ackTime, margin + 80, yPos);
+      doc.text(name.substring(0, 22), margin + 2, yPos);
+      doc.text(ackTime, margin + 60, yPos);
+      doc.setFontSize(8);
+      if (ack.initiation_method === "foreman_proxy") {
+        doc.setTextColor(150, 100, 0); // amber
+      }
+      doc.text(method, margin + 105, yPos);
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(9);
       doc.text(hasSig, margin + 140, yPos);
       yPos += 5;
     });
@@ -539,6 +554,31 @@ export const generateSafetyFormPDF = async (data: ExportData): Promise<Blob> => 
       doc.line(margin, yPos, margin + 60, yPos);
       yPos += 10;
     }
+  }
+
+  // ===== AI DISCLAIMER (only if AI was used) =====
+  const aiUsedEntry = entries.find(e => e.field_name === "ai_used");
+  const aiUsed = aiUsedEntry?.field_value === "true";
+  
+  if (aiUsed) {
+    checkPageBreak(30);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(100, 100, 100);
+    doc.text("AI Disclosure", margin, yPos);
+    yPos += 5;
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setDrawColor(200, 200, 200);
+    doc.setFillColor(250, 250, 250);
+    doc.roundedRect(margin, yPos - 2, contentWidth, 16, 2, 2, "FD");
+    
+    const disclaimer = "Some hazards were AI-suggested. The submitting supervisor confirms hazards and controls were reviewed for site applicability.";
+    const disclaimerLines = doc.splitTextToSize(disclaimer, contentWidth - 8);
+    doc.text(disclaimerLines, margin + 4, yPos + 4);
+    yPos += 20;
+    doc.setTextColor(0, 0, 0);
   }
 
   // ===== FOOTER WITH RECORD HASH =====

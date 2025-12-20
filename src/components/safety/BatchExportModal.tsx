@@ -158,7 +158,7 @@ export function BatchExportModal({ isOpen, onClose, currentProjectId }: BatchExp
           .from("safety_form_acknowledgments")
           .select(`
             *,
-            profiles:user_id(full_name, email)
+            profiles!safety_form_acknowledgments_user_id_fkey(full_name, email)
           `)
           .eq("safety_form_id", form.id);
 

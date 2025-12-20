@@ -60,7 +60,13 @@ interface Acknowledgment {
   user_id: string;
   acknowledged_at: string;
   signature_url: string | null;
+  initiated_by_user_id?: string | null;
+  initiation_method?: string | null;
   profiles?: {
+    full_name: string | null;
+    email: string;
+  };
+  initiator?: {
     full_name: string | null;
     email: string;
   };
@@ -197,10 +203,14 @@ export const SafetyFormDetailModal = ({
         .eq("safety_form_id", formId);
       setAttendees(attendeesData || []);
 
-      // Fetch acknowledgments
+      // Fetch acknowledgments with both worker profile and initiator profile
       const { data: acksData } = await supabase
         .from("safety_form_acknowledgments")
-        .select("*, profiles(full_name, email)")
+        .select(`
+          *,
+          profiles!safety_form_acknowledgments_user_id_fkey(full_name, email),
+          initiator:profiles!safety_form_acknowledgments_initiated_by_user_id_fkey(full_name, email)
+        `)
         .eq("safety_form_id", formId);
       setAcknowledgments(acksData || []);
     } catch (error) {
