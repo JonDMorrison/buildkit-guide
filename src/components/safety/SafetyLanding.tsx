@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
+import { BackfillHashesButton } from "./BackfillHashesButton";
+import { useUserRole } from "@/hooks/useUserRole";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 import { 
@@ -260,6 +262,9 @@ export const SafetyLanding = ({
           ))
         )}
       </div>
+
+      {/* Admin-only: Backfill Hashes Tool */}
+      <AdminBackfillSection />
     </div>
   );
 };
@@ -326,6 +331,20 @@ const SafetyFormCard = ({
         </div>
       </div>
     </Card>
+  );
+};
+
+// Admin-only backfill section
+const AdminBackfillSection = () => {
+  const { isAdmin, loading } = useUserRole();
+  
+  if (loading || !isAdmin) return null;
+  
+  return (
+    <div className="pt-6 border-t">
+      <h3 className="text-sm font-medium text-muted-foreground mb-4">Admin Tools</h3>
+      <BackfillHashesButton />
+    </div>
   );
 };
 
