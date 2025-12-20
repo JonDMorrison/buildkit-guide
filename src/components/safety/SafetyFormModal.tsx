@@ -10,7 +10,7 @@ import { PhotoUpload } from "../deficiencies/PhotoUpload";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useSafetyLogAutoFill, HazardSuggestion } from "@/hooks/useSafetyLogAutoFill";
-import { generateRecordHash } from "@/lib/recordHash";
+import { generateRecordHash, assertRecordHashPresent } from "@/lib/recordHash";
 import { PPEChecklistSection, computePPECompliance } from "./PPEChecklistSection";
 import { 
   Loader2, Save, Wand2, Copy, Cloud, Users, AlertTriangle, 
@@ -490,10 +490,22 @@ export const SafetyFormModal = ({
       });
 
       // Update form with record hash
-      await supabase
+      const { error: hashError } = await supabase
         .from("safety_forms")
         .update({ record_hash: recordHash })
         .eq("id", form.id);
+
+      if (hashError) {
+        console.error("[RecordHash] Failed to persist hash:", hashError);
+      }
+
+      // Regression assertion: verify hash was set
+      assertRecordHashPresent({
+        id: form.id,
+        status: "submitted",
+        record_hash: recordHash,
+        form_type: formType,
+      });
 
       toast({
         title: "Success",
