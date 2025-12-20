@@ -10,7 +10,7 @@ import { PhotoUpload } from "../deficiencies/PhotoUpload";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useSafetyLogAutoFill, HazardSuggestion } from "@/hooks/useSafetyLogAutoFill";
-import { generateRecordHash, assertRecordHashPresent } from "@/lib/recordHash";
+import { generateAndPersistRecordHash, assertRecordHashPresent } from "@/lib/recordHash";
 import { PPEChecklistSection, computePPECompliance } from "./PPEChecklistSection";
 import { 
   Loader2, Save, Wand2, Copy, Cloud, Users, AlertTriangle, 
@@ -479,33 +479,20 @@ export const SafetyFormModal = ({
       }
 
       // Generate record hash for tamper-evidence (BC compliance)
-      const recordHash = await generateRecordHash({
-        formId: form.id,
-        projectId,
-        formType,
-        createdBy: userData.user.id,
-        inspectionDate: formData.date || new Date().toISOString().split("T")[0],
-        entries: entries.map((e) => ({ field_name: e.field_name, field_value: e.field_value })),
-        attendees: [],
-      });
-
-      // Update form with record hash
-      const { error: hashError } = await supabase
-        .from("safety_forms")
-        .update({ record_hash: recordHash })
-        .eq("id", form.id);
-
-      if (hashError) {
-        console.error("[RecordHash] Failed to persist hash:", hashError);
+      // Use generateAndPersistRecordHash for deterministic hashing from DB state
+      const recordHash = await generateAndPersistRecordHash(form.id);
+      
+      if (!recordHash) {
+        console.error("[SafetyFormModal] Failed to generate record hash");
+      } else {
+        // Regression assertion: verify hash was set
+        assertRecordHashPresent({
+          id: form.id,
+          status: "submitted",
+          record_hash: recordHash,
+          form_type: formType,
+        });
       }
-
-      // Regression assertion: verify hash was set
-      assertRecordHashPresent({
-        id: form.id,
-        status: "submitted",
-        record_hash: recordHash,
-        form_type: formType,
-      });
 
       toast({
         title: "Success",

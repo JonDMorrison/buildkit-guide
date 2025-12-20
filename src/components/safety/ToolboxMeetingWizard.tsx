@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { generateRecordHash } from "@/lib/recordHash";
+import { generateAndPersistRecordHash } from "@/lib/recordHash";
 
 interface ToolboxMeetingWizardProps {
   isOpen: boolean;
@@ -213,21 +213,11 @@ export const ToolboxMeetingWizard = ({ isOpen, onClose, onSuccess }: ToolboxMeet
       }
 
       // Generate record hash for tamper-evidence (BC compliance)
-      const recordHash = await generateRecordHash({
-        formId: form.id,
-        projectId: currentProjectId,
-        formType: "toolbox_meeting",
-        createdBy: userData.user.id,
-        inspectionDate: meetingDate,
-        entries: entries.map((e) => ({ field_name: e.field_name, field_value: e.field_value })),
-        attendees: selectedAttendees.map((a) => ({ user_id: a.id, is_foreman: false })),
-      });
-
-      // Update form with record hash
-      await supabase
-        .from("safety_forms")
-        .update({ record_hash: recordHash })
-        .eq("id", form.id);
+      // Use generateAndPersistRecordHash for deterministic hashing from DB state
+      const recordHash = await generateAndPersistRecordHash(form.id);
+      if (!recordHash) {
+        console.error("[ToolboxMeetingWizard] Failed to generate record hash");
+      }
 
       toast({
         title: "Meeting Recorded",

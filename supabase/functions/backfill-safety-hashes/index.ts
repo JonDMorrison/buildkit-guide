@@ -23,6 +23,8 @@ interface BackfillResult {
 /**
  * Generate SHA-256 hash using Web Crypto API (Deno)
  * Uses the SAME normalized snapshot logic as client-side generateRecordHash
+ * 
+ * CRITICAL: This MUST match src/lib/recordHash.ts exactly for hash consistency
  */
 async function computeRecordHash(data: {
   formId: string;
@@ -34,23 +36,30 @@ async function computeRecordHash(data: {
   entries: Array<{ field_name: string; field_value: string | null }>;
   attendees: Array<{ user_id: string; is_foreman: boolean }>;
 }): Promise<string> {
-  // Build canonical representation - MUST match client-side logic
+  // Sort entries by field_name for deterministic ordering
+  const sortedEntries = [...data.entries]
+    .sort((a, b) => a.field_name.localeCompare(b.field_name));
+  
+  // Sort attendees by user_id for deterministic ordering
+  const sortedAttendees = [...data.attendees]
+    .sort((a, b) => a.user_id.localeCompare(b.user_id));
+
+  // Build canonical representation - MUST match client-side logic EXACTLY
+  // This matches src/lib/recordHash.ts buildCanonicalSnapshot + hashCanonicalSnapshot
   const canonical = JSON.stringify({
     formId: data.formId,
     projectId: data.projectId,
     formType: data.formType,
     createdBy: data.createdBy,
+    // Truncate to second precision for consistency
+    createdAt: data.createdAt.substring(0, 19),
     inspectionDate: data.inspectionDate,
-    entries: data.entries
+    entries: sortedEntries
       .map((e) => `${e.field_name}:${e.field_value || ""}`)
-      .sort()
       .join("|"),
-    attendees: data.attendees
+    attendees: sortedAttendees
       .map((a) => `${a.user_id}:${a.is_foreman}`)
-      .sort()
       .join("|"),
-    // Use form's created_at timestamp (truncated to seconds) for determinism
-    timestamp: data.createdAt.substring(0, 19),
   });
 
   // Compute SHA-256
