@@ -11,6 +11,7 @@ import { PublicRoute } from "@/components/PublicRoute";
 import { TimeTrackingGate } from "@/components/TimeTrackingGate";
 import Landing from "./pages/Landing";
 import HowItWorks from "./pages/HowItWorks";
+import Features from "./pages/Features";
 import SafetySecurity from "./pages/SafetySecurity";
 import ResponsibleAI from "./pages/ResponsibleAI";
 import Dashboard from "./pages/Dashboard";
@@ -74,6 +75,14 @@ const App = () => (
               element={
                 <PublicRoute>
                   <SafetySecurity />
+                </PublicRoute>
+              }
+            />
+            <Route
+              path="/features"
+              element={
+                <PublicRoute>
+                  <Features />
                 </PublicRoute>
               }
             />

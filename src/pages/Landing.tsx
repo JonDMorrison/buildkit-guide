@@ -53,11 +53,11 @@ export default function Landing() {
             <Button variant="ghost" onClick={handleSeeHowItWorks} className="text-base">
               How It Works
             </Button>
+            <Button variant="ghost" onClick={() => navigate('/features')} className="text-base">
+              Features
+            </Button>
             <Button variant="ghost" onClick={() => navigate('/safety-security')} className="text-base">
               Safety & Security
-            </Button>
-            <Button variant="ghost" onClick={() => navigate('/responsible-ai')} className="text-base">
-              Responsible AI
             </Button>
             <Button variant="ghost" onClick={handleSignIn} className="text-base">
               Sign In
@@ -96,17 +96,17 @@ export default function Landing() {
                   </Button>
                   <Button 
                     variant="ghost" 
+                    onClick={() => { navigate('/features'); setMobileMenuOpen(false); }} 
+                    className="justify-start text-base h-12 font-medium"
+                  >
+                    Features
+                  </Button>
+                  <Button 
+                    variant="ghost" 
                     onClick={() => { navigate('/safety-security'); setMobileMenuOpen(false); }} 
                     className="justify-start text-base h-12 font-medium"
                   >
                     Safety & Security
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    onClick={() => { navigate('/responsible-ai'); setMobileMenuOpen(false); }} 
-                    className="justify-start text-base h-12 font-medium"
-                  >
-                    Responsible AI
                   </Button>
                   <Button 
                     variant="ghost" 
@@ -367,6 +367,9 @@ export default function Landing() {
               </p>
             </div>
             <div className="flex flex-wrap justify-center gap-4">
+              <Button variant="ghost" size="sm" onClick={() => navigate('/features')}>
+                Features
+              </Button>
               <Button variant="ghost" size="sm" onClick={() => navigate('/safety-security')}>
                 Safety & Security
               </Button>
