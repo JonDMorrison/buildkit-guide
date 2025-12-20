@@ -10,6 +10,7 @@ import { PhotoUpload } from "../deficiencies/PhotoUpload";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useSafetyLogAutoFill, HazardSuggestion } from "@/hooks/useSafetyLogAutoFill";
+import { generateRecordHash } from "@/lib/recordHash";
 import { PPEChecklistSection, computePPECompliance } from "./PPEChecklistSection";
 import { 
   Loader2, Save, Wand2, Copy, Cloud, Users, AlertTriangle, 
@@ -476,6 +477,23 @@ export const SafetyFormModal = ({
 
         await Promise.all(uploadPromises);
       }
+
+      // Generate record hash for tamper-evidence (BC compliance)
+      const recordHash = await generateRecordHash({
+        formId: form.id,
+        projectId,
+        formType,
+        createdBy: userData.user.id,
+        inspectionDate: formData.date || new Date().toISOString().split("T")[0],
+        entries: entries.map((e) => ({ field_name: e.field_name, field_value: e.field_value })),
+        attendees: [],
+      });
+
+      // Update form with record hash
+      await supabase
+        .from("safety_forms")
+        .update({ record_hash: recordHash })
+        .eq("id", form.id);
 
       toast({
         title: "Success",
