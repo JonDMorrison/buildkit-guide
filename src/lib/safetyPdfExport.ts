@@ -1,5 +1,5 @@
 import jsPDF from "jspdf";
-import { format } from "date-fns";
+import { format, formatDistanceStrict } from "date-fns";
 
 interface FormEntry {
   id: string;
@@ -314,6 +314,74 @@ export const generateSafetyFormPDF = async (data: ExportData): Promise<Blob> => 
       yPos += lines.length * 4 + 4;
     });
     yPos += 6;
+  }
+
+  // ===== RIGHT TO REFUSE RESOLUTION TIMELINE =====
+  if (form.form_type === "right_to_refuse") {
+    const submittedAtEntry = entries.find(e => e.field_name === "submitted_at");
+    const resolvedAtEntry = entries.find(e => e.field_name === "resolved_at");
+    const resolutionStatusEntry = entries.find(e => e.field_name === "resolution_status");
+
+    if (submittedAtEntry?.field_value || resolvedAtEntry?.field_value) {
+      checkPageBreak(50);
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.text("Resolution Timeline", margin, yPos);
+      yPos += 8;
+
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+
+      const submittedAt = submittedAtEntry?.field_value;
+      const resolvedAt = resolvedAtEntry?.field_value;
+      const resolutionStatus = resolutionStatusEntry?.field_value || "pending_investigation";
+
+      const RESOLUTION_LABELS: Record<string, string> = {
+        pending_investigation: "Pending Investigation",
+        under_review: "Under Review",
+        resolved_safe: "Resolved - Work Deemed Safe",
+        resolved_modified: "Resolved - Work Modified",
+        resolved_refused: "Resolved - Refusal Upheld",
+        escalated: "Escalated to Safety Committee/Ministry",
+      };
+
+      // Submitted timestamp
+      if (submittedAt) {
+        doc.setFont("helvetica", "bold");
+        doc.text("Submitted:", margin, yPos);
+        doc.setFont("helvetica", "normal");
+        doc.text(format(new Date(submittedAt), "MMM d, yyyy 'at' h:mm a"), margin + 30, yPos);
+        yPos += 5;
+      }
+
+      // Resolution status
+      doc.setFont("helvetica", "bold");
+      doc.text("Status:", margin, yPos);
+      doc.setFont("helvetica", "normal");
+      doc.text(RESOLUTION_LABELS[resolutionStatus] || resolutionStatus, margin + 30, yPos);
+      yPos += 5;
+
+      // Resolved timestamp (if resolved)
+      if (resolvedAt) {
+        doc.setFont("helvetica", "bold");
+        doc.text("Resolved:", margin, yPos);
+        doc.setFont("helvetica", "normal");
+        doc.text(format(new Date(resolvedAt), "MMM d, yyyy 'at' h:mm a"), margin + 30, yPos);
+        yPos += 5;
+
+        // Duration
+        if (submittedAt) {
+          const duration = formatDistanceStrict(new Date(submittedAt), new Date(resolvedAt));
+          doc.setFont("helvetica", "bold");
+          doc.text("Duration:", margin, yPos);
+          doc.setFont("helvetica", "normal");
+          doc.text(duration, margin + 30, yPos);
+          yPos += 5;
+        }
+      }
+
+      yPos += 6;
+    }
   }
 
   // ===== ATTENDEES =====
