@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { BackfillHashesButton } from "./BackfillHashesButton";
+import { SafetyAssurancePanel } from "./SafetyAssurancePanel";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
@@ -262,6 +263,9 @@ export const SafetyLanding = ({
           ))
         )}
       </div>
+
+      {/* Safety Assurance Panel */}
+      <SafetyAssurancePanel variant="full" className="mt-6" />
 
       {/* Admin-only: Backfill Hashes Tool */}
       <AdminBackfillSection />

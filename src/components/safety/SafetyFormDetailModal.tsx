@@ -20,6 +20,7 @@ import { assertRecordHashPresent } from "@/lib/recordHash";
 import { AmendmentRequestModal } from "./AmendmentRequestModal";
 import { AmendmentHistory } from "./AmendmentHistory";
 import { RightToRefuseTimeline } from "./RightToRefuseTimeline";
+import { SafetyAssurancePanel } from "./SafetyAssurancePanel";
 import { useProjectRole } from "@/hooks/useProjectRole";
 
 interface SafetyFormDetailModalProps {
@@ -501,6 +502,9 @@ export const SafetyFormDetailModal = ({
                 </Button>
               </>
             )}
+
+            {/* Safety Assurance Panel - compact version for modal footer */}
+            <SafetyAssurancePanel variant="compact" />
           </div>
         </DialogContent>
       </Dialog>

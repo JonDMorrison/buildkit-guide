@@ -581,6 +581,21 @@ export const generateSafetyFormPDF = async (data: ExportData): Promise<Blob> => 
     doc.setTextColor(0, 0, 0);
   }
 
+  // ===== DATA ASSURANCE NOTICE =====
+  checkPageBreak(30);
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100, 100, 100);
+  doc.setDrawColor(200, 200, 200);
+  doc.setFillColor(250, 250, 250);
+  doc.roundedRect(margin, yPos, contentWidth, 14, 2, 2, "FD");
+  
+  const assuranceText = "This record is protected by tamper-evident technology. The digital fingerprint (hash) verifies the record has not been altered. All changes are tracked through the formal amendment process.";
+  const assuranceLines = doc.splitTextToSize(assuranceText, contentWidth - 8);
+  doc.text(assuranceLines, margin + 4, yPos + 4);
+  yPos += 18;
+  doc.setTextColor(0, 0, 0);
+
   // ===== FOOTER WITH RECORD HASH =====
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
