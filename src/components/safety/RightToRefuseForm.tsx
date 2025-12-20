@@ -19,6 +19,7 @@ import { VoiceInputButton } from "./VoiceInputButton";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { generateRecordHash } from "@/lib/recordHash";
 import {
   ShieldBan,
   AlertTriangle,
@@ -181,6 +182,23 @@ export const RightToRefuseForm = ({
         signed_at: new Date().toISOString(),
         signature_url: signature,
       });
+
+      // Generate record hash for tamper-evidence (BC compliance)
+      const recordHash = await generateRecordHash({
+        formId: form.id,
+        projectId: selectedProject,
+        formType: "right_to_refuse",
+        createdBy: user.user.id,
+        inspectionDate: format(new Date(), "yyyy-MM-dd"),
+        entries: entries.map((e) => ({ field_name: e.field_name, field_value: e.field_value })),
+        attendees: [{ user_id: user.user.id, is_foreman: false }],
+      });
+
+      // Update form with record hash
+      await supabase
+        .from("safety_forms")
+        .update({ record_hash: recordHash })
+        .eq("id", form.id);
 
       toast({ title: "Success", description: "Right to Refuse record submitted" });
       resetForm();
