@@ -8,6 +8,7 @@ import { SafetyFormDetailModal } from "@/components/safety/SafetyFormDetailModal
 import { DailySafetyWizard } from "@/components/safety/DailySafetyWizard";
 import { RightToRefuseForm } from "@/components/safety/RightToRefuseForm";
 import { ToolboxMeetingWizard } from "@/components/safety/ToolboxMeetingWizard";
+import { NearMissForm } from "@/components/safety/NearMissForm";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthRole } from "@/hooks/useAuthRole";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
@@ -25,6 +26,7 @@ const Safety = () => {
   const [isDailyWizardOpen, setIsDailyWizardOpen] = useState(false);
   const [isR2RFormOpen, setIsR2RFormOpen] = useState(false);
   const [isToolboxWizardOpen, setIsToolboxWizardOpen] = useState(false);
+  const [isNearMissFormOpen, setIsNearMissFormOpen] = useState(false);
   const [selectedFormType, setSelectedFormType] = useState("");
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
 
@@ -115,6 +117,11 @@ const Safety = () => {
     // Use toolbox meeting wizard
     if (type === "toolbox_meeting") {
       setIsToolboxWizardOpen(true);
+      return;
+    }
+    // Use near miss form
+    if (type === "near_miss") {
+      setIsNearMissFormOpen(true);
       return;
     }
     // Use legacy modal for other types
@@ -217,6 +224,13 @@ const Safety = () => {
           isOpen={isToolboxWizardOpen}
           onClose={() => setIsToolboxWizardOpen(false)}
           onSuccess={handleFormCreated}
+        />
+
+        <NearMissForm
+          isOpen={isNearMissFormOpen}
+          onClose={() => setIsNearMissFormOpen(false)}
+          onSuccess={handleFormCreated}
+          projectId={currentProjectId}
         />
       </div>
     </Layout>
