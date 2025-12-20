@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
-import { FileEdit, User, Calendar, CheckCircle, XCircle, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import { FileEdit, User, Calendar, CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, Hash } from "lucide-react";
 import { AmendmentReviewModal } from "./AmendmentReviewModal";
 import { useProjectRole } from "@/hooks/useProjectRole";
+import { formatHashForDisplay } from "@/lib/recordHash";
 import { cn } from "@/lib/utils";
 import type { Json } from "@/integrations/supabase/types";
 
@@ -23,6 +24,8 @@ interface Amendment {
   review_note: string | null;
   reviewed_at: string | null;
   created_at: string;
+  previous_record_hash: string | null;
+  approved_record_hash: string | null;
   requester?: { full_name: string | null; email: string };
   reviewer?: { full_name: string | null; email: string };
 }
@@ -66,6 +69,8 @@ export const AmendmentHistory = ({ formId, projectId, onRefresh }: AmendmentHist
         proposed_changes: (item.proposed_changes || {}) as Record<string, string>,
         original_snapshot: (item.original_snapshot || {}) as Record<string, string | null>,
         approved_snapshot: item.approved_snapshot as Record<string, string | null> | null,
+        previous_record_hash: item.previous_record_hash as string | null,
+        approved_record_hash: item.approved_record_hash as string | null,
       }));
       
       setAmendments(typedAmendments);
@@ -191,6 +196,34 @@ export const AmendmentHistory = ({ formId, projectId, onRefresh }: AmendmentHist
                           "{amendment.review_note}"
                         </p>
                       )}
+                    </div>
+                  )}
+
+                  {/* Record Hash Trail for approved amendments */}
+                  {amendment.status === "approved" && (amendment.previous_record_hash || amendment.approved_record_hash) && (
+                    <div className="pt-2 border-t border-border/50 space-y-1">
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Hash className="h-3 w-3" />
+                        <span className="font-medium">Tamper-Evidence Trail</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        {amendment.previous_record_hash && (
+                          <div>
+                            <span className="text-muted-foreground">Previous hash:</span>
+                            <div className="mt-0.5 font-mono text-destructive/80 bg-destructive/10 px-2 py-1 rounded">
+                              {formatHashForDisplay(amendment.previous_record_hash)}
+                            </div>
+                          </div>
+                        )}
+                        {amendment.approved_record_hash && (
+                          <div>
+                            <span className="text-muted-foreground">New hash:</span>
+                            <div className="mt-0.5 font-mono text-green-600 bg-green-500/10 px-2 py-1 rounded">
+                              {formatHashForDisplay(amendment.approved_record_hash)}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

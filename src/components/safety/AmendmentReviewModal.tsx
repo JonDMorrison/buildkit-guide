@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { generateAndPersistRecordHash } from "@/lib/recordHash";
 import { Loader2, Check, X, FileText, User, Calendar } from "lucide-react";
 import { format } from "date-fns";
 
@@ -57,6 +58,15 @@ export const AmendmentReviewModal = ({
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) throw new Error("Not authenticated");
 
+      // Fetch current form to get previous record_hash
+      const { data: currentForm } = await supabase
+        .from("safety_forms")
+        .select("record_hash")
+        .eq("id", amendment.safety_form_id)
+        .single();
+
+      const previousRecordHash = currentForm?.record_hash || null;
+
       // Build approved snapshot if approving
       let approvedSnapshot = null;
       if (status === "approved" && amendment.proposed_changes) {
@@ -66,6 +76,7 @@ export const AmendmentReviewModal = ({
         };
       }
 
+      // Initial amendment update (without approved_record_hash yet)
       const { error } = await supabase
         .from("safety_form_amendments")
         .update({
@@ -74,12 +85,13 @@ export const AmendmentReviewModal = ({
           reviewed_at: new Date().toISOString(),
           review_note: reviewNote.trim() || null,
           approved_snapshot: approvedSnapshot,
+          previous_record_hash: previousRecordHash,
         })
         .eq("id", amendment.id);
 
       if (error) throw error;
 
-      // If approved, update the actual safety entries
+      // If approved, update the actual safety entries and regenerate hash
       if (status === "approved" && amendment.proposed_changes) {
         // Update entries that were changed
         for (const [fieldName, newValue] of Object.entries(amendment.proposed_changes)) {
@@ -91,12 +103,31 @@ export const AmendmentReviewModal = ({
               .eq("field_name", fieldName);
           }
         }
+
+        // Regenerate record_hash for tamper-evidence chain
+        console.log("[Amendment] Regenerating record_hash after approval...");
+        const newRecordHash = await generateAndPersistRecordHash(amendment.safety_form_id);
+        
+        if (newRecordHash) {
+          // Store the new hash in the amendment record
+          await supabase
+            .from("safety_form_amendments")
+            .update({ approved_record_hash: newRecordHash })
+            .eq("id", amendment.id);
+          
+          console.log("[Amendment] Record hash regenerated:", {
+            previous: previousRecordHash,
+            new: newRecordHash,
+          });
+        } else {
+          console.error("[Amendment] Failed to regenerate record_hash");
+        }
       }
 
       toast({
         title: status === "approved" ? "Amendment approved" : "Amendment denied",
         description: status === "approved" 
-          ? "The safety record has been updated" 
+          ? "The safety record has been updated with new tamper-evidence hash" 
           : "The requester will be notified",
       });
 

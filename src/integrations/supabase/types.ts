@@ -1657,10 +1657,12 @@ export type Database = {
       }
       safety_form_amendments: {
         Row: {
+          approved_record_hash: string | null
           approved_snapshot: Json | null
           created_at: string | null
           id: string
           original_snapshot: Json
+          previous_record_hash: string | null
           proposed_changes: Json
           reason: string
           requested_by: string
@@ -1671,10 +1673,12 @@ export type Database = {
           status: string | null
         }
         Insert: {
+          approved_record_hash?: string | null
           approved_snapshot?: Json | null
           created_at?: string | null
           id?: string
           original_snapshot: Json
+          previous_record_hash?: string | null
           proposed_changes: Json
           reason: string
           requested_by: string
@@ -1685,10 +1689,12 @@ export type Database = {
           status?: string | null
         }
         Update: {
+          approved_record_hash?: string | null
           approved_snapshot?: Json | null
           created_at?: string | null
           id?: string
           original_snapshot?: Json
+          previous_record_hash?: string | null
           proposed_changes?: Json
           reason?: string
           requested_by?: string
