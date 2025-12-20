@@ -11,6 +11,8 @@ import { PublicRoute } from "@/components/PublicRoute";
 import { TimeTrackingGate } from "@/components/TimeTrackingGate";
 import Landing from "./pages/Landing";
 import HowItWorks from "./pages/HowItWorks";
+import SafetySecurity from "./pages/SafetySecurity";
+import ResponsibleAI from "./pages/ResponsibleAI";
 import Dashboard from "./pages/Dashboard";
 import Index from "./pages/Index";
 import ProjectOverview from "./pages/ProjectOverview";
@@ -64,6 +66,22 @@ const App = () => (
               element={
                 <PublicRoute>
                   <HowItWorks />
+                </PublicRoute>
+              }
+            />
+            <Route
+              path="/safety-security"
+              element={
+                <PublicRoute>
+                  <SafetySecurity />
+                </PublicRoute>
+              }
+            />
+            <Route
+              path="/responsible-ai"
+              element={
+                <PublicRoute>
+                  <ResponsibleAI />
                 </PublicRoute>
               }
             />
