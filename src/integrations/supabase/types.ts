@@ -1616,6 +1616,8 @@ export type Database = {
           attestation_text: string | null
           created_at: string | null
           id: string
+          initiated_by_user_id: string | null
+          initiation_method: string | null
           safety_form_id: string
           signature_url: string | null
           user_id: string
@@ -1625,6 +1627,8 @@ export type Database = {
           attestation_text?: string | null
           created_at?: string | null
           id?: string
+          initiated_by_user_id?: string | null
+          initiation_method?: string | null
           safety_form_id: string
           signature_url?: string | null
           user_id: string
@@ -1634,11 +1638,20 @@ export type Database = {
           attestation_text?: string | null
           created_at?: string | null
           id?: string
+          initiated_by_user_id?: string | null
+          initiation_method?: string | null
           safety_form_id?: string
           signature_url?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "safety_form_acknowledgments_initiated_by_user_id_fkey"
+            columns: ["initiated_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "safety_form_acknowledgments_safety_form_id_fkey"
             columns: ["safety_form_id"]

@@ -247,6 +247,9 @@ export const DailySafetyWizard = ({
         })
         .map((ppe) => ppe.ppe_item);
 
+      // Check if AI suggestions were used (any hazard with source !== "general")
+      const aiUsed = selectedHazards.some(h => h.source !== "general");
+
       // Create entries
       const entries = [
         { safety_form_id: form.id, field_name: "weather", field_value: weather },
@@ -265,6 +268,8 @@ export const DailySafetyWizard = ({
         { safety_form_id: form.id, field_name: "worker_rep_signature", field_value: workerRepSignature || "" },
         // Store no-hazards confirmation for BC compliance
         { safety_form_id: form.id, field_name: "no_hazards_confirmed", field_value: selectedHazards.length === 0 && noHazardsConfirmed ? "true" : "false" },
+        // Track if AI was used for BC compliance disclaimer
+        { safety_form_id: form.id, field_name: "ai_used", field_value: aiUsed ? "true" : "false" },
       ];
 
       await supabase.from("safety_entries").insert(entries);
@@ -283,6 +288,9 @@ export const DailySafetyWizard = ({
 
       // Create worker acknowledgments (BC compliance requirement)
       if (workerAcknowledgments.length > 0) {
+        const { data: user } = await supabase.auth.getUser();
+        const currentUserId = user.user?.id;
+        
         const ackRecords = workerAcknowledgments
           .filter((a) => a.acknowledged)
           .map((a) => ({
@@ -290,6 +298,9 @@ export const DailySafetyWizard = ({
             user_id: a.user_id,
             signature_url: a.signature_url || null,
             acknowledged_at: new Date().toISOString(),
+            // Audit trail: foreman is recording on behalf of workers
+            initiated_by_user_id: currentUserId,
+            initiation_method: "foreman_proxy" as const,
           }));
         if (ackRecords.length > 0) {
           await supabase.from("safety_form_acknowledgments").insert(ackRecords);
