@@ -343,7 +343,7 @@ export async function verifyHashDeterminism(formId: string): Promise<{
     .eq('safety_form_id', formId)
     .order('user_id', { ascending: true });
 
-  // Build canonical snapshot (same logic as recordHash.ts)
+  // Build canonical snapshot (EXACT same logic as recordHash.ts)
   const sortedEntries = (entries || [])
     .sort((a, b) => a.field_name.localeCompare(b.field_name));
   const sortedAttendees = (attendees || [])
@@ -357,7 +357,7 @@ export async function verifyHashDeterminism(formId: string): Promise<{
     createdAt: form.created_at.substring(0, 19),
     inspectionDate: form.inspection_date || form.created_at.split('T')[0],
     entries: sortedEntries.map(e => `${e.field_name}:${e.field_value || ''}`).join('|'),
-    attendees: sortedAttendees.map(a => `${a.user_id}:${a.is_foreman}`).join('|'),
+    attendees: sortedAttendees.map(a => `${a.user_id}:${a.is_foreman || false}`).join('|'),
   });
 
   // Hash using crypto (Node.js compatible)
