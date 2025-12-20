@@ -33,6 +33,8 @@ interface WizardStepTwoProps {
   onRequestAISuggestions: () => void;
   noHazardsConfirmed: boolean;
   onNoHazardsConfirmedChange: (confirmed: boolean) => void;
+  ppeConfirmed?: boolean;
+  onPPEConfirmedChange?: (confirmed: boolean) => void;
 }
 
 // Common fallback hazards when AI is not available
@@ -95,6 +97,8 @@ export const WizardStepTwo = ({
   onRequestAISuggestions,
   noHazardsConfirmed,
   onNoHazardsConfirmedChange,
+  ppeConfirmed,
+  onPPEConfirmedChange,
 }: WizardStepTwoProps) => {
   const [showAllHazards, setShowAllHazards] = useState(false);
   const [expandedHazardId, setExpandedHazardId] = useState<string | null>(null);
@@ -337,6 +341,8 @@ export const WizardStepTwo = ({
           onToggleItem={onPPEToggle}
           onSelectAll={onPPESelectAll}
           onSelectMandatory={onPPESelectMandatory}
+          ppeConfirmed={ppeConfirmed}
+          onPPEConfirmedChange={onPPEConfirmedChange}
         />
       </Card>
     </div>

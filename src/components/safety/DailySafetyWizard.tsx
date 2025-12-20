@@ -47,6 +47,7 @@ export const DailySafetyWizard = ({
   const [selectedHazards, setSelectedHazards] = useState<HazardWithControls[]>([]);
   const [additionalNotes, setAdditionalNotes] = useState("");
   const [ppeCheckedItems, setPPECheckedItems] = useState<Record<string, boolean>>({});
+  const [ppeConfirmed, setPPEConfirmed] = useState(false);
   const [noHazardsConfirmed, setNoHazardsConfirmed] = useState(false);
 
   // Step 3 state
@@ -258,6 +259,7 @@ export const DailySafetyWizard = ({
           missing_mandatory: missingMandatoryPPE,
           compliance_percentage: ppeCompliance.percentage,
           status: ppeCompliance.status,
+          ppe_verified_confirmed: ppeConfirmed,
         }) },
         { safety_form_id: form.id, field_name: "foreman_signature", field_value: foremanSignature },
         { safety_form_id: form.id, field_name: "worker_rep_signature", field_value: workerRepSignature || "" },
@@ -368,6 +370,8 @@ export const DailySafetyWizard = ({
               onRequestAISuggestions={handleRequestAI}
               noHazardsConfirmed={noHazardsConfirmed}
               onNoHazardsConfirmedChange={setNoHazardsConfirmed}
+              ppeConfirmed={ppeConfirmed}
+              onPPEConfirmedChange={setPPEConfirmed}
             />
           )}
 

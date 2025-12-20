@@ -284,9 +284,62 @@ export const generateSafetyFormPDF = async (data: ExportData): Promise<Blob> => 
 
     categorized.ppe.forEach((entry) => {
       checkPageBreak(10);
-      const value = entry.field_value || "Not specified";
-      doc.text(`• ${entry.field_name}: ${value}`, margin, yPos);
-      yPos += 5;
+      // Check for ppe_compliance entry with confirmation
+      if (entry.field_name === "ppe_compliance") {
+        try {
+          const ppeData = JSON.parse(entry.field_value || "{}");
+          const confirmed = ppeData.ppe_verified_confirmed === true;
+          
+          if (confirmed) {
+            doc.setDrawColor(34, 197, 94); // green
+            doc.setFillColor(240, 253, 244); // light green
+            doc.roundedRect(margin, yPos - 2, contentWidth, 10, 2, 2, "FD");
+            doc.setTextColor(22, 101, 52); // dark green
+            doc.setFont("helvetica", "bold");
+            doc.text("✓ PPE Verification Confirmed", margin + 4, yPos + 4);
+            doc.setFont("helvetica", "normal");
+            yPos += 12;
+            doc.setTextColor(75, 85, 99); // gray
+            doc.setFontSize(9);
+            doc.text("All workers verified to be wearing required PPE.", margin, yPos);
+            yPos += 6;
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(10);
+          }
+          
+          // List checked items
+          if (ppeData.checked_items && ppeData.checked_items.length > 0) {
+            doc.text("Verified PPE Items:", margin, yPos);
+            yPos += 5;
+            ppeData.checked_items.forEach((item: { item: string; is_mandatory: boolean }) => {
+              doc.text(`• ${item.item}${item.is_mandatory ? " (Required)" : ""}`, margin + 4, yPos);
+              yPos += 4;
+            });
+            yPos += 2;
+          }
+          
+          // List missing mandatory
+          if (ppeData.missing_mandatory && ppeData.missing_mandatory.length > 0) {
+            doc.setTextColor(220, 38, 38); // red
+            doc.text("Missing Mandatory PPE:", margin, yPos);
+            yPos += 5;
+            ppeData.missing_mandatory.forEach((item: string) => {
+              doc.text(`• ${item}`, margin + 4, yPos);
+              yPos += 4;
+            });
+            doc.setTextColor(0, 0, 0);
+            yPos += 2;
+          }
+        } catch {
+          const value = entry.field_value || "Not specified";
+          doc.text(`• ${entry.field_name}: ${value}`, margin, yPos);
+          yPos += 5;
+        }
+      } else {
+        const value = entry.field_value || "Not specified";
+        doc.text(`• ${entry.field_name}: ${value}`, margin, yPos);
+        yPos += 5;
+      }
     });
     yPos += 6;
   }

@@ -1,9 +1,19 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { 
   HardHat, 
   ShieldCheck, 
@@ -16,7 +26,8 @@ import {
   Flame,
   AlertTriangle,
   CheckCircle2,
-  XCircle
+  XCircle,
+  ShieldAlert
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -36,6 +47,8 @@ interface PPEChecklistSectionProps {
   onSelectAll: () => void;
   onSelectMandatory: () => void;
   loading?: boolean;
+  ppeConfirmed?: boolean;
+  onPPEConfirmedChange?: (confirmed: boolean) => void;
 }
 
 const getPPEIcon = (item: string) => {
@@ -59,8 +72,11 @@ export const PPEChecklistSection = ({
   onToggleItem,
   onSelectAll,
   onSelectMandatory,
-  loading = false
+  loading = false,
+  ppeConfirmed = false,
+  onPPEConfirmedChange
 }: PPEChecklistSectionProps) => {
+  const [pendingBulkAction, setPendingBulkAction] = useState<'all' | 'mandatory' | null>(null);
   // Memoize derived lists
   const tradesKey = useMemo(
     () => tradesOnSite.map((t) => t.toLowerCase()).sort().join("|"),
@@ -101,7 +117,32 @@ export const PPEChecklistSection = ({
 
   const handleToggle = useCallback((id: string) => {
     onToggleItem(id);
-  }, [onToggleItem]);
+    // Reset confirmation when items change
+    if (onPPEConfirmedChange) {
+      onPPEConfirmedChange(false);
+    }
+  }, [onToggleItem, onPPEConfirmedChange]);
+
+  const handleBulkSelectRequest = useCallback((type: 'all' | 'mandatory') => {
+    setPendingBulkAction(type);
+  }, []);
+
+  const handleBulkConfirm = useCallback(() => {
+    if (pendingBulkAction === 'all') {
+      onSelectAll();
+    } else if (pendingBulkAction === 'mandatory') {
+      onSelectMandatory();
+    }
+    // Mark as confirmed since user went through confirmation dialog
+    if (onPPEConfirmedChange) {
+      onPPEConfirmedChange(true);
+    }
+    setPendingBulkAction(null);
+  }, [pendingBulkAction, onSelectAll, onSelectMandatory, onPPEConfirmedChange]);
+
+  const handleBulkCancel = useCallback(() => {
+    setPendingBulkAction(null);
+  }, []);
 
   if (loading) {
     return (
@@ -142,7 +183,7 @@ export const PPEChecklistSection = ({
           <Button
             variant="outline"
             size="sm"
-            onClick={onSelectMandatory}
+            onClick={() => handleBulkSelectRequest('mandatory')}
             className="flex-shrink-0 border-destructive/50 text-destructive hover:bg-destructive/10"
           >
             Check All
@@ -186,18 +227,58 @@ export const PPEChecklistSection = ({
         <Badge 
           variant="outline" 
           className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
-          onClick={onSelectAll}
+          onClick={() => handleBulkSelectRequest('all')}
         >
           Select All
         </Badge>
         <Badge 
           variant="outline" 
           className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
-          onClick={onSelectMandatory}
+          onClick={() => handleBulkSelectRequest('mandatory')}
         >
           Select Mandatory
         </Badge>
       </div>
+
+      {/* PPE Confirmation Checkbox - shown when items are selected via bulk action */}
+      {compliancePercentage === 100 && mandatoryItems.length > 0 && onPPEConfirmedChange && (
+        <div 
+          className={cn(
+            "flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all",
+            ppeConfirmed 
+              ? "bg-green-500/10 border-green-500/50" 
+              : "bg-amber-500/10 border-amber-500/50"
+          )}
+          onClick={() => onPPEConfirmedChange(!ppeConfirmed)}
+        >
+          <Checkbox 
+            checked={ppeConfirmed}
+            className={cn(
+              "mt-0.5",
+              ppeConfirmed 
+                ? "border-green-500 data-[state=checked]:bg-green-500" 
+                : "border-amber-500"
+            )}
+          />
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className={cn(
+                "h-4 w-4",
+                ppeConfirmed ? "text-green-500" : "text-amber-500"
+              )} />
+              <p className={cn(
+                "text-sm font-medium",
+                ppeConfirmed ? "text-green-600 dark:text-green-400" : "text-amber-600 dark:text-amber-400"
+              )}>
+                PPE Verification Confirmation
+              </p>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              I confirm that all workers on site have verified they are wearing the required personal protective equipment.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Trades on site */}
       {tradesOnSite.length > 0 && (
@@ -307,6 +388,37 @@ export const PPEChecklistSection = ({
           </div>
         </div>
       )}
+
+      {/* Bulk Selection Confirmation Dialog */}
+      <AlertDialog open={pendingBulkAction !== null} onOpenChange={(open) => !open && handleBulkCancel()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5 text-amber-500" />
+              Confirm PPE Verification
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-left space-y-3">
+              <p>
+                You are about to mark {pendingBulkAction === 'all' ? 'all' : 'all mandatory'} PPE items as verified.
+              </p>
+              <p className="font-medium text-foreground">
+                By confirming, you attest that:
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-sm">
+                <li>All workers on site have been visually checked</li>
+                <li>Each worker is wearing the required PPE for their tasks</li>
+                <li>PPE is in proper working condition</li>
+              </ul>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleBulkCancel}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkConfirm}>
+              I Confirm All Workers Have Verified PPE
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
