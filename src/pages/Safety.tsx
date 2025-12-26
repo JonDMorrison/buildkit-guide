@@ -163,6 +163,22 @@ const Safety = () => {
     );
   }
 
+  // Prompt user to select a project if none is selected
+  if (!currentProjectId) {
+    return (
+      <Layout>
+        <div className="container max-w-4xl mx-auto px-4 py-6">
+          <NoAccess
+            title="Select a Project"
+            message="Please select a project from the dashboard to view safety forms."
+            returnPath="/dashboard"
+            returnLabel="Go to Dashboard"
+          />
+        </div>
+      </Layout>
+    );
+  }
+
   // Show no access if user cannot view safety (but workers CAN access for R2R)
   if (!canViewSafety) {
     return (
