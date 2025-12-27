@@ -12,6 +12,7 @@ import { SignatureCapture } from "./SignatureCapture";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
+import { useSafetyFormSubmit } from "@/hooks/useSafetyFormSubmit";
 import { 
   ChevronLeft, ChevronRight, Loader2, Check, Users, 
   MessageSquare, ClipboardList, PenTool, AlertTriangle,
@@ -19,7 +20,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { generateAndPersistRecordHash } from "@/lib/recordHash";
 
 interface ToolboxMeetingWizardProps {
   isOpen: boolean;
@@ -47,9 +47,9 @@ const TOPIC_CATEGORIES = [
 
 export const ToolboxMeetingWizard = ({ isOpen, onClose, onSuccess }: ToolboxMeetingWizardProps) => {
   const [step, setStep] = useState(1);
-  const [submitting, setSubmitting] = useState(false);
   const { currentProjectId } = useCurrentProject();
   const { toast } = useToast();
+  const { submitting, submitForm } = useSafetyFormSubmit();
 
   // Step 1: Meeting Info
   const [meetingDate, setMeetingDate] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -153,89 +153,53 @@ export const ToolboxMeetingWizard = ({ isOpen, onClose, onSuccess }: ToolboxMeet
 
   const handleSubmit = async () => {
     if (!currentProjectId) return;
-    setSubmitting(true);
 
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) throw new Error("Not authenticated");
+    // Build topics text
+    const topicLabels = selectedTopics
+      .map(id => TOPIC_CATEGORIES.find(t => t.id === id)?.label)
+      .filter(Boolean);
+    const fullTopicsText = [
+      ...topicLabels.map(t => `• ${t}`),
+      topicsDiscussed ? `\nAdditional Notes:\n${topicsDiscussed}` : ""
+    ].join("\n");
 
-      // Build topics text
-      const topicLabels = selectedTopics
-        .map(id => TOPIC_CATEGORIES.find(t => t.id === id)?.label)
-        .filter(Boolean);
-      const fullTopicsText = [
-        ...topicLabels.map(t => `• ${t}`),
-        topicsDiscussed ? `\nAdditional Notes:\n${topicsDiscussed}` : ""
-      ].join("\n");
+    // Build entries
+    const entries = [
+      { field_name: "date", field_value: meetingDate },
+      { field_name: "time", field_value: meetingTime },
+      { field_name: "duration", field_value: duration },
+      { field_name: "location", field_value: location },
+      { field_name: "topics_covered", field_value: fullTopicsText },
+      { field_name: "questions_raised", field_value: questionsRaised },
+      { field_name: "action_items", field_value: actionItems },
+      { field_name: "conductor_signature", field_value: conductorSignature || "" },
+      { field_name: "attendee_count", field_value: selectedAttendees.length.toString() },
+    ];
 
-      // Create safety form
-      const { data: form, error: formError } = await supabase
-        .from("safety_forms")
-        .insert({
-          project_id: currentProjectId,
-          form_type: "toolbox_meeting",
-          title: `Toolbox Meeting - ${format(new Date(meetingDate), "MMM d, yyyy")}`,
-          status: "submitted",
-          inspection_date: meetingDate,
-          created_by: userData.user.id,
-        })
-        .select()
-        .single();
+    // Build attendees
+    const attendees = selectedAttendees.map(a => ({
+      user_id: a.id,
+      signed_at: a.signed ? new Date().toISOString() : null,
+      signature_url: attendeeSignatures[a.id] || null,
+      is_foreman: false,
+    }));
 
-      if (formError) throw formError;
+    const result = await submitForm({
+      form: {
+        projectId: currentProjectId,
+        formType: 'toolbox_meeting',
+        title: `Toolbox Meeting - ${format(new Date(meetingDate), "MMM d, yyyy")}`,
+        inspectionDate: meetingDate,
+      },
+      entries,
+      attendees,
+      successMessage: `Toolbox meeting saved with ${selectedAttendees.length} attendees.`,
+    });
 
-      // Save form entries
-      const entries = [
-        { safety_form_id: form.id, field_name: "date", field_value: meetingDate },
-        { safety_form_id: form.id, field_name: "time", field_value: meetingTime },
-        { safety_form_id: form.id, field_name: "duration", field_value: duration },
-        { safety_form_id: form.id, field_name: "location", field_value: location },
-        { safety_form_id: form.id, field_name: "topics_covered", field_value: fullTopicsText },
-        { safety_form_id: form.id, field_name: "questions_raised", field_value: questionsRaised },
-        { safety_form_id: form.id, field_name: "action_items", field_value: actionItems },
-        { safety_form_id: form.id, field_name: "conductor_signature", field_value: conductorSignature || "" },
-        { safety_form_id: form.id, field_name: "attendee_count", field_value: selectedAttendees.length.toString() },
-      ];
-
-      await supabase.from("safety_entries").insert(entries);
-
-      // Save attendees
-      const attendeeRecords = selectedAttendees.map(a => ({
-        safety_form_id: form.id,
-        user_id: a.id,
-        signed_at: a.signed ? new Date().toISOString() : null,
-        signature_url: attendeeSignatures[a.id] || null,
-        is_foreman: false,
-      }));
-
-      if (attendeeRecords.length > 0) {
-        await supabase.from("safety_form_attendees").insert(attendeeRecords);
-      }
-
-      // Generate record hash for tamper-evidence (BC compliance)
-      // Use generateAndPersistRecordHash for deterministic hashing from DB state
-      const recordHash = await generateAndPersistRecordHash(form.id);
-      if (!recordHash) {
-        console.error("[ToolboxMeetingWizard] Failed to generate record hash");
-      }
-
-      toast({
-        title: "Meeting Recorded",
-        description: `Toolbox meeting saved with ${selectedAttendees.length} attendees.`,
-      });
-
+    if (result) {
       onSuccess?.();
       onClose();
       resetForm();
-    } catch (error: any) {
-      console.error("Error saving meeting:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to save meeting",
-        variant: "destructive",
-      });
-    } finally {
-      setSubmitting(false);
     }
   };
 
