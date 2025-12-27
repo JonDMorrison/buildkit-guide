@@ -19,6 +19,7 @@ interface SafetyFormData {
   title: string;
   inspectionDate?: string;
   deviceInfo?: Json;
+  status?: 'draft' | 'submitted';
 }
 
 interface SafetyEntry {
@@ -152,13 +153,14 @@ export const useSafetyFormSubmit = (): UseSafetyFormSubmitReturn => {
       }
 
       // Create the safety form
+      const formStatus = form.status || 'submitted';
       const { data: createdForm, error: formError } = await supabase
         .from('safety_forms')
         .insert([{
           project_id: form.projectId,
           form_type: form.formType,
           title: form.title,
-          status: 'submitted' as const,
+          status: formStatus,
           inspection_date: form.inspectionDate || new Date().toISOString().split('T')[0],
           created_by: userData.user.id,
           device_info: form.deviceInfo || null,
@@ -183,8 +185,10 @@ export const useSafetyFormSubmit = (): UseSafetyFormSubmitReturn => {
         await createAcknowledgments(formId, acknowledgments, userData.user.id);
       }
 
-      // Generate tamper-evidence hash (BC compliance)
-      await generateHash(formId);
+      // Generate tamper-evidence hash (BC compliance) - only for submitted forms
+      if (formStatus === 'submitted') {
+        await generateHash(formId);
+      }
 
       // Success toast
       toast({
