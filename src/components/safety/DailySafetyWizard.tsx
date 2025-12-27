@@ -2,9 +2,10 @@ import { useState, useCallback, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useSafetyLogAutoFill, type HazardSuggestion } from "@/hooks/useSafetyLogAutoFill";
+import { useSafetyFormSubmit } from "@/hooks/useSafetyFormSubmit";
+import { useToast } from "@/hooks/use-toast";
 import { WizardStepOne } from "./WizardStepOne";
 import { WizardStepTwo } from "./WizardStepTwo";
 import { WizardStepThree } from "./WizardStepThree";
@@ -13,7 +14,6 @@ import type { SelectedAttendee, Attendee } from "./AttendeeSelector";
 import { ChevronLeft, ChevronRight, Loader2, Check, AlertTriangle } from "lucide-react";
 import { computePPECompliance } from "./PPEChecklistSection";
 import { format } from "date-fns";
-import { generateAndPersistRecordHash } from "@/lib/recordHash";
 
 interface HazardWithControls extends HazardSuggestion {
   controls: string[];
@@ -33,9 +33,9 @@ export const DailySafetyWizard = ({
   initialProjectId,
 }: DailySafetyWizardProps) => {
   const [step, setStep] = useState(1);
-  const [submitting, setSubmitting] = useState(false);
   const [projects, setProjects] = useState<Array<{ id: string; name: string }>>([]);
   const [projectId, setProjectId] = useState(initialProjectId || "");
+  const { submitting, submitForm } = useSafetyFormSubmit();
   const { toast } = useToast();
 
   // Step 1 state
@@ -211,117 +211,80 @@ export const DailySafetyWizard = ({
 
   const handleSubmit = async () => {
     if (!canProceed()) return;
-    setSubmitting(true);
 
-    try {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) throw new Error("Not authenticated");
+    // Build PPE items list with names for better readability
+    const checkedPPEItems = ppeRequirements
+      .filter((ppe) => ppeCheckedItems[ppe.id])
+      .map((ppe) => ({ id: ppe.id, item: ppe.ppe_item, is_mandatory: ppe.is_mandatory }));
+    
+    const missingMandatoryPPE = ppeRequirements
+      .filter((ppe) => {
+        const relevantTrades = ["general", ...selectedTrades.map((t) => t.toLowerCase())];
+        const isRelevant = relevantTrades.some((trade) => ppe.trade_type.toLowerCase().includes(trade));
+        return isRelevant && ppe.is_mandatory && !ppeCheckedItems[ppe.id];
+      })
+      .map((ppe) => ppe.ppe_item);
 
-      // Create safety form
-      const { data: form, error: formError } = await supabase
-        .from("safety_forms")
-        .insert({
-          project_id: projectId,
-          form_type: "daily_safety_log",
-          title: "Daily Safety Log",
-          status: "submitted",
-          inspection_date: format(new Date(), "yyyy-MM-dd"),
-          created_by: user.user.id,
-          device_info: { userAgent: navigator.userAgent, platform: navigator.platform },
-        })
-        .select()
-        .single();
+    // Check if AI suggestions were used (any hazard with source !== "general")
+    const aiUsed = selectedHazards.some(h => h.source !== "general");
 
-      if (formError) throw formError;
+    // Build entries
+    const entries = [
+      { field_name: "weather", field_value: weather },
+      { field_name: "crew_count", field_value: crewCount },
+      { field_name: "trades_on_site", field_value: selectedTrades.join(", ") },
+      { field_name: "hazards_identified", field_value: JSON.stringify(selectedHazards) },
+      { field_name: "additional_notes", field_value: additionalNotes },
+      { field_name: "ppe_compliance", field_value: JSON.stringify({
+        checked_items: checkedPPEItems,
+        missing_mandatory: missingMandatoryPPE,
+        compliance_percentage: ppeCompliance.percentage,
+        status: ppeCompliance.status,
+        ppe_verified_confirmed: ppeConfirmed,
+      }) },
+      { field_name: "foreman_signature", field_value: foremanSignature },
+      { field_name: "worker_rep_signature", field_value: workerRepSignature || "" },
+      // Store no-hazards confirmation for BC compliance
+      { field_name: "no_hazards_confirmed", field_value: selectedHazards.length === 0 && noHazardsConfirmed ? "true" : "false" },
+      // Track if AI was used for BC compliance disclaimer
+      { field_name: "ai_used", field_value: aiUsed ? "true" : "false" },
+    ];
 
-      // Build PPE items list with names for better readability
-      const checkedPPEItems = ppeRequirements
-        .filter((ppe) => ppeCheckedItems[ppe.id])
-        .map((ppe) => ({ id: ppe.id, item: ppe.ppe_item, is_mandatory: ppe.is_mandatory }));
-      
-      const missingMandatoryPPE = ppeRequirements
-        .filter((ppe) => {
-          const relevantTrades = ["general", ...selectedTrades.map((t) => t.toLowerCase())];
-          const isRelevant = relevantTrades.some((trade) => ppe.trade_type.toLowerCase().includes(trade));
-          return isRelevant && ppe.is_mandatory && !ppeCheckedItems[ppe.id];
-        })
-        .map((ppe) => ppe.ppe_item);
+    // Build attendees
+    const attendees = selectedAttendees.map((a) => ({
+      user_id: a.user_id,
+      is_foreman: a.is_foreman,
+      signed_at: a.is_foreman && foremanSignature ? new Date().toISOString() : null,
+      signature_url: a.is_foreman ? foremanSignature : null,
+    }));
 
-      // Check if AI suggestions were used (any hazard with source !== "general")
-      const aiUsed = selectedHazards.some(h => h.source !== "general");
+    // Build acknowledgments (BC compliance requirement)
+    const acknowledgments = workerAcknowledgments
+      .filter((a) => a.acknowledged)
+      .map((a) => ({
+        user_id: a.user_id,
+        signature_url: a.signature_url || null,
+        acknowledged_at: new Date().toISOString(),
+        initiation_method: "foreman_proxy" as const,
+      }));
 
-      // Create entries
-      const entries = [
-        { safety_form_id: form.id, field_name: "weather", field_value: weather },
-        { safety_form_id: form.id, field_name: "crew_count", field_value: crewCount },
-        { safety_form_id: form.id, field_name: "trades_on_site", field_value: selectedTrades.join(", ") },
-        { safety_form_id: form.id, field_name: "hazards_identified", field_value: JSON.stringify(selectedHazards) },
-        { safety_form_id: form.id, field_name: "additional_notes", field_value: additionalNotes },
-        { safety_form_id: form.id, field_name: "ppe_compliance", field_value: JSON.stringify({
-          checked_items: checkedPPEItems,
-          missing_mandatory: missingMandatoryPPE,
-          compliance_percentage: ppeCompliance.percentage,
-          status: ppeCompliance.status,
-          ppe_verified_confirmed: ppeConfirmed,
-        }) },
-        { safety_form_id: form.id, field_name: "foreman_signature", field_value: foremanSignature },
-        { safety_form_id: form.id, field_name: "worker_rep_signature", field_value: workerRepSignature || "" },
-        // Store no-hazards confirmation for BC compliance
-        { safety_form_id: form.id, field_name: "no_hazards_confirmed", field_value: selectedHazards.length === 0 && noHazardsConfirmed ? "true" : "false" },
-        // Track if AI was used for BC compliance disclaimer
-        { safety_form_id: form.id, field_name: "ai_used", field_value: aiUsed ? "true" : "false" },
-      ];
+    const result = await submitForm({
+      form: {
+        projectId,
+        formType: "daily_safety_log",
+        title: "Daily Safety Log",
+        inspectionDate: format(new Date(), "yyyy-MM-dd"),
+        deviceInfo: { userAgent: navigator.userAgent, platform: navigator.platform },
+      },
+      entries,
+      attendees,
+      acknowledgments,
+      successMessage: "Daily Safety Log submitted",
+    });
 
-      await supabase.from("safety_entries").insert(entries);
-
-      // Create attendees
-      if (selectedAttendees.length > 0) {
-        const attendeeRecords = selectedAttendees.map((a) => ({
-          safety_form_id: form.id,
-          user_id: a.user_id,
-          is_foreman: a.is_foreman,
-          signed_at: a.is_foreman && foremanSignature ? new Date().toISOString() : null,
-          signature_url: a.is_foreman ? foremanSignature : null,
-        }));
-        await supabase.from("safety_form_attendees").insert(attendeeRecords);
-      }
-
-      // Create worker acknowledgments (BC compliance requirement)
-      if (workerAcknowledgments.length > 0) {
-        const { data: user } = await supabase.auth.getUser();
-        const currentUserId = user.user?.id;
-        
-        const ackRecords = workerAcknowledgments
-          .filter((a) => a.acknowledged)
-          .map((a) => ({
-            safety_form_id: form.id,
-            user_id: a.user_id,
-            signature_url: a.signature_url || null,
-            acknowledged_at: new Date().toISOString(),
-            // Audit trail: foreman is recording on behalf of workers
-            initiated_by_user_id: currentUserId,
-            initiation_method: "foreman_proxy" as const,
-          }));
-        if (ackRecords.length > 0) {
-          await supabase.from("safety_form_acknowledgments").insert(ackRecords);
-        }
-      }
-
-      // Generate record hash for tamper-evidence (BC compliance)
-      // Use generateAndPersistRecordHash for deterministic hashing from DB state
-      const recordHash = await generateAndPersistRecordHash(form.id);
-      if (!recordHash) {
-        console.error("[DailySafetyWizard] Failed to generate record hash");
-      }
-
-      toast({ title: "Success", description: "Daily Safety Log submitted" });
+    if (result) {
       onSuccess();
       onClose();
-    } catch (error: any) {
-      console.error("Submit error:", error);
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } finally {
-      setSubmitting(false);
     }
   };
 

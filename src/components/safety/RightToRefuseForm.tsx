@@ -17,9 +17,8 @@ import {
 import { SignatureCapture } from "./SignatureCapture";
 import { VoiceInputButton } from "./VoiceInputButton";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { useSafetyFormSubmit } from "@/hooks/useSafetyFormSubmit";
 import { format } from "date-fns";
-import { generateAndPersistRecordHash } from "@/lib/recordHash";
 import {
   ShieldBan,
   AlertTriangle,
@@ -68,11 +67,10 @@ export const RightToRefuseForm = ({
   projectId,
   isWorkerMode = false,
 }: RightToRefuseFormProps) => {
-  const [submitting, setSubmitting] = useState(false);
   const [showExplainer, setShowExplainer] = useState(false);
   const [projects, setProjects] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedProject, setSelectedProject] = useState(projectId || "");
-  const { toast } = useToast();
+  const { submitting, submitForm } = useSafetyFormSubmit();
 
   // Form fields
   const [taskActivity, setTaskActivity] = useState("");
@@ -135,79 +133,52 @@ export const RightToRefuseForm = ({
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
-    setSubmitting(true);
 
-    try {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) throw new Error("Not authenticated");
+    // Create entries for all form fields
+    // In worker mode, investigation and resolution fields are left empty for employer to fill
+    const isResolved = !isWorkerMode && (resolutionStatus.startsWith("resolved_") || resolutionStatus === "escalated");
+    const entries = [
+      { field_name: "task_activity", field_value: taskActivity },
+      { field_name: "location", field_value: location },
+      { field_name: "refusal_reasons", field_value: JSON.stringify(selectedReasons) },
+      { field_name: "reason_details", field_value: reasonDetails },
+      { field_name: "immediate_controls", field_value: immediateControls },
+      { field_name: "supervisor_notified", field_value: supervisorNotified ? "yes" : "no" },
+      { field_name: "supervisor_name", field_value: supervisorName },
+      { field_name: "supervisor_notified_at", field_value: supervisorNotifiedAt },
+      // Only include investigation/resolution if not in worker mode (employer fills these)
+      { field_name: "investigation_notes", field_value: isWorkerMode ? "" : investigationNotes },
+      { field_name: "resolution_status", field_value: isWorkerMode ? "pending_investigation" : resolutionStatus },
+      { field_name: "worker_signature", field_value: signature },
+      { field_name: "submitted_at", field_value: new Date().toISOString() },
+      // Track if this was worker-initiated for audit purposes
+      { field_name: "worker_initiated", field_value: isWorkerMode ? "true" : "false" },
+      // Store resolved_at timestamp when status is resolved
+      { field_name: "resolved_at", field_value: isResolved ? new Date().toISOString() : "" },
+    ];
 
-      // Create safety form with right_to_refuse type
-      const { data: form, error: formError } = await supabase
-        .from("safety_forms")
-        .insert({
-          project_id: selectedProject,
-          form_type: "right_to_refuse",
-          title: `Right to Refuse - ${taskActivity.slice(0, 50)}`,
-          status: "submitted",
-          inspection_date: format(new Date(), "yyyy-MM-dd"),
-          created_by: user.user.id,
-          device_info: { userAgent: navigator.userAgent, platform: navigator.platform },
-        })
-        .select()
-        .single();
-
-      if (formError) throw formError;
-
-      // Create entries for all form fields
-      // In worker mode, investigation and resolution fields are left empty for employer to fill
-      const isResolved = !isWorkerMode && (resolutionStatus.startsWith("resolved_") || resolutionStatus === "escalated");
-      const entries = [
-        { safety_form_id: form.id, field_name: "task_activity", field_value: taskActivity },
-        { safety_form_id: form.id, field_name: "location", field_value: location },
-        { safety_form_id: form.id, field_name: "refusal_reasons", field_value: JSON.stringify(selectedReasons) },
-        { safety_form_id: form.id, field_name: "reason_details", field_value: reasonDetails },
-        { safety_form_id: form.id, field_name: "immediate_controls", field_value: immediateControls },
-        { safety_form_id: form.id, field_name: "supervisor_notified", field_value: supervisorNotified ? "yes" : "no" },
-        { safety_form_id: form.id, field_name: "supervisor_name", field_value: supervisorName },
-        { safety_form_id: form.id, field_name: "supervisor_notified_at", field_value: supervisorNotifiedAt },
-        // Only include investigation/resolution if not in worker mode (employer fills these)
-        { safety_form_id: form.id, field_name: "investigation_notes", field_value: isWorkerMode ? "" : investigationNotes },
-        { safety_form_id: form.id, field_name: "resolution_status", field_value: isWorkerMode ? "pending_investigation" : resolutionStatus },
-        { safety_form_id: form.id, field_name: "worker_signature", field_value: signature },
-        { safety_form_id: form.id, field_name: "submitted_at", field_value: new Date().toISOString() },
-        // Track if this was worker-initiated for audit purposes
-        { safety_form_id: form.id, field_name: "worker_initiated", field_value: isWorkerMode ? "true" : "false" },
-        // Store resolved_at timestamp when status is resolved
-        { safety_form_id: form.id, field_name: "resolved_at", field_value: isResolved ? new Date().toISOString() : "" },
-      ];
-
-      await supabase.from("safety_entries").insert(entries);
-
-      // Create attendee record for the worker who refused
-      await supabase.from("safety_form_attendees").insert({
-        safety_form_id: form.id,
-        user_id: user.user.id,
+    const result = await submitForm({
+      form: {
+        projectId: selectedProject,
+        formType: "right_to_refuse",
+        title: `Right to Refuse - ${taskActivity.slice(0, 50)}`,
+        inspectionDate: format(new Date(), "yyyy-MM-dd"),
+        deviceInfo: { userAgent: navigator.userAgent, platform: navigator.platform },
+      },
+      entries,
+      attendees: [{
+        user_id: '', // Will be filled by hook from auth
         is_foreman: false,
         signed_at: new Date().toISOString(),
         signature_url: signature,
-      });
+      }],
+      successMessage: "Right to Refuse record submitted",
+    });
 
-      // Generate record hash for tamper-evidence (BC compliance)
-      // Use generateAndPersistRecordHash for deterministic hashing from DB state
-      const recordHash = await generateAndPersistRecordHash(form.id);
-      if (!recordHash) {
-        console.error("[RightToRefuseForm] Failed to generate record hash");
-      }
-
-      toast({ title: "Success", description: "Right to Refuse record submitted" });
+    if (result) {
       resetForm();
       onSuccess();
       onClose();
-    } catch (error: any) {
-      console.error("Submit error:", error);
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } finally {
-      setSubmitting(false);
     }
   };
 
