@@ -55,8 +55,6 @@ interface UseSafetyFormSubmitReturn {
   submitting: boolean;
   submitForm: (options: SubmitOptions) => Promise<{ formId: string } | null>;
   createEntries: (formId: string, entries: SafetyEntry[]) => Promise<boolean>;
-  createAttendees: (formId: string, attendees: AttendeeRecord[]) => Promise<boolean>;
-  createAcknowledgments: (formId: string, acknowledgments: AcknowledgmentRecord[]) => Promise<boolean>;
   generateHash: (formId: string) => Promise<string | null>;
 }
 
@@ -84,12 +82,12 @@ export const useSafetyFormSubmit = (): UseSafetyFormSubmitReturn => {
     return true;
   };
 
-  const createAttendees = async (formId: string, attendees: AttendeeRecord[]): Promise<boolean> => {
+  const createAttendees = async (formId: string, attendees: AttendeeRecord[], currentUserId: string): Promise<boolean> => {
     if (attendees.length === 0) return true;
 
     const attendeeRecords = attendees.map(a => ({
       safety_form_id: formId,
-      user_id: a.user_id,
+      user_id: a.user_id || currentUserId, // Use current user if not specified
       is_foreman: a.is_foreman ?? false,
       signed_at: a.signed_at || null,
       signature_url: a.signature_url || null,
@@ -105,7 +103,7 @@ export const useSafetyFormSubmit = (): UseSafetyFormSubmitReturn => {
     return true;
   };
 
-  const createAcknowledgments = async (formId: string, acknowledgments: AcknowledgmentRecord[]): Promise<boolean> => {
+  const createAcknowledgments = async (formId: string, acknowledgments: AcknowledgmentRecord[], currentUserId: string): Promise<boolean> => {
     if (acknowledgments.length === 0) return true;
 
     const ackRecords = acknowledgments.map(a => ({
@@ -113,7 +111,7 @@ export const useSafetyFormSubmit = (): UseSafetyFormSubmitReturn => {
       user_id: a.user_id,
       signature_url: a.signature_url || null,
       acknowledged_at: a.acknowledged_at,
-      initiated_by_user_id: a.initiated_by_user_id || null,
+      initiated_by_user_id: a.initiated_by_user_id || currentUserId,
       initiation_method: a.initiation_method || 'self',
       attestation_text: a.attestation_text || null,
     }));
@@ -177,12 +175,12 @@ export const useSafetyFormSubmit = (): UseSafetyFormSubmitReturn => {
 
       // Create attendees if provided
       if (attendees.length > 0) {
-        await createAttendees(formId, attendees);
+        await createAttendees(formId, attendees, userData.user.id);
       }
 
       // Create acknowledgments if provided
       if (acknowledgments.length > 0) {
-        await createAcknowledgments(formId, acknowledgments);
+        await createAcknowledgments(formId, acknowledgments, userData.user.id);
       }
 
       // Generate tamper-evidence hash (BC compliance)
@@ -212,8 +210,6 @@ export const useSafetyFormSubmit = (): UseSafetyFormSubmitReturn => {
     submitting,
     submitForm,
     createEntries,
-    createAttendees,
-    createAcknowledgments,
     generateHash,
   };
 };
