@@ -6,11 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SignatureCapture } from "./SignatureCapture";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useSafetyFormSubmit } from "@/hooks/useSafetyFormSubmit";
 import { Loader2, AlertTriangle, MapPin, Calendar, FileText, Shield, CheckCircle } from "lucide-react";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
-import { generateAndPersistRecordHash } from "@/lib/recordHash";
 
 interface NearMissFormProps {
   isOpen: boolean;
@@ -35,8 +34,8 @@ export const NearMissForm = ({
   const { currentProjectId } = useCurrentProject();
   const projectId = propProjectId || currentProjectId;
   const { toast } = useToast();
+  const { submitting, submitForm } = useSafetyFormSubmit();
   
-  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split("T")[0],
     time: new Date().toTimeString().slice(0, 5),
@@ -71,80 +70,37 @@ export const NearMissForm = ({
       return;
     }
 
-    setLoading(true);
+    // Build entries array
+    const entries = [
+      { field_name: "date", field_value: formData.date },
+      { field_name: "time", field_value: formData.time },
+      { field_name: "location", field_value: formData.location },
+      { field_name: "description", field_value: formData.description },
+    ];
 
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) throw new Error("Not authenticated");
+    // Add optional fields if provided
+    if (formData.potential_severity) {
+      entries.push({ field_name: "potential_severity", field_value: formData.potential_severity });
+    }
+    if (formData.suggested_controls) {
+      entries.push({ field_name: "suggested_controls", field_value: formData.suggested_controls });
+    }
+    if (signature) {
+      entries.push({ field_name: "reporter_signature", field_value: signature });
+    }
 
-      // Create the safety form
-      const { data: form, error: formError } = await supabase
-        .from("safety_forms")
-        .insert({
-          project_id: projectId,
-          form_type: "near_miss",
-          title: `Near Miss - ${formData.location} - ${formData.date}`,
-          status: "submitted",
-          inspection_date: formData.date,
-          created_by: userData.user.id,
-        })
-        .select()
-        .single();
+    const result = await submitForm({
+      form: {
+        projectId,
+        formType: 'near_miss',
+        title: `Near Miss - ${formData.location} - ${formData.date}`,
+        inspectionDate: formData.date,
+      },
+      entries,
+      successMessage: 'Thank you for reporting. Your report helps keep everyone safe.',
+    });
 
-      if (formError) throw formError;
-
-      // Create entries for all form fields
-      const entries: Array<{ safety_form_id: string; field_name: string; field_value: string }> = [
-        { safety_form_id: form.id, field_name: "date", field_value: formData.date },
-        { safety_form_id: form.id, field_name: "time", field_value: formData.time },
-        { safety_form_id: form.id, field_name: "location", field_value: formData.location },
-        { safety_form_id: form.id, field_name: "description", field_value: formData.description },
-      ];
-
-      // Add optional fields if provided
-      if (formData.potential_severity) {
-        entries.push({
-          safety_form_id: form.id,
-          field_name: "potential_severity",
-          field_value: formData.potential_severity,
-        });
-      }
-
-      if (formData.suggested_controls) {
-        entries.push({
-          safety_form_id: form.id,
-          field_name: "suggested_controls",
-          field_value: formData.suggested_controls,
-        });
-      }
-
-      // Add signature if provided
-      if (signature) {
-        entries.push({
-          safety_form_id: form.id,
-          field_name: "reporter_signature",
-          field_value: signature,
-        });
-      }
-
-      const { error: entriesError } = await supabase
-        .from("safety_entries")
-        .insert(entries);
-
-      if (entriesError) throw entriesError;
-
-      // Generate record hash for tamper-evidence (BC compliance)
-      // Use generateAndPersistRecordHash for deterministic hashing from DB state
-      const recordHash = await generateAndPersistRecordHash(form.id);
-      if (!recordHash) {
-        console.error("[NearMissForm] Failed to generate record hash");
-      }
-
-      toast({
-        title: "Near Miss Reported",
-        description: "Thank you for reporting. Your report helps keep everyone safe.",
-      });
-
+    if (result) {
       // Reset form
       setFormData({
         date: new Date().toISOString().split("T")[0],
@@ -157,16 +113,6 @@ export const NearMissForm = ({
       setSignature(null);
 
       onSuccess?.();
-      onClose();
-    } catch (error) {
-      console.error("Error submitting near miss:", error);
-      toast({
-        title: "Submission Failed",
-        description: "Could not submit near miss report. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -303,17 +249,17 @@ export const NearMissForm = ({
             <Button
               variant="outline"
               onClick={onClose}
-              disabled={loading}
+              disabled={submitting}
               className="flex-1"
             >
               Cancel
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={loading || !formData.date || !formData.location || !formData.description}
+              disabled={submitting || !formData.date || !formData.location || !formData.description}
               className="flex-1"
             >
-              {loading ? (
+              {submitting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Submitting...
