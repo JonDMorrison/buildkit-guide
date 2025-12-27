@@ -2,8 +2,8 @@ import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { usePhotoUpload } from '@/hooks/usePhotoUpload';
 import { Camera, Plus, X, Loader2, ZoomIn } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 
@@ -33,78 +33,37 @@ export const TaskPhotos = ({
   const { toast } = useToast();
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const { uploading, uploadSingle, createAttachmentRecord } = usePhotoUpload();
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast({
-        title: 'Invalid file type',
-        description: 'Please select an image file',
-        variant: 'destructive',
-      });
-      return;
-    }
+    const result = await uploadSingle(file, {
+      bucket: 'task-photos',
+      pathPrefix: `${projectId}/${taskId}`,
+    });
 
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      toast({
-        title: 'File too large',
-        description: 'Please select an image under 10MB',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setUploading(true);
-
-    try {
-      // Upload to storage
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${projectId}/${taskId}/${Date.now()}.${fileExt}`;
-      const filePath = fileName;
-
-      const { error: uploadError } = await supabase.storage
-        .from('task-photos')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('task-photos')
-        .getPublicUrl(filePath);
-
-      // Create attachment record
-      const { error: dbError } = await supabase.from('attachments').insert({
+    if (result) {
+      const success = await createAttachmentRecord({
         task_id: taskId,
         project_id: projectId,
         uploaded_by: user.id,
-        file_name: file.name,
-        file_type: file.type,
-        file_size: file.size,
-        file_url: urlData.publicUrl,
+        file_name: result.fileName,
+        file_type: result.fileType,
+        file_size: result.fileSize,
+        file_url: result.fileUrl,
       });
 
-      if (dbError) throw dbError;
-
-      toast({ title: 'Photo uploaded successfully' });
-      onUploadComplete();
-    } catch (err: any) {
-      toast({
-        title: 'Upload failed',
-        description: err.message,
-        variant: 'destructive',
-      });
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+      if (success) {
+        toast({ title: 'Photo uploaded successfully' });
+        onUploadComplete();
       }
+    }
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 

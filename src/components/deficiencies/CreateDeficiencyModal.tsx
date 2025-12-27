@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PhotoUpload } from "./PhotoUpload";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { usePhotoUpload } from "@/hooks/usePhotoUpload";
 import { Loader2 } from "lucide-react";
 
 interface CreateDeficiencyModalProps {
@@ -35,6 +36,7 @@ export const CreateDeficiencyModal = ({
     due_date: "",
   });
   const { toast } = useToast();
+  const { uploadMultiple, createAttachmentRecord } = usePhotoUpload();
 
   useEffect(() => {
     if (isOpen) {
@@ -110,34 +112,23 @@ export const CreateDeficiencyModal = ({
 
       // Upload photos if any
       if (photos.length > 0 && deficiency) {
-        const uploadPromises = photos.map(async (photo, index) => {
-          const fileExt = photo.name.split(".").pop();
-          const fileName = `${deficiency.id}/${Date.now()}_${index}.${fileExt}`;
-          
-          const { error: uploadError, data: uploadData } = await supabase.storage
-            .from("deficiency-photos")
-            .upload(fileName, photo);
-
-          if (uploadError) throw uploadError;
-
-          // Get public URL
-          const { data: urlData } = supabase.storage
-            .from("deficiency-photos")
-            .getPublicUrl(fileName);
-
-          // Create attachment record
-          await supabase.from("attachments").insert({
-            deficiency_id: deficiency.id,
-            project_id: formData.project_id,
-            file_name: photo.name,
-            file_type: photo.type,
-            file_url: urlData.publicUrl,
-            file_size: photo.size,
-            uploaded_by: userData.user.id,
-          });
+        const uploaded = await uploadMultiple(photos, {
+          bucket: 'deficiency-photos',
+          pathPrefix: deficiency.id,
         });
 
-        await Promise.all(uploadPromises);
+        // Create attachment records for each uploaded file
+        for (const file of uploaded) {
+          await createAttachmentRecord({
+            deficiency_id: deficiency.id,
+            project_id: formData.project_id,
+            file_name: file.fileName,
+            file_type: file.fileType,
+            file_url: file.fileUrl,
+            file_size: file.fileSize,
+            uploaded_by: userData.user.id,
+          });
+        }
       }
 
       toast({
