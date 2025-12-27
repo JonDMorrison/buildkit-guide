@@ -10,8 +10,9 @@ import { PhotoUpload } from "../deficiencies/PhotoUpload";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { usePhotoUpload } from "@/hooks/usePhotoUpload";
+import { useSafetyFormSubmit } from "@/hooks/useSafetyFormSubmit";
 import { useSafetyLogAutoFill, HazardSuggestion } from "@/hooks/useSafetyLogAutoFill";
-import { generateAndPersistRecordHash, assertRecordHashPresent } from "@/lib/recordHash";
+import { assertRecordHashPresent } from "@/lib/recordHash";
 import { PPEChecklistSection, computePPECompliance } from "./PPEChecklistSection";
 import { 
   Loader2, Save, Wand2, Copy, Cloud, Users, AlertTriangle, 
@@ -142,6 +143,7 @@ export const SafetyFormModal = ({
   const [ppeCheckedItems, setPPECheckedItems] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
   const { uploadMultiple, createAttachmentRecord } = usePhotoUpload();
+  const { submitForm, generateHash } = useSafetyFormSubmit();
 
   const {
     weather,
@@ -414,53 +416,47 @@ export const SafetyFormModal = ({
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error("Not authenticated");
 
-      const { data: form, error: formError } = await supabase
-        .from("safety_forms")
-        .insert({
-          project_id: projectId,
-          form_type: formType,
-          title: template.title,
-          status: "submitted",
-          inspection_date: formData.date || new Date().toISOString().split("T")[0],
-          created_by: userData.user.id,
-        })
-        .select()
-        .single();
-
-      if (formError) throw formError;
-
+      // Build entries from form data
       const entries = Object.entries(formData).map(([fieldName, fieldValue]) => ({
-        safety_form_id: form.id,
         field_name: fieldName,
         field_value: fieldValue,
       }));
 
       if (signature) {
         entries.push({
-          safety_form_id: form.id,
           field_name: "signature",
           field_value: signature,
         });
       }
 
-      if (entries.length > 0) {
-        const { error: entriesError } = await supabase
-          .from("safety_entries")
-          .insert(entries);
+      // Use the hook to submit the form
+      const result = await submitForm({
+        form: {
+          projectId,
+          formType: formType as any,
+          title: template.title,
+          inspectionDate: formData.date || new Date().toISOString().split("T")[0],
+        },
+        entries,
+        successMessage: "Safety form submitted successfully",
+      });
 
-        if (entriesError) throw entriesError;
+      if (!result) {
+        setLoading(false);
+        return;
       }
 
+      // Handle photo uploads separately (after form creation)
       if (photos.length > 0) {
         const uploaded = await uploadMultiple(photos, {
           bucket: 'deficiency-photos',
-          pathPrefix: form.id,
+          pathPrefix: result.formId,
         });
 
         // Create attachment records for each uploaded file
         for (const file of uploaded) {
           await createAttachmentRecord({
-            safety_form_id: form.id,
+            safety_form_id: result.formId,
             project_id: projectId,
             file_name: file.fileName,
             file_type: file.fileType,
@@ -469,28 +465,18 @@ export const SafetyFormModal = ({
             uploaded_by: userData.user.id,
           });
         }
-      }
 
-      // Generate record hash for tamper-evidence (BC compliance)
-      // Use generateAndPersistRecordHash for deterministic hashing from DB state
-      const recordHash = await generateAndPersistRecordHash(form.id);
-      
-      if (!recordHash) {
-        console.error("[SafetyFormModal] Failed to generate record hash");
-      } else {
-        // Regression assertion: verify hash was set
-        assertRecordHashPresent({
-          id: form.id,
-          status: "submitted",
-          record_hash: recordHash,
-          form_type: formType,
-        });
+        // Regenerate hash after photos are added
+        const recordHash = await generateHash(result.formId);
+        if (recordHash) {
+          assertRecordHashPresent({
+            id: result.formId,
+            status: "submitted",
+            record_hash: recordHash,
+            form_type: formType,
+          });
+        }
       }
-
-      toast({
-        title: "Success",
-        description: "Safety form submitted successfully",
-      });
 
       setFormData({});
       setSignature(null);
