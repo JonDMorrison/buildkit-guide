@@ -9,6 +9,7 @@ import { SignatureCapture } from "./SignatureCapture";
 import { PhotoUpload } from "../deficiencies/PhotoUpload";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { usePhotoUpload } from "@/hooks/usePhotoUpload";
 import { useSafetyLogAutoFill, HazardSuggestion } from "@/hooks/useSafetyLogAutoFill";
 import { generateAndPersistRecordHash, assertRecordHashPresent } from "@/lib/recordHash";
 import { PPEChecklistSection, computePPECompliance } from "./PPEChecklistSection";
@@ -140,6 +141,7 @@ export const SafetyFormModal = ({
   const [expandedHazard, setExpandedHazard] = useState<string | null>(null);
   const [ppeCheckedItems, setPPECheckedItems] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
+  const { uploadMultiple, createAttachmentRecord } = usePhotoUpload();
 
   const {
     weather,
@@ -450,32 +452,23 @@ export const SafetyFormModal = ({
       }
 
       if (photos.length > 0) {
-        const uploadPromises = photos.map(async (photo, index) => {
-          const fileExt = photo.name.split(".").pop();
-          const fileName = `${form.id}/${Date.now()}_${index}.${fileExt}`;
-          
-          const { error: uploadError } = await supabase.storage
-            .from("deficiency-photos")
-            .upload(fileName, photo);
-
-          if (uploadError) throw uploadError;
-
-          const { data: urlData } = supabase.storage
-            .from("deficiency-photos")
-            .getPublicUrl(fileName);
-
-          await supabase.from("attachments").insert({
-            safety_form_id: form.id,
-            project_id: projectId,
-            file_name: photo.name,
-            file_type: photo.type,
-            file_url: urlData.publicUrl,
-            file_size: photo.size,
-            uploaded_by: userData.user.id,
-          });
+        const uploaded = await uploadMultiple(photos, {
+          bucket: 'deficiency-photos',
+          pathPrefix: form.id,
         });
 
-        await Promise.all(uploadPromises);
+        // Create attachment records for each uploaded file
+        for (const file of uploaded) {
+          await createAttachmentRecord({
+            safety_form_id: form.id,
+            project_id: projectId,
+            file_name: file.fileName,
+            file_type: file.fileType,
+            file_url: file.fileUrl,
+            file_size: file.fileSize,
+            uploaded_by: userData.user.id,
+          });
+        }
       }
 
       // Generate record hash for tamper-evidence (BC compliance)
