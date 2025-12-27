@@ -329,50 +329,34 @@ export const SafetyFormModal = ({
 
     setSaving(true);
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) throw new Error("Not authenticated");
-
-      const { data: form, error: formError } = await supabase
-        .from("safety_forms")
-        .insert({
-          project_id: projectId,
-          form_type: formType,
-          title: template.title,
-          status: "draft",
-          inspection_date: formData.date || new Date().toISOString().split("T")[0],
-          created_by: userData.user.id,
-        })
-        .select()
-        .single();
-
-      if (formError) throw formError;
-
+      // Build entries from form data
       const entries = Object.entries(formData).map(([fieldName, fieldValue]) => ({
-        safety_form_id: form.id,
         field_name: fieldName,
         field_value: fieldValue,
       }));
 
       if (signature) {
         entries.push({
-          safety_form_id: form.id,
           field_name: "signature",
           field_value: signature,
         });
       }
 
-      if (entries.length > 0) {
-        const { error: entriesError } = await supabase
-          .from("safety_entries")
-          .insert(entries);
-
-        if (entriesError) throw entriesError;
-      }
-
-      toast({
-        title: "Draft Saved",
-        description: "Form saved as draft",
+      const result = await submitForm({
+        form: {
+          projectId,
+          formType: formType as any,
+          title: template.title,
+          inspectionDate: formData.date || new Date().toISOString().split("T")[0],
+          status: 'draft',
+        },
+        entries,
+        successMessage: "Form saved as draft",
       });
+
+      if (!result) {
+        setSaving(false);
+      }
     } catch (error: any) {
       console.error("Error saving draft:", error);
       toast({
