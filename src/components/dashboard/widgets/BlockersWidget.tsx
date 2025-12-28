@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { AlertTriangle, ChevronRight } from "lucide-react";
 
@@ -11,7 +12,7 @@ interface BlockersWidgetProps {
   blockers: Blocker[];
 }
 
-export const BlockersWidget = ({ blockers }: BlockersWidgetProps) => {
+export const BlockersWidget = memo(function BlockersWidget({ blockers }: BlockersWidgetProps) {
   const navigate = useNavigate();
 
   return (
@@ -67,4 +68,4 @@ export const BlockersWidget = ({ blockers }: BlockersWidgetProps) => {
       )}
     </div>
   );
-};
+});

@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Target, ChevronRight } from "lucide-react";
 
@@ -12,7 +13,7 @@ interface DistributionWidgetProps {
   totalTasks: number;
 }
 
-export const DistributionWidget = ({ statusDistribution, totalTasks }: DistributionWidgetProps) => {
+export const DistributionWidget = memo(function DistributionWidget({ statusDistribution, totalTasks }: DistributionWidgetProps) {
   const navigate = useNavigate();
 
   return (
@@ -49,4 +50,4 @@ export const DistributionWidget = ({ statusDistribution, totalTasks }: Distribut
       </div>
     </div>
   );
-};
+});

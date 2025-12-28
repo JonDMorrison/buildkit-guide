@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Gauge, ChevronRight } from "lucide-react";
 
@@ -8,12 +9,12 @@ interface HealthWidgetProps {
   overdueTasks: number;
 }
 
-export const HealthWidget = ({
+export const HealthWidget = memo(function HealthWidget({
   healthScore,
   atRiskTasks,
   blockedTasks,
   overdueTasks,
-}: HealthWidgetProps) => {
+}: HealthWidgetProps) {
   const navigate = useNavigate();
 
   const getScoreColor = () => {
@@ -82,4 +83,4 @@ export const HealthWidget = ({
       </div>
     </div>
   );
-};
+});

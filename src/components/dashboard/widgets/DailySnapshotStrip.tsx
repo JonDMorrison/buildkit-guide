@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { CloudRain, HardHat, Wrench, PlayCircle, CheckSquare, AlertTriangle, Sun, Cloud, CloudSnow, ChevronRight } from "lucide-react";
 
 interface Task {
@@ -76,7 +77,7 @@ const MetricTile = ({ icon: Icon, label, value, variant = "default", onClick, cl
   </button>
 );
 
-export const DailySnapshotStrip = ({
+export const DailySnapshotStrip = memo(function DailySnapshotStrip({
   weather,
   crewCount,
   activeTrades,
@@ -89,7 +90,7 @@ export const DailySnapshotStrip = ({
   onStartingClick,
   onFinishingClick,
   onBlockersClick,
-}: DailySnapshotStripProps) => {
+}: DailySnapshotStripProps) {
   const WeatherIcon = getWeatherIcon(weather);
   
   return (
@@ -104,6 +105,6 @@ export const DailySnapshotStrip = ({
       </div>
     </div>
   );
-};
+});
 
 export type { Task as SnapshotTask, Trade as SnapshotTrade };

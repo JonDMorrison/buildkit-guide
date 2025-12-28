@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -263,15 +263,15 @@ export default function Dashboard() {
     enabled: !!currentProjectId,
   });
 
-  // Calculate metrics
-  const openTasks = tasks.filter(t => t.status !== "done").length;
-  const blockedTasks = tasks.filter(t => t.status === "blocked").length;
-  const upcomingTasks = tasks.filter(t => 
+  // Memoized metrics calculations to prevent unnecessary recalculations
+  const openTasks = useMemo(() => tasks.filter(t => t.status !== "done").length, [tasks]);
+  const blockedTasks = useMemo(() => tasks.filter(t => t.status === "blocked").length, [tasks]);
+  const upcomingTasks = useMemo(() => tasks.filter(t => 
     t.due_date && isAfter(new Date(t.due_date), today) && isBefore(new Date(t.due_date), nextWeek)
-  ).length;
+  ).length, [tasks, today, nextWeek]);
   const safetyFormsThisWeek = safetyForms.length;
 
-  const completionTrendData = Array.from({ length: 7 }, (_, i) => {
+  const completionTrendData = useMemo(() => Array.from({ length: 7 }, (_, i) => {
     const date = subDays(today, 6 - i);
     const dateStr = format(date, "yyyy-MM-dd");
     return {
@@ -279,28 +279,28 @@ export default function Dashboard() {
       completed: tasks.filter(t => t.status === "done" && t.updated_at && format(new Date(t.updated_at), "yyyy-MM-dd") === dateStr).length,
       created: tasks.filter(t => t.created_at && format(new Date(t.created_at), "yyyy-MM-dd") === dateStr).length,
     };
-  });
+  }), [tasks, today]);
 
-  const statusDistribution = [
+  const statusDistribution = useMemo(() => [
     { status: "Not Started", count: tasks.filter(t => t.status === "not_started").length, color: "hsl(var(--muted))" },
     { status: "In Progress", count: tasks.filter(t => t.status === "in_progress").length, color: "hsl(var(--secondary))" },
     { status: "Blocked", count: tasks.filter(t => t.status === "blocked").length, color: "hsl(var(--accent))" },
-  ];
+  ], [tasks]);
 
   const totalTasks = tasks.length || 1;
-  const atRiskTasks = tasks.filter(t => t.due_date && isBefore(new Date(t.due_date), addDays(today, 3)) && t.status !== "done").length;
-  const overdueTasks = tasks.filter(t => t.due_date && isBefore(new Date(t.due_date), today) && t.status !== "done").length;
-  const healthScore = Math.max(0, Math.min(100, 100 - (blockedTasks * 10) - (atRiskTasks * 5) - (overdueTasks * 15)));
+  const atRiskTasks = useMemo(() => tasks.filter(t => t.due_date && isBefore(new Date(t.due_date), addDays(today, 3)) && t.status !== "done").length, [tasks, today]);
+  const overdueTasks = useMemo(() => tasks.filter(t => t.due_date && isBefore(new Date(t.due_date), today) && t.status !== "done").length, [tasks, today]);
+  const healthScore = useMemo(() => Math.max(0, Math.min(100, 100 - (blockedTasks * 10) - (atRiskTasks * 5) - (overdueTasks * 15))), [blockedTasks, atRiskTasks, overdueTasks]);
 
-  const priorityTasks = tasks
+  const priorityTasks = useMemo(() => tasks
     .filter(t => t.status !== "done" && (t.priority === 1 || (t.due_date && isBefore(new Date(t.due_date), addDays(today, 3)))))
-    .slice(0, 5);
+    .slice(0, 5), [tasks, today]);
 
-  const formsToday = safetyForms.filter(f => format(new Date(f.created_at), "yyyy-MM-dd") === format(today, "yyyy-MM-dd")).length;
-  const incidents = safetyForms.filter(f => f.form_type === "incident").length;
+  const formsToday = useMemo(() => safetyForms.filter(f => format(new Date(f.created_at), "yyyy-MM-dd") === format(today, "yyyy-MM-dd")).length, [safetyForms, today]);
+  const incidents = useMemo(() => safetyForms.filter(f => f.form_type === "incident").length, [safetyForms]);
 
-  // Get full task objects for starting/finishing today
-  const tasksStartingTodayList: SnapshotTask[] = tasks
+  // Get full task objects for starting/finishing today - memoized
+  const tasksStartingTodayList: SnapshotTask[] = useMemo(() => tasks
     .filter(t => t.start_date && format(new Date(t.start_date), "yyyy-MM-dd") === format(today, "yyyy-MM-dd"))
     .map(t => ({
       id: t.id,
@@ -310,9 +310,9 @@ export default function Dashboard() {
       start_date: t.start_date,
       location: t.location,
       assigned_trade: t.assigned_trade,
-    }));
+    })), [tasks, today]);
   
-  const tasksFinishingTodayList: SnapshotTask[] = tasks
+  const tasksFinishingTodayList: SnapshotTask[] = useMemo(() => tasks
     .filter(t => t.due_date && format(new Date(t.due_date), "yyyy-MM-dd") === format(today, "yyyy-MM-dd"))
     .map(t => ({
       id: t.id,
@@ -322,18 +322,18 @@ export default function Dashboard() {
       start_date: t.start_date,
       location: t.location,
       assigned_trade: t.assigned_trade,
-    }));
+    })), [tasks, today]);
 
   const tasksStartingToday = tasksStartingTodayList.length;
   const tasksFinishingToday = tasksFinishingTodayList.length;
 
-  // Blockers with created_at for modal
-  const blockersForModal = blockers.filter(b => !b.is_resolved).map(b => ({
+  // Blockers with created_at for modal - memoized
+  const blockersForModal = useMemo(() => blockers.filter(b => !b.is_resolved).map(b => ({
     id: b.id,
     reason: b.reason,
     created_at: b.created_at,
     task: b.task,
-  }));
+  })), [blockers]);
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -347,7 +347,7 @@ export default function Dashboard() {
 
   const formatStatus = (status: string) => status.split("_").map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
 
-  const handleLayoutChange = (currentLayout: GridLayout[], allLayouts: { [key: string]: GridLayout[] }) => {
+  const handleLayoutChange = useCallback((currentLayout: GridLayout[], allLayouts: { [key: string]: GridLayout[] }) => {
     if (isEditMode) {
       Object.entries(allLayouts).forEach(([breakpoint, layout]) => {
         updateLayouts(breakpoint, layout.map(item => ({
@@ -356,10 +356,13 @@ export default function Dashboard() {
         })));
       });
     }
-  };
+  }, [isEditMode, updateLayouts]);
 
-  const handleBreakpointChange = (newBreakpoint: string) => setCurrentBreakpoint(newBreakpoint);
-  const handleSaveLayout = () => saveLayout(layouts);
+  const handleBreakpointChange = useCallback((newBreakpoint: string) => setCurrentBreakpoint(newBreakpoint), []);
+  const handleSaveLayout = useCallback(() => saveLayout(layouts), [saveLayout, layouts]);
+  
+  // Memoize handlers that are passed as props
+  const handleSetCurrentProject = useCallback((projectId: string) => setCurrentProject(projectId), [setCurrentProject]);
 
   if (layoutLoading) {
     return (
@@ -425,7 +428,7 @@ export default function Dashboard() {
                     {userProjects?.map((project: any) => (
                       <DropdownMenuItem
                         key={project.id}
-                        onClick={() => setCurrentProject(project.id)}
+                        onClick={() => handleSetCurrentProject(project.id)}
                         className="flex items-center gap-3 p-3 cursor-pointer"
                       >
                         <div className="flex-1 min-w-0">

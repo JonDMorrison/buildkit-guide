@@ -1,3 +1,4 @@
+import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,39 +10,48 @@ import { OrganizationSelectionModal } from "@/components/OrganizationSelectionMo
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { PublicRoute } from "@/components/PublicRoute";
 import { TimeTrackingGate } from "@/components/TimeTrackingGate";
-import Landing from "./pages/Landing";
-import HowItWorks from "./pages/HowItWorks";
-import Features from "./pages/Features";
-import SafetySecurity from "./pages/SafetySecurity";
-import ResponsibleAI from "./pages/ResponsibleAI";
-import Dashboard from "./pages/Dashboard";
-import Index from "./pages/Index";
-import ProjectOverview from "./pages/ProjectOverview";
-import Tasks from "./pages/Tasks";
-import Lookahead from "./pages/Lookahead";
-import Manpower from "./pages/Manpower";
-import Deficiencies from "./pages/Deficiencies";
-import Safety from "./pages/Safety";
-import AI from "./pages/AI";
-import Auth from "./pages/Auth";
-import Notifications from "./pages/Notifications";
-import NotificationSettings from "./pages/NotificationSettings";
-import Documents from "./pages/Documents";
-import UserManagement from "./pages/UserManagement";
-import AuditLog from "./pages/AuditLog";
-import DailyLogs from "./pages/DailyLogs";
-import Receipts from "./pages/Receipts";
-import ProjectReceipts from "./pages/ProjectReceipts";
-import AccountingReceipts from "./pages/AccountingReceipts";
-import DeficiencyImport from "./pages/DeficiencyImport";
-import TimeTracking from "./pages/TimeTracking";
-import TimeTrackingNotEnabled from "./pages/TimeTrackingNotEnabled";
-import TimeRequestsReview from "./pages/TimeRequestsReview";
-import TimesheetPeriods from "./pages/TimesheetPeriods";
-import TimeDiagnostics from "./pages/TimeDiagnostics";
-import NotFound from "./pages/NotFound";
+
+// Lazy load all pages for code splitting
+const Landing = lazy(() => import("./pages/Landing"));
+const HowItWorks = lazy(() => import("./pages/HowItWorks"));
+const Features = lazy(() => import("./pages/Features"));
+const SafetySecurity = lazy(() => import("./pages/SafetySecurity"));
+const ResponsibleAI = lazy(() => import("./pages/ResponsibleAI"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Index = lazy(() => import("./pages/Index"));
+const ProjectOverview = lazy(() => import("./pages/ProjectOverview"));
+const Tasks = lazy(() => import("./pages/Tasks"));
+const Lookahead = lazy(() => import("./pages/Lookahead"));
+const Manpower = lazy(() => import("./pages/Manpower"));
+const Deficiencies = lazy(() => import("./pages/Deficiencies"));
+const Safety = lazy(() => import("./pages/Safety"));
+const AI = lazy(() => import("./pages/AI"));
+const Auth = lazy(() => import("./pages/Auth"));
+const Notifications = lazy(() => import("./pages/Notifications"));
+const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
+const Documents = lazy(() => import("./pages/Documents"));
+const UserManagement = lazy(() => import("./pages/UserManagement"));
+const AuditLog = lazy(() => import("./pages/AuditLog"));
+const DailyLogs = lazy(() => import("./pages/DailyLogs"));
+const Receipts = lazy(() => import("./pages/Receipts"));
+const ProjectReceipts = lazy(() => import("./pages/ProjectReceipts"));
+const AccountingReceipts = lazy(() => import("./pages/AccountingReceipts"));
+const DeficiencyImport = lazy(() => import("./pages/DeficiencyImport"));
+const TimeTracking = lazy(() => import("./pages/TimeTracking"));
+const TimeTrackingNotEnabled = lazy(() => import("./pages/TimeTrackingNotEnabled"));
+const TimeRequestsReview = lazy(() => import("./pages/TimeRequestsReview"));
+const TimesheetPeriods = lazy(() => import("./pages/TimesheetPeriods"));
+const TimeDiagnostics = lazy(() => import("./pages/TimeDiagnostics"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
+
+// Fallback component for lazy loading
+const PageLoader = () => (
+  <div className="flex items-center justify-center h-screen bg-background">
+    <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent"></div>
+  </div>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -52,245 +62,247 @@ const App = () => (
         <AuthProvider>
           <OrganizationProvider>
             <OrganizationSelectionModal />
-            <Routes>
-            <Route path="/auth" element={<Auth />} />
-            <Route
-              path="/"
-              element={
-                <PublicRoute>
-                  <Landing />
-                </PublicRoute>
-              }
-            />
-            <Route
-              path="/how-it-works"
-              element={
-                <PublicRoute>
-                  <HowItWorks />
-                </PublicRoute>
-              }
-            />
-            <Route
-              path="/safety-security"
-              element={
-                <PublicRoute>
-                  <SafetySecurity />
-                </PublicRoute>
-              }
-            />
-            <Route
-              path="/features"
-              element={
-                <PublicRoute>
-                  <Features />
-                </PublicRoute>
-              }
-            />
-            <Route
-              path="/responsible-ai"
-              element={
-                <PublicRoute>
-                  <ResponsibleAI />
-                </PublicRoute>
-              }
-            />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/projects"
-              element={
-                <ProtectedRoute>
-                  <Index />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/projects/:projectId"
-              element={
-                <ProtectedRoute>
-                  <ProjectOverview />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/projects/:projectId/receipts"
-              element={
-                <ProtectedRoute>
-                  <ProjectReceipts />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/tasks"
-              element={
-                <ProtectedRoute>
-                  <Tasks />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/lookahead"
-              element={
-                <ProtectedRoute>
-                  <Lookahead />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/manpower"
-              element={
-                <ProtectedRoute>
-                  <Manpower />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/deficiencies"
-              element={
-                <ProtectedRoute>
-                  <Deficiencies />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/projects/:projectId/deficiency-import"
-              element={
-                <ProtectedRoute>
-                  <DeficiencyImport />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/safety"
-              element={
-                <ProtectedRoute>
-                  <Safety />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/ai"
-              element={
-                <ProtectedRoute>
-                  <AI />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/notifications"
-              element={
-                <ProtectedRoute>
-                  <Notifications />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/settings/notifications"
-              element={
-                <ProtectedRoute>
-                  <NotificationSettings />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/documents"
-              element={
-                <ProtectedRoute>
-                  <Documents />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/users"
-              element={
-                <ProtectedRoute>
-                  <UserManagement />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/audit"
-              element={
-                <ProtectedRoute>
-                  <AuditLog />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/daily-logs"
-              element={
-                <ProtectedRoute>
-                  <DailyLogs />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/receipts"
-              element={
-                <ProtectedRoute>
-                  <Receipts />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/accounting/receipts"
-              element={
-                <ProtectedRoute>
-                  <AccountingReceipts />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/time"
-              element={
-                <ProtectedRoute>
-                  <TimeTrackingGate>
-                    <TimeTracking />
-                  </TimeTrackingGate>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/time-tracking-not-enabled"
-              element={
-                <ProtectedRoute>
-                  <TimeTrackingNotEnabled />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/time/requests"
-              element={
-                <ProtectedRoute>
-                  <TimeRequestsReview />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/time/periods"
-              element={
-                <ProtectedRoute>
-                  <TimesheetPeriods />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/time-diagnostics"
-              element={
-                <ProtectedRoute>
-                  <TimeDiagnostics />
-                </ProtectedRoute>
-              }
-            />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-            </Routes>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+              <Route path="/auth" element={<Auth />} />
+              <Route
+                path="/"
+                element={
+                  <PublicRoute>
+                    <Landing />
+                  </PublicRoute>
+                }
+              />
+              <Route
+                path="/how-it-works"
+                element={
+                  <PublicRoute>
+                    <HowItWorks />
+                  </PublicRoute>
+                }
+              />
+              <Route
+                path="/safety-security"
+                element={
+                  <PublicRoute>
+                    <SafetySecurity />
+                  </PublicRoute>
+                }
+              />
+              <Route
+                path="/features"
+                element={
+                  <PublicRoute>
+                    <Features />
+                  </PublicRoute>
+                }
+              />
+              <Route
+                path="/responsible-ai"
+                element={
+                  <PublicRoute>
+                    <ResponsibleAI />
+                  </PublicRoute>
+                }
+              />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/projects"
+                element={
+                  <ProtectedRoute>
+                    <Index />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/projects/:projectId"
+                element={
+                  <ProtectedRoute>
+                    <ProjectOverview />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/projects/:projectId/receipts"
+                element={
+                  <ProtectedRoute>
+                    <ProjectReceipts />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/tasks"
+                element={
+                  <ProtectedRoute>
+                    <Tasks />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/lookahead"
+                element={
+                  <ProtectedRoute>
+                    <Lookahead />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/manpower"
+                element={
+                  <ProtectedRoute>
+                    <Manpower />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/deficiencies"
+                element={
+                  <ProtectedRoute>
+                    <Deficiencies />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/projects/:projectId/deficiency-import"
+                element={
+                  <ProtectedRoute>
+                    <DeficiencyImport />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/safety"
+                element={
+                  <ProtectedRoute>
+                    <Safety />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/ai"
+                element={
+                  <ProtectedRoute>
+                    <AI />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/notifications"
+                element={
+                  <ProtectedRoute>
+                    <Notifications />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings/notifications"
+                element={
+                  <ProtectedRoute>
+                    <NotificationSettings />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/documents"
+                element={
+                  <ProtectedRoute>
+                    <Documents />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/users"
+                element={
+                  <ProtectedRoute>
+                    <UserManagement />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/audit"
+                element={
+                  <ProtectedRoute>
+                    <AuditLog />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/daily-logs"
+                element={
+                  <ProtectedRoute>
+                    <DailyLogs />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/receipts"
+                element={
+                  <ProtectedRoute>
+                    <Receipts />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/accounting/receipts"
+                element={
+                  <ProtectedRoute>
+                    <AccountingReceipts />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/time"
+                element={
+                  <ProtectedRoute>
+                    <TimeTrackingGate>
+                      <TimeTracking />
+                    </TimeTrackingGate>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/time-tracking-not-enabled"
+                element={
+                  <ProtectedRoute>
+                    <TimeTrackingNotEnabled />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/time/requests"
+                element={
+                  <ProtectedRoute>
+                    <TimeRequestsReview />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/time/periods"
+                element={
+                  <ProtectedRoute>
+                    <TimesheetPeriods />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/time-diagnostics"
+                element={
+                  <ProtectedRoute>
+                    <TimeDiagnostics />
+                  </ProtectedRoute>
+                }
+              />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
           </OrganizationProvider>
         </AuthProvider>
       </BrowserRouter>
