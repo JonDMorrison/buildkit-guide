@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { TrendingUp, ChevronRight } from "lucide-react";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -7,7 +8,7 @@ interface ActivityWidgetProps {
   completionTrendData: Array<{ date: string; completed: number; created: number }>;
 }
 
-export const ActivityWidget = ({ completionTrendData }: ActivityWidgetProps) => {
+export const ActivityWidget = memo(function ActivityWidget({ completionTrendData }: ActivityWidgetProps) {
   const navigate = useNavigate();
 
   return (
@@ -71,4 +72,4 @@ export const ActivityWidget = ({ completionTrendData }: ActivityWidgetProps) => 
       </div>
     </div>
   );
-};
+});

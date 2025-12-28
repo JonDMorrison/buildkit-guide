@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Clock, AlertTriangle, Calendar, Shield } from "lucide-react";
 
@@ -55,12 +56,12 @@ const MetricCard = ({ icon: Icon, label, value, onClick, variant = "default" }: 
   );
 };
 
-export const MetricsWidget = ({
+export const MetricsWidget = memo(function MetricsWidget({
   openTasks,
   blockedTasks,
   upcomingTasks,
   safetyFormsThisWeek,
-}: MetricsWidgetProps) => {
+}: MetricsWidgetProps) {
   const navigate = useNavigate();
 
   return (
@@ -93,4 +94,4 @@ export const MetricsWidget = ({
       />
     </div>
   );
-};
+});

@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { CheckCircle2, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
@@ -13,7 +14,7 @@ interface MyDayWidgetProps {
   priorityTasks: Task[];
 }
 
-export const MyDayWidget = ({ priorityTasks }: MyDayWidgetProps) => {
+export const MyDayWidget = memo(function MyDayWidget({ priorityTasks }: MyDayWidgetProps) {
   const navigate = useNavigate();
 
   return (
@@ -68,4 +69,4 @@ export const MyDayWidget = ({ priorityTasks }: MyDayWidgetProps) => {
       </div>
     </div>
   );
-};
+});

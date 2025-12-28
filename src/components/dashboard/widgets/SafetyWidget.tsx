@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Shield, ChevronRight } from "lucide-react";
 
@@ -7,7 +8,7 @@ interface SafetyWidgetProps {
   incidents: number;
 }
 
-export const SafetyWidget = ({ formsToday, formsThisWeek, incidents }: SafetyWidgetProps) => {
+export const SafetyWidget = memo(function SafetyWidget({ formsToday, formsThisWeek, incidents }: SafetyWidgetProps) {
   const navigate = useNavigate();
 
   return (
@@ -43,4 +44,4 @@ export const SafetyWidget = ({ formsToday, formsThisWeek, incidents }: SafetyWid
       </div>
     </div>
   );
-};
+});
