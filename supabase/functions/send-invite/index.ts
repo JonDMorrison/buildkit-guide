@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,6 +20,8 @@ serve(async (req: Request) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get authenticated user
@@ -33,6 +36,15 @@ serve(async (req: Request) => {
     if (authError || !user) {
       throw new Error("Unauthorized");
     }
+
+    // Get inviter's name for the email
+    const { data: inviterProfile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .single();
+
+    const inviterName = inviterProfile?.full_name || user.email || "A team member";
 
     const { email, fullName }: InviteRequest = await req.json();
 
@@ -72,18 +84,76 @@ serve(async (req: Request) => {
       throw inviteError;
     }
 
-    // TODO: Send email with invitation link
-    // For now, we'll just return success
-    // In production, integrate with email service (Resend, SendGrid, etc.)
-    const inviteLink = `${supabaseUrl.replace('https://', 'https://app.')}/accept-invite?token=${invitation.token}`;
+    // Build the invite link using the app URL
+    const appUrl = supabaseUrl.includes('supabase.co') 
+      ? supabaseUrl.replace('.supabase.co', '.lovable.app').replace('https://', 'https://')
+      : Deno.env.get("APP_URL") || "https://build-sense.lovable.app";
+    
+    // For now, construct based on pattern - in production you'd want to configure this
+    const baseUrl = "https://build-sense.lovable.app"; // Update this to your actual app URL
+    const inviteLink = `${baseUrl}/accept-invite?token=${invitation.token}`;
 
     console.log(`Invitation created for ${email}`);
     console.log(`Invite link: ${inviteLink}`);
 
+    // Send email if Resend is configured
+    if (resendApiKey) {
+      const resend = new Resend(resendApiKey);
+      
+      const recipientName = fullName || email.split("@")[0];
+      
+      const emailResponse = await resend.emails.send({
+        from: "Build Sense <onboarding@resend.dev>",
+        to: [email],
+        subject: `${inviterName} invited you to join Build Sense`,
+        html: `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          </head>
+          <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="text-align: center; margin-bottom: 30px;">
+              <h1 style="color: #FF6B35; margin: 0; font-size: 28px;">Build Sense</h1>
+              <p style="color: #666; margin-top: 5px;">Construction Project Management</p>
+            </div>
+            
+            <div style="background: linear-gradient(135deg, #FF6B35 0%, #ff8a5c 100%); color: white; padding: 30px; border-radius: 12px; text-align: center; margin-bottom: 30px;">
+              <h2 style="margin: 0 0 10px 0; font-size: 24px;">You're Invited! 🎉</h2>
+              <p style="margin: 0; opacity: 0.9; font-size: 16px;">Join the team on Build Sense</p>
+            </div>
+            
+            <p style="font-size: 16px;">Hi ${recipientName},</p>
+            
+            <p style="font-size: 16px;"><strong>${inviterName}</strong> has invited you to join their team on Build Sense - the construction project management platform that keeps every trade accountable and your schedule on track.</p>
+            
+            <div style="text-align: center; margin: 35px 0;">
+              <a href="${inviteLink}" style="display: inline-block; background: #FF6B35; color: white; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-weight: bold; font-size: 16px;">Accept Invitation</a>
+            </div>
+            
+            <p style="font-size: 14px; color: #666;">This invitation will expire in 7 days. If you didn't expect this email, you can safely ignore it.</p>
+            
+            <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+            
+            <p style="font-size: 12px; color: #999; text-align: center;">
+              Build Sense - Keep your job site moving<br>
+              <a href="${baseUrl}" style="color: #FF6B35;">buildsense.app</a>
+            </p>
+          </body>
+          </html>
+        `,
+      });
+
+      console.log("Email sent successfully:", emailResponse);
+    } else {
+      console.log("RESEND_API_KEY not configured, skipping email send");
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
-        message: "Invitation created successfully",
+        message: resendApiKey ? "Invitation sent successfully" : "Invitation created (email not sent - Resend not configured)",
         inviteLink, // Return for testing; remove in production
       }),
       {

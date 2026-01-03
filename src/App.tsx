@@ -27,6 +27,8 @@ const Deficiencies = lazy(() => import("./pages/Deficiencies"));
 const Safety = lazy(() => import("./pages/Safety"));
 const AI = lazy(() => import("./pages/AI"));
 const Auth = lazy(() => import("./pages/Auth"));
+const AcceptInvite = lazy(() => import("./pages/AcceptInvite"));
+const Welcome = lazy(() => import("./pages/Welcome"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
 const Documents = lazy(() => import("./pages/Documents"));
@@ -65,6 +67,15 @@ const App = () => (
             <Suspense fallback={<PageLoader />}>
               <Routes>
               <Route path="/auth" element={<Auth />} />
+              <Route path="/accept-invite" element={<AcceptInvite />} />
+              <Route
+                path="/welcome"
+                element={
+                  <ProtectedRoute>
+                    <Welcome />
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="/"
                 element={
