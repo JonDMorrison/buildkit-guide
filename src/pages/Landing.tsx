@@ -1,10 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle, FileX, Ban, FolderSearch, MessageSquareWarning, FileStack, TrendingDown, Menu } from "lucide-react";
+import { CheckCircle, FileX, Ban, FolderSearch, MessageSquareWarning, FileStack, TrendingDown, Menu, Clock, MapPin, Brain, Shield, Wifi, WifiOff, ChevronDown, ChevronUp, Receipt, FileCheck, Mic } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 import heroBackground from "@/assets/hero-construction-bg.jpg";
-import heroMockup from "@/assets/hero-app-mockup.png";
 import problemChaos from "@/assets/problem-chaos.jpg";
 import successOrganized from "@/assets/success-organized.jpg";
 import iconTasks from "@/assets/icon-tasks.png";
@@ -14,9 +13,11 @@ import iconSafety from "@/assets/icon-safety.png";
 import iconManpower from "@/assets/icon-manpower.png";
 import iconAI from "@/assets/icon-ai.png";
 import buildSenseLogo from "@/assets/build-sense-logo.png";
+
 export default function Landing() {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
   
   const handleGetStarted = () => {
     navigate('/auth?tab=signup');
@@ -39,7 +40,28 @@ export default function Landing() {
     });
     setMobileMenuOpen(false);
   };
-  return <div className="min-h-screen bg-background">
+
+  const faqs = [
+    {
+      question: "What does the free trial include?",
+      answer: "Full access to all features for 14 days. No credit card required. Create unlimited projects, invite your whole team, and test every feature including time tracking, safety forms, and AI assistance."
+    },
+    {
+      question: "Do I need to train my team?",
+      answer: "Most crews are productive within 10 minutes. The interface is designed for the field—big buttons, simple flows, one-tap actions. We also provide quick-start guides and video tutorials."
+    },
+    {
+      question: "Can I import my existing data?",
+      answer: "Yes. Import deficiency lists from your GC, upload existing documents, and migrate project data. Our support team can help with bulk imports."
+    },
+    {
+      question: "What if we have no cell signal on site?",
+      answer: "Build Sense works offline. Time entries, safety forms, and task updates queue locally and sync automatically when you reconnect. Never lose data."
+    }
+  ];
+
+  return (
+    <div className="min-h-screen bg-background">
       {/* Navigation */}
       <nav className="fixed top-0 w-full bg-background/98 backdrop-blur-md border-b border-border z-50 shadow-sm">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
@@ -131,24 +153,27 @@ export default function Landing() {
 
       {/* Hero Section */}
       <section className="pt-28 md:pt-32 pb-16 md:pb-20 px-4 relative overflow-hidden min-h-[90vh] md:min-h-[80vh] flex items-center" style={{
-      backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.85)), url(${heroBackground})`,
-      backgroundSize: 'cover',
-      backgroundPosition: 'center'
-    }}>
+        backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.85)), url(${heroBackground})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center'
+      }}>
         <div className="container mx-auto max-w-6xl">
           <div className="grid lg:grid-cols-2 gap-8 md:gap-12 items-center">
             <div className="text-center lg:text-left">
               <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 md:mb-6 leading-[1.15]">
-                Your Job Site Is Bleeding Time. This Stops It.
+                Your Job Site Is Bleeding Time. Build Sense Stops It.
               </h2>
-              <p className="text-lg sm:text-xl md:text-2xl text-gray-200 mb-6 md:mb-8 leading-relaxed">
-                Keep every trade accountable and your schedule on track.
+              <p className="text-lg sm:text-xl md:text-2xl text-gray-200 mb-4 md:mb-6 leading-relaxed">
+                Keep every trade accountable, safety documented, and your schedule on track.
+              </p>
+              <p className="text-sm sm:text-base text-white/70 mb-6 md:mb-8">
+                No credit card required • Free 14-day trial • Setup in minutes
               </p>
               <div className="flex flex-col gap-3 justify-center lg:justify-start w-full max-w-md mx-auto lg:mx-0">
                 <Button size="lg" onClick={handleGetStarted} className="w-full h-14 md:h-16 text-base md:text-lg bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold shadow-xl">
-                  Start Free Trial
+                  Start Your Free Trial
                 </Button>
-                <Button size="lg" variant="outline" onClick={handleSeeHowItWorks} className="w-full h-14 md:h-16 text-base md:text-lg bg-white/10 text-white border-white/30 hover:bg-white/20 font-semibold backdrop-blur-sm">
+                <Button size="lg" variant="outline" onClick={handleSeeHowItWorks} className="w-full h-14 md:h-16 text-base md:text-lg bg-white/15 text-white border-white/40 hover:bg-white/25 font-semibold backdrop-blur-sm">
                   See How It Works
                 </Button>
               </div>
@@ -163,13 +188,15 @@ export default function Landing() {
       {/* Social Proof Section */}
       <section className="py-12 px-4 bg-card border-y border-border">
         <div className="container mx-auto max-w-4xl text-center">
-          <p className="text-sm uppercase tracking-wider text-muted-foreground mb-6 font-semibold">
-            Trusted by Contractors Who Keep Jobs Moving
+          <p className="text-sm uppercase tracking-wider text-foreground/70 mb-6 font-semibold">
+            Trusted by Contractors Across North America
           </p>
-          <div className="flex flex-wrap justify-center items-center gap-8 opacity-60">
-            {["Horizon Construction", "BuildRight Co", "Prime Builders", "SteelFrame Inc"].map((company, idx) => <div key={idx} className="text-lg font-bold text-foreground">
+          <div className="flex flex-wrap justify-center items-center gap-8 text-foreground/80">
+            {["Horizon Construction", "BuildRight Co", "Prime Builders", "SteelFrame Inc"].map((company, idx) => (
+              <div key={idx} className="text-lg font-bold">
                 {company}
-              </div>)}
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -180,6 +207,7 @@ export default function Landing() {
           <img src={problemChaos} alt="Construction site chaos" className="w-full h-full object-cover" loading="lazy" />
         </div>
         <div className="container mx-auto max-w-4xl relative z-10">
+          <p className="text-center text-lg md:text-xl text-muted-foreground mb-4 font-medium">Sound familiar?</p>
           <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-6 md:mb-8 text-center leading-tight">
             Projects Fall Behind When Trades Do Not Stay Aligned
           </h3>
@@ -203,8 +231,8 @@ export default function Landing() {
               );
             })}
           </div>
-          <p className="text-base md:text-lg text-muted-foreground text-center max-w-2xl mx-auto leading-relaxed">
-            When communication breaks down you lose time and money. You know the job could move faster.
+          <p className="text-base md:text-lg text-center max-w-2xl mx-auto leading-relaxed font-semibold text-foreground">
+            There's a better way.
           </p>
         </div>
       </section>
@@ -235,80 +263,208 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Time Tracking Feature - NEW */}
+      <section className="py-16 md:py-20 px-4 bg-background">
+        <div className="container mx-auto max-w-5xl">
+          <div className="text-center mb-10 md:mb-12">
+            <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4 leading-tight">
+              Time Tracking That Actually Works
+            </h3>
+            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
+              Your crew checks in with one tap. You get accurate timesheets without the arguments.
+            </p>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {[
+              { icon: Clock, title: "One-Tap Check-In", description: "Workers clock in and out from their phone. No paper, no buddy punching." },
+              { icon: MapPin, title: "GPS Verification", description: "Automatic location stamps prove job site presence. Disputes disappear." },
+              { icon: FileCheck, title: "Payroll-Ready Export", description: "Download timesheets in seconds. Works with any payroll system." },
+              { icon: MessageSquareWarning, title: "Adjustment Requests", description: "Workers request corrections with documented reasons. Full audit trail." }
+            ].map((item, index) => {
+              const Icon = item.icon;
+              return (
+                <div key={index} className="p-5 bg-card rounded-lg border border-border hover:border-[#FF6B35]/50 hover:shadow-md transition-all text-center">
+                  <div className="w-12 h-12 rounded-full bg-[#FF6B35]/10 flex items-center justify-center mx-auto mb-4">
+                    <Icon className="h-6 w-6 text-[#FF6B35]" />
+                  </div>
+                  <h4 className="text-lg font-bold text-foreground mb-2">{item.title}</h4>
+                  <p className="text-sm text-muted-foreground">{item.description}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
       {/* The Guide - Field First */}
-      <section className="py-16 md:py-20 px-4">
-        <div className="container mx-auto max-w-3xl text-center">
-          <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4 md:mb-6 leading-tight">
-            Built for the Site, Not the Office
-          </h3>
-          <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
-            The best project management app for field teams. Works in bright sunlight with one-tap access to everything you need.
-          </p>
+      <section className="py-16 md:py-20 px-4 bg-muted/30">
+        <div className="container mx-auto max-w-5xl">
+          <div className="text-center mb-10">
+            <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4 md:mb-6 leading-tight">
+              Built for the Site, Not the Office
+            </h3>
+            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
+              The best project management app for field teams. Designed for gloved hands and bright sunlight.
+            </p>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {[
+              { icon: WifiOff, title: "Works Offline", description: "Queue entries when connectivity drops. Sync when you're back online." },
+              { icon: CheckCircle, title: "Big Tap Targets", description: "Designed for gloved hands and one-hand operation." },
+              { icon: Shield, title: "High Contrast", description: "Readable in direct sunlight on any phone." },
+              { icon: Mic, title: "Voice Input", description: "Dictate notes and reports hands-free." }
+            ].map((item, index) => {
+              const Icon = item.icon;
+              return (
+                <div key={index} className="p-5 bg-card rounded-lg border border-border text-center">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                    <Icon className="h-6 w-6 text-primary" />
+                  </div>
+                  <h4 className="text-lg font-bold text-foreground mb-2">{item.title}</h4>
+                  <p className="text-sm text-muted-foreground">{item.description}</p>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </section>
 
       {/* The Solution */}
-      <section id="solution" className="py-16 md:py-20 px-4 bg-muted/30">
+      <section id="solution" className="py-16 md:py-20 px-4 bg-background">
         <div className="container mx-auto max-w-5xl">
           <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-8 md:mb-12 text-center leading-tight">
             Keep Your Site Moving
           </h3>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
             {[{
-            title: "Task Accountability",
-            description: "Every trade sees what they owe.",
-            icon: iconTasks
-          }, {
-            title: "Instant Blocker Reporting",
-            description: "Know when a task is blocked and why.",
-            icon: iconBlocker
-          }, {
-            title: "2-Week Lookahead",
-            description: "Visual plan of the next two weeks.",
-            icon: iconLookahead
-          }, {
-            title: "Safety Done Right",
-            description: "Daily logs, hazard IDs, and incident reports.",
-            icon: iconSafety
-          }, {
-            title: "Manpower Planning",
-            description: "Request crews and prevent shortages.",
-            icon: iconManpower
-          }, {
-            title: "AI Support",
-            description: "AI reads docs, answers questions, identifies risks.",
-            icon: iconAI
-          }].map((feature, index) => <div key={index} className="p-5 md:p-6 bg-card rounded-lg border border-border hover:border-[#FF6B35]/50 hover:shadow-md transition-all">
+              title: "Task Accountability",
+              description: "Every trade sees exactly what they owe—and when. No more chasing updates.",
+              icon: iconTasks
+            }, {
+              title: "Instant Blocker Reporting",
+              description: "Workers flag issues in one tap. You see them instantly. Problems get solved.",
+              icon: iconBlocker
+            }, {
+              title: "2-Week Lookahead",
+              description: "Visual plan of the next two weeks. See conflicts before they cost you.",
+              icon: iconLookahead
+            }, {
+              title: "Safety Done Right",
+              description: "Complete daily safety logs in under 3 minutes. AI suggests hazards based on weather and tasks.",
+              icon: iconSafety
+            }, {
+              title: "Manpower Planning",
+              description: "Request crews with one tap. Prevent shortages before they delay the job.",
+              icon: iconManpower
+            }, {
+              title: "AI Support",
+              description: "Ask questions about your project documents. Draft emails in seconds. Identify risks automatically.",
+              icon: iconAI
+            }].map((feature, index) => (
+              <div key={index} className="p-5 md:p-6 bg-card rounded-lg border border-border hover:border-[#FF6B35]/50 hover:shadow-md transition-all">
                 <img src={feature.icon} alt={feature.title} className="w-14 h-14 md:w-16 md:h-16 mb-3 md:mb-4 rounded-lg" loading="lazy" />
                 <h4 className="text-lg md:text-xl font-bold text-foreground mb-2 md:mb-3">{feature.title}</h4>
                 <p className="text-sm md:text-base text-muted-foreground leading-relaxed">{feature.description}</p>
-              </div>)}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* AI-Powered Section - NEW */}
+      <section className="py-16 md:py-20 px-4 bg-[#1a1a2e]">
+        <div className="container mx-auto max-w-5xl">
+          <div className="text-center mb-10 md:mb-12">
+            <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-4 leading-tight">
+              AI That Understands Construction
+            </h3>
+            <p className="text-lg md:text-xl text-white/70 max-w-2xl mx-auto">
+              Not generic AI. Purpose-built for construction workflows.
+            </p>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-5">
+            {[
+              { icon: Shield, title: "Smart Hazard Suggestions", description: "AI suggests today's hazards based on weather conditions and scheduled tasks. Complete safety logs faster." },
+              { icon: Receipt, title: "Receipt Intelligence", description: "Snap a photo of any receipt. AI extracts vendor, amount, category, and line items automatically." },
+              { icon: FolderSearch, title: "Document Q&A", description: "Ask questions about your project documents in plain English. Get answers with source references." },
+              { icon: MessageSquareWarning, title: "Escalation Drafts", description: "Draft professional escalation emails in seconds. AI understands construction context and urgency." }
+            ].map((item, index) => {
+              const Icon = item.icon;
+              return (
+                <div key={index} className="p-6 bg-white/5 rounded-lg border border-white/10 hover:border-white/20 transition-all">
+                  <div className="w-12 h-12 rounded-full bg-[#FF6B35]/20 flex items-center justify-center mb-4">
+                    <Icon className="h-6 w-6 text-[#FF6B35]" />
+                  </div>
+                  <h4 className="text-lg font-bold text-white mb-2">{item.title}</h4>
+                  <p className="text-sm text-white/60">{item.description}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Trust & Compliance Section - NEW */}
+      <section className="py-16 md:py-20 px-4 bg-muted/30">
+        <div className="container mx-auto max-w-5xl">
+          <div className="text-center mb-10 md:mb-12">
+            <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4 leading-tight">
+              Built for Inspections. Ready for Audits.
+            </h3>
+            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
+              When the inspector shows up, you're ready. Every record is complete, signed, and tamper-evident.
+            </p>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {[
+              { icon: Shield, title: "Tamper-Evident Records", description: "Digital fingerprints on every safety form. Prove records weren't altered." },
+              { icon: FileCheck, title: "Complete Audit Trail", description: "Every change logged with who, what, and when. Nothing gets lost." },
+              { icon: FileStack, title: "One-Tap PDF Export", description: "Export inspection-ready documents in seconds. Professional formatting included." },
+              { icon: CheckCircle, title: "Digital Signatures", description: "Worker acknowledgments captured with timestamps. No more signature sheets." }
+            ].map((item, index) => {
+              const Icon = item.icon;
+              return (
+                <div key={index} className="p-5 bg-card rounded-lg border border-border text-center">
+                  <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-4">
+                    <Icon className="h-6 w-6 text-green-600" />
+                  </div>
+                  <h4 className="text-lg font-bold text-foreground mb-2">{item.title}</h4>
+                  <p className="text-sm text-muted-foreground">{item.description}</p>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
 
       {/* The Plan */}
-      <section id="plan" className="py-16 md:py-20 px-4">
+      <section id="plan" className="py-16 md:py-20 px-4 bg-background">
         <div className="container mx-auto max-w-4xl">
           <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-8 md:mb-12 text-center leading-tight">
             Get Your Jobs Under Control
           </h3>
           <div className="grid sm:grid-cols-3 gap-6 md:gap-8">
             {[{
-            step: "1",
-            title: "Sign Up"
-          }, {
-            step: "2",
-            title: "Set Up Projects"
-          }, {
-            step: "3",
-            title: "Keep Jobs Moving"
-          }].map((item, index) => <div key={index} className="text-center">
+              step: "1",
+              title: "Sign Up Free",
+              description: "Create your account in 2 minutes. No credit card required."
+            }, {
+              step: "2",
+              title: "Add Your Project",
+              description: "Set up your first project and invite your team."
+            }, {
+              step: "3",
+              title: "Keep Jobs Moving",
+              description: "Start tracking tasks, logging safety, and saving time."
+            }].map((item, index) => (
+              <div key={index} className="text-center">
                 <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-[#FF6B35] text-white text-xl md:text-2xl font-bold flex items-center justify-center mx-auto mb-3 md:mb-4 shadow-lg">
                   {item.step}
                 </div>
-                <h4 className="text-lg md:text-xl font-bold text-foreground">{item.title}</h4>
-              </div>)}
+                <h4 className="text-lg md:text-xl font-bold text-foreground mb-2">{item.title}</h4>
+                <p className="text-sm text-muted-foreground">{item.description}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -324,7 +480,7 @@ export default function Landing() {
           </p>
           <div className="flex flex-col gap-3 justify-center w-full max-w-md mx-auto">
             <Button size="lg" onClick={handleGetStarted} className="w-full h-14 md:h-16 text-base md:text-lg bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold shadow-xl">
-              Start Free Trial
+              Start Your Free Trial
             </Button>
             <Button size="lg" variant="outline" onClick={handleSeePricing} className="w-full h-14 md:h-16 text-base md:text-lg font-semibold">
               See Pricing
@@ -344,14 +500,99 @@ export default function Landing() {
             A Job Site With Zero Guesswork
           </h3>
           <div className="grid sm:grid-cols-2 gap-3 md:gap-4 mb-6 md:mb-8">
-            {["Trades show up ready", "Blockers handled fast", "Safety organized", "Shorter meetings", "Clear next steps", "On-time completion"].map((item, index) => <div key={index} className="flex items-start gap-3 p-4 md:p-5 bg-card/90 backdrop-blur-md rounded-lg shadow-sm">
+            {["Trades show up ready", "Blockers handled fast", "Safety always documented", "Shorter meetings", "Clear next steps", "On-time completion"].map((item, index) => (
+              <div key={index} className="flex items-start gap-3 p-4 md:p-5 bg-card/90 backdrop-blur-md rounded-lg shadow-sm">
                 <CheckCircle className="h-6 w-6 md:h-7 md:w-7 text-[#FF6B35] flex-shrink-0 mt-0.5" strokeWidth={2.5} />
                 <p className="text-base md:text-lg text-foreground font-semibold">{item}</p>
-              </div>)}
+              </div>
+            ))}
           </div>
           <p className="text-base md:text-lg text-muted-foreground text-center max-w-2xl mx-auto leading-relaxed font-medium">
             Build a job you can be proud of. A GC who wants to work with you again.
           </p>
+        </div>
+      </section>
+
+      {/* FAQ Section - NEW */}
+      <section className="py-16 md:py-20 px-4 bg-muted/30">
+        <div className="container mx-auto max-w-3xl">
+          <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-8 md:mb-12 text-center leading-tight">
+            Common Questions
+          </h3>
+          <div className="space-y-3">
+            {faqs.map((faq, index) => (
+              <div key={index} className="bg-card rounded-lg border border-border overflow-hidden">
+                <button
+                  onClick={() => setOpenFaq(openFaq === index ? null : index)}
+                  className="w-full flex items-center justify-between p-5 text-left hover:bg-muted/50 transition-colors"
+                >
+                  <span className="text-base md:text-lg font-semibold text-foreground pr-4">{faq.question}</span>
+                  {openFaq === index ? (
+                    <ChevronUp className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                  ) : (
+                    <ChevronDown className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                  )}
+                </button>
+                {openFaq === index && (
+                  <div className="px-5 pb-5">
+                    <p className="text-muted-foreground leading-relaxed">{faq.answer}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Final CTA Section - NEW */}
+      <section className="py-20 md:py-28 px-4 bg-[#FF6B35]">
+        <div className="container mx-auto max-w-3xl text-center">
+          <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-4 leading-tight">
+            Stop Chasing Updates. Start Building.
+          </h3>
+          <p className="text-lg md:text-xl text-white/90 mb-8 max-w-xl mx-auto">
+            Join contractors who finish on time and protect their margins.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
+            <Button 
+              size="lg" 
+              onClick={handleGetStarted} 
+              className="w-full sm:w-auto h-14 md:h-16 px-8 text-base md:text-lg bg-white text-[#FF6B35] hover:bg-white/90 font-bold shadow-xl"
+            >
+              Start Your Free Trial
+            </Button>
+            <Button 
+              size="lg" 
+              variant="outline" 
+              onClick={handleSeeHowItWorks} 
+              className="w-full sm:w-auto h-14 md:h-16 px-8 text-base md:text-lg bg-transparent text-white border-white/50 hover:bg-white/10 font-semibold"
+            >
+              Book a Demo
+            </Button>
+          </div>
+          <p className="text-sm text-white/70 mt-6">
+            No credit card required • Free 14-day trial • Cancel anytime
+          </p>
+        </div>
+      </section>
+
+      {/* Trust Badges - NEW */}
+      <section className="py-8 px-4 bg-card border-t border-border">
+        <div className="container mx-auto max-w-4xl">
+          <div className="flex flex-wrap justify-center items-center gap-6 md:gap-12 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              <span>Your data stays yours</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4" />
+              <span>No credit card required</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              <span>Cancel anytime</span>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -361,8 +602,8 @@ export default function Landing() {
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-2">
               <img src={buildSenseLogo} alt="Build Sense" className="h-7 w-7" />
-              <p className="text-sm text-muted-foreground">
-                © 2024 Build Sense. Built for the field.
+              <p className="text-sm text-foreground/70">
+                © 2025 Build Sense. Built for the field.
               </p>
             </div>
             <div className="flex flex-wrap justify-center gap-4">
@@ -382,5 +623,6 @@ export default function Landing() {
           </div>
         </div>
       </footer>
-    </div>;
+    </div>
+  );
 }
