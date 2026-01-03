@@ -161,10 +161,10 @@ export default function Landing() {
           <div className="grid lg:grid-cols-2 gap-8 md:gap-12 items-center">
             <div className="text-center lg:text-left">
               <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 md:mb-6 leading-[1.15]">
-                Your Job Site Is Bleeding Time. Build Sense Stops It.
+                Take Every Project From Chaos To Clear
               </h2>
               <p className="text-lg sm:text-xl md:text-2xl text-gray-200 mb-4 md:mb-6 leading-relaxed">
-                Keep every trade accountable, safety documented, and your schedule on track.
+                Track tasks, time, and safety across every trade — from one app.
               </p>
               <p className="text-sm sm:text-base text-white/70 mb-6 md:mb-8">
                 No credit card required • Free 14-day trial • Setup in minutes
