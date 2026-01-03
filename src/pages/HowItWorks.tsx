@@ -7,38 +7,28 @@ import {
   Shield, 
   Users, 
   Sparkles,
-  ArrowRight,
-  Menu
+  ArrowRight
 } from "lucide-react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { useState } from "react";
 import screenshotTasks from "@/assets/screenshot-tasks.png";
 import screenshotBlockers from "@/assets/screenshot-blockers.png";
 import screenshotLookahead from "@/assets/screenshot-lookahead.png";
 import screenshotSafety from "@/assets/screenshot-safety.png";
 import screenshotManpower from "@/assets/screenshot-manpower.png";
 import screenshotAI from "@/assets/screenshot-ai.png";
+import { PublicNav } from "@/components/PublicNav";
 
 export default function HowItWorks() {
   const navigate = useNavigate();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleBookDemo = () => {
     window.location.href = "mailto:demo@buildsense.app?subject=Demo Request";
-    setMobileMenuOpen(false);
   };
 
   const handleSeePricing = () => {
     navigate('/');
-    setMobileMenuOpen(false);
     setTimeout(() => {
       document.getElementById('plan')?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
-  };
-  
-  const handleSignIn = () => {
-    navigate('/auth');
-    setMobileMenuOpen(false);
   };
 
   const features = [
@@ -124,78 +114,7 @@ export default function HowItWorks() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Navigation */}
-      <nav className="fixed top-0 w-full bg-background/98 backdrop-blur-md border-b border-border z-50 shadow-sm">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <h1 
-            className="text-xl md:text-2xl font-bold text-foreground cursor-pointer hover:text-[#FF6B35] transition-colors tracking-tight"
-            onClick={() => navigate('/')}
-          >
-            Build Sense
-          </h1>
-          
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-3">
-            <Button variant="ghost" onClick={handleSignIn} className="text-base">
-              Sign In
-            </Button>
-            <Button onClick={handleBookDemo} className="bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold h-12 px-6 text-base">
-              Book Demo
-            </Button>
-          </div>
-
-          {/* Mobile Navigation */}
-          <div className="flex md:hidden items-center gap-2">
-            <Button onClick={handleBookDemo} className="bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold h-12 px-4 text-sm">
-              Book Demo
-            </Button>
-            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-12 w-12">
-                  <Menu className="h-6 w-6" />
-                  <span className="sr-only">Open menu</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[280px] sm:w-[320px]">
-                <SheetHeader className="text-left mb-6">
-                  <SheetTitle className="text-2xl font-bold">Build Sense</SheetTitle>
-                </SheetHeader>
-                <nav className="flex flex-col gap-4">
-                  <Button 
-                    variant="ghost" 
-                    onClick={() => { navigate('/'); setMobileMenuOpen(false); }} 
-                    className="justify-start text-base h-12 font-medium"
-                  >
-                    Home
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    onClick={handleSeePricing} 
-                    className="justify-start text-base h-12 font-medium"
-                  >
-                    Pricing
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    onClick={handleSignIn} 
-                    className="justify-start text-base h-12 font-medium"
-                  >
-                    Sign In
-                  </Button>
-                  <div className="pt-4 border-t border-border">
-                    <Button 
-                      onClick={handleBookDemo} 
-                      className="w-full bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold h-12 text-base"
-                    >
-                      Book a Demo
-                    </Button>
-                  </div>
-                </nav>
-              </SheetContent>
-            </Sheet>
-          </div>
-        </div>
-      </nav>
+      <PublicNav />
 
       {/* Page Header */}
       <section className="pt-28 md:pt-32 pb-12 md:pb-16 px-4 bg-muted/30">
