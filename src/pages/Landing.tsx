@@ -63,25 +63,25 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
-      <nav className="fixed top-0 w-full bg-background/98 backdrop-blur-md border-b border-border z-50 shadow-sm">
+      <nav className="fixed top-0 w-full bg-[#1a1a1a] backdrop-blur-md border-b border-white/10 z-50 shadow-sm">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <img src={buildSenseLogo} alt="Build Sense" className="h-9 w-9" />
-            <h1 className="text-xl md:text-2xl font-bold text-foreground tracking-tight">Build Sense</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">Build Sense</h1>
           </div>
           
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-3">
-            <Button variant="ghost" onClick={handleSeeHowItWorks} className="text-base">
+            <Button variant="ghost" onClick={handleSeeHowItWorks} className="text-base text-white/80 hover:text-white hover:bg-white/10">
               How It Works
             </Button>
-            <Button variant="ghost" onClick={() => navigate('/features')} className="text-base">
+            <Button variant="ghost" onClick={() => navigate('/features')} className="text-base text-white/80 hover:text-white hover:bg-white/10">
               Features
             </Button>
-            <Button variant="ghost" onClick={() => navigate('/safety-security')} className="text-base">
+            <Button variant="ghost" onClick={() => navigate('/safety-security')} className="text-base text-white/80 hover:text-white hover:bg-white/10">
               Safety & Security
             </Button>
-            <Button variant="ghost" onClick={handleSignIn} className="text-base text-muted-foreground">
+            <Button variant="ghost" onClick={handleSignIn} className="text-base text-white/60 hover:text-white hover:bg-white/10">
               Sign In
             </Button>
             <Button onClick={handleGetStarted} className="bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold h-12 px-6 text-base">
