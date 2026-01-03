@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle, FileX, Ban, FolderSearch, MessageSquareWarning, FileStack, TrendingDown, Menu, Clock, MapPin, Brain, Shield, Wifi, WifiOff, ChevronDown, ChevronUp, Receipt, FileCheck, Mic } from "lucide-react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { CheckCircle, FileX, Ban, FolderSearch, MessageSquareWarning, FileStack, TrendingDown, Clock, MapPin, Brain, Shield, Wifi, WifiOff, ChevronDown, ChevronUp, Receipt, FileCheck, Mic } from "lucide-react";
 import { useState } from "react";
 import heroBackground from "@/assets/hero-construction-bg.jpg";
 import problemChaos from "@/assets/problem-chaos.jpg";
@@ -13,32 +12,24 @@ import iconSafety from "@/assets/icon-safety.png";
 import iconManpower from "@/assets/icon-manpower.png";
 import iconAI from "@/assets/icon-ai.png";
 import buildSenseLogo from "@/assets/build-sense-logo.png";
+import { PublicNav } from "@/components/PublicNav";
 
 export default function Landing() {
   const navigate = useNavigate();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   
   const handleGetStarted = () => {
     navigate('/auth?tab=signup');
-    setMobileMenuOpen(false);
   };
-  
-  const handleSignIn = () => {
-    navigate('/auth');
-    setMobileMenuOpen(false);
-  };
-  
+
   const handleSeeHowItWorks = () => {
     navigate('/how-it-works');
-    setMobileMenuOpen(false);
   };
   
   const handleSeePricing = () => {
     document.getElementById('plan')?.scrollIntoView({
       behavior: 'smooth'
     });
-    setMobileMenuOpen(false);
   };
 
   const faqs = [
@@ -62,94 +53,7 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Navigation */}
-      <nav className="fixed top-0 w-full bg-[#1a1a1a] backdrop-blur-md border-b border-white/10 z-50 shadow-sm">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img src={buildSenseLogo} alt="Build Sense" className="h-9 w-9" />
-            <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">Build Sense</h1>
-          </div>
-          
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-3">
-            <Button variant="ghost" onClick={handleSeeHowItWorks} className="text-base text-white/80 hover:text-white hover:bg-white/10">
-              How It Works
-            </Button>
-            <Button variant="ghost" onClick={() => navigate('/features')} className="text-base text-white/80 hover:text-white hover:bg-white/10">
-              Features
-            </Button>
-            <Button variant="ghost" onClick={() => navigate('/safety-security')} className="text-base text-white/80 hover:text-white hover:bg-white/10">
-              Safety & Security
-            </Button>
-            <Button variant="ghost" onClick={handleSignIn} className="text-base text-white/60 hover:text-white hover:bg-white/10">
-              Sign In
-            </Button>
-            <Button onClick={handleGetStarted} className="bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold h-12 px-6 text-base">
-              Get Started Free
-            </Button>
-          </div>
-
-          <div className="flex md:hidden items-center gap-2">
-            <Button onClick={handleGetStarted} className="bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold h-12 px-4 text-sm">
-              Get Started
-            </Button>
-            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-12 w-12">
-                  <Menu className="h-6 w-6" />
-                  <span className="sr-only">Open menu</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[280px] sm:w-[320px]">
-                <SheetHeader className="text-left mb-6">
-                  <SheetTitle className="flex items-center gap-2">
-                    <img src={buildSenseLogo} alt="Build Sense" className="h-8 w-8" />
-                    <span className="text-2xl font-bold">Build Sense</span>
-                  </SheetTitle>
-                </SheetHeader>
-                <nav className="flex flex-col gap-4">
-                  <Button 
-                    variant="ghost" 
-                    onClick={handleSeeHowItWorks} 
-                    className="justify-start text-base h-12 font-medium"
-                  >
-                    How It Works
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    onClick={() => { navigate('/features'); setMobileMenuOpen(false); }} 
-                    className="justify-start text-base h-12 font-medium"
-                  >
-                    Features
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    onClick={() => { navigate('/safety-security'); setMobileMenuOpen(false); }} 
-                    className="justify-start text-base h-12 font-medium"
-                  >
-                    Safety & Security
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    onClick={handleSignIn} 
-                    className="justify-start text-base h-12 font-medium"
-                  >
-                    Sign In
-                  </Button>
-                  <div className="pt-4 border-t border-border">
-                    <Button 
-                      onClick={handleGetStarted} 
-                      className="w-full bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold h-12 text-base"
-                    >
-                      Get Started Free
-                    </Button>
-                  </div>
-                </nav>
-              </SheetContent>
-            </Sheet>
-          </div>
-        </div>
-      </nav>
+      <PublicNav />
 
       {/* Hero Section */}
       <section className="pt-28 md:pt-32 pb-16 md:pb-20 px-4 relative overflow-hidden min-h-[90vh] md:min-h-[80vh] flex items-center" style={{
