@@ -27,8 +27,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Redirect to dashboard after successful login
+        // Redirect to welcome for new users, dashboard for existing ones
         if (event === 'SIGNED_IN' && session) {
+          // The ProtectedRoute will handle the onboarding redirect
           navigate('/dashboard');
         }
       }

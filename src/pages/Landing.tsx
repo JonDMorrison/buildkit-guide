@@ -18,7 +18,12 @@ export default function Landing() {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
-  const handleLogin = () => {
+  const handleGetStarted = () => {
+    navigate('/auth?tab=signup');
+    setMobileMenuOpen(false);
+  };
+  
+  const handleSignIn = () => {
     navigate('/auth');
     setMobileMenuOpen(false);
   };
@@ -32,11 +37,6 @@ export default function Landing() {
     document.getElementById('plan')?.scrollIntoView({
       behavior: 'smooth'
     });
-    setMobileMenuOpen(false);
-  };
-  
-  const handleSignIn = () => {
-    navigate('/auth');
     setMobileMenuOpen(false);
   };
   return <div className="min-h-screen bg-background">
@@ -59,18 +59,17 @@ export default function Landing() {
             <Button variant="ghost" onClick={() => navigate('/safety-security')} className="text-base">
               Safety & Security
             </Button>
-            <Button variant="ghost" onClick={handleSignIn} className="text-base">
+            <Button variant="ghost" onClick={handleSignIn} className="text-base text-muted-foreground">
               Sign In
             </Button>
-            <Button onClick={handleLogin} className="bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold h-12 px-6 text-base">
-              Login
+            <Button onClick={handleGetStarted} className="bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold h-12 px-6 text-base">
+              Get Started Free
             </Button>
           </div>
 
-          {/* Mobile Navigation */}
           <div className="flex md:hidden items-center gap-2">
-            <Button onClick={handleLogin} className="bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold h-12 px-4 text-sm">
-              Login
+            <Button onClick={handleGetStarted} className="bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold h-12 px-4 text-sm">
+              Get Started
             </Button>
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
@@ -117,10 +116,10 @@ export default function Landing() {
                   </Button>
                   <div className="pt-4 border-t border-border">
                     <Button 
-                      onClick={handleLogin} 
+                      onClick={handleGetStarted} 
                       className="w-full bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold h-12 text-base"
                     >
-                      Login
+                      Get Started Free
                     </Button>
                   </div>
                 </nav>
@@ -146,8 +145,8 @@ export default function Landing() {
                 Keep every trade accountable and your schedule on track.
               </p>
               <div className="flex flex-col gap-3 justify-center lg:justify-start w-full max-w-md mx-auto lg:mx-0">
-                <Button size="lg" onClick={handleLogin} className="w-full h-14 md:h-16 text-base md:text-lg bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold shadow-xl">
-                  Login
+                <Button size="lg" onClick={handleGetStarted} className="w-full h-14 md:h-16 text-base md:text-lg bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold shadow-xl">
+                  Start Free Trial
                 </Button>
                 <Button size="lg" variant="outline" onClick={handleSeeHowItWorks} className="w-full h-14 md:h-16 text-base md:text-lg bg-white/10 text-white border-white/30 hover:bg-white/20 font-semibold backdrop-blur-sm">
                   See How It Works
@@ -324,8 +323,8 @@ export default function Landing() {
             Eliminate downtime. Prevent schedule slippage. Keep the GC happy. Protect your margins.
           </p>
           <div className="flex flex-col gap-3 justify-center w-full max-w-md mx-auto">
-            <Button size="lg" onClick={handleLogin} className="w-full h-14 md:h-16 text-base md:text-lg bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold shadow-xl">
-              Login
+            <Button size="lg" onClick={handleGetStarted} className="w-full h-14 md:h-16 text-base md:text-lg bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold shadow-xl">
+              Start Free Trial
             </Button>
             <Button size="lg" variant="outline" onClick={handleSeePricing} className="w-full h-14 md:h-16 text-base md:text-lg font-semibold">
               See Pricing

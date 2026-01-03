@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -29,9 +29,13 @@ type SignUpForm = z.infer<typeof signUpSchema>;
 
 const Auth = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, signIn, signUp } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin');
+  
+  // Check for ?tab=signup in URL
+  const initialTab = searchParams.get('tab') === 'signup' ? 'signup' : 'signin';
+  const [activeTab, setActiveTab] = useState<'signin' | 'signup'>(initialTab);
   const [loading, setLoading] = useState(false);
 
   // Redirect if already logged in

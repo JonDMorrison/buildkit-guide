@@ -22,7 +22,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.send-invite]
-verify_jwt = false
+verify_jwt = true
 
 [functions.create-demo-user]
 verify_jwt = false
@@ -97,4 +97,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.backfill-safety-hashes]
+verify_jwt = true
+
+[functions.create-sample-project]
 verify_jwt = true
