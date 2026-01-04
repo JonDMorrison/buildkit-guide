@@ -31,7 +31,6 @@ export const TopNav = () => {
         <div className="flex items-center gap-4">
           <img src={projectPulseLogo} alt="Project Pulse" className="h-10 w-auto" />
           <OrganizationSwitcher />
-          <OrganizationSwitcher />
         </div>
         
         <div className="flex items-center gap-2">
