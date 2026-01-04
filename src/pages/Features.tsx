@@ -6,7 +6,7 @@ import {
   TrendingUp, Zap, MapPin, Fingerprint, ClipboardCheck
 } from "lucide-react";
 import featuresHero from "@/assets/features-hero.jpg";
-import buildSenseLogo from "@/assets/build-sense-logo.png";
+import projectPulseLogo from "@/assets/project-pulse-logo.png";
 import { PublicNav } from "@/components/PublicNav";
 
 interface FeatureCardProps {
@@ -18,16 +18,16 @@ interface FeatureCardProps {
 }
 
 const FeatureCard = ({ icon: Icon, title, tagline, benefits, highlight }: FeatureCardProps) => (
-  <div className={`p-6 rounded-xl border ${highlight ? 'border-[#FF6B35]/50 bg-[#FF6B35]/5' : 'border-border bg-card'} hover:shadow-lg transition-all`}>
-    <div className={`p-3 rounded-lg w-fit mb-4 ${highlight ? 'bg-[#FF6B35]/10' : 'bg-muted'}`}>
-      <Icon className={`h-6 w-6 ${highlight ? 'text-[#FF6B35]' : 'text-foreground'}`} />
+  <div className={`p-6 rounded-xl border ${highlight ? 'border-accent/50 bg-accent/5' : 'border-border bg-card'} hover:shadow-lg transition-all`}>
+    <div className={`p-3 rounded-lg w-fit mb-4 ${highlight ? 'bg-accent/10' : 'bg-muted'}`}>
+      <Icon className={`h-6 w-6 ${highlight ? 'text-accent' : 'text-foreground'}`} />
     </div>
     <h3 className="text-xl font-bold text-foreground mb-2">{title}</h3>
     <p className="text-muted-foreground mb-4">{tagline}</p>
     <ul className="space-y-2">
       {benefits.map((benefit, index) => (
         <li key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
-          <ChevronRight className="h-4 w-4 text-[#FF6B35] flex-shrink-0 mt-0.5" />
+          <ChevronRight className="h-4 w-4 text-accent flex-shrink-0 mt-0.5" />
           <span>{benefit}</span>
         </li>
       ))}
@@ -337,9 +337,9 @@ export default function Features() {
         <div className="container mx-auto max-w-6xl">
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-2">
-              <img src={buildSenseLogo} alt="Build Sense" className="h-7 w-7" />
+              <img src={projectPulseLogo} alt="Project Pulse" className="h-8 w-auto max-w-[120px]" />
               <p className="text-sm text-muted-foreground">
-                © 2024 Build Sense. Built for the field.
+                © 2025 Project Pulse. Built for the field.
               </p>
             </div>
             <div className="flex flex-wrap justify-center gap-4">

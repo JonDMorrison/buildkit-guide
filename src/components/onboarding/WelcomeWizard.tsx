@@ -20,7 +20,7 @@ import {
   Loader2,
   PartyPopper
 } from 'lucide-react';
-import buildSenseLogo from '@/assets/build-sense-logo.png';
+import projectPulseLogo from '@/assets/project-pulse-logo.png';
 
 interface WelcomeWizardProps {
   onComplete: () => void;
@@ -183,7 +183,7 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
           <>
             <CardHeader className="text-center pt-8 pb-4">
               <div className="mx-auto mb-4 relative">
-                <img src={buildSenseLogo} alt="Build Sense" className="h-20 w-20 mx-auto" />
+                <img src={projectPulseLogo} alt="Project Pulse" className="h-16 w-auto max-w-[200px] mx-auto" />
                 <div className="absolute -right-2 -bottom-2 bg-primary text-primary-foreground rounded-full p-2">
                   <PartyPopper className="h-5 w-5" />
                 </div>
@@ -199,7 +199,7 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
               <div className="bg-muted/50 rounded-xl p-6 text-center">
                 <Rocket className="h-12 w-12 text-primary mx-auto mb-3" />
                 <p className="text-muted-foreground">
-                  Build Sense helps you keep every trade accountable and your construction projects on track. 
+                  Project Pulse helps you keep every trade accountable and your construction projects on track. 
                   No more chasing updates or buried spreadsheets.
                 </p>
               </div>

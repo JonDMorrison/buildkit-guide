@@ -11,7 +11,7 @@ import iconLookahead from "@/assets/icon-lookahead.png";
 import iconSafety from "@/assets/icon-safety.png";
 import iconManpower from "@/assets/icon-manpower.png";
 import iconAI from "@/assets/icon-ai.png";
-import buildSenseLogo from "@/assets/build-sense-logo.png";
+import projectPulseLogo from "@/assets/project-pulse-logo.png";
 import { PublicNav } from "@/components/PublicNav";
 
 export default function Landing() {
@@ -47,7 +47,7 @@ export default function Landing() {
     },
     {
       question: "What if we have no cell signal on site?",
-      answer: "Build Sense works offline. Time entries, safety forms, and task updates queue locally and sync automatically when you reconnect. Never lose data."
+      answer: "Project Pulse works offline. Time entries, safety forms, and task updates queue locally and sync automatically when you reconnect. Never lose data."
     }
   ];
 
@@ -74,7 +74,7 @@ export default function Landing() {
                 No credit card required • Free 14-day trial • Setup in minutes
               </p>
               <div className="flex flex-col gap-3 justify-center lg:justify-start w-full max-w-md mx-auto lg:mx-0">
-                <Button size="lg" onClick={handleGetStarted} className="w-full h-14 md:h-16 text-base md:text-lg bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold shadow-xl">
+                <Button size="lg" onClick={handleGetStarted} className="w-full h-14 md:h-16 text-base md:text-lg bg-accent hover:bg-accent/90 text-white font-semibold shadow-xl">
                   Start Your Free Trial
                 </Button>
                 <Button size="lg" variant="outline" onClick={handleSeeHowItWorks} className="w-full h-14 md:h-16 text-base md:text-lg bg-white/15 text-white border-white/40 hover:bg-white/25 font-semibold backdrop-blur-sm">
@@ -83,7 +83,7 @@ export default function Landing() {
               </div>
             </div>
             <div className="flex justify-center mt-8 lg:mt-0">
-              <img alt="Build Sense App Dashboard" className="w-full max-w-md lg:max-w-lg rounded-lg shadow-2xl" loading="eager" src="/lovable-uploads/4e1b85d6-7eda-4f22-abb7-fb02a677b21c.png" />
+              <img alt="Project Pulse App Dashboard" className="w-full max-w-md lg:max-w-lg rounded-lg shadow-2xl" loading="eager" src="/lovable-uploads/4e1b85d6-7eda-4f22-abb7-fb02a677b21c.png" />
             </div>
           </div>
         </div>
@@ -142,13 +142,13 @@ export default function Landing() {
       </section>
 
       {/* Free Up Capacity - Major Differentiator */}
-      <section className="py-16 md:py-20 px-4 bg-[#1C3B23]">
+      <section className="py-16 md:py-20 px-4 bg-primary">
         <div className="container mx-auto max-w-4xl text-center">
           <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-4 md:mb-6 leading-tight">
             Free Up Capacity Without Adding a Staff Member
           </h3>
           <p className="text-lg md:text-xl text-white/80 mb-8 leading-relaxed max-w-2xl mx-auto">
-            Your PM spends 40% of their day chasing updates. Build Sense gives that time back.
+            Your PM spends 40% of their day chasing updates. Project Pulse gives that time back.
           </p>
           <div className="grid sm:grid-cols-3 gap-6 text-left">
             <div className="bg-white/10 p-5 rounded-lg border border-white/20">
@@ -187,9 +187,9 @@ export default function Landing() {
             ].map((item, index) => {
               const Icon = item.icon;
               return (
-                <div key={index} className="p-5 bg-card rounded-lg border border-border hover:border-[#FF6B35]/50 hover:shadow-md transition-all text-center">
-                  <div className="w-12 h-12 rounded-full bg-[#FF6B35]/10 flex items-center justify-center mx-auto mb-4">
-                    <Icon className="h-6 w-6 text-[#FF6B35]" />
+                <div key={index} className="p-5 bg-card rounded-lg border border-border hover:border-accent/50 hover:shadow-md transition-all text-center">
+                  <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-4">
+                    <Icon className="h-6 w-6 text-accent" />
                   </div>
                   <h4 className="text-lg font-bold text-foreground mb-2">{item.title}</h4>
                   <p className="text-sm text-muted-foreground">{item.description}</p>
@@ -265,7 +265,7 @@ export default function Landing() {
               description: "Ask questions about your project documents. Draft emails in seconds. Identify risks automatically.",
               icon: iconAI
             }].map((feature, index) => (
-              <div key={index} className="p-5 md:p-6 bg-card rounded-lg border border-border hover:border-[#FF6B35]/50 hover:shadow-md transition-all">
+              <div key={index} className="p-5 md:p-6 bg-card rounded-lg border border-border hover:border-accent/50 hover:shadow-md transition-all">
                 <img src={feature.icon} alt={feature.title} className="w-14 h-14 md:w-16 md:h-16 mb-3 md:mb-4 rounded-lg" loading="lazy" />
                 <h4 className="text-lg md:text-xl font-bold text-foreground mb-2 md:mb-3">{feature.title}</h4>
                 <p className="text-sm md:text-base text-muted-foreground leading-relaxed">{feature.description}</p>
@@ -276,7 +276,7 @@ export default function Landing() {
       </section>
 
       {/* AI-Powered Section - NEW */}
-      <section className="py-16 md:py-20 px-4 bg-[#1a1a2e]">
+      <section className="py-16 md:py-20 px-4 bg-primary">
         <div className="container mx-auto max-w-5xl">
           <div className="text-center mb-10 md:mb-12">
             <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-4 leading-tight">
@@ -296,8 +296,8 @@ export default function Landing() {
               const Icon = item.icon;
               return (
                 <div key={index} className="p-6 bg-white/5 rounded-lg border border-white/10 hover:border-white/20 transition-all">
-                  <div className="w-12 h-12 rounded-full bg-[#FF6B35]/20 flex items-center justify-center mb-4">
-                    <Icon className="h-6 w-6 text-[#FF6B35]" />
+                  <div className="w-12 h-12 rounded-full bg-accent/20 flex items-center justify-center mb-4">
+                    <Icon className="h-6 w-6 text-accent" />
                   </div>
                   <h4 className="text-lg font-bold text-white mb-2">{item.title}</h4>
                   <p className="text-sm text-white/60">{item.description}</p>
@@ -505,9 +505,9 @@ export default function Landing() {
         <div className="container mx-auto max-w-6xl">
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-2">
-              <img src={buildSenseLogo} alt="Build Sense" className="h-7 w-7" />
+              <img src={projectPulseLogo} alt="Project Pulse" className="h-8 w-auto max-w-[120px]" />
               <p className="text-sm text-foreground/70">
-                © 2025 Build Sense. Built for the field.
+                © 2025 Project Pulse. Built for the field.
               </p>
             </div>
             <div className="flex flex-wrap justify-center gap-4">

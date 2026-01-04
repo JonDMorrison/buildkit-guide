@@ -8,46 +8,46 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Horizon Brand Colors */
-    --brand-primary-dark: 150 30% 17%;      /* #1C3B23 */
-    --brand-primary-light: 145 35% 33%;     /* #3D7237 */
-    --brand-accent-orange: 27 60% 57%;      /* #DC8644 */
-    --brand-muted-grey: 135 10% 65%;        /* #A0ADA3 */
+    /* Project Pulse Brand Colors */
+    --brand-primary-dark: 0 0% 12%;         /* Charcoal Black */
+    --brand-primary-light: 0 0% 25%;        /* Dark Gray */
+    --brand-accent-red: 0 85% 50%;          /* Vibrant Red */
+    --brand-muted-grey: 0 0% 55%;           /* Neutral Gray */
     
     /* Base surfaces - off white and white */
     --background: 0 0% 98%;                 /* #FAFAFA */
-    --foreground: 150 30% 17%;              /* brand dark green */
+    --foreground: 0 0% 12%;                 /* Charcoal */
 
     --card: 0 0% 100%;                      /* #FFFFFF */
-    --card-foreground: 150 30% 17%;
+    --card-foreground: 0 0% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 150 30% 17%;
+    --popover-foreground: 0 0% 12%;
 
-    /* Primary - Horizon Dark Green */
-    --primary: 150 30% 17%;
+    /* Primary - Charcoal Black */
+    --primary: 0 0% 12%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary - Light Green */
-    --secondary: 145 35% 33%;
+    /* Secondary - Red Accent */
+    --secondary: 0 85% 50%;
     --secondary-foreground: 0 0% 100%;
 
     /* Muted - Neutral Grey */
     --muted: 0 0% 90%;
     --muted-foreground: 0 0% 40%;
 
-    /* Accent - Orange */
-    --accent: 27 60% 57%;
+    /* Accent - Vibrant Red */
+    --accent: 0 85% 50%;
     --accent-foreground: 0 0% 100%;
 
     /* Status colors - construction standard */
-    --status-complete: 145 35% 33%;         /* Light Green */
+    --status-complete: 145 60% 40%;         /* Green for success */
     --status-complete-foreground: 0 0% 100%;
     
-    --status-progress: 145 35% 33%;         /* Light Green */
+    --status-progress: 210 100% 50%;        /* Blue for progress */
     --status-progress-foreground: 0 0% 100%;
     
-    --status-issue: 27 60% 57%;             /* Orange */
+    --status-issue: 0 85% 50%;              /* Red for issues */
     --status-issue-foreground: 0 0% 100%;
 
     --status-info: 210 100% 59%;
@@ -57,9 +57,9 @@ All colors MUST be HSL.
     --destructive-foreground: 0 0% 100%;
 
     /* Borders and inputs - subtle */
-    --border: 135 10% 85%;
-    --input: 135 10% 85%;
-    --ring: 150 30% 17%;
+    --border: 0 0% 85%;
+    --input: 0 0% 85%;
+    --ring: 0 85% 50%;
 
     --radius: 0.5rem;
 
@@ -68,7 +68,7 @@ All colors MUST be HSL.
     --tab-bar-height: 64px;
     
     /* Blueprint pattern */
-    --blueprint-grid: 150 30% 17%;
+    --blueprint-grid: 0 0% 12%;
   }
 }
 
