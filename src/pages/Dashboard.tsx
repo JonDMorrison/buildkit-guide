@@ -433,13 +433,13 @@ export default function Dashboard() {
                       >
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            {project.id === currentProjectId && <CheckCircle2 className="h-3 w-3 text-secondary" />}
+                            {project.id === currentProjectId && <CheckCircle2 className="h-3 w-3 text-status-complete" />}
                             <p className="font-medium text-sm truncate">{project.name}</p>
                           </div>
                           {project.totalTasks > 0 && (
                             <div className="flex items-center gap-2 mt-1.5">
                               <div className="flex-1 h-1.5 bg-muted/30 rounded-full overflow-hidden">
-                                <div className="h-full bg-secondary rounded-full transition-all" style={{ width: `${project.progress}%` }} />
+                                <div className="h-full bg-status-complete rounded-full transition-all" style={{ width: `${project.progress}%` }} />
                               </div>
                               <span className="text-xs font-medium text-muted-foreground">{project.progress}%</span>
                             </div>
@@ -463,7 +463,7 @@ export default function Dashboard() {
                 <Button 
                   onClick={() => setQuickAddModalOpen(true)} 
                   size="sm" 
-                  className="bg-[#DC8644] hover:bg-[#DC8644]/90 text-white px-3 w-fit"
+                  className="bg-secondary hover:bg-secondary/90 text-secondary-foreground px-3 w-fit"
                 >
                   <Plus className="h-4 w-4 mr-1" /> Add
                 </Button>

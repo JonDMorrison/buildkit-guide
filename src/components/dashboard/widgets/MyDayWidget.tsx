@@ -25,7 +25,7 @@ export const MyDayWidget = memo(function MyDayWidget({ priorityTasks }: MyDayWid
       >
         <div>
           <h3 className="widget-title">
-            <CheckCircle2 className="h-4 w-4 text-secondary" />
+            <CheckCircle2 className="h-4 w-4 text-status-complete" />
             My Day
           </h3>
           <p className="widget-subtitle">Priority tasks needing attention</p>
@@ -43,7 +43,7 @@ export const MyDayWidget = memo(function MyDayWidget({ priorityTasks }: MyDayWid
                 onClick={() => navigate("/tasks")}
               >
                 <div className={`mt-1.5 w-2 h-2 rounded-full flex-shrink-0 ${
-                  task.status === "blocked" ? "bg-accent animate-pulse" : "bg-secondary"
+                  task.status === "blocked" ? "bg-accent animate-pulse" : "bg-status-complete"
                 }`} />
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm text-foreground truncate">{task.title}</p>
@@ -59,8 +59,8 @@ export const MyDayWidget = memo(function MyDayWidget({ priorityTasks }: MyDayWid
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full py-6">
-            <div className="w-12 h-12 rounded-full bg-secondary/10 flex items-center justify-center mb-3">
-              <CheckCircle2 className="h-6 w-6 text-secondary" />
+            <div className="w-12 h-12 rounded-full bg-status-complete/10 flex items-center justify-center mb-3">
+              <CheckCircle2 className="h-6 w-6 text-status-complete" />
             </div>
             <p className="font-medium text-foreground">All caught up!</p>
             <p className="text-xs text-muted-foreground">No urgent tasks today</p>
