@@ -18,7 +18,7 @@ export const HealthWidget = memo(function HealthWidget({
   const navigate = useNavigate();
 
   const getScoreColor = () => {
-    if (healthScore > 70) return "hsl(var(--secondary))";
+    if (healthScore > 70) return "hsl(var(--status-complete))";
     if (healthScore > 40) return "hsl(var(--accent))";
     return "hsl(var(--destructive))";
   };

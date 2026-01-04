@@ -50,8 +50,8 @@ export const BlockersWidget = memo(function BlockersWidget({ blockers }: Blocker
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full py-6">
-            <div className="w-12 h-12 rounded-full bg-secondary/10 flex items-center justify-center mb-3">
-              <AlertTriangle className="h-6 w-6 text-secondary" />
+            <div className="w-12 h-12 rounded-full bg-status-complete/10 flex items-center justify-center mb-3">
+              <AlertTriangle className="h-6 w-6 text-status-complete" />
             </div>
             <p className="font-medium text-foreground">No blockers</p>
             <p className="text-xs text-muted-foreground">All tasks running smoothly</p>

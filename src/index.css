@@ -113,7 +113,7 @@ All colors MUST be HSL.
   }
 
   .widget-card-success {
-    @apply bg-secondary/5 border-secondary/20;
+    @apply bg-status-complete/5 border-status-complete/20;
   }
 
   .widget-card-dark {

@@ -16,7 +16,7 @@ export const ActivityWidget = memo(function ActivityWidget({ completionTrendData
       <div className="flex-shrink-0 mb-3 flex items-start justify-between">
         <div>
           <h3 className="widget-title">
-            <TrendingUp className="h-4 w-4 text-secondary" />
+          <TrendingUp className="h-4 w-4 text-status-complete" />
             Activity Trend
           </h3>
           <p className="widget-subtitle">Tasks completed vs created (7 days)</p>
@@ -27,7 +27,7 @@ export const ActivityWidget = memo(function ActivityWidget({ completionTrendData
       <div className="flex-1 min-h-0">
         <ChartContainer
           config={{
-            completed: { label: "Completed", color: "hsl(var(--secondary))" },
+            completed: { label: "Completed", color: "hsl(var(--status-complete))" },
             created: { label: "Created", color: "hsl(var(--muted))" },
           }}
           className="h-full w-full"
@@ -52,9 +52,9 @@ export const ActivityWidget = memo(function ActivityWidget({ completionTrendData
               <Line 
                 type="monotone" 
                 dataKey="completed" 
-                stroke="hsl(var(--secondary))" 
+                stroke="hsl(var(--status-complete))" 
                 strokeWidth={2}
-                dot={{ fill: "hsl(var(--secondary))", r: 3, strokeWidth: 0 }}
+                dot={{ fill: "hsl(var(--status-complete))", r: 3, strokeWidth: 0 }}
                 activeDot={{ r: 5 }}
               />
               <Line 

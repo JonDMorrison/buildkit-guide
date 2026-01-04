@@ -21,25 +21,25 @@ const MetricCard = ({ icon: Icon, label, value, onClick, variant = "default" }: 
   const bgClass = variant === "warning" 
     ? "bg-accent/5 border-accent/20 hover:border-accent/40" 
     : variant === "success"
-    ? "bg-secondary/5 border-secondary/20 hover:border-secondary/40"
+    ? "bg-status-complete/5 border-status-complete/20 hover:border-status-complete/40"
     : "bg-card border-border/50 hover:border-primary/30";
   
   const iconBgClass = variant === "warning"
     ? "bg-accent/10"
     : variant === "success"
-    ? "bg-secondary/10"
+    ? "bg-status-complete/10"
     : "bg-primary/10";
   
   const iconColorClass = variant === "warning"
     ? "text-accent"
     : variant === "success"
-    ? "text-secondary"
+    ? "text-status-complete"
     : "text-primary";
   
   const valueColorClass = variant === "warning"
     ? "text-accent"
     : variant === "success"
-    ? "text-secondary"
+    ? "text-status-complete"
     : "text-primary";
 
   return (

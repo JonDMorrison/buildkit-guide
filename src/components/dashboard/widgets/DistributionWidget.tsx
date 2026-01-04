@@ -21,7 +21,7 @@ export const DistributionWidget = memo(function DistributionWidget({ statusDistr
       <div className="flex-shrink-0 mb-3 flex items-start justify-between">
         <div>
           <h3 className="widget-title">
-            <Target className="h-4 w-4 text-secondary" />
+            <Target className="h-4 w-4 text-primary" />
             Task Distribution
           </h3>
           <p className="widget-subtitle">Current workflow breakdown</p>
