@@ -29,7 +29,7 @@ export const TopNav = () => {
     <>
       <nav className="sticky top-0 z-50 flex items-center justify-between h-nav px-4 bg-card border-b border-border">
         <div className="flex items-center gap-4">
-          <img src={projectPulseLogo} alt="Project Pulse" className="h-10 w-auto" />
+          <img src={projectPulseLogo} alt="Project Pulse" className="h-20 w-auto" />
           <OrganizationSwitcher />
         </div>
         
