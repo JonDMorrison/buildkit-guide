@@ -5,7 +5,7 @@ import { UserMenu } from "./UserMenu";
 import { NotificationsDropdown } from "./notifications/NotificationsDropdown";
 import { OrganizationSwitcher } from "./OrganizationSwitcher";
 import { GlobalSearchModal } from "./GlobalSearchModal";
-import buildSenseLogo from "@/assets/build-sense-logo.png";
+import projectPulseLogo from "@/assets/project-pulse-logo.png";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export const TopNav = () => {
@@ -30,8 +30,8 @@ export const TopNav = () => {
       <nav className="sticky top-0 z-50 flex items-center justify-between h-nav px-4 bg-card border-b border-border">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <img src={buildSenseLogo} alt="Build Sense" className="h-8 w-8" />
-            <h1 className="text-lg font-semibold text-foreground">Build Sense</h1>
+            <img src={projectPulseLogo} alt="Project Pulse" className="h-8 w-auto max-w-[120px]" />
+            <h1 className="text-lg font-semibold text-foreground">Project Pulse</h1>
           </div>
           <OrganizationSwitcher />
         </div>

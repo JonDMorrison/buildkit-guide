@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Menu } from "lucide-react";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
-import buildSenseLogo from "@/assets/build-sense-logo.png";
+import projectPulseLogo from "@/assets/project-pulse-logo.png";
 
 interface NavItem {
   label: string;
@@ -35,8 +35,8 @@ export const PublicNav = () => {
           className="flex items-center gap-2 cursor-pointer" 
           onClick={() => navigate('/')}
         >
-          <img src={buildSenseLogo} alt="Build Sense" className="h-9 w-9" />
-          <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">Build Sense</h1>
+          <img src={projectPulseLogo} alt="Project Pulse" className="h-9 w-auto max-w-[140px]" />
+          <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">Project Pulse</h1>
         </div>
         
         {/* Desktop Navigation */}
@@ -64,7 +64,7 @@ export const PublicNav = () => {
           </Button>
           <Button 
             onClick={() => navigate('/auth')} 
-            className="bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold h-12 px-6 text-base"
+            className="bg-accent hover:bg-accent/90 text-white font-semibold h-12 px-6 text-base"
           >
             Get Started Free
           </Button>
@@ -74,7 +74,7 @@ export const PublicNav = () => {
         <div className="flex md:hidden items-center gap-2">
           <Button 
             onClick={() => navigate('/auth')} 
-            className="bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold h-12 px-4 text-sm"
+            className="bg-accent hover:bg-accent/90 text-white font-semibold h-12 px-4 text-sm"
           >
             Get Started
           </Button>
@@ -88,8 +88,8 @@ export const PublicNav = () => {
             <SheetContent side="right" className="w-[280px] sm:w-[320px]">
               <SheetHeader className="text-left mb-6">
                 <SheetTitle className="flex items-center gap-2">
-                  <img src={buildSenseLogo} alt="Build Sense" className="h-8 w-8" />
-                  <span className="text-2xl font-bold">Build Sense</span>
+                  <img src={projectPulseLogo} alt="Project Pulse" className="h-8 w-auto max-w-[120px]" />
+                  <span className="text-2xl font-bold">Project Pulse</span>
                 </SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col gap-4">
@@ -115,7 +115,7 @@ export const PublicNav = () => {
                 <div className="pt-4 border-t border-border">
                   <Button 
                     onClick={() => handleNavigation('/auth')} 
-                    className="w-full bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold h-12 text-base"
+                    className="w-full bg-accent hover:bg-accent/90 text-white font-semibold h-12 text-base"
                   >
                     Get Started Free
                   </Button>

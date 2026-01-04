@@ -103,9 +103,9 @@ serve(async (req: Request) => {
       const recipientName = fullName || email.split("@")[0];
       
       const emailResponse = await resend.emails.send({
-        from: "Build Sense <onboarding@resend.dev>",
+        from: "Project Pulse <onboarding@resend.dev>",
         to: [email],
-        subject: `${inviterName} invited you to join Build Sense`,
+        subject: `${inviterName} invited you to join Project Pulse`,
         html: `
           <!DOCTYPE html>
           <html>
@@ -115,21 +115,21 @@ serve(async (req: Request) => {
           </head>
           <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
             <div style="text-align: center; margin-bottom: 30px;">
-              <h1 style="color: #FF6B35; margin: 0; font-size: 28px;">Build Sense</h1>
+              <h1 style="color: #E53935; margin: 0; font-size: 28px;">Project Pulse</h1>
               <p style="color: #666; margin-top: 5px;">Construction Project Management</p>
             </div>
             
-            <div style="background: linear-gradient(135deg, #FF6B35 0%, #ff8a5c 100%); color: white; padding: 30px; border-radius: 12px; text-align: center; margin-bottom: 30px;">
+            <div style="background: linear-gradient(135deg, #E53935 0%, #EF5350 100%); color: white; padding: 30px; border-radius: 12px; text-align: center; margin-bottom: 30px;">
               <h2 style="margin: 0 0 10px 0; font-size: 24px;">You're Invited! 🎉</h2>
-              <p style="margin: 0; opacity: 0.9; font-size: 16px;">Join the team on Build Sense</p>
+              <p style="margin: 0; opacity: 0.9; font-size: 16px;">Join the team on Project Pulse</p>
             </div>
             
             <p style="font-size: 16px;">Hi ${recipientName},</p>
             
-            <p style="font-size: 16px;"><strong>${inviterName}</strong> has invited you to join their team on Build Sense - the construction project management platform that keeps every trade accountable and your schedule on track.</p>
+            <p style="font-size: 16px;"><strong>${inviterName}</strong> has invited you to join their team on Project Pulse - the construction project management platform that keeps every trade accountable and your schedule on track.</p>
             
             <div style="text-align: center; margin: 35px 0;">
-              <a href="${inviteLink}" style="display: inline-block; background: #FF6B35; color: white; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-weight: bold; font-size: 16px;">Accept Invitation</a>
+              <a href="${inviteLink}" style="display: inline-block; background: #E53935; color: white; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-weight: bold; font-size: 16px;">Accept Invitation</a>
             </div>
             
             <p style="font-size: 14px; color: #666;">This invitation will expire in 7 days. If you didn't expect this email, you can safely ignore it.</p>
@@ -137,8 +137,8 @@ serve(async (req: Request) => {
             <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
             
             <p style="font-size: 12px; color: #999; text-align: center;">
-              Build Sense - Keep your job site moving<br>
-              <a href="${baseUrl}" style="color: #FF6B35;">buildsense.app</a>
+              Project Pulse - Keep your job site moving<br>
+              <a href="${baseUrl}" style="color: #E53935;">projectpulse.app</a>
             </p>
           </body>
           </html>

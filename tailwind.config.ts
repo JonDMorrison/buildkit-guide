@@ -50,7 +50,7 @@ export default {
         brand: {
           "primary-dark": "hsl(var(--brand-primary-dark))",
           "primary-light": "hsl(var(--brand-primary-light))",
-          "accent-orange": "hsl(var(--brand-accent-orange))",
+          "accent-red": "hsl(var(--brand-accent-red))",
           "muted-grey": "hsl(var(--brand-muted-grey))",
         },
         status: {

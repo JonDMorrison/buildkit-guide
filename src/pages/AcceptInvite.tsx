@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, CheckCircle, XCircle, PartyPopper } from 'lucide-react';
-import buildSenseLogo from '@/assets/build-sense-logo.png';
+import projectPulseLogo from '@/assets/project-pulse-logo.png';
 
 type InviteStatus = 'loading' | 'valid' | 'expired' | 'already_used' | 'not_found' | 'error';
 
@@ -211,9 +211,9 @@ export default function AcceptInvite() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
-            <img src={buildSenseLogo} alt="Build Sense" className="h-16 w-16 mx-auto" />
+            <img src={projectPulseLogo} alt="Project Pulse" className="h-12 w-auto max-w-[180px] mx-auto" />
           </div>
-          <CardTitle className="text-2xl">Welcome to Build Sense!</CardTitle>
+          <CardTitle className="text-2xl">Welcome to Project Pulse!</CardTitle>
           <CardDescription>
             You've been invited to join. Set up your password to get started.
           </CardDescription>

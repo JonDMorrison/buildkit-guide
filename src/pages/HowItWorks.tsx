@@ -21,7 +21,7 @@ export default function HowItWorks() {
   const navigate = useNavigate();
 
   const handleBookDemo = () => {
-    window.location.href = "mailto:demo@buildsense.app?subject=Demo Request";
+    window.location.href = "mailto:demo@projectpulse.app?subject=Demo Request";
   };
 
   const handleSeePricing = () => {
@@ -42,7 +42,7 @@ export default function HowItWorks() {
         "Track progress at a glance",
         "Keep everyone aligned on what needs to happen next"
       ],
-      color: "text-[#FF6B35]",
+      color: "text-accent",
       screenshot: screenshotTasks
     },
     {
@@ -107,7 +107,7 @@ export default function HowItWorks() {
         "Identify blockers and risks",
         "Answer questions instantly"
       ],
-      color: "text-[#FF6B35]",
+      color: "text-accent",
       screenshot: screenshotAI
     }
   ];
@@ -128,7 +128,7 @@ export default function HowItWorks() {
           <Button 
             size="lg" 
             onClick={handleBookDemo}
-            className="w-full sm:w-auto h-14 md:h-16 px-8 md:px-10 text-base md:text-lg bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold"
+            className="w-full sm:w-auto h-14 md:h-16 px-8 md:px-10 text-base md:text-lg bg-accent hover:bg-accent/90 text-white font-semibold"
           >
             Book a Demo
           </Button>
@@ -193,7 +193,7 @@ export default function HowItWorks() {
             <Button 
               size="lg" 
               onClick={handleBookDemo}
-              className="w-full h-14 md:h-16 text-base md:text-lg bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold"
+              className="w-full h-14 md:h-16 text-base md:text-lg bg-accent hover:bg-accent/90 text-white font-semibold"
             >
               Book a Demo
             </Button>
@@ -214,7 +214,7 @@ export default function HowItWorks() {
         <div className="container mx-auto max-w-6xl">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-muted-foreground">
-              © 2024 Build Sense. Built for the field.
+              © 2025 Project Pulse. Built for the field.
             </p>
             <div className="flex gap-4">
               <Button 

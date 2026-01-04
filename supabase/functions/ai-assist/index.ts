@@ -425,7 +425,7 @@ Keep it concise and actionable for a field team.`;
       ? '\n\nThe user is a Foreman. Focus on crew tasks, blockers affecting their trades, safety, and daily planning.'
       : '\n\nThe user is a Project Manager or Admin. Provide full project visibility including risks, coordination needs, and GC items.';
 
-    const systemPrompt = `You are an AI assistant for a construction project coordination app called Build Sense. You help field teams, foremen, and project managers stay on top of tasks, blockers, safety, manpower, receipts, and deficiencies.
+    const systemPrompt = `You are an AI assistant for a construction project coordination app called Project Pulse. You help field teams, foremen, and project managers stay on top of tasks, blockers, safety, manpower, receipts, and deficiencies.
 
 Rules:
 - Answer based ONLY on the provided project data

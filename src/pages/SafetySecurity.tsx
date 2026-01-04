@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Shield, Lock, FileCheck, Eye, Users, FileText, ChevronRight } from "lucide-react";
 import trustHero from "@/assets/trust-integrity-hero.jpg";
-import buildSenseLogo from "@/assets/build-sense-logo.png";
+import projectPulseLogo from "@/assets/project-pulse-logo.png";
 import { PublicNav } from "@/components/PublicNav";
 
 export default function SafetySecurity() {
@@ -194,9 +194,9 @@ export default function SafetySecurity() {
         <div className="container mx-auto max-w-6xl">
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-2">
-              <img src={buildSenseLogo} alt="Build Sense" className="h-7 w-7" />
+              <img src={projectPulseLogo} alt="Project Pulse" className="h-8 w-auto max-w-[120px]" />
               <p className="text-sm text-muted-foreground">
-                © 2024 Build Sense. Built for the field.
+                © 2025 Project Pulse. Built for the field.
               </p>
             </div>
             <div className="flex flex-wrap justify-center gap-4">
