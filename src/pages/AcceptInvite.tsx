@@ -211,9 +211,8 @@ export default function AcceptInvite() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
-            <img src={projectPulseLogo} alt="Project Pulse" className="h-12 w-auto max-w-[180px] mx-auto" />
+            <img src={projectPulseLogo} alt="Project Pulse" className="h-16 w-auto mx-auto" />
           </div>
-          <CardTitle className="text-2xl">Welcome to Project Pulse!</CardTitle>
           <CardDescription>
             You've been invited to join. Set up your password to get started.
           </CardDescription>

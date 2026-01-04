@@ -183,7 +183,7 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
           <>
             <CardHeader className="text-center pt-8 pb-4">
               <div className="mx-auto mb-4 relative">
-                <img src={projectPulseLogo} alt="Project Pulse" className="h-16 w-auto max-w-[200px] mx-auto" />
+                <img src={projectPulseLogo} alt="Project Pulse" className="h-20 w-auto mx-auto" />
                 <div className="absolute -right-2 -bottom-2 bg-primary text-primary-foreground rounded-full p-2">
                   <PartyPopper className="h-5 w-5" />
                 </div>
@@ -361,7 +361,7 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
                 </Button>
                 <Button 
                   onClick={handleFinish} 
-                  className="flex-1 bg-[#FF6B35] hover:bg-[#FF6B35]/90"
+                  className="flex-1 bg-secondary hover:bg-secondary/90 text-secondary-foreground"
                   disabled={isLoading}
                 >
                   {isLoading ? (
