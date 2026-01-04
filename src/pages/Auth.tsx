@@ -156,10 +156,9 @@ const Auth = () => {
           <img 
             src={projectPulseLogo} 
             alt="Project Pulse" 
-            className="w-auto h-16 max-w-[200px] mb-2"
+            className="w-auto h-20 mb-4"
           />
-          <h1 className="text-2xl font-bold text-foreground">Project Pulse</h1>
-          <p className="text-sm text-muted-foreground mt-1">Field coordination made simple</p>
+          <p className="text-sm text-muted-foreground">Field coordination made simple</p>
         </div>
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'signin' | 'signup')}>

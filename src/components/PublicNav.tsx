@@ -32,11 +32,10 @@ export const PublicNav = () => {
     <nav className="fixed top-0 w-full bg-[#1a1a1a] backdrop-blur-md border-b border-white/10 z-50 shadow-sm">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <div 
-          className="flex items-center gap-2 cursor-pointer" 
+          className="flex items-center cursor-pointer" 
           onClick={() => navigate('/')}
         >
-          <img src={projectPulseLogo} alt="Project Pulse" className="h-9 w-auto max-w-[140px]" />
-          <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">Project Pulse</h1>
+          <img src={projectPulseLogo} alt="Project Pulse" className="h-12 w-auto" />
         </div>
         
         {/* Desktop Navigation */}
@@ -87,9 +86,8 @@ export const PublicNav = () => {
             </SheetTrigger>
             <SheetContent side="right" className="w-[280px] sm:w-[320px]">
               <SheetHeader className="text-left mb-6">
-                <SheetTitle className="flex items-center gap-2">
-                  <img src={projectPulseLogo} alt="Project Pulse" className="h-8 w-auto max-w-[120px]" />
-                  <span className="text-2xl font-bold">Project Pulse</span>
+                <SheetTitle>
+                  <img src={projectPulseLogo} alt="Project Pulse" className="h-10 w-auto" />
                 </SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col gap-4">
