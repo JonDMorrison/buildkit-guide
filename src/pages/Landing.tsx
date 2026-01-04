@@ -89,21 +89,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Social Proof Section */}
-      <section className="py-12 px-4 bg-card border-y border-border">
-        <div className="container mx-auto max-w-4xl text-center">
-          <p className="text-sm uppercase tracking-wider text-foreground/70 mb-6 font-semibold">
-            Trusted by Contractors Across North America
-          </p>
-          <div className="flex flex-wrap justify-center items-center gap-8 text-foreground/80">
-            {["Horizon Construction", "BuildRight Co", "Prime Builders", "SteelFrame Inc"].map((company, idx) => (
-              <div key={idx} className="text-lg font-bold">
-                {company}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* The Problem */}
       <section className="py-16 md:py-20 px-4 bg-muted/30 relative">
