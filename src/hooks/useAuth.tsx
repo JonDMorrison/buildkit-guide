@@ -21,14 +21,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Track if this is the initial session check
+    let isInitialLoad = true;
+    
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Redirect to welcome for new users, dashboard for existing ones
-        if (event === 'SIGNED_IN' && session) {
+        // Only redirect on actual sign-in events (not session refresh/token refresh)
+        // and only if not during initial load (to preserve current route)
+        if (event === 'SIGNED_IN' && session && !isInitialLoad) {
           // The ProtectedRoute will handle the onboarding redirect
           navigate('/dashboard');
         }
@@ -40,6 +44,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      // After initial load, allow future sign-in redirects
+      isInitialLoad = false;
     });
 
     return () => subscription.unsubscribe();
