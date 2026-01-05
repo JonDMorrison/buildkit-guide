@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -6,13 +6,6 @@ interface Organization {
   id: string;
   name: string;
   slug: string | null;
-}
-
-interface OrganizationMembership {
-  organization_id: string;
-  role: string;
-  is_active: boolean;
-  organization: Organization;
 }
 
 interface OrganizationContextType {
@@ -112,7 +105,7 @@ export const OrganizationProvider = ({ children }: { children: ReactNode }) => {
     fetchOrganizations();
   }, [user]);
 
-  const setActiveOrganizationId = (id: string) => {
+  const setActiveOrganizationId = useCallback((id: string) => {
     setActiveOrganizationIdState(id);
     localStorage.setItem('activeOrganizationId', id);
     
@@ -129,25 +122,43 @@ export const OrganizationProvider = ({ children }: { children: ReactNode }) => {
       setOrgRole(data?.role || null);
     };
     fetchRole();
-  };
+  }, [user]);
 
-  const activeOrganization = organizations.find(o => o.id === activeOrganizationId) || null;
+  // Memoize derived values
+  const activeOrganization = useMemo(
+    () => organizations.find(o => o.id === activeOrganizationId) || null,
+    [organizations, activeOrganizationId]
+  );
+  
   const isOrgAdmin = orgRole === 'admin';
   const requiresOrgSelection = !loading && organizations.length > 1 && !activeOrganizationId;
 
+  // Memoize the context value to prevent unnecessary re-renders
+  const contextValue = useMemo<OrganizationContextType>(
+    () => ({
+      organizations,
+      activeOrganizationId,
+      activeOrganization,
+      setActiveOrganizationId,
+      loading,
+      isOrgAdmin,
+      orgRole,
+      requiresOrgSelection,
+    }),
+    [
+      organizations,
+      activeOrganizationId,
+      activeOrganization,
+      setActiveOrganizationId,
+      loading,
+      isOrgAdmin,
+      orgRole,
+      requiresOrgSelection,
+    ]
+  );
+
   return (
-    <OrganizationContext.Provider
-      value={{
-        organizations,
-        activeOrganizationId,
-        activeOrganization,
-        setActiveOrganizationId,
-        loading,
-        isOrgAdmin,
-        orgRole,
-        requiresOrgSelection,
-      }}
-    >
+    <OrganizationContext.Provider value={contextValue}>
       {children}
     </OrganizationContext.Provider>
   );

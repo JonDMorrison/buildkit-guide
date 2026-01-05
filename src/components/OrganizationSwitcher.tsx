@@ -1,3 +1,4 @@
+import { memo, useCallback } from "react";
 import { ChevronDown, Check, Building2 } from "lucide-react";
 import {
   DropdownMenu,
@@ -8,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useOrganization } from "@/hooks/useOrganization";
 
-export const OrganizationSwitcher = () => {
+export const OrganizationSwitcher = memo(function OrganizationSwitcher() {
   const { 
     organizations, 
     activeOrganization, 
@@ -16,6 +17,10 @@ export const OrganizationSwitcher = () => {
     orgRole,
     loading 
   } = useOrganization();
+
+  const handleOrgSelect = useCallback((orgId: string) => {
+    setActiveOrganizationId(orgId);
+  }, [setActiveOrganizationId]);
 
   // Only show switcher if user has multiple orgs
   if (loading || organizations.length <= 1) {
@@ -27,8 +32,6 @@ export const OrganizationSwitcher = () => {
   if (orgRole && !allowedRoles.includes(orgRole)) {
     return null;
   }
-
-  console.log('OrganizationSwitcher - orgs:', organizations.length, 'role:', orgRole);
 
   return (
     <DropdownMenu>
@@ -45,7 +48,7 @@ export const OrganizationSwitcher = () => {
         {organizations.map((org) => (
           <DropdownMenuItem
             key={org.id}
-            onClick={() => setActiveOrganizationId(org.id)}
+            onClick={() => handleOrgSelect(org.id)}
             className="flex items-center justify-between cursor-pointer"
           >
             <span className="truncate">{org.name}</span>
@@ -57,4 +60,4 @@ export const OrganizationSwitcher = () => {
       </DropdownMenuContent>
     </DropdownMenu>
   );
-};
+});
