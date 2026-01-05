@@ -106,6 +106,11 @@ export const NotificationsDropdown = () => {
       setLastFetched(now);
     } catch (error) {
       console.error('Error fetching insights:', error);
+      // Show fallback instead of silent failure
+      setInsights([{
+        text: 'Unable to load insights right now',
+        type: 'info',
+      }]);
     } finally {
       setInsightsLoading(false);
     }
