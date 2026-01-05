@@ -2586,6 +2586,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          organization_id: string | null
           trade_type: string
           updated_at: string
         }
@@ -2597,6 +2598,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          organization_id?: string | null
           trade_type: string
           updated_at?: string
         }
@@ -2608,10 +2610,19 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          organization_id?: string | null
           trade_type?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "trades_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
