@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -18,7 +19,9 @@ import {
   CheckCircle,
   Building2,
   Loader2,
-  PartyPopper
+  PartyPopper,
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
 import projectPulseLogo from '@/assets/project-pulse-logo.png';
 
@@ -86,6 +89,8 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
   const [orgName, setOrgName] = useState('');
   const [createSample, setCreateSample] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [sampleError, setSampleError] = useState<string | null>(null);
+  const [orgCreated, setOrgCreated] = useState<{ id: string; name: string } | null>(null);
 
   const totalSteps = 4;
 
@@ -101,8 +106,42 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
     }
   };
 
+  const handleRetrySample = async () => {
+    if (!orgCreated) return;
+    
+    setSampleError(null);
+    setIsLoading(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('create-sample-project', {
+        body: { organizationId: orgCreated.id }
+      });
+      
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      toast({
+        title: 'Sample project created',
+        description: 'A sample project has been added to your organization.',
+      });
+      setSampleError(null);
+      onComplete();
+    } catch (error: any) {
+      console.error('Retry sample project error:', error);
+      setSampleError(error.message || 'Failed to create sample project');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSkipSample = () => {
+    setSampleError(null);
+    onComplete();
+  };
+
   const handleFinish = async () => {
     setIsLoading(true);
+    setSampleError(null);
     
     try {
       // Create organization if name provided
@@ -129,20 +168,34 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
               is_active: true,
             });
 
+          setOrgCreated({ id: org.id, name: org.name });
+
           // Create sample project if requested
           if (createSample) {
             try {
-              await supabase.functions.invoke('create-sample-project', {
+              const { data, error } = await supabase.functions.invoke('create-sample-project', {
                 body: { organizationId: org.id }
               });
-            } catch (sampleError) {
-              console.log('Sample project creation skipped:', sampleError);
+              
+              if (error) throw error;
+              if (data?.error) throw new Error(data.error);
+              
+              // Success - complete onboarding
+              onComplete();
+            } catch (sampleError: any) {
+              console.error('Sample project creation failed:', sampleError);
+              // Show error with retry option instead of silently failing
+              setSampleError(sampleError.message || 'Failed to create sample project');
+              setIsLoading(false);
+              return; // Don't complete - show error state
             }
+          } else {
+            onComplete();
           }
         }
+      } else {
+        onComplete();
       }
-
-      onComplete();
     } catch (error: any) {
       console.error('Error during onboarding:', error);
       toast({
@@ -157,6 +210,64 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
   };
 
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'there';
+
+  // Show error state with recovery options
+  if (sampleError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-lg shadow-2xl border-0 bg-card/95 backdrop-blur">
+          <CardHeader className="text-center pt-8 pb-4">
+            <div className="mx-auto mb-4 p-4 rounded-full bg-destructive/10">
+              <AlertCircle className="h-12 w-12 text-destructive" />
+            </div>
+            <CardTitle className="text-2xl font-bold">
+              Sample Project Failed
+            </CardTitle>
+            <CardDescription className="text-base mt-2">
+              Your organization "{orgCreated?.name}" was created, but we couldn't create the sample project.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 pb-8">
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{sampleError}</AlertDescription>
+            </Alert>
+            
+            <div className="flex flex-col gap-3">
+              <Button 
+                onClick={handleRetrySample} 
+                className="w-full"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Retrying...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Try Again
+                  </>
+                )}
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={handleSkipSample}
+                disabled={isLoading}
+              >
+                Skip Sample Project
+              </Button>
+            </div>
+            
+            <p className="text-xs text-muted-foreground text-center">
+              You can always create projects manually from the dashboard.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/50 flex items-center justify-center p-4">

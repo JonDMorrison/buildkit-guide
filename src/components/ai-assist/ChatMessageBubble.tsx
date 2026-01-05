@@ -19,8 +19,14 @@ export const ChatMessageBubble = ({ role, content, actions }: ChatMessageBubbleP
     if (action.type === 'navigate' && action.route) {
       navigate(action.route);
     }
-    // Handle prefill actions in the future
+    // Prefill actions are not yet implemented - they are filtered out below
   };
+
+  // Filter to only show actions that are fully implemented
+  const implementedActions = actions?.filter(action => {
+    // Only navigate actions are implemented
+    return action.type === 'navigate' && action.route;
+  });
 
   return (
     <div className={cn('flex gap-2', isUser ? 'justify-end' : 'justify-start')}>
@@ -48,10 +54,10 @@ export const ChatMessageBubble = ({ role, content, actions }: ChatMessageBubbleP
           )}
         </div>
 
-        {/* Action chips for AI messages */}
-        {!isUser && actions && actions.length > 0 && (
+        {/* Action chips for AI messages - only show implemented actions */}
+        {!isUser && implementedActions && implementedActions.length > 0 && (
           <div className="flex flex-wrap gap-1.5 pl-1">
-            {actions.map((action, idx) => (
+            {implementedActions.map((action, idx) => (
               <Button
                 key={idx}
                 variant="outline"

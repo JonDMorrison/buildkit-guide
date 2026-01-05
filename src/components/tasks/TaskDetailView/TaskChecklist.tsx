@@ -4,8 +4,9 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { ListChecks, Plus, Trash2 } from 'lucide-react';
+import { ListChecks, Plus, Trash2, Loader2 } from 'lucide-react';
 
 interface ChecklistItem {
   id: string;
@@ -21,46 +22,140 @@ interface TaskChecklistProps {
 
 export const TaskChecklist = ({ taskId, canEdit }: TaskChecklistProps) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [items, setItems] = useState<ChecklistItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [newItemTitle, setNewItemTitle] = useState('');
   const [adding, setAdding] = useState(false);
+  const [savingItemId, setSavingItemId] = useState<string | null>(null);
 
-  // Check if the table exists - for now we'll simulate with local state
-  // since we haven't created the task_checklist_items table yet
+  // Fetch checklist items from database
   useEffect(() => {
-    // TODO: Fetch from database once table is created
-    setLoading(false);
-  }, [taskId]);
+    const fetchItems = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('task_checklist_items')
+          .select('id, title, is_completed, sort_order')
+          .eq('task_id', taskId)
+          .order('sort_order', { ascending: true });
+
+        if (error) throw error;
+        setItems(data || []);
+      } catch (err: any) {
+        console.error('Error fetching checklist:', err);
+        toast({
+          title: 'Error loading checklist',
+          description: err.message,
+          variant: 'destructive',
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchItems();
+  }, [taskId, toast]);
 
   const completedCount = items.filter(i => i.is_completed).length;
   const progress = items.length > 0 ? (completedCount / items.length) * 100 : 0;
 
-  const handleAddItem = () => {
-    if (!newItemTitle.trim()) return;
+  const handleAddItem = async () => {
+    if (!newItemTitle.trim() || !user) return;
     
-    const newItem: ChecklistItem = {
-      id: `temp-${Date.now()}`,
-      title: newItemTitle.trim(),
-      is_completed: false,
-      sort_order: items.length,
-    };
-    
-    setItems([...items, newItem]);
-    setNewItemTitle('');
-    setAdding(false);
+    setSavingItemId('new');
+    try {
+      const { data, error } = await supabase
+        .from('task_checklist_items')
+        .insert({
+          task_id: taskId,
+          title: newItemTitle.trim(),
+          is_completed: false,
+          sort_order: items.length,
+        })
+        .select('id, title, is_completed, sort_order')
+        .single();
+
+      if (error) throw error;
+
+      setItems([...items, data]);
+      setNewItemTitle('');
+      setAdding(false);
+    } catch (err: any) {
+      toast({
+        title: 'Error adding item',
+        description: err.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingItemId(null);
+    }
   };
 
-  const handleToggleItem = (itemId: string) => {
-    setItems(items.map(item => 
-      item.id === itemId 
-        ? { ...item, is_completed: !item.is_completed }
-        : item
+  const handleToggleItem = async (itemId: string) => {
+    const item = items.find(i => i.id === itemId);
+    if (!item || !user) return;
+
+    const newCompleted = !item.is_completed;
+    
+    // Optimistic update
+    setItems(items.map(i => 
+      i.id === itemId ? { ...i, is_completed: newCompleted } : i
     ));
+
+    setSavingItemId(itemId);
+    try {
+      const { error } = await supabase
+        .from('task_checklist_items')
+        .update({
+          is_completed: newCompleted,
+          completed_at: newCompleted ? new Date().toISOString() : null,
+          completed_by: newCompleted ? user.id : null,
+        })
+        .eq('id', itemId);
+
+      if (error) throw error;
+    } catch (err: any) {
+      // Revert on error
+      setItems(items.map(i => 
+        i.id === itemId ? { ...i, is_completed: !newCompleted } : i
+      ));
+      toast({
+        title: 'Error updating item',
+        description: err.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingItemId(null);
+    }
   };
 
-  const handleDeleteItem = (itemId: string) => {
+  const handleDeleteItem = async (itemId: string) => {
+    const itemToDelete = items.find(i => i.id === itemId);
+    if (!itemToDelete) return;
+
+    // Optimistic update
     setItems(items.filter(item => item.id !== itemId));
+
+    setSavingItemId(itemId);
+    try {
+      const { error } = await supabase
+        .from('task_checklist_items')
+        .delete()
+        .eq('id', itemId);
+
+      if (error) throw error;
+    } catch (err: any) {
+      // Revert on error
+      setItems([...items, itemToDelete].sort((a, b) => a.sort_order - b.sort_order));
+      toast({
+        title: 'Error deleting item',
+        description: err.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingItemId(null);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -71,6 +166,18 @@ export const TaskChecklist = ({ taskId, canEdit }: TaskChecklistProps) => {
       setNewItemTitle('');
     }
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <ListChecks className="h-4 w-4 text-muted-foreground" />
+          Checklist
+          <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2">
@@ -132,12 +239,15 @@ export const TaskChecklist = ({ taskId, canEdit }: TaskChecklistProps) => {
               <Checkbox
                 checked={item.is_completed}
                 onCheckedChange={() => handleToggleItem(item.id)}
-                disabled={!canEdit}
+                disabled={!canEdit || savingItemId === item.id}
               />
               <span className={`flex-1 text-sm ${item.is_completed ? 'line-through text-muted-foreground' : ''}`}>
                 {item.title}
               </span>
-              {canEdit && (
+              {savingItemId === item.id && (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+              )}
+              {canEdit && savingItemId !== item.id && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -163,9 +273,19 @@ export const TaskChecklist = ({ taskId, canEdit }: TaskChecklistProps) => {
             placeholder="Add checklist item..."
             className="h-8 text-sm"
             autoFocus
+            disabled={savingItemId === 'new'}
           />
-          <Button size="sm" className="h-8" onClick={handleAddItem}>
-            Add
+          <Button 
+            size="sm" 
+            className="h-8" 
+            onClick={handleAddItem}
+            disabled={savingItemId === 'new' || !newItemTitle.trim()}
+          >
+            {savingItemId === 'new' ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              'Add'
+            )}
           </Button>
         </div>
       )}

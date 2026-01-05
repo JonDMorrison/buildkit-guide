@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
   SelectContent,
@@ -12,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Upload, FileText, Loader2, CheckCircle } from "lucide-react";
+import { Upload, FileText, Loader2, CheckCircle, AlertCircle, Info } from "lucide-react";
 
 interface DocumentUploadProps {
   projectId: string;
@@ -25,8 +26,11 @@ export const DocumentUpload = ({ projectId, onUploadComplete }: DocumentUploadPr
   const [file, setFile] = useState<File | null>(null);
   const [documentType, setDocumentType] = useState<string>("other");
   const [uploadProgress, setUploadProgress] = useState<string>("");
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUploadError(null);
+    
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
       const maxSize = 20 * 1024 * 1024; // 20MB
@@ -57,6 +61,11 @@ export const DocumentUpload = ({ projectId, onUploadComplete }: DocumentUploadPr
         return;
       }
 
+      // Warn about PDF limitations
+      if (selectedFile.type === "application/pdf") {
+        setUploadError("PDF text extraction is not yet supported. For best results, please upload images (JPG, PNG) of your document pages instead.");
+      }
+
       setFile(selectedFile);
     }
   };
@@ -73,6 +82,7 @@ export const DocumentUpload = ({ projectId, onUploadComplete }: DocumentUploadPr
 
     setUploading(true);
     setUploadProgress("Uploading file...");
+    setUploadError(null);
 
     try {
       // Upload file to storage
@@ -94,7 +104,7 @@ export const DocumentUpload = ({ projectId, onUploadComplete }: DocumentUploadPr
       setUploadProgress("Processing document...");
 
       // Call edge function to process the document
-      const { error: processError } = await supabase.functions.invoke(
+      const { data, error: processError } = await supabase.functions.invoke(
         "process-document",
         {
           body: {
@@ -106,7 +116,37 @@ export const DocumentUpload = ({ projectId, onUploadComplete }: DocumentUploadPr
         }
       );
 
-      if (processError) throw processError;
+      // Check for specific error types
+      if (processError) {
+        throw processError;
+      }
+      
+      if (data && !data.success) {
+        // Handle specific error types from the edge function
+        if (data.unsupported_format) {
+          setUploadError(data.error);
+          setUploadProgress("");
+          toast({
+            title: "Format not supported",
+            description: data.error,
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        if (data.requires_configuration) {
+          setUploadError(data.error);
+          setUploadProgress("");
+          toast({
+            title: "Configuration required",
+            description: data.error,
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        throw new Error(data.error || "Processing failed");
+      }
 
       setUploadProgress("Complete!");
       toast({
@@ -128,9 +168,26 @@ export const DocumentUpload = ({ projectId, onUploadComplete }: DocumentUploadPr
       }
     } catch (error: any) {
       console.error("Error uploading document:", error);
+      
+      // Parse error message from edge function response
+      let errorMessage = error.message || "Failed to upload document. Please try again.";
+      
+      // Try to extract error from function response
+      if (error.context?.body) {
+        try {
+          const body = JSON.parse(error.context.body);
+          if (body.error) {
+            errorMessage = body.error;
+          }
+        } catch {
+          // Use original error message
+        }
+      }
+      
+      setUploadError(errorMessage);
       toast({
         title: "Upload failed",
-        description: error.message || "Failed to upload document. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
       setUploadProgress("");
@@ -139,13 +196,15 @@ export const DocumentUpload = ({ projectId, onUploadComplete }: DocumentUploadPr
     }
   };
 
+  const isPdf = file?.type === "application/pdf";
+
   return (
     <Card className="p-6">
       <div className="space-y-4">
         <div>
           <h3 className="text-lg font-semibold mb-2">Upload Document</h3>
           <p className="text-sm text-muted-foreground">
-            Upload PDFs or images. AI will extract text for searchable Q&A.
+            Upload images for AI text extraction. PDF support coming soon.
           </p>
         </div>
 
@@ -186,6 +245,24 @@ export const DocumentUpload = ({ projectId, onUploadComplete }: DocumentUploadPr
             )}
           </div>
 
+          {/* PDF Warning */}
+          {isPdf && !uploading && (
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                PDF text extraction is not yet available. For best results, convert your PDF pages to images (JPG, PNG) before uploading.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Error Display */}
+          {uploadError && !isPdf && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{uploadError}</AlertDescription>
+            </Alert>
+          )}
+
           {uploadProgress && (
             <div className="flex items-center gap-2 text-sm">
               {uploadProgress === "Complete!" ? (
@@ -199,13 +276,18 @@ export const DocumentUpload = ({ projectId, onUploadComplete }: DocumentUploadPr
 
           <Button
             onClick={handleUpload}
-            disabled={!file || uploading}
+            disabled={!file || uploading || isPdf}
             className="w-full"
           >
             {uploading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Processing...
+              </>
+            ) : isPdf ? (
+              <>
+                <AlertCircle className="h-4 w-4 mr-2" />
+                PDF Not Supported Yet
               </>
             ) : (
               <>
