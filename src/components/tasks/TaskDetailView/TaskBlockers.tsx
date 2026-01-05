@@ -3,8 +3,12 @@ import { TaskDetailData } from './index';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { TradeBadge } from '@/components/TradeBadge';
-import { AlertTriangle, Mail, Plus } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { AlertTriangle, Mail, Plus, Loader2, X } from 'lucide-react';
 import { EscalationEmailModal } from '@/components/ai-assist/EscalationEmailModal';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Blocker {
   id: string;
@@ -27,14 +31,61 @@ export const TaskBlockers = ({
   canEdit,
   onBlockersChanged,
 }: TaskBlockersProps) => {
+  const { toast } = useToast();
+  const { user } = useAuth();
   const [escalationModalOpen, setEscalationModalOpen] = useState(false);
   const [selectedBlockerId, setSelectedBlockerId] = useState<string | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
+  const [newBlockerReason, setNewBlockerReason] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   if (blockers.length === 0 && !canEdit) return null;
 
   const handleEscalate = (blockerId: string) => {
     setSelectedBlockerId(blockerId);
     setEscalationModalOpen(true);
+  };
+
+  const handleAddBlocker = async () => {
+    if (!newBlockerReason.trim() || !user) return;
+
+    setIsSaving(true);
+    try {
+      const { error } = await supabase.from('blockers').insert({
+        task_id: task.id,
+        reason: newBlockerReason.trim(),
+        created_by: user.id,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Blocker added',
+        description: 'The blocker has been logged.',
+      });
+
+      setNewBlockerReason('');
+      setIsAdding(false);
+      onBlockersChanged();
+    } catch (err: any) {
+      toast({
+        title: 'Failed to add blocker',
+        description: err.message || 'An error occurred',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleAddBlocker();
+    } else if (e.key === 'Escape') {
+      setIsAdding(false);
+      setNewBlockerReason('');
+    }
   };
 
   const selectedBlocker = blockers.find(b => b.id === selectedBlockerId);
@@ -51,11 +102,12 @@ export const TaskBlockers = ({
             </Badge>
           )}
         </div>
-        {canEdit && (
+        {canEdit && !isAdding && (
           <Button
             variant="ghost"
             size="sm"
             className="h-7 px-2"
+            onClick={() => setIsAdding(true)}
           >
             <Plus className="h-3.5 w-3.5 mr-1" />
             Add Blocker
@@ -63,7 +115,46 @@ export const TaskBlockers = ({
         )}
       </div>
 
-      {blockers.length === 0 ? (
+      {/* Add blocker form */}
+      {isAdding && (
+        <div className="flex items-center gap-2 p-2 rounded-lg border border-destructive/20 bg-destructive/5">
+          <Input
+            value={newBlockerReason}
+            onChange={(e) => setNewBlockerReason(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Describe the blocker..."
+            className="h-8 text-sm"
+            autoFocus
+            disabled={isSaving}
+          />
+          <Button
+            size="sm"
+            className="h-8"
+            onClick={handleAddBlocker}
+            disabled={isSaving || !newBlockerReason.trim()}
+          >
+            {isSaving ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              'Add'
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => {
+              setIsAdding(false);
+              setNewBlockerReason('');
+            }}
+            disabled={isSaving}
+          >
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      )}
+
+      {blockers.length === 0 && !isAdding ? (
         <div className="rounded-lg bg-muted/50 p-3 text-center">
           <p className="text-sm text-muted-foreground">No active blockers</p>
         </div>
