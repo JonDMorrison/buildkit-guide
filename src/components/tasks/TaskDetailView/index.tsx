@@ -71,6 +71,7 @@ export const TaskDetailView = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
+  const [pendingChanges, setPendingChanges] = useState<Partial<TaskDetailData>>({});
   
   // Get permissions
   const { can, isWorker, isExternalTrade, canRequestManpower } = useAuthRole(task?.project_id);
@@ -182,6 +183,7 @@ export const TaskDetailView = ({
       setTask(null);
       setEditMode(false);
       setError(null);
+      setPendingChanges({});
       return;
     }
     fetchTaskDetails();
@@ -417,9 +419,16 @@ export const TaskDetailView = ({
           task={task}
           editMode={editMode}
           isWorker={!!isWorkerRole}
-          onEditModeChange={setEditMode}
+          pendingChanges={pendingChanges}
+          onEditModeChange={(edit) => {
+            setEditMode(edit);
+            if (!edit) {
+              setPendingChanges({});
+            }
+          }}
           onClose={() => onOpenChange(false)}
           onTaskUpdated={() => {
+            setPendingChanges({});
             fetchTaskDetails();
             onTaskUpdated?.();
           }}

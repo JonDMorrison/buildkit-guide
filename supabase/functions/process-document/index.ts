@@ -26,7 +26,18 @@ serve(async (req) => {
     const openaiKey = Deno.env.get('OPENAI_API_KEY');
 
     if (!openaiKey) {
-      throw new Error('OPENAI_API_KEY not configured');
+      // Return explicit error - do not process without API key
+      return new Response(
+        JSON.stringify({ 
+          error: 'Document processing is not configured. Please contact your administrator to set up the OPENAI_API_KEY.',
+          success: false,
+          requires_configuration: true
+        }),
+        {
+          status: 503,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -43,20 +54,22 @@ serve(async (req) => {
 
     // Process based on file type
     if (fileType.endsWith('.pdf')) {
-      // For PDFs, use OpenAI's vision API with converted images
-      // This is a simplified approach - convert first page to text
-      console.log('Processing PDF file');
+      // PDFs require conversion to images for Vision API processing
+      // This is a known limitation - return explicit error with guidance
+      console.log('PDF file detected - Vision API cannot directly process PDFs');
       
-      // For now, use a simple approach: tell OpenAI to extract text from the PDF
-      // Note: OpenAI doesn't directly support PDFs, so we'd need to convert to images
-      // For MVP, we'll use a text-based approach
-      const formData = new FormData();
-      formData.append('file', fileBlob, fileName);
-      formData.append('model', 'whisper-1'); // This won't work for PDFs
-      
-      // Better approach: Use GPT-4 Vision with base64 encoded images
-      // For now, return a placeholder
-      extractedText = `[PDF Document: ${fileName}]\nThis document requires manual text extraction or OCR processing.`;
+      return new Response(
+        JSON.stringify({ 
+          error: 'PDF processing is not yet supported. Please upload the document as images (JPG, PNG) for text extraction, or manually enter the document contents.',
+          success: false,
+          unsupported_format: true,
+          supported_formats: ['jpg', 'jpeg', 'png', 'webp']
+        }),
+        {
+          status: 422,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
       
     } else if (fileType.endsWith('.jpg') || fileType.endsWith('.jpeg') || 
                fileType.endsWith('.png') || fileType.endsWith('.webp')) {
@@ -108,7 +121,19 @@ serve(async (req) => {
       console.log('Extracted text length:', extractedText.length);
       
     } else {
-      throw new Error(`Unsupported file type: ${fileType}`);
+      // Unsupported file type - return explicit error
+      return new Response(
+        JSON.stringify({ 
+          error: `File type "${fileType.split('.').pop()}" is not supported. Please upload images (JPG, PNG, WebP) for text extraction.`,
+          success: false,
+          unsupported_format: true,
+          supported_formats: ['jpg', 'jpeg', 'png', 'webp']
+        }),
+        {
+          status: 422,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     // Create attachment record
