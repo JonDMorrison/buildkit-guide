@@ -411,7 +411,10 @@ export default function Dashboard() {
               <div className="space-y-3">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="justify-start gap-2 h-auto py-2 px-3 border-border hover:border-primary/50">
+                    <Button
+                      variant="outline"
+                      className="justify-start gap-2 h-auto py-2 px-3 border-border hover:border-primary/50 hover:bg-muted hover:text-foreground data-[state=open]:bg-muted data-[state=open]:text-foreground"
+                    >
                       <Building2 className="h-4 w-4 text-primary" />
                       <div className="text-left">
                         <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Project</p>

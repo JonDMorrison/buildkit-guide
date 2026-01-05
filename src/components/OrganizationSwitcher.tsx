@@ -36,7 +36,11 @@ export const OrganizationSwitcher = memo(function OrganizationSwitcher() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-2 text-muted-foreground hover:text-foreground hover:bg-muted data-[state=open]:bg-muted"
+        >
           <Building2 className="h-4 w-4" />
           <span className="max-w-[150px] truncate">
             {activeOrganization?.name || "Select Organization"}

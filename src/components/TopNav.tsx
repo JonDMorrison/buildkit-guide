@@ -37,7 +37,11 @@ export const TopNav = () => {
           <Button 
             variant="ghost" 
             size={isMobile ? "icon" : "default"}
-            className={isMobile ? "min-h-10 min-w-10" : "min-h-10 gap-2 px-3"}
+            className={
+              isMobile
+                ? "min-h-10 min-w-10 hover:bg-muted"
+                : "min-h-10 gap-2 px-3 hover:bg-muted"
+            }
             onClick={() => setSearchOpen(true)}
           >
             <Search className="h-5 w-5 text-muted-foreground" />
