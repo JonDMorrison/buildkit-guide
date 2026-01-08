@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, CheckCircle, XCircle, PartyPopper } from 'lucide-react';
-import projectPulseLogo from '@/assets/project-pulse-logo.png';
+import projectPulseLogo from '@/assets/build-sense-logo.png';
 
 type InviteStatus = 'loading' | 'valid' | 'expired' | 'already_used' | 'not_found' | 'error';
 

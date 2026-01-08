@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Menu } from "lucide-react";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
-import projectPulseLogo from "@/assets/project-pulse-logo.png";
+import projectPulseLogo from "@/assets/build-sense-logo.png";
 
 interface NavItem {
   label: string;

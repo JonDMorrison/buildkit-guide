@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Brain, CheckCircle, XCircle, User, Lock, ChevronRight } from "lucide-react";
 import aiHero from "@/assets/responsible-ai-hero.jpg";
-import projectPulseLogo from "@/assets/project-pulse-logo.png";
+import projectPulseLogo from "@/assets/build-sense-logo.png";
 import { PublicNav } from "@/components/PublicNav";
 
 export default function ResponsibleAI() {
