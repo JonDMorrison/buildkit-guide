@@ -6,7 +6,7 @@ import {
   TrendingUp, Zap, MapPin, Fingerprint, ClipboardCheck
 } from "lucide-react";
 import featuresHero from "@/assets/features-hero.jpg";
-import projectPulseLogo from "@/assets/build-sense-logo.png";
+import projectPulseLogo from "@/assets/project-pulse-logo.png";
 import { PublicNav } from "@/components/PublicNav";
 
 interface FeatureCardProps {
