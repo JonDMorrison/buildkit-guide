@@ -9,7 +9,7 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import projectPulseLogo from '@/assets/build-sense-logo.png';
+import projectPulseLogo from '@/assets/project-pulse-logo.png';
 
 const signInSchema = z.object({
   email: z.string().trim().email({ message: 'Invalid email address' }),

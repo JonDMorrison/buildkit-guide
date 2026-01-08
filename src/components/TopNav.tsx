@@ -5,7 +5,7 @@ import { UserMenu } from "./UserMenu";
 import { NotificationsDropdown } from "./notifications/NotificationsDropdown";
 import { OrganizationSwitcher } from "./OrganizationSwitcher";
 import { GlobalSearchModal } from "./GlobalSearchModal";
-import projectPulseLogo from "@/assets/build-sense-logo.png";
+import projectPulseLogo from "@/assets/project-pulse-logo.png";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export const TopNav = () => {

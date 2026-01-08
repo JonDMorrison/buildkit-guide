@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Shield, Lock, FileCheck, Eye, Users, FileText, ChevronRight } from "lucide-react";
 import trustHero from "@/assets/trust-integrity-hero.jpg";
-import projectPulseLogo from "@/assets/build-sense-logo.png";
+import projectPulseLogo from "@/assets/project-pulse-logo.png";
 import { PublicNav } from "@/components/PublicNav";
 
 export default function SafetySecurity() {
