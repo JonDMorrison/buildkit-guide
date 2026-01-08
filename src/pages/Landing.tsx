@@ -11,7 +11,7 @@ import iconLookahead from "@/assets/icon-lookahead.png";
 import iconSafety from "@/assets/icon-safety.png";
 import iconManpower from "@/assets/icon-manpower.png";
 import iconAI from "@/assets/icon-ai.png";
-import projectPulseLogo from "@/assets/project-pulse-logo.png";
+import projectPulseLogo from "@/assets/build-sense-logo.png";
 import { PublicNav } from "@/components/PublicNav";
 
 export default function Landing() {

@@ -23,7 +23,7 @@ import {
   AlertCircle,
   RefreshCw
 } from 'lucide-react';
-import projectPulseLogo from '@/assets/project-pulse-logo.png';
+import projectPulseLogo from '@/assets/build-sense-logo.png';
 
 interface WelcomeWizardProps {
   onComplete: () => void;
