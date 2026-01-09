@@ -6,6 +6,7 @@ export { MyDayWidget } from './MyDayWidget';
 export { SafetyWidget } from './SafetyWidget';
 export { BlockersWidget } from './BlockersWidget';
 export { AIWidget } from './AIWidget';
+export { HoursTrackingWidget } from './HoursTrackingWidget';
 export { DailySnapshotStrip } from './DailySnapshotStrip';
 export { SnapshotDetailModal } from './SnapshotDetailModal';
 export { ActiveTradesModal } from './ActiveTradesModal';
