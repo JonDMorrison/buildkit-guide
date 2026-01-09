@@ -1,45 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from '@/hooks/useOrganization';
+import type { 
+  HoursTrackingData, 
+  TradeHours, 
+  TaskHours, 
+  ScopeItemHours 
+} from '@/types/hours-tracking';
 
-export interface HoursTrackingData {
-  totalBudgetedHours: number;
-  totalActualHours: number;
-  variance: number;
-  percentComplete: number;
-  byTrade: TradeHours[];
-  byTask: TaskHours[];
-  byScopeItem: ScopeItemHours[];
-}
-
-export interface TradeHours {
-  tradeId: string;
-  tradeName: string;
-  budgeted: number;
-  actual: number;
-  variance: number;
-  percentComplete: number;
-}
-
-export interface TaskHours {
-  taskId: string;
-  taskName: string;
-  budgeted: number;
-  actual: number;
-  variance: number;
-  percentComplete: number;
-  status: string;
-}
-
-export interface ScopeItemHours {
-  id: string;
-  name: string;
-  phase: string | null;
-  budgeted: number;
-  actual: number;
-  variance: number;
-  percentComplete: number;
-}
+// Re-export types for backward compatibility
+export type { HoursTrackingData, TradeHours, TaskHours, ScopeItemHours };
 
 export function useHoursTracking(projectId?: string) {
   const { activeOrganization } = useOrganization();
@@ -97,7 +67,8 @@ export function useHoursTracking(projectId?: string) {
       const { data: tasks, error: tasksError } = await tasksQuery;
       
       if (tasksError) {
-        console.error('Error fetching tasks:', tasksError);
+        console.error('Error fetching tasks for hours tracking:', tasksError);
+        throw new Error(`Failed to fetch tasks: ${tasksError.message}`);
       }
 
       // Fetch time entries
@@ -114,7 +85,8 @@ export function useHoursTracking(projectId?: string) {
       const { data: entries, error: entriesError } = await entriesQuery;
       
       if (entriesError) {
-        console.error('Error fetching time entries:', entriesError);
+        console.error('Error fetching time entries for hours tracking:', entriesError);
+        throw new Error(`Failed to fetch time entries: ${entriesError.message}`);
       }
 
       // Fetch scope items

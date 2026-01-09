@@ -10,7 +10,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { 
   Download, 
-  ExternalLink, 
   FileText, 
   User, 
   Calendar, 
@@ -19,14 +18,13 @@ import {
   RotateCw,
   Maximize2,
   History,
-  ChevronLeft,
-  ChevronRight
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
+import type { Drawing, DrawingRevision } from "@/types/drawings";
 
 interface DrawingViewerProps {
-  drawing: any;
+  drawing: Drawing;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUploadRevision?: () => void;
@@ -40,7 +38,7 @@ export const DrawingViewer = ({
 }: DrawingViewerProps) => {
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
-  const [revisionHistory, setRevisionHistory] = useState<any[]>([]);
+  const [revisionHistory, setRevisionHistory] = useState<DrawingRevision[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);

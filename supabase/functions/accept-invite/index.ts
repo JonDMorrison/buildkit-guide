@@ -1,16 +1,29 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface AcceptInviteRequest {
-  token: string;
-  password: string;
-  fullName: string;
-}
+// Structured logging helper
+const log = (level: 'info' | 'warn' | 'error', message: string, data?: Record<string, unknown>) => {
+  console.log(JSON.stringify({
+    level,
+    message,
+    timestamp: new Date().toISOString(),
+    function: 'accept-invite',
+    ...data
+  }));
+};
+
+// Zod schema for input validation
+const AcceptInviteSchema = z.object({
+  token: z.string().uuid("Invalid invitation token format"),
+  password: z.string().min(6, "Password must be at least 6 characters").max(100, "Password too long"),
+  fullName: z.string().min(1).max(100).optional(),
+});
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -23,15 +36,18 @@ serve(async (req: Request) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { token, password, fullName }: AcceptInviteRequest = await req.json();
-
-    if (!token || !password) {
-      throw new Error("Token and password are required");
+    // Validate input with Zod
+    const rawBody = await req.json();
+    const parseResult = AcceptInviteSchema.safeParse(rawBody);
+    
+    if (!parseResult.success) {
+      const errorMessage = parseResult.error.errors.map(e => e.message).join(", ");
+      log('warn', 'Validation failed', { errors: parseResult.error.errors });
+      throw new Error(errorMessage);
     }
-
-    if (password.length < 6) {
-      throw new Error("Password must be at least 6 characters");
-    }
+    
+    const { token, password, fullName } = parseResult.data;
+    log('info', 'Processing invite acceptance', { tokenPrefix: token.substring(0, 8) });
 
     // Get the invitation with retry for race conditions
     let invitation = null;
@@ -148,17 +164,39 @@ serve(async (req: Request) => {
 
     const newUserId = authData.user.id;
 
-    // Wait a moment for the profile trigger to create the profile
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Poll for profile creation instead of fixed delay (race condition fix)
+    let profileCreated = false;
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("id", newUserId)
+        .maybeSingle();
+      
+      if (profile) {
+        profileCreated = true;
+        break;
+      }
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+
+    if (!profileCreated) {
+      log('error', 'Profile creation timeout', { userId: newUserId });
+      // Don't fail - profile trigger may still create it, but log the issue
+    }
 
     // Update profile with full name
-    await supabase
+    const { error: profileUpdateError } = await supabase
       .from("profiles")
       .update({ 
         full_name: fullName || invitation.full_name,
         has_onboarded: false,
       })
       .eq("id", newUserId);
+    
+    if (profileUpdateError) {
+      log('warn', 'Failed to update profile', { error: profileUpdateError.message });
+    }
 
     // Add to organization if specified
     if (invitation.organization_id) {
@@ -200,13 +238,17 @@ serve(async (req: Request) => {
       })
       .eq("id", invitation.id);
 
-    console.log(`User ${invitation.email} successfully created and added to org`);
+    log('info', 'User successfully created and added to org', { 
+      email: invitation.email,
+      hasOrg: !!invitation.organization_id,
+      hasProject: !!invitation.project_id
+    });
 
     return new Response(
       JSON.stringify({
         success: true,
         message: "Account created successfully",
-        userId: newUserId,
+        // Don't expose userId in response for security
       }),
       {
         status: 200,
