@@ -10,6 +10,8 @@ const corsHeaders = {
 interface InviteRequest {
   email: string;
   fullName?: string;
+  projectId?: string;
+  role?: string;
 }
 
 serve(async (req: Request) => {
@@ -46,7 +48,7 @@ serve(async (req: Request) => {
 
     const inviterName = inviterProfile?.full_name || user.email || "A team member";
 
-    const { email, fullName }: InviteRequest = await req.json();
+    const { email, fullName, projectId, role }: InviteRequest = await req.json();
 
     if (!email || !email.includes("@")) {
       throw new Error("Invalid email address");
@@ -69,13 +71,27 @@ serve(async (req: Request) => {
       );
     }
 
-    // Create invitation record
+    // Get inviter's organization membership
+    const { data: inviterMembership } = await supabase
+      .from("organization_memberships")
+      .select("organization_id")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .limit(1)
+      .single();
+
+    const organizationId = inviterMembership?.organization_id || null;
+
+    // Create invitation record with organization and project context
     const { data: invitation, error: inviteError } = await supabase
       .from("invitations")
       .insert({
         email: email.toLowerCase().trim(),
         full_name: fullName || null,
         invited_by: user.id,
+        organization_id: organizationId,
+        project_id: projectId || null,
+        role: role || "internal_worker",
       })
       .select()
       .single();
@@ -84,14 +100,10 @@ serve(async (req: Request) => {
       throw inviteError;
     }
 
-    // Build the invite link using the app URL
-    const appUrl = supabaseUrl.includes('supabase.co') 
-      ? supabaseUrl.replace('.supabase.co', '.lovable.app').replace('https://', 'https://')
-      : Deno.env.get("APP_URL") || "https://build-sense.lovable.app";
-    
-    // For now, construct based on pattern - in production you'd want to configure this
-    const baseUrl = "https://build-sense.lovable.app"; // Update this to your actual app URL
-    const inviteLink = `${baseUrl}/accept-invite?token=${invitation.token}`;
+    // Build the invite link dynamically from request origin or env var
+    const origin = req.headers.get("origin");
+    const appUrl = Deno.env.get("APP_URL") || origin || "https://project-pulse.lovable.app";
+    const inviteLink = `${appUrl}/accept-invite?token=${invitation.token}`;
 
     console.log(`Invitation created for ${email}`);
     console.log(`Invite link: ${inviteLink}`);
@@ -138,7 +150,7 @@ serve(async (req: Request) => {
             
             <p style="font-size: 12px; color: #999; text-align: center;">
               Project Pulse - Keep your job site moving<br>
-              <a href="${baseUrl}" style="color: #E53935;">projectpulse.app</a>
+              <a href="${appUrl}" style="color: #E53935;">projectpulse.app</a>
             </p>
           </body>
           </html>

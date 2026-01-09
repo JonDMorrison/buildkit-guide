@@ -844,6 +844,9 @@ export type Database = {
           full_name: string | null
           id: string
           invited_by: string
+          organization_id: string | null
+          project_id: string | null
+          role: string | null
           status: string
           token: string
           updated_at: string
@@ -856,6 +859,9 @@ export type Database = {
           full_name?: string | null
           id?: string
           invited_by: string
+          organization_id?: string | null
+          project_id?: string | null
+          role?: string | null
           status?: string
           token?: string
           updated_at?: string
@@ -868,11 +874,29 @@ export type Database = {
           full_name?: string | null
           id?: string
           invited_by?: string
+          organization_id?: string | null
+          project_id?: string | null
+          role?: string | null
           status?: string
           token?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "invitations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invitations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       job_sites: {
         Row: {
