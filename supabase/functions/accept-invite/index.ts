@@ -33,23 +33,35 @@ serve(async (req: Request) => {
       throw new Error("Password must be at least 6 characters");
     }
 
-    // Get the invitation
-    const { data: invitation, error: inviteError } = await supabase
-      .from("invitations")
-      .select("*")
-      .eq("token", token)
-      .single();
+    // Get the invitation with retry for race conditions
+    let invitation = null;
+    let inviteError = null;
+    
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const result = await supabase
+        .from("invitations")
+        .select("*")
+        .eq("token", token)
+        .eq("status", "pending")
+        .single();
+      
+      if (!result.error) {
+        invitation = result.data;
+        break;
+      }
+      inviteError = result.error;
+      
+      // Wait briefly before retry
+      if (attempt < 2) await new Promise(r => setTimeout(r, 100));
+    }
 
     if (inviteError || !invitation) {
-      throw new Error("Invitation not found");
+      throw new Error("Invitation not found or already used");
     }
 
-    if (invitation.status === "accepted") {
-      throw new Error("Invitation has already been used");
-    }
-
+    // These checks are now handled by the query filter above
     if (new Date(invitation.expires_at) < new Date()) {
-      throw new Error("Invitation has expired");
+      throw new Error("Invitation has expired. Please request a new invite.");
     }
 
     // Check if user already exists

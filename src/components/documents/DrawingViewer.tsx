@@ -47,14 +47,19 @@ export const DrawingViewer = ({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const isImage = drawing.file_type.startsWith('image/');
-  const isPDF = drawing.file_type === 'application/pdf';
+  // Safely check file type with null guard
+  const isImage = drawing?.file_type?.startsWith('image/') ?? false;
+  const isPDF = drawing?.file_type === 'application/pdf';
 
   useEffect(() => {
-    if (drawing.id) {
+    if (open && drawing?.id) {
       fetchRevisionHistory();
+      // Reset view state when opening new drawing
+      setZoom(1);
+      setRotation(0);
+      setPosition({ x: 0, y: 0 });
     }
-  }, [drawing.id]);
+  }, [drawing?.id, open]);
 
   const fetchRevisionHistory = async () => {
     // Find all versions of this drawing by sheet number
@@ -99,6 +104,47 @@ export const DrawingViewer = ({
   };
 
   const handleMouseUp = () => setIsDragging(false);
+
+  // Touch support for mobile
+  const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const distance = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      setLastTouchDistance(distance);
+    } else if (e.touches.length === 1 && zoom > 1) {
+      setIsDragging(true);
+      setDragStart({ 
+        x: e.touches[0].clientX - position.x, 
+        y: e.touches[0].clientY - position.y 
+      });
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && lastTouchDistance !== null) {
+      const distance = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const scale = distance / lastTouchDistance;
+      setZoom(prev => Math.min(Math.max(prev * scale, 0.25), 4));
+      setLastTouchDistance(distance);
+    } else if (e.touches.length === 1 && isDragging) {
+      setPosition({
+        x: e.touches[0].clientX - dragStart.x,
+        y: e.touches[0].clientY - dragStart.y,
+      });
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+    setLastTouchDistance(null);
+  };
 
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
@@ -247,11 +293,14 @@ export const DrawingViewer = ({
             {/* Drawing Canvas */}
             <div 
               ref={containerRef}
-              className="flex-1 overflow-hidden bg-muted flex items-center justify-center"
+              className="flex-1 overflow-hidden bg-muted flex items-center justify-center touch-none"
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
               onWheel={handleWheel}
               style={{ cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default' }}
             >

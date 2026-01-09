@@ -59,7 +59,27 @@ export function useHoursTracking(projectId?: string) {
         };
       }
 
-      // Fetch tasks with budgeted hours
+      // Fetch tasks with budgeted hours - filter for org's projects
+      const { data: orgProjects } = await supabase
+        .from('projects')
+        .select('id')
+        .eq('organization_id', activeOrganization.id)
+        .eq('is_deleted', false);
+
+      const projectIds = (orgProjects || []).map(p => p.id);
+      
+      if (projectIds.length === 0) {
+        return {
+          totalBudgetedHours: 0,
+          totalActualHours: 0,
+          variance: 0,
+          percentComplete: 0,
+          byTrade: [],
+          byTask: [],
+          byScopeItem: [],
+        };
+      }
+
       let tasksQuery = supabase
         .from('tasks')
         .select(`
@@ -71,13 +91,14 @@ export function useHoursTracking(projectId?: string) {
           assigned_trade_id,
           trades(id, name)
         `)
-        .eq('is_deleted', false);
+        .eq('is_deleted', false)
+        .in('project_id', projectId ? [projectId] : projectIds);
 
-      if (projectId) {
-        tasksQuery = tasksQuery.eq('project_id', projectId);
+      const { data: tasks, error: tasksError } = await tasksQuery;
+      
+      if (tasksError) {
+        console.error('Error fetching tasks:', tasksError);
       }
-
-      const { data: tasks } = await tasksQuery;
 
       // Fetch time entries
       let entriesQuery = supabase
@@ -90,7 +111,11 @@ export function useHoursTracking(projectId?: string) {
         entriesQuery = entriesQuery.eq('project_id', projectId);
       }
 
-      const { data: entries } = await entriesQuery;
+      const { data: entries, error: entriesError } = await entriesQuery;
+      
+      if (entriesError) {
+        console.error('Error fetching time entries:', entriesError);
+      }
 
       // Fetch scope items
       let scopeQuery = supabase
