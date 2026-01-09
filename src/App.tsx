@@ -45,6 +45,8 @@ const TimeTrackingNotEnabled = lazy(() => import("./pages/TimeTrackingNotEnabled
 const TimeRequestsReview = lazy(() => import("./pages/TimeRequestsReview"));
 const TimesheetPeriods = lazy(() => import("./pages/TimesheetPeriods"));
 const TimeDiagnostics = lazy(() => import("./pages/TimeDiagnostics"));
+const Drawings = lazy(() => import("./pages/Drawings"));
+const HoursTracking = lazy(() => import("./pages/HoursTracking"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -316,6 +318,22 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <TimeDiagnostics />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/drawings"
+                  element={
+                    <ProtectedRoute>
+                      <Drawings />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/hours-tracking"
+                  element={
+                    <ProtectedRoute>
+                      <HoursTracking />
                     </ProtectedRoute>
                   }
                 />

@@ -1,0 +1,320 @@
+import { useState, useRef, useEffect } from "react";
+import { formatDistanceToNow } from "date-fns";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { 
+  Download, 
+  ExternalLink, 
+  FileText, 
+  User, 
+  Calendar, 
+  ZoomIn, 
+  ZoomOut, 
+  RotateCw,
+  Maximize2,
+  History,
+  ChevronLeft,
+  ChevronRight
+} from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { supabase } from "@/integrations/supabase/client";
+
+interface DrawingViewerProps {
+  drawing: any;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onUploadRevision?: () => void;
+}
+
+export const DrawingViewer = ({ 
+  drawing, 
+  open, 
+  onOpenChange,
+  onUploadRevision
+}: DrawingViewerProps) => {
+  const [zoom, setZoom] = useState(1);
+  const [rotation, setRotation] = useState(0);
+  const [revisionHistory, setRevisionHistory] = useState<any[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const isImage = drawing.file_type.startsWith('image/');
+  const isPDF = drawing.file_type === 'application/pdf';
+
+  useEffect(() => {
+    if (drawing.id) {
+      fetchRevisionHistory();
+    }
+  }, [drawing.id]);
+
+  const fetchRevisionHistory = async () => {
+    // Find all versions of this drawing by sheet number
+    if (!drawing.sheet_number) {
+      setRevisionHistory([drawing]);
+      return;
+    }
+
+    const { data } = await supabase
+      .from('attachments')
+      .select('*, profiles(full_name)')
+      .eq('project_id', drawing.project_id)
+      .eq('sheet_number', drawing.sheet_number)
+      .order('revision_date', { ascending: false });
+
+    setRevisionHistory(data || [drawing]);
+  };
+
+  const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.25, 4));
+  const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.25, 0.25));
+  const handleRotate = () => setRotation(prev => (prev + 90) % 360);
+  const handleReset = () => {
+    setZoom(1);
+    setRotation(0);
+    setPosition({ x: 0, y: 0 });
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (zoom > 1) {
+      setIsDragging(true);
+      setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDragging) {
+      setPosition({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y,
+      });
+    }
+  };
+
+  const handleMouseUp = () => setIsDragging(false);
+
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    if (e.deltaY < 0) {
+      handleZoomIn();
+    } else {
+      handleZoomOut();
+    }
+  };
+
+  const handleDownload = () => {
+    window.open(drawing.file_url, '_blank');
+  };
+
+  const handleFullScreen = () => {
+    if (containerRef.current) {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        containerRef.current.requestFullscreen();
+      }
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-6xl h-[95vh] flex flex-col p-0">
+        <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <DialogTitle className="text-xl mb-2">{drawing.file_name}</DialogTitle>
+              <div className="flex items-center gap-2 flex-wrap">
+                {drawing.sheet_number && (
+                  <Badge variant="secondary" className="font-mono">
+                    {drawing.sheet_number}
+                  </Badge>
+                )}
+                <Badge variant="outline">
+                  Rev {drawing.revision_number || 'A'}
+                </Badge>
+                {revisionHistory.length > 1 && (
+                  <Badge 
+                    variant="secondary" 
+                    className="cursor-pointer hover:bg-secondary/80"
+                    onClick={() => setShowHistory(!showHistory)}
+                  >
+                    <History className="h-3 w-3 mr-1" />
+                    {revisionHistory.length} versions
+                  </Badge>
+                )}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              {onUploadRevision && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onUploadRevision}
+                >
+                  Upload Revision
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownload}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleFullScreen}
+              >
+                <Maximize2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <div className="flex-1 flex overflow-hidden min-h-0">
+          {/* Revision History Sidebar */}
+          {showHistory && (
+            <div className="w-64 border-r bg-muted/30 overflow-hidden flex flex-col">
+              <div className="p-3 border-b">
+                <h4 className="font-semibold text-sm">Revision History</h4>
+              </div>
+              <ScrollArea className="flex-1">
+                <div className="p-2 space-y-2">
+                  {revisionHistory.map((rev, idx) => (
+                    <div 
+                      key={rev.id}
+                      className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                        rev.id === drawing.id 
+                          ? 'bg-primary/10 border-primary' 
+                          : 'bg-card hover:bg-accent'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-mono font-semibold">
+                          Rev {rev.revision_number || 'A'}
+                        </span>
+                        {idx === 0 && (
+                          <Badge variant="secondary" className="text-xs">Latest</Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {rev.profiles?.full_name || 'Unknown'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {rev.revision_date 
+                          ? formatDistanceToNow(new Date(rev.revision_date), { addSuffix: true })
+                          : formatDistanceToNow(new Date(rev.created_at), { addSuffix: true })
+                        }
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+          )}
+
+          {/* Main Viewer */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Zoom Controls */}
+            <div className="flex items-center justify-center gap-2 p-2 border-b bg-muted/30">
+              <Button variant="ghost" size="icon" onClick={handleZoomOut}>
+                <ZoomOut className="h-4 w-4" />
+              </Button>
+              <span className="text-sm font-medium w-16 text-center">
+                {Math.round(zoom * 100)}%
+              </span>
+              <Button variant="ghost" size="icon" onClick={handleZoomIn}>
+                <ZoomIn className="h-4 w-4" />
+              </Button>
+              <div className="w-px h-6 bg-border mx-2" />
+              <Button variant="ghost" size="icon" onClick={handleRotate}>
+                <RotateCw className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={handleReset}>
+                Reset
+              </Button>
+            </div>
+
+            {/* Drawing Canvas */}
+            <div 
+              ref={containerRef}
+              className="flex-1 overflow-hidden bg-muted flex items-center justify-center"
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onWheel={handleWheel}
+              style={{ cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default' }}
+            >
+              {isImage ? (
+                <img 
+                  src={drawing.file_url} 
+                  alt={drawing.file_name}
+                  className="max-w-none select-none"
+                  draggable={false}
+                  style={{
+                    transform: `translate(${position.x}px, ${position.y}px) scale(${zoom}) rotate(${rotation}deg)`,
+                    transformOrigin: 'center center',
+                    transition: isDragging ? 'none' : 'transform 0.2s ease',
+                  }}
+                />
+              ) : isPDF ? (
+                <iframe 
+                  src={drawing.file_url}
+                  className="w-full h-full"
+                  title={drawing.file_name}
+                  style={{
+                    transform: `scale(${zoom})`,
+                    transformOrigin: 'center center',
+                  }}
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center p-8 text-center">
+                  <FileText className="h-16 w-16 text-muted-foreground mb-4" />
+                  <h3 className="font-semibold mb-2">Preview not available</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    This file type cannot be previewed.
+                  </p>
+                  <Button onClick={handleDownload}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download File
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Metadata Footer */}
+        <div className="px-6 py-3 border-t bg-muted/30 flex-shrink-0">
+          <div className="flex items-center gap-6 text-sm">
+            <div className="flex items-center gap-2">
+              <User className="h-4 w-4 text-muted-foreground" />
+              <span>{drawing.profiles?.full_name || 'Unknown'}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <span>
+                {formatDistanceToNow(new Date(drawing.created_at), { addSuffix: true })}
+              </span>
+            </div>
+            {drawing.file_size && (
+              <span className="text-muted-foreground">
+                {(drawing.file_size / 1024 / 1024).toFixed(2)} MB
+              </span>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};

@@ -1,0 +1,394 @@
+import { useState, useRef, useEffect } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { Upload, FileText, Loader2, X, Image, Layers } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface DrawingUploadModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  projectId?: string;
+  onUploadComplete?: () => void;
+  existingDrawing?: any; // For revision uploads
+}
+
+export const DrawingUploadModal = ({ 
+  open, 
+  onOpenChange, 
+  projectId,
+  onUploadComplete,
+  existingDrawing
+}: DrawingUploadModalProps) => {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const [uploading, setUploading] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [title, setTitle] = useState("");
+  const [sheetNumber, setSheetNumber] = useState("");
+  const [revisionNumber, setRevisionNumber] = useState("A");
+  const [drawingType, setDrawingType] = useState<string>("plan");
+  const [dragActive, setDragActive] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(projectId || "");
+  const [projects, setProjects] = useState<any[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      const { data } = await supabase
+        .from('projects')
+        .select('id, name')
+        .eq('is_deleted', false)
+        .order('name');
+      setProjects(data || []);
+      if (!projectId && data && data.length > 0) {
+        setSelectedProjectId(data[0].id);
+      }
+    };
+    fetchProjects();
+  }, [projectId]);
+
+  useEffect(() => {
+    if (existingDrawing) {
+      setTitle(existingDrawing.file_name);
+      setSheetNumber(existingDrawing.sheet_number || "");
+      // Increment revision letter
+      const currentRev = existingDrawing.revision_number || "A";
+      const nextRev = String.fromCharCode(currentRev.charCodeAt(0) + 1);
+      setRevisionNumber(nextRev);
+      setDrawingType(existingDrawing.document_type || "plan");
+      setSelectedProjectId(existingDrawing.project_id);
+    }
+  }, [existingDrawing]);
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileSelect(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleFileSelect = (selectedFile: File) => {
+    const maxSize = 50 * 1024 * 1024; // 50MB for drawings
+
+    if (selectedFile.size > maxSize) {
+      toast({
+        title: "File too large",
+        description: "Please select a file smaller than 50MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const validTypes = [
+      "application/pdf",
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/webp",
+      "image/tiff",
+    ];
+
+    if (!validTypes.includes(selectedFile.type)) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload a PDF, image (JPG, PNG, WEBP, TIFF).",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setFile(selectedFile);
+    if (!title) {
+      setTitle(selectedFile.name.replace(/\.[^/.]+$/, ""));
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      handleFileSelect(e.target.files[0]);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!file || !selectedProjectId) {
+      toast({
+        title: "Missing information",
+        description: "Please select a file and project.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!user) {
+      toast({
+        title: "Not authenticated",
+        description: "Please sign in to upload drawings.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `${selectedProjectId}/drawings/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("project-documents")
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from("project-documents")
+        .getPublicUrl(filePath);
+
+      const { error: dbError } = await supabase
+        .from('attachments')
+        .insert({
+          project_id: selectedProjectId,
+          file_name: title || file.name,
+          file_type: file.type,
+          file_url: urlData.publicUrl,
+          file_size: file.size,
+          document_type: drawingType,
+          uploaded_by: user.id,
+          sheet_number: sheetNumber || null,
+          revision_number: revisionNumber,
+          revision_date: new Date().toISOString(),
+          previous_revision_id: existingDrawing?.id || null,
+        });
+
+      if (dbError) throw dbError;
+
+      toast({
+        title: "Drawing uploaded",
+        description: `${title || file.name} (Rev ${revisionNumber}) has been uploaded.`,
+      });
+
+      // Reset form
+      setFile(null);
+      setTitle("");
+      setSheetNumber("");
+      setRevisionNumber("A");
+      setDrawingType("plan");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+
+      onOpenChange(false);
+      if (onUploadComplete) {
+        onUploadComplete();
+      }
+    } catch (error: any) {
+      console.error("Error uploading drawing:", error);
+      toast({
+        title: "Upload failed",
+        description: error.message || "Failed to upload drawing. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Layers className="h-5 w-5" />
+            {existingDrawing ? "Upload New Revision" : "Upload Drawing"}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4">
+          {/* Project Selector */}
+          {!projectId && !existingDrawing && (
+            <div>
+              <Label htmlFor="project">Project</Label>
+              <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select project" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projects.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Drag & Drop Area */}
+          <div
+            className={cn(
+              "border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors",
+              dragActive ? "border-primary bg-accent" : "border-border",
+              uploading && "opacity-50 pointer-events-none"
+            )}
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png,.webp,.tiff,.tif"
+              onChange={handleFileChange}
+              disabled={uploading}
+              className="hidden"
+            />
+            
+            {file ? (
+              <div className="flex items-center justify-center gap-3">
+                {file.type.startsWith('image/') ? (
+                  <Image className="h-8 w-8 text-primary" />
+                ) : (
+                  <FileText className="h-8 w-8 text-primary" />
+                )}
+                <div className="text-left">
+                  <p className="font-medium">{file.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {(file.size / 1024 / 1024).toFixed(2)} MB
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setFile(null);
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <>
+                <Upload className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
+                <p className="text-sm font-medium mb-1">
+                  Drag & drop your drawing here
+                </p>
+                <p className="text-xs text-muted-foreground mb-3">
+                  or click to browse
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  PDF or images (JPG, PNG, TIFF) • Max 50MB
+                </p>
+              </>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            {/* Sheet Number */}
+            <div>
+              <Label htmlFor="sheet-number">Sheet Number</Label>
+              <Input
+                id="sheet-number"
+                value={sheetNumber}
+                onChange={(e) => setSheetNumber(e.target.value)}
+                placeholder="e.g. A-101"
+                disabled={uploading}
+              />
+            </div>
+
+            {/* Revision */}
+            <div>
+              <Label htmlFor="revision">Revision</Label>
+              <Input
+                id="revision"
+                value={revisionNumber}
+                onChange={(e) => setRevisionNumber(e.target.value.toUpperCase())}
+                placeholder="A"
+                maxLength={3}
+                disabled={uploading}
+              />
+            </div>
+          </div>
+
+          {/* Title Field */}
+          <div>
+            <Label htmlFor="title">Drawing Title</Label>
+            <Input
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Enter drawing title"
+              disabled={uploading}
+            />
+          </div>
+
+          {/* Drawing Type */}
+          <div>
+            <Label htmlFor="drawing-type">Drawing Type</Label>
+            <Select value={drawingType} onValueChange={setDrawingType}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="plan">Floor Plan</SelectItem>
+                <SelectItem value="drawing">General Drawing</SelectItem>
+                <SelectItem value="blueprint">Blueprint</SelectItem>
+                <SelectItem value="specification">Specification</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Button
+            onClick={handleUpload}
+            disabled={!file || !selectedProjectId || uploading}
+            className="w-full"
+          >
+            {uploading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Uploading...
+              </>
+            ) : (
+              <>
+                <Upload className="h-4 w-4 mr-2" />
+                Upload Drawing
+              </>
+            )}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
