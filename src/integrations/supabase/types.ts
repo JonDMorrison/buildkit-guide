@@ -114,8 +114,12 @@ export type Database = {
           file_type: string
           file_url: string
           id: string
+          previous_revision_id: string | null
           project_id: string
+          revision_date: string | null
+          revision_number: string | null
           safety_form_id: string | null
+          sheet_number: string | null
           task_id: string | null
           uploaded_by: string
         }
@@ -129,8 +133,12 @@ export type Database = {
           file_type: string
           file_url: string
           id?: string
+          previous_revision_id?: string | null
           project_id: string
+          revision_date?: string | null
+          revision_number?: string | null
           safety_form_id?: string | null
+          sheet_number?: string | null
           task_id?: string | null
           uploaded_by: string
         }
@@ -144,8 +152,12 @@ export type Database = {
           file_type?: string
           file_url?: string
           id?: string
+          previous_revision_id?: string | null
           project_id?: string
+          revision_date?: string | null
+          revision_number?: string | null
           safety_form_id?: string | null
+          sheet_number?: string | null
           task_id?: string | null
           uploaded_by?: string
         }
@@ -155,6 +167,13 @@ export type Database = {
             columns: ["deficiency_id"]
             isOneToOne: false
             referencedRelation: "deficiencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attachments_previous_revision_id_fkey"
+            columns: ["previous_revision_id"]
+            isOneToOne: false
+            referencedRelation: "attachments"
             referencedColumns: ["id"]
           },
           {
@@ -1886,6 +1905,63 @@ export type Database = {
           },
         ]
       }
+      scope_items: {
+        Row: {
+          budgeted_hours: number
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          phase: string | null
+          project_id: string
+          sort_order: number | null
+          trade_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          budgeted_hours?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          phase?: string | null
+          project_id: string
+          sort_order?: number | null
+          trade_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          budgeted_hours?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          phase?: string | null
+          project_id?: string
+          sort_order?: number | null
+          trade_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scope_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scope_items_trade_id_fkey"
+            columns: ["trade_id"]
+            isOneToOne: false
+            referencedRelation: "trades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_assignments: {
         Row: {
           assigned_at: string
@@ -2009,6 +2085,7 @@ export type Database = {
       tasks: {
         Row: {
           assigned_trade_id: string | null
+          budgeted_hours: number | null
           created_at: string
           created_by: string
           description: string | null
@@ -2030,6 +2107,7 @@ export type Database = {
         }
         Insert: {
           assigned_trade_id?: string | null
+          budgeted_hours?: number | null
           created_at?: string
           created_by: string
           description?: string | null
@@ -2051,6 +2129,7 @@ export type Database = {
         }
         Update: {
           assigned_trade_id?: string | null
+          budgeted_hours?: number | null
           created_at?: string
           created_by?: string
           description?: string | null
@@ -2235,8 +2314,10 @@ export type Database = {
           organization_id: string
           project_id: string
           project_timezone: string
+          scope_item_id: string | null
           source: string
           status: string
+          task_id: string | null
           user_id: string
         }
         Insert: {
@@ -2259,8 +2340,10 @@ export type Database = {
           organization_id: string
           project_id: string
           project_timezone: string
+          scope_item_id?: string | null
           source?: string
           status?: string
+          task_id?: string | null
           user_id: string
         }
         Update: {
@@ -2283,8 +2366,10 @@ export type Database = {
           organization_id?: string
           project_id?: string
           project_timezone?: string
+          scope_item_id?: string | null
           source?: string
           status?: string
+          task_id?: string | null
           user_id?: string
         }
         Relationships: [
@@ -2307,6 +2392,20 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_scope_item_id_fkey"
+            columns: ["scope_item_id"]
+            isOneToOne: false
+            referencedRelation: "scope_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
         ]
