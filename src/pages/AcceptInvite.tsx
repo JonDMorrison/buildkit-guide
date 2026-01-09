@@ -96,36 +96,47 @@ export default function AcceptInvite() {
       return;
     }
 
-    if (!inviteData) return;
+    if (!inviteData || !token) return;
 
     setIsSubmitting(true);
 
     try {
-      // Create the user account
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: inviteData.email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/welcome`,
-          data: {
-            full_name: fullName || inviteData.full_name,
-          },
-        },
+      // Call edge function to create account and add to org/project
+      const { data, error } = await supabase.functions.invoke('accept-invite', {
+        body: { 
+          token,
+          password,
+          fullName: fullName || inviteData.full_name,
+        }
       });
 
-      if (signUpError) throw signUpError;
+      if (error) throw error;
 
-      // Update the invitation status
-      const { error: updateError } = await supabase
-        .from('invitations')
-        .update({ 
-          status: 'accepted',
-          accepted_at: new Date().toISOString(),
-        })
-        .eq('id', inviteData.id);
+      if (data.error) {
+        throw new Error(data.error);
+      }
 
-      if (updateError) {
-        console.error('Error updating invitation:', updateError);
+      // If existing user, redirect to login
+      if (data.existingUser) {
+        toast({
+          title: 'Welcome back!',
+          description: data.message,
+        });
+        setTimeout(() => {
+          navigate('/auth');
+        }, 2000);
+        return;
+      }
+
+      // Sign in the new user
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: inviteData.email,
+        password,
+      });
+
+      if (signInError) {
+        console.error('Auto sign-in failed:', signInError);
+        // Still show success, they can sign in manually
       }
 
       setShowSuccess(true);
