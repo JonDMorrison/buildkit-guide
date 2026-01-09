@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthRole } from "@/hooks/useAuthRole";
 import { Plus, Building2 } from "lucide-react";
+import type { ProjectProgress } from "@/types/hours-tracking";
 
 interface Project {
   id: string;
@@ -33,63 +34,122 @@ const Index = () => {
 
   const fetchProjects = async () => {
     try {
-      const { data: projectsData, error: projectsError } = await supabase
-        .from('projects')
+      // Use the new view to eliminate N+1 queries
+      const { data: projectsWithProgress, error: progressError } = await supabase
+        .from('v_project_progress')
         .select('*')
-        .eq('is_deleted', false)
-        .order('created_at', { ascending: false });
+        .order('name');
 
-      if (projectsError) throw projectsError;
+      if (progressError) {
+        console.error('View query failed, falling back to legacy query:', progressError);
+        // Fallback to legacy query if view doesn't exist
+        await fetchProjectsLegacy();
+        return;
+      }
 
-      // Fetch task counts and stats for each project
-      const projectsWithTasks = await Promise.all(
-        (projectsData || []).map(async (project) => {
-          const { data: tasks } = await supabase
-            .from('tasks')
-            .select('status')
-            .eq('project_id', project.id)
-            .eq('is_deleted', false);
+      // Batch fetch safety compliance for all projects
+      const projectIds = (projectsWithProgress || []).map(p => p.id);
+      
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-          const total = tasks?.length || 0;
-          const completed = tasks?.filter(t => t.status === 'done').length || 0;
-          const blocked = tasks?.filter(t => t.status === 'blocked').length || 0;
+      const { data: safetyForms } = await supabase
+        .from('safety_forms')
+        .select('project_id, status')
+        .in('project_id', projectIds)
+        .gte('created_at', oneWeekAgo.toISOString());
 
-          // Fetch safety compliance for last 7 days
-          const oneWeekAgo = new Date();
-          oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      // Group safety forms by project
+      const safetyByProject = new Map<string, { total: number; reviewed: number }>();
+      (safetyForms || []).forEach(form => {
+        const existing = safetyByProject.get(form.project_id) || { total: 0, reviewed: 0 };
+        existing.total++;
+        if (form.status === 'reviewed') existing.reviewed++;
+        safetyByProject.set(form.project_id, existing);
+      });
 
-          const { data: safetyForms } = await supabase
-            .from('safety_forms')
-            .select('status')
-            .eq('project_id', project.id)
-            .gte('created_at', oneWeekAgo.toISOString());
+      const formattedProjects: Project[] = (projectsWithProgress || []).map((p: ProjectProgress) => {
+        const safety = safetyByProject.get(p.id) || { total: 0, reviewed: 0 };
+        const safetyCompliance = safety.total > 0 
+          ? Math.round((safety.reviewed / safety.total) * 100) 
+          : 100;
 
-          const totalForms = safetyForms?.length || 0;
-          const reviewedForms = safetyForms?.filter(f => f.status === 'reviewed').length || 0;
-          const safetyCompliance = totalForms > 0 ? Math.round((reviewedForms / totalForms) * 100) : 100;
+        return {
+          id: p.id,
+          name: p.name,
+          location: p.location,
+          status: p.status as 'active' | 'planning' | 'completed',
+          tasks: { 
+            total: Number(p.total_tasks) || 0, 
+            completed: Number(p.completed_tasks) || 0 
+          },
+          blockedTasks: Number(p.blocked_tasks) || 0,
+          safetyCompliance,
+        };
+      });
 
-          return {
-            id: project.id,
-            name: project.name,
-            location: project.location,
-            status: project.status as 'active' | 'planning' | 'completed',
-            tasks: { total, completed },
-            blockedTasks: blocked,
-            safetyCompliance,
-          };
-        })
-      );
-
-      setProjects(projectsWithTasks);
-    } catch (error: any) {
+      setProjects(formattedProjects);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       toast({
         title: 'Error loading projects',
-        description: error.message,
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
       setLoading(false);
     }
+  };
+
+  // Legacy fallback for when view doesn't exist
+  const fetchProjectsLegacy = async () => {
+    const { data: projectsData, error: projectsError } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('is_deleted', false)
+      .order('created_at', { ascending: false });
+
+    if (projectsError) throw projectsError;
+
+    const projectsWithTasks = await Promise.all(
+      (projectsData || []).map(async (project) => {
+        const { data: tasks } = await supabase
+          .from('tasks')
+          .select('status')
+          .eq('project_id', project.id)
+          .eq('is_deleted', false);
+
+        const total = tasks?.length || 0;
+        const completed = tasks?.filter(t => t.status === 'done').length || 0;
+        const blocked = tasks?.filter(t => t.status === 'blocked').length || 0;
+
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+        const { data: safetyForms } = await supabase
+          .from('safety_forms')
+          .select('status')
+          .eq('project_id', project.id)
+          .gte('created_at', oneWeekAgo.toISOString());
+
+        const totalForms = safetyForms?.length || 0;
+        const reviewedForms = safetyForms?.filter(f => f.status === 'reviewed').length || 0;
+        const safetyCompliance = totalForms > 0 ? Math.round((reviewedForms / totalForms) * 100) : 100;
+
+        return {
+          id: project.id,
+          name: project.name,
+          location: project.location,
+          status: project.status as 'active' | 'planning' | 'completed',
+          tasks: { total, completed },
+          blockedTasks: blocked,
+          safetyCompliance,
+        };
+      })
+    );
+
+    setProjects(projectsWithTasks);
+    setLoading(false);
   };
 
   useEffect(() => {

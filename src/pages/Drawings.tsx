@@ -28,6 +28,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatDistanceToNow } from "date-fns";
+import type { Drawing } from "@/types/drawings";
+
+interface Project {
+  id: string;
+  name: string;
+}
 
 const Drawings = () => {
   const { currentProjectId } = useCurrentProject();
@@ -36,10 +42,10 @@ const Drawings = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
-  const [selectedDrawing, setSelectedDrawing] = useState<any | null>(null);
-  const [revisionDrawing, setRevisionDrawing] = useState<any | null>(null);
-  const [projects, setProjects] = useState<any[]>([]);
-  const [drawings, setDrawings] = useState<any[]>([]);
+  const [selectedDrawing, setSelectedDrawing] = useState<Drawing | null>(null);
+  const [revisionDrawing, setRevisionDrawing] = useState<Drawing | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Fix: Check upload permission for any project when "all" is selected
@@ -97,12 +103,14 @@ const Drawings = () => {
       if (error) throw error;
 
       // Group by sheet number to show only latest revision in list
-      const latestBySheet = new Map();
-      (data || []).forEach(drawing => {
+      const latestBySheet = new Map<string, Drawing>();
+      ((data || []) as Drawing[]).forEach(drawing => {
         const key = drawing.sheet_number || drawing.id;
-        if (!latestBySheet.has(key) || 
-            new Date(drawing.revision_date || drawing.created_at) > 
-            new Date(latestBySheet.get(key).revision_date || latestBySheet.get(key).created_at)) {
+        const existing = latestBySheet.get(key);
+        const drawingDate = new Date(drawing.revision_date || drawing.created_at);
+        const existingDate = existing ? new Date(existing.revision_date || existing.created_at) : null;
+        
+        if (!existing || (existingDate && drawingDate > existingDate)) {
           latestBySheet.set(key, drawing);
         }
       });
@@ -115,7 +123,7 @@ const Drawings = () => {
     }
   };
 
-  const filteredDrawings = drawings.filter(drawing => {
+  const filteredDrawings = drawings.filter((drawing: Drawing) => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return (
@@ -125,7 +133,7 @@ const Drawings = () => {
     );
   });
 
-  const handleUploadRevision = (drawing: any) => {
+  const handleUploadRevision = (drawing: Drawing) => {
     setRevisionDrawing(drawing);
     setSelectedDrawing(null);
   };

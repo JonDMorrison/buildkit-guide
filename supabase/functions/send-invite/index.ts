@@ -1,18 +1,31 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface InviteRequest {
-  email: string;
-  fullName?: string;
-  projectId?: string;
-  role?: string;
-}
+// Structured logging helper
+const log = (level: 'info' | 'warn' | 'error', message: string, data?: Record<string, unknown>) => {
+  console.log(JSON.stringify({
+    level,
+    message,
+    timestamp: new Date().toISOString(),
+    function: 'send-invite',
+    ...data
+  }));
+};
+
+// Zod schema for input validation
+const InviteRequestSchema = z.object({
+  email: z.string().email("Invalid email format").max(255),
+  fullName: z.string().min(1).max(100).optional(),
+  projectId: z.string().uuid().optional(),
+  role: z.string().max(50).optional(),
+});
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -48,11 +61,18 @@ serve(async (req: Request) => {
 
     const inviterName = inviterProfile?.full_name || user.email || "A team member";
 
-    const { email, fullName, projectId, role }: InviteRequest = await req.json();
-
-    if (!email || !email.includes("@")) {
-      throw new Error("Invalid email address");
+    // Validate input with Zod
+    const rawBody = await req.json();
+    const parseResult = InviteRequestSchema.safeParse(rawBody);
+    
+    if (!parseResult.success) {
+      const errorMessage = parseResult.error.errors.map(e => e.message).join(", ");
+      log('warn', 'Validation failed', { errors: parseResult.error.errors });
+      throw new Error(errorMessage);
     }
+    
+    const { email, fullName, projectId, role } = parseResult.data;
+    log('info', 'Processing invitation', { email: email.substring(0, 3) + '***' });
 
     // Check if user already exists
     const { data: existingProfile } = await supabase
@@ -105,8 +125,11 @@ serve(async (req: Request) => {
     const appUrl = Deno.env.get("APP_URL") || origin || "https://project-pulse.lovable.app";
     const inviteLink = `${appUrl}/accept-invite?token=${invitation.token}`;
 
-    console.log(`Invitation created for ${email}`);
-    console.log(`Invite link: ${inviteLink}`);
+    log('info', 'Invitation created', { 
+      invitationId: invitation.id,
+      hasProject: !!projectId 
+    });
+    // SECURITY: Don't log the full invite link in production
 
     // Send email if Resend is configured
     if (resendApiKey) {
@@ -166,7 +189,7 @@ serve(async (req: Request) => {
       JSON.stringify({
         success: true,
         message: resendApiKey ? "Invitation sent successfully" : "Invitation created (email not sent - Resend not configured)",
-        inviteLink, // Return for testing; remove in production
+        // SECURITY: Don't expose inviteLink in production response
       }),
       {
         status: 200,
