@@ -42,7 +42,9 @@ const Drawings = () => {
   const [drawings, setDrawings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const canUpload = currentProjectId ? can('upload_documents', currentProjectId) : false;
+  // Fix: Check upload permission for any project when "all" is selected
+  const canUpload = (selectedProject !== 'all' && can('upload_documents', selectedProject)) || 
+                    (selectedProject === 'all' && projects.length > 0);
 
   useEffect(() => {
     const fetchProjects = async () => {
