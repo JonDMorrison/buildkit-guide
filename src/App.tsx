@@ -53,7 +53,9 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
-      staleTime: 30000,
+      staleTime: 5 * 60 * 1000, // 5 minutes - prevents refetching on tab focus
+      refetchOnWindowFocus: false, // Don't auto-refetch when user tabs back
+      refetchOnMount: false, // Keep showing cached data
     },
   },
 });

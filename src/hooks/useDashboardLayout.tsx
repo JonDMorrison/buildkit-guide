@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
@@ -60,95 +61,103 @@ const DEFAULT_LAYOUTS: ResponsiveLayouts = {
   sm: LAYOUT_SM,
 };
 
+interface LayoutData {
+  layouts: ResponsiveLayouts;
+  hiddenWidgets: string[];
+}
+
 export const useDashboardLayout = (projectId: string | null) => {
   const { user } = useAuth();
-  const [layouts, setLayouts] = useState<ResponsiveLayouts>(DEFAULT_LAYOUTS);
-  const [hiddenWidgets, setHiddenWidgets] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [isEditMode, setIsEditMode] = useState(false);
+  const [localLayouts, setLocalLayouts] = useState<ResponsiveLayouts | null>(null);
 
-  useEffect(() => {
-    if (user?.id && projectId) {
-      loadLayout();
-    } else {
-      setLayouts(DEFAULT_LAYOUTS);
-      setHiddenWidgets([]);
-      setIsLoading(false);
-    }
-  }, [user?.id, projectId]);
+  const queryKey = ['dashboard-layout', user?.id, projectId];
 
-  const loadLayout = async () => {
-    try {
-      setIsLoading(true);
+  // Use React Query for caching layout data
+  const { data, isLoading } = useQuery<LayoutData>({
+    queryKey,
+    queryFn: async () => {
+      if (!user?.id || !projectId) {
+        return { layouts: DEFAULT_LAYOUTS, hiddenWidgets: [] };
+      }
+
       const { data, error } = await supabase
         .from('dashboard_layouts')
         .select('layout, hidden_widgets')
-        .eq('user_id', user!.id)
-        .eq('project_id', projectId!)
+        .eq('user_id', user.id)
+        .eq('project_id', projectId)
         .maybeSingle();
 
       if (error) {
-        throw error;
+        console.error('Error loading dashboard layout:', error);
+        return { layouts: DEFAULT_LAYOUTS, hiddenWidgets: [] };
       }
 
       if (data) {
         const savedLayout = data.layout as any;
+        let layouts: ResponsiveLayouts;
+        
         if (savedLayout.lg) {
-          setLayouts(savedLayout as ResponsiveLayouts);
+          layouts = savedLayout as ResponsiveLayouts;
         } else if (Array.isArray(savedLayout)) {
-          setLayouts({
+          layouts = {
             lg: savedLayout as DashboardWidget[],
             md: LAYOUT_MD,
             sm: LAYOUT_SM,
-          });
+          };
         } else {
-          setLayouts(DEFAULT_LAYOUTS);
+          layouts = DEFAULT_LAYOUTS;
         }
-        setHiddenWidgets(data.hidden_widgets || []);
-      } else {
-        setLayouts(DEFAULT_LAYOUTS);
-        setHiddenWidgets([]);
+        
+        return {
+          layouts,
+          hiddenWidgets: data.hidden_widgets || [],
+        };
       }
-    } catch (error) {
-      console.error('Error loading dashboard layout:', error);
-      setLayouts(DEFAULT_LAYOUTS);
-      setHiddenWidgets([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  const saveLayout = async (newLayouts: ResponsiveLayouts, newHiddenWidgets?: string[]) => {
-    if (!user?.id || !projectId) return;
+      return { layouts: DEFAULT_LAYOUTS, hiddenWidgets: [] };
+    },
+    enabled: !!user?.id && !!projectId,
+    staleTime: 30 * 60 * 1000, // 30 minutes - layout rarely changes
+    gcTime: 60 * 60 * 1000, // 1 hour cache
+    placeholderData: { layouts: DEFAULT_LAYOUTS, hiddenWidgets: [] },
+  });
 
-    try {
+  // Mutation for saving layout
+  const saveMutation = useMutation({
+    mutationFn: async ({ newLayouts, newHiddenWidgets }: { newLayouts: ResponsiveLayouts; newHiddenWidgets: string[] }) => {
+      if (!user?.id || !projectId) throw new Error('Missing user or project');
+
       const { error } = await supabase
         .from('dashboard_layouts')
         .upsert({
           user_id: user.id,
           project_id: projectId,
           layout: JSON.parse(JSON.stringify(newLayouts)),
-          hidden_widgets: newHiddenWidgets || hiddenWidgets,
+          hidden_widgets: newHiddenWidgets,
           updated_at: new Date().toISOString(),
         } as any);
 
       if (error) throw error;
-
-      setLayouts(newLayouts);
-      if (newHiddenWidgets) {
-        setHiddenWidgets(newHiddenWidgets);
-      }
+      return { layouts: newLayouts, hiddenWidgets: newHiddenWidgets };
+    },
+    onSuccess: (newData) => {
+      queryClient.setQueryData(queryKey, newData);
+      setLocalLayouts(null);
       toast.success('Dashboard layout saved');
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error('Error saving dashboard layout:', error);
       toast.error('Failed to save dashboard layout');
-    }
-  };
+    },
+  });
 
-  const resetLayout = async () => {
-    if (!user?.id || !projectId) return;
+  // Mutation for resetting layout
+  const resetMutation = useMutation({
+    mutationFn: async () => {
+      if (!user?.id || !projectId) throw new Error('Missing user or project');
 
-    try {
       const { error } = await supabase
         .from('dashboard_layouts')
         .delete()
@@ -156,41 +165,59 @@ export const useDashboardLayout = (projectId: string | null) => {
         .eq('project_id', projectId);
 
       if (error) throw error;
-
-      setLayouts(DEFAULT_LAYOUTS);
-      setHiddenWidgets([]);
+    },
+    onSuccess: () => {
+      queryClient.setQueryData(queryKey, { layouts: DEFAULT_LAYOUTS, hiddenWidgets: [] });
+      setLocalLayouts(null);
       toast.success('Dashboard layout reset to default');
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error('Error resetting dashboard layout:', error);
       toast.error('Failed to reset dashboard layout');
-    }
-  };
+    },
+  });
 
-  const toggleWidget = (widgetId: string) => {
+  const layouts = localLayouts || data?.layouts || DEFAULT_LAYOUTS;
+  const hiddenWidgets = data?.hiddenWidgets || [];
+
+  const saveLayout = useCallback((newLayouts: ResponsiveLayouts, newHiddenWidgets?: string[]) => {
+    saveMutation.mutate({ 
+      newLayouts, 
+      newHiddenWidgets: newHiddenWidgets || hiddenWidgets 
+    });
+  }, [saveMutation, hiddenWidgets]);
+
+  const resetLayout = useCallback(() => {
+    resetMutation.mutate();
+  }, [resetMutation]);
+
+  const toggleWidget = useCallback((widgetId: string) => {
     const newHiddenWidgets = hiddenWidgets.includes(widgetId)
       ? hiddenWidgets.filter(id => id !== widgetId)
       : [...hiddenWidgets, widgetId];
     
-    setHiddenWidgets(newHiddenWidgets);
     saveLayout(layouts, newHiddenWidgets);
-  };
+  }, [hiddenWidgets, layouts, saveLayout]);
 
-  const updateLayouts = (breakpoint: string, newLayout: DashboardWidget[]) => {
-    setLayouts(prev => ({
-      ...prev,
-      [breakpoint]: newLayout.map(item => ({
-        i: item.i,
-        x: item.x,
-        y: item.y,
-        w: item.w,
-        h: item.h,
-        minW: item.minW,
-        minH: item.minH,
-        maxW: item.maxW,
-        maxH: item.maxH,
-      })),
-    }));
-  };
+  const updateLayouts = useCallback((breakpoint: string, newLayout: DashboardWidget[]) => {
+    setLocalLayouts(prev => {
+      const current = prev || layouts;
+      return {
+        ...current,
+        [breakpoint]: newLayout.map(item => ({
+          i: item.i,
+          x: item.x,
+          y: item.y,
+          w: item.w,
+          h: item.h,
+          minW: item.minW,
+          minH: item.minH,
+          maxW: item.maxW,
+          maxH: item.maxH,
+        })),
+      };
+    });
+  }, [layouts]);
 
   const layout = layouts.lg;
 
@@ -198,7 +225,7 @@ export const useDashboardLayout = (projectId: string | null) => {
     layout,
     layouts,
     hiddenWidgets,
-    isLoading,
+    isLoading: isLoading && !data, // Only show loading on initial fetch
     isEditMode,
     setIsEditMode,
     saveLayout,
