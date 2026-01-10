@@ -364,7 +364,8 @@ export default function Dashboard() {
   // Memoize handlers that are passed as props
   const handleSetCurrentProject = useCallback((projectId: string) => setCurrentProject(projectId), [setCurrentProject]);
 
-  if (layoutLoading) {
+  // Only show loading spinner on initial load, not on tab refocus
+  if (layoutLoading && !layouts) {
     return (
       <Layout>
         <div className="flex items-center justify-center h-full">
