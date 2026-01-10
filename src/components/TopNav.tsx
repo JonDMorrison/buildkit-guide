@@ -27,9 +27,9 @@ export const TopNav = () => {
 
   return (
     <>
-      <nav className="sticky top-0 z-50 flex items-center justify-between h-nav px-4 bg-card border-b border-border">
-        <div className="flex items-center gap-4">
-          <img src={projectPulseLogo} alt="Project Pulse" className="h-20 w-auto" />
+      <nav className="sticky top-0 z-50 flex items-center justify-between h-nav px-2 sm:px-4 bg-card border-b border-border">
+        <div className="flex items-center gap-2 sm:gap-4">
+          <img src={projectPulseLogo} alt="Project Pulse" className={isMobile ? "h-12 w-auto" : "h-20 w-auto"} />
           <OrganizationSwitcher />
         </div>
         

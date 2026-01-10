@@ -67,19 +67,21 @@ export const TabBar = () => {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 h-tab-bar bg-card border-t border-border overflow-x-auto">
-      <div className="flex items-center h-full px-2 min-w-max">
+    <nav className="fixed bottom-0 left-0 right-0 h-tab-bar bg-card border-t border-border safe-area-bottom">
+      {/* Fade indicator on right edge when scrollable */}
+      <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-card to-transparent pointer-events-none z-10" />
+      <div className="flex items-center h-full px-1 overflow-x-auto scrollbar-hide">
         {visibleTabs.map((tab) => {
           const Icon = tab.icon;
           return (
             <NavLink
               key={tab.path}
               to={tab.path}
-              className="flex flex-col items-center justify-center gap-1 flex-1 min-w-[80px] h-full text-muted-foreground transition-colors px-2"
+              className="flex flex-col items-center justify-center gap-0.5 flex-shrink-0 min-w-[60px] h-full text-muted-foreground transition-colors px-1.5"
               activeClassName="text-primary"
             >
               <Icon className="h-5 w-5" />
-              <span className="text-xs font-medium whitespace-nowrap">{tab.name}</span>
+              <span className="text-[10px] font-medium whitespace-nowrap">{tab.name}</span>
             </NavLink>
           );
         })}

@@ -170,53 +170,57 @@ export const DrawingViewer = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl h-[95vh] flex flex-col p-0">
-        <DialogHeader className="px-6 py-4 border-b flex-shrink-0">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
-              <DialogTitle className="text-xl mb-2">{drawing.file_name}</DialogTitle>
+        <DialogHeader className="px-4 sm:px-6 py-3 sm:py-4 border-b flex-shrink-0">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <DialogTitle className="text-lg sm:text-xl mb-2 truncate">{drawing.file_name}</DialogTitle>
               <div className="flex items-center gap-2 flex-wrap">
                 {drawing.sheet_number && (
-                  <Badge variant="secondary" className="font-mono">
+                  <Badge variant="secondary" className="font-mono text-xs">
                     {drawing.sheet_number}
                   </Badge>
                 )}
-                <Badge variant="outline">
+                <Badge variant="outline" className="text-xs">
                   Rev {drawing.revision_number || 'A'}
                 </Badge>
                 {revisionHistory.length > 1 && (
                   <Badge 
                     variant="secondary" 
-                    className="cursor-pointer hover:bg-secondary/80"
+                    className="cursor-pointer hover:bg-secondary/80 text-xs"
                     onClick={() => setShowHistory(!showHistory)}
                   >
                     <History className="h-3 w-3 mr-1" />
-                    {revisionHistory.length} versions
+                    {revisionHistory.length} ver
                   </Badge>
                 )}
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-shrink-0">
               {onUploadRevision && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={onUploadRevision}
+                  className="text-xs sm:text-sm"
                 >
-                  Upload Revision
+                  <span className="hidden sm:inline">Upload Revision</span>
+                  <span className="sm:hidden">Upload</span>
                 </Button>
               )}
               <Button
                 variant="outline"
-                size="sm"
+                size="icon"
                 onClick={handleDownload}
+                className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3"
               >
-                <Download className="h-4 w-4 mr-2" />
-                Download
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline ml-2">Download</span>
               </Button>
               <Button
                 variant="outline"
-                size="sm"
+                size="icon"
                 onClick={handleFullScreen}
+                className="h-8 w-8 sm:h-9 sm:w-9"
               >
                 <Maximize2 className="h-4 w-4" />
               </Button>

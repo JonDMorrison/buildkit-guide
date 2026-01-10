@@ -391,8 +391,8 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      {/* Dashboard Settings in TopNav area */}
-      <div className="fixed top-0 right-[140px] z-50 h-nav flex items-center">
+      {/* Dashboard Settings in TopNav area - responsive positioning */}
+      <div className="fixed top-0 right-[100px] sm:right-[140px] z-50 h-nav flex items-center">
         <DashboardCustomizer
           isEditMode={isEditMode}
           setIsEditMode={setIsEditMode}

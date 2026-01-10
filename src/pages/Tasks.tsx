@@ -238,30 +238,33 @@ const Tasks = () => {
           <>
             {/* View Switcher */}
             <div className="flex items-center justify-between mb-4">
-              <div className="flex gap-2">
+              <div className="flex gap-1 sm:gap-2">
                 <Button
                   variant={viewMode === 'list' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setViewMode('list')}
+                  className="px-2 sm:px-3"
                 >
-                  <LayoutList className="h-4 w-4 mr-2" />
-                  List
+                  <LayoutList className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">List</span>
                 </Button>
                 <Button
                   variant={viewMode === 'kanban' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setViewMode('kanban')}
+                  className="px-2 sm:px-3"
                 >
-                  <LayoutGrid className="h-4 w-4 mr-2" />
-                  Kanban
+                  <LayoutGrid className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Kanban</span>
                 </Button>
                 <Button
                   variant={viewMode === 'calendar' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setViewMode('calendar')}
+                  className="px-2 sm:px-3"
                 >
-                  <CalendarIcon className="h-4 w-4 mr-2" />
-                  Calendar
+                  <CalendarIcon className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Calendar</span>
                 </Button>
               </div>
             </div>
