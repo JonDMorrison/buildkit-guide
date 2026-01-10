@@ -23,6 +23,7 @@ const WIDGET_NAMES: Record<string, string> = {
   safety: 'Safety & Compliance',
   blockers: 'Blockers & Risks',
   ai: 'AI Assistant',
+  'hours-tracking': 'Hours Tracking',
 };
 
 export const DashboardCustomizer = ({
