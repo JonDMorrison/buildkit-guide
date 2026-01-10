@@ -9,10 +9,11 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useProjectRole } from "@/hooks/useProjectRole";
 import { useAuth } from "@/hooks/useAuth";
-import { UserPlus, Users, Shield, Briefcase, Trash2, Edit2 } from "lucide-react";
+import { UserPlus, Users, Shield, Briefcase, Trash2, Edit2, Mail } from "lucide-react";
 import { AddUserToProjectModal } from "@/components/users/AddUserToProjectModal";
 import { InviteUserModal } from "@/components/users/InviteUserModal";
 import { EditUserRoleModal } from "@/components/users/EditUserRoleModal";
+import { InvitesList } from "@/components/users/InvitesList";
 
 interface ProjectMember {
   id: string;
@@ -49,6 +50,7 @@ const UserManagement = () => {
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<ProjectMember | null>(null);
+  const [activeTab, setActiveTab] = useState<'projects' | 'invitations'>('projects');
 
   useEffect(() => {
     if (!roleLoading) {
@@ -268,96 +270,117 @@ const UserManagement = () => {
           </div>
         </div>
 
-        <Tabs value={selectedProject || ''} onValueChange={setSelectedProject}>
-          <TabsList className="w-full mb-6 overflow-x-auto flex-wrap h-auto">
-            {projects.map((project) => (
-              <TabsTrigger key={project.id} value={project.id} className="flex items-center gap-2">
-                <Briefcase className="h-4 w-4" />
-                {project.name}
-              </TabsTrigger>
-            ))}
+        {/* Main view tabs */}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'projects' | 'invitations')} className="mb-6">
+          <TabsList>
+            <TabsTrigger value="projects" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Project Members
+            </TabsTrigger>
+            <TabsTrigger value="invitations" className="flex items-center gap-2">
+              <Mail className="h-4 w-4" />
+              Pending Invitations
+            </TabsTrigger>
           </TabsList>
 
-          {projects.map((project) => (
-            <TabsContent key={project.id} value={project.id}>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Project Members</CardTitle>
-                  <CardDescription>
-                    {members.length} {members.length === 1 ? 'member' : 'members'} on {project.name}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {members.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12 text-center">
-                      <Users className="h-12 w-12 text-muted-foreground mb-3" />
-                      <p className="text-muted-foreground">
-                        No members on this project yet. Add users to get started.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {members.map((member) => (
-                        <div
-                          key={member.id}
-                          className="flex items-center justify-between p-4 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
-                        >
-                          <div className="flex items-center gap-4 flex-1">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <p className="font-medium text-foreground truncate">
-                                  {member.profiles?.full_name || 'Unnamed User'}
-                                </p>
-                                <Badge
-                                  variant="outline"
-                                  className={getRoleBadgeColor(member.role)}
-                                >
-                                  {getRoleLabel(member.role)}
-                                </Badge>
-                              </div>
-                              <p className="text-sm text-muted-foreground truncate">
-                                {member.profiles?.email}
-                              </p>
-                              {member.trades && (
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  Trade: {member.trades.name}
-                                </p>
-                              )}
-                            </div>
-                          </div>
+          <TabsContent value="projects" className="mt-6">
+            {/* Project tabs */}
+            <Tabs value={selectedProject || ''} onValueChange={setSelectedProject}>
+              <TabsList className="w-full mb-6 overflow-x-auto flex-wrap h-auto">
+                {projects.map((project) => (
+                  <TabsTrigger key={project.id} value={project.id} className="flex items-center gap-2">
+                    <Briefcase className="h-4 w-4" />
+                    {project.name}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
 
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedMember(member);
-                                setEditModalOpen(true);
-                              }}
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() =>
-                                handleRemoveMember(
-                                  member.id,
-                                  member.profiles?.full_name || member.profiles?.email || 'User'
-                                )
-                              }
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
+              {projects.map((project) => (
+                <TabsContent key={project.id} value={project.id}>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Project Members</CardTitle>
+                      <CardDescription>
+                        {members.length} {members.length === 1 ? 'member' : 'members'} on {project.name}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {members.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12 text-center">
+                          <Users className="h-12 w-12 text-muted-foreground mb-3" />
+                          <p className="text-muted-foreground">
+                            No members on this project yet. Add users to get started.
+                          </p>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-          ))}
+                      ) : (
+                        <div className="space-y-3">
+                          {members.map((member) => (
+                            <div
+                              key={member.id}
+                              className="flex items-center justify-between p-4 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors"
+                            >
+                              <div className="flex items-center gap-4 flex-1">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <p className="font-medium text-foreground truncate">
+                                      {member.profiles?.full_name || 'Unnamed User'}
+                                    </p>
+                                    <Badge
+                                      variant="outline"
+                                      className={getRoleBadgeColor(member.role)}
+                                    >
+                                      {getRoleLabel(member.role)}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground truncate">
+                                    {member.profiles?.email}
+                                  </p>
+                                  {member.trades && (
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      Trade: {member.trades.name}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedMember(member);
+                                    setEditModalOpen(true);
+                                  }}
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() =>
+                                    handleRemoveMember(
+                                      member.id,
+                                      member.profiles?.full_name || member.profiles?.email || 'User'
+                                    )
+                                  }
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              ))}
+            </Tabs>
+          </TabsContent>
+
+          <TabsContent value="invitations" className="mt-6">
+            <InvitesList />
+          </TabsContent>
         </Tabs>
 
         {selectedProject && (
