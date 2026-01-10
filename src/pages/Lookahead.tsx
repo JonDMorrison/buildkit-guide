@@ -292,11 +292,12 @@ const Lookahead = () => {
         />
 
         {/* Controls */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6 p-4 bg-card rounded-lg border border-border">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col gap-4 mb-6 p-4 bg-card rounded-lg border border-border">
+          {/* Top row: Project + Date Nav */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             {/* Project Selector */}
             <Select value={selectedProjectId || undefined} onValueChange={setSelectedProjectId}>
-              <SelectTrigger className="w-[240px] font-semibold">
+              <SelectTrigger className="w-full sm:w-[240px] font-semibold">
                 <SelectValue placeholder="Select project" />
               </SelectTrigger>
               <SelectContent>
@@ -309,11 +310,11 @@ const Lookahead = () => {
             </Select>
 
             {/* Date Navigation */}
-            <div className="flex items-center gap-2 pl-4 border-l border-border">
+            <div className="flex items-center gap-2">
               <Button variant="outline" size="icon" onClick={previousWeek}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <Button variant="outline" onClick={goToToday}>
+              <Button variant="outline" onClick={goToToday} className="flex-1 sm:flex-none">
                 Today
               </Button>
               <Button variant="outline" size="icon" onClick={nextWeek}>
@@ -322,13 +323,13 @@ const Lookahead = () => {
             </div>
 
             {/* Horizon Only Toggle */}
-            <div className="flex items-center space-x-2 pl-4 border-l border-border">
+            <div className="flex items-center space-x-2 sm:pl-4 sm:border-l sm:border-border">
               <Switch
                 id="horizon-only"
                 checked={horizonOnly}
                 onCheckedChange={setHorizonOnly}
               />
-              <Label htmlFor="horizon-only" className="cursor-pointer font-medium">
+              <Label htmlFor="horizon-only" className="cursor-pointer font-medium text-sm">
                 Horizon Only
               </Label>
             </div>
@@ -336,25 +337,27 @@ const Lookahead = () => {
 
           {/* AI Buttons - Only for PM/Foreman */}
           {canViewLookahead && (
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <Button
                 onClick={handleForecastDelay}
                 disabled={tasks.length === 0}
                 variant="outline"
-                className="font-semibold"
+                className="font-semibold flex-1 sm:flex-none"
                 size="lg"
               >
                 <TrendingUp className="h-5 w-5 mr-2" />
-                Forecast Schedule Impact
+                <span className="hidden sm:inline">Forecast Schedule Impact</span>
+                <span className="sm:hidden">Forecast</span>
               </Button>
               <Button
                 onClick={handleGenerateSummary}
                 disabled={tasks.length === 0}
-                className="bg-primary hover:bg-primary/90 font-semibold"
+                className="bg-primary hover:bg-primary/90 font-semibold flex-1 sm:flex-none"
                 size="lg"
               >
                 <Sparkles className="h-5 w-5 mr-2" />
-                Coordination Summary
+                <span className="hidden sm:inline">Coordination Summary</span>
+                <span className="sm:hidden">Summary</span>
               </Button>
             </div>
           )}
