@@ -133,7 +133,7 @@ export const InviteUserModal = ({
             Invite New User
           </DialogTitle>
           <DialogDescription>
-            Send an invitation to a new user to join your workspace.
+            Invite a new team member to your company. They'll automatically join the organization and can be added to projects.
           </DialogDescription>
         </DialogHeader>
 
@@ -178,13 +178,13 @@ export const InviteUserModal = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="project">Add to Project (optional)</Label>
+            <Label htmlFor="project">Initial Project Assignment (optional)</Label>
             <Select value={projectId} onValueChange={setProjectId}>
               <SelectTrigger>
                 <SelectValue placeholder={loadingProjects ? "Loading..." : "Select a project"} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No specific project</SelectItem>
+                <SelectItem value="">No project assignment yet</SelectItem>
                 {projects.map((project) => (
                   <SelectItem key={project.id} value={project.id}>
                     {project.name}
@@ -193,7 +193,7 @@ export const InviteUserModal = ({
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              User will be automatically added to this project when they accept
+              You can always add them to more projects later from User Management.
             </p>
           </div>
 
