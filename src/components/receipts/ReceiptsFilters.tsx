@@ -67,14 +67,14 @@ export const ReceiptsFilters = ({
       <div className="flex flex-wrap gap-2">
         {/* Category Filter */}
         <Select
-          value={category || ''}
-          onValueChange={(v) => onCategoryChange(v as ReceiptCategory || null)}
+          value={category || 'all'}
+          onValueChange={(v) => onCategoryChange(v === 'all' ? null : v as ReceiptCategory)}
         >
           <SelectTrigger className="w-[140px]">
             <SelectValue placeholder="Category" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All categories</SelectItem>
+            <SelectItem value="all">All categories</SelectItem>
             {RECEIPT_CATEGORIES.map((cat) => (
               <SelectItem key={cat.value} value={cat.value}>
                 {cat.label}
@@ -85,14 +85,14 @@ export const ReceiptsFilters = ({
 
         {/* Uploaded By Filter */}
         <Select
-          value={uploadedBy || ''}
-          onValueChange={(v) => onUploadedByChange(v || null)}
+          value={uploadedBy || 'all'}
+          onValueChange={(v) => onUploadedByChange(v === 'all' ? null : v)}
         >
           <SelectTrigger className="w-[160px]">
             <SelectValue placeholder="Uploaded by" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All members</SelectItem>
+            <SelectItem value="all">All members</SelectItem>
             {members.map((m) => (
               <SelectItem key={m.user_id} value={m.user_id}>
                 {m.profile?.full_name || m.profile?.email || 'Unknown'}
