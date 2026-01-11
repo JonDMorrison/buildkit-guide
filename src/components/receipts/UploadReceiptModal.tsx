@@ -57,7 +57,7 @@ export const UploadReceiptModal = ({
   const [aiParsed, setAiParsed] = useState(false);
 
   // Form fields
-  const [taskId, setTaskId] = useState<string>('');
+  const [taskId, setTaskId] = useState<string>('none');
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState('CAD');
   const [vendor, setVendor] = useState('');
@@ -122,7 +122,7 @@ export const UploadReceiptModal = ({
 
   const resetForm = () => {
     clearFile();
-    setTaskId('');
+    setTaskId('none');
     setAmount('');
     setCurrency('CAD');
     setVendor('');
@@ -251,7 +251,7 @@ export const UploadReceiptModal = ({
         const { error: updateError } = await supabase
           .from('receipts')
           .update({
-            task_id: taskId || null,
+            task_id: taskId === 'none' ? null : taskId || null,
             amount: amount ? parseFloat(amount) : null,
             currency,
             vendor: vendor || null,
@@ -283,7 +283,7 @@ export const UploadReceiptModal = ({
         const { error: dbError } = await supabase.from('receipts').insert({
           id: receiptId,
           project_id: projectId,
-          task_id: taskId || null,
+          task_id: taskId === 'none' ? null : taskId || null,
           uploaded_by: user.id,
           file_path: filePath,
           amount: amount ? parseFloat(amount) : null,
@@ -409,7 +409,7 @@ export const UploadReceiptModal = ({
                 <SelectValue placeholder="Select a task..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No task</SelectItem>
+                <SelectItem value="none">No task</SelectItem>
                 {tasks.map((task) => (
                   <SelectItem key={task.id} value={task.id}>
                     {task.title}

@@ -44,7 +44,7 @@ export const CreateManpowerRequestModal = ({
   const [form, setForm] = useState({
     project_id: defaultProjectId || '',
     trade_id: '',
-    task_id: '',
+    task_id: 'none',
     requested_count: '',
     required_date: '',
     duration_days: '',
@@ -134,7 +134,7 @@ export const CreateManpowerRequestModal = ({
       const { error } = await supabase.from('manpower_requests').insert({
         project_id: form.project_id,
         trade_id: form.trade_id,
-        task_id: form.task_id || null,
+        task_id: form.task_id === 'none' ? null : form.task_id,
         requested_count: parseInt(form.requested_count),
         required_date: form.required_date,
         duration_days: parseInt(form.duration_days),
@@ -241,7 +241,7 @@ export const CreateManpowerRequestModal = ({
                   <SelectValue placeholder="Select task (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No linked task</SelectItem>
+                  <SelectItem value="none">No linked task</SelectItem>
                   {tasks.map((task) => (
                     <SelectItem key={task.id} value={task.id}>
                       {task.title}

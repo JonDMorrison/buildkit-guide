@@ -421,9 +421,9 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
               )}
 
               <Select
-                value=""
+                value="__select__"
                 onValueChange={(userId) => {
-                  if (!selectedWorkers.includes(userId)) {
+                  if (userId !== '__select__' && !selectedWorkers.includes(userId)) {
                     setSelectedWorkers((prev) => [...prev, userId]);
                   }
                 }}
@@ -432,6 +432,7 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
                   <SelectValue placeholder="Add worker..." />
                 </SelectTrigger>
                 <SelectContent className="bg-card border-border z-50 max-h-[200px]">
+                  <SelectItem value="__select__" className="hidden">Add worker...</SelectItem>
                   {projectMembers
                     .filter((member) => !selectedWorkers.includes(member.user_id))
                     .map((member) => (
@@ -486,9 +487,9 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
               )}
 
               <Select
-                value=""
+                value="__select__"
                 onValueChange={(depId) => {
-                  if (!selectedDependencies.includes(depId)) {
+                  if (depId !== '__select__' && !selectedDependencies.includes(depId)) {
                     setSelectedDependencies((prev) => [...prev, depId]);
                   }
                 }}
@@ -497,6 +498,7 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
                   <SelectValue placeholder="Add dependency..." />
                 </SelectTrigger>
                 <SelectContent className="bg-card border-border z-50 max-h-[200px]">
+                  <SelectItem value="__select__" className="hidden">Add dependency...</SelectItem>
                   {availableTasks
                     .filter((task) => !selectedDependencies.includes(task.id))
                     .map((task) => (

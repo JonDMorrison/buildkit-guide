@@ -174,7 +174,7 @@ export function JobSiteSelectionModal({
                       className="flex items-start space-x-3 rounded-lg border border-dashed p-4 cursor-pointer hover:bg-muted/50 transition-colors"
                       onClick={() => setSelectedId(null)}
                     >
-                      <RadioGroupItem value="" id="no-site" className="mt-1" />
+                      <RadioGroupItem value="no-site" id="no-site" className="mt-1" />
                       <Label htmlFor="no-site" className="flex-1 cursor-pointer">
                         <div className="flex items-center gap-2">
                           <AlertTriangle className="h-4 w-4 text-amber-600" />

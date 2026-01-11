@@ -861,13 +861,13 @@ export default function DeficiencyImport() {
                 <Label>Location Column</Label>
                 <Select
                   value={columnMapping.location || ''}
-                  onValueChange={(v) => setColumnMapping({ ...columnMapping, location: v || null })}
+                  onValueChange={(v) => setColumnMapping({ ...columnMapping, location: v === '__none__' ? null : v })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select column (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
                     {detectedHeaders.map((h) => (
                       <SelectItem key={h} value={h}>{h}</SelectItem>
                     ))}
@@ -878,13 +878,13 @@ export default function DeficiencyImport() {
                 <Label>Trade / Responsible Party Column</Label>
                 <Select
                   value={columnMapping.gc_trade || ''}
-                  onValueChange={(v) => setColumnMapping({ ...columnMapping, gc_trade: v || null })}
+                  onValueChange={(v) => setColumnMapping({ ...columnMapping, gc_trade: v === '__none__' ? null : v })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select column (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
                     {detectedHeaders.map((h) => (
                       <SelectItem key={h} value={h}>{h}</SelectItem>
                     ))}
@@ -895,13 +895,13 @@ export default function DeficiencyImport() {
                 <Label>Due Date Column</Label>
                 <Select
                   value={columnMapping.due_date || ''}
-                  onValueChange={(v) => setColumnMapping({ ...columnMapping, due_date: v || null })}
+                  onValueChange={(v) => setColumnMapping({ ...columnMapping, due_date: v === '__none__' ? null : v })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select column (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
                     {detectedHeaders.map((h) => (
                       <SelectItem key={h} value={h}>{h}</SelectItem>
                     ))}
