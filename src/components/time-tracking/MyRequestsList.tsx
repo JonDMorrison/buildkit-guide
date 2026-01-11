@@ -118,7 +118,23 @@ export function MyRequestsList() {
   }
 
   if (requests.length === 0) {
-    return null; // Don't show empty state for requests
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5" />
+            My Adjustment Requests
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-6 text-muted-foreground">
+            <CheckCircle className="h-10 w-10 mx-auto mb-3 opacity-50" />
+            <p className="text-sm">No pending adjustment requests</p>
+            <p className="text-xs mt-1">Requests you submit will appear here</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (

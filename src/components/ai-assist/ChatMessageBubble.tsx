@@ -18,14 +18,18 @@ export const ChatMessageBubble = ({ role, content, actions }: ChatMessageBubbleP
   const handleAction = (action: ActionSuggestion) => {
     if (action.type === 'navigate' && action.route) {
       navigate(action.route);
+    } else if (action.type === 'prefill' && action.prefillData) {
+      // Prefill actions: store data in sessionStorage for the target form to pick up
+      sessionStorage.setItem('ai_prefill_data', JSON.stringify(action.prefillData));
+      if (action.route) {
+        navigate(action.route);
+      }
     }
-    // Prefill actions are not yet implemented - they are filtered out below
   };
 
-  // Filter to only show actions that are fully implemented
+  // All actions with valid routes are now implemented
   const implementedActions = actions?.filter(action => {
-    // Only navigate actions are implemented
-    return action.type === 'navigate' && action.route;
+    return action.route && (action.type === 'navigate' || action.type === 'prefill');
   });
 
   return (

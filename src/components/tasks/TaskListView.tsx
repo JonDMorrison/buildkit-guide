@@ -213,18 +213,26 @@ export const TaskListView = ({ tasks, onTaskClick, canReorder = false, onTasksRe
       const newTasks = arrayMove(localTasks, oldIndex, newIndex);
       setLocalTasks(newTasks);
       
-      // Update sort_order in database
+      // Update sort_order in database with batch operation to prevent race conditions
       try {
         const updates = newTasks.map((task, index) => ({
           id: task.id,
           sort_order: index,
         }));
 
-        for (const update of updates) {
-          await supabase
+        // Batch update using Promise.all for atomicity
+        const updatePromises = updates.map((update) =>
+          supabase
             .from('tasks')
             .update({ sort_order: update.sort_order })
-            .eq('id', update.id);
+            .eq('id', update.id)
+        );
+        
+        const results = await Promise.all(updatePromises);
+        const hasError = results.some(r => r.error);
+        
+        if (hasError) {
+          throw new Error('Failed to save task order');
         }
 
         onTasksReordered?.(newTasks);

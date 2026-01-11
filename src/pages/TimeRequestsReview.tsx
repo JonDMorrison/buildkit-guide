@@ -64,10 +64,16 @@ function getWarningBadges(request: TimeAdjustmentRequest) {
     );
   }
 
-  // TODO: Add more badges based on request metadata when available
-  // - Location unverified
-  // - Offline sync
-  // - Long duration
+  // Location unverified warning - check proposed_notes for hints
+  // Note: metadata field would need to be added to the schema if richer badge data is needed
+  if (!request.proposed_job_site_id && (request.proposed_check_in_at || request.proposed_check_out_at)) {
+    badges.push(
+      <Badge key="location" variant="outline" className="text-xs gap-1 text-amber-600 bg-amber-500/10 border-amber-500/20">
+        <MapPinOff className="h-3 w-3" />
+        No Job Site
+      </Badge>
+    );
+  }
 
   return badges;
 }

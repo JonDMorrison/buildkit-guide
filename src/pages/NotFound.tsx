@@ -1,5 +1,7 @@
-import { useLocation } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
+import { Home, LayoutDashboard, ClipboardList, Shield } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const NotFound = () => {
   const location = useLocation();
@@ -10,12 +12,42 @@ const NotFound = () => {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">404</h1>
-        <p className="mb-4 text-xl text-muted-foreground">Oops! Page not found</p>
-        <a href="/" className="text-primary underline hover:text-primary/90">
-          Return to Home
-        </a>
+      <div className="text-center max-w-md px-4">
+        <h1 className="mb-4 text-6xl font-bold text-primary">404</h1>
+        <p className="mb-2 text-xl font-semibold">Page not found</p>
+        <p className="mb-6 text-muted-foreground">
+          The page you're looking for doesn't exist or has been moved.
+        </p>
+        
+        <div className="flex flex-col sm:flex-row gap-3 justify-center mb-8">
+          <Button asChild>
+            <Link to="/">
+              <Home className="h-4 w-4 mr-2" />
+              Home
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link to="/dashboard">
+              <LayoutDashboard className="h-4 w-4 mr-2" />
+              Dashboard
+            </Link>
+          </Button>
+        </div>
+
+        <div className="text-sm text-muted-foreground">
+          <p className="mb-2">Quick links:</p>
+          <div className="flex flex-wrap gap-2 justify-center">
+            <Link to="/tasks" className="text-primary hover:underline flex items-center gap-1">
+              <ClipboardList className="h-3 w-3" />
+              Tasks
+            </Link>
+            <span>•</span>
+            <Link to="/safety" className="text-primary hover:underline flex items-center gap-1">
+              <Shield className="h-3 w-3" />
+              Safety
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );

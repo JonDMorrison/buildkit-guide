@@ -139,8 +139,18 @@ Return format:
     try {
       extractedRows = JSON.parse(content);
     } catch (parseError) {
-      console.error('Failed to parse AI response:', content);
-      throw new Error('Could not parse PDF content. The document may not be a readable deficiency list.');
+      console.error('Failed to parse AI response as JSON:', content.substring(0, 500));
+      // Attempt to extract JSON from response if wrapped in text
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        try {
+          extractedRows = JSON.parse(jsonMatch[0]);
+        } catch {
+          throw new Error('Could not parse PDF content. The document may not be a readable deficiency list.');
+        }
+      } else {
+        throw new Error('Could not parse PDF content. The document may not be a readable deficiency list.');
+      }
     }
 
     if (!Array.isArray(extractedRows)) {

@@ -34,7 +34,10 @@ export const TaskFilters = ({ onFilterChange }: TaskFiltersProps) => {
       .select('id, name, trade_type')
       .eq('is_active', true)
       .order('name')
-      .then(({ data }) => setTrades(data || []));
+      .then(({ data, error }) => {
+        if (error) console.error('Error fetching trades:', error);
+        setTrades(data || []);
+      });
   }, []);
 
   const updateFilter = (key: keyof TaskFilters, value: string | undefined) => {

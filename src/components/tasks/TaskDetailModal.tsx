@@ -92,7 +92,16 @@ export const TaskDetailModal = ({ taskId, open, onOpenChange, onTaskUpdated }: T
           .eq('task_id', taskId);
         setAssignments(assignData || []);
 
-        // TODO: Add manpower request fetch later
+        // Fetch manpower request for this task
+        const { data: manpowerData } = await supabase
+          .from('manpower_requests')
+          .select('*')
+          .eq('task_id', taskId)
+          .eq('is_deleted', false)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        setManpowerRequest(manpowerData);
 
       } catch (error: any) {
         toast({
