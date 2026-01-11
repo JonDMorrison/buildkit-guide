@@ -38,7 +38,7 @@ export const InviteUserModal = ({
   const [email, setEmail] = useState('');
   const [fullName, setFullName] = useState('');
   const [role, setRole] = useState('internal_worker');
-  const [projectId, setProjectId] = useState(initialProjectId || '');
+  const [projectId, setProjectId] = useState(initialProjectId || 'none');
   const [projects, setProjects] = useState<Project[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
 
@@ -89,7 +89,7 @@ export const InviteUserModal = ({
         body: { 
           email: email.toLowerCase().trim(),
           fullName: fullName || null,
-          projectId: projectId || null,
+          projectId: projectId === 'none' ? null : projectId,
           role: role,
         }
       });
@@ -111,7 +111,7 @@ export const InviteUserModal = ({
       setEmail('');
       setFullName('');
       setRole('internal_worker');
-      setProjectId(initialProjectId || '');
+      setProjectId(initialProjectId || 'none');
       onSuccess();
     } catch (error: any) {
       toast({
@@ -184,7 +184,7 @@ export const InviteUserModal = ({
                 <SelectValue placeholder={loadingProjects ? "Loading..." : "Select a project"} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No project assignment yet</SelectItem>
+                <SelectItem value="none">No project assignment yet</SelectItem>
                 {projects.map((project) => (
                   <SelectItem key={project.id} value={project.id}>
                     {project.name}
