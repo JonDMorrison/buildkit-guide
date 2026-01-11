@@ -106,7 +106,10 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
         .select('id, name')
         .eq('is_deleted', false)
         .order('name')
-        .then(({ data }) => setProjects(data || []));
+        .then(({ data, error }) => {
+          if (error) console.error('Error fetching projects:', error);
+          setProjects(data || []);
+        });
 
       // Fetch trades
       supabase
@@ -114,7 +117,10 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
         .select('id, name, trade_type')
         .eq('is_active', true)
         .order('name')
-        .then(({ data }) => setTrades(data || []));
+        .then(({ data, error }) => {
+          if (error) console.error('Error fetching trades:', error);
+          setTrades(data || []);
+        });
     }
   }, [open]);
 
@@ -128,14 +134,20 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
         .eq('project_id', form.projectId)
         .eq('is_deleted', false)
         .order('title')
-        .then(({ data }) => setAvailableTasks(data || []));
+        .then(({ data, error }) => {
+          if (error) console.error('Error fetching tasks:', error);
+          setAvailableTasks(data || []);
+        });
 
       // Fetch project members for worker assignment
       supabase
         .from('project_members')
         .select('id, user_id, role, profiles(id, full_name, email, avatar_url)')
         .eq('project_id', form.projectId)
-        .then(({ data }) => setProjectMembers((data as ProjectMember[]) || []));
+        .then(({ data, error }) => {
+          if (error) console.error('Error fetching project members:', error);
+          setProjectMembers((data as ProjectMember[]) || []);
+        });
     } else {
       setAvailableTasks([]);
       setProjectMembers([]);

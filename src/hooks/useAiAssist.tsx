@@ -8,6 +8,7 @@ export interface ActionSuggestion {
   route?: string;
   prefill_type?: string;
   prefill_content?: string;
+  prefillData?: Record<string, unknown>;
 }
 
 export interface PressingIssues {
