@@ -43,21 +43,49 @@ export const DrawingViewer = ({
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [urlLoading, setUrlLoading] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Safely check file type with null guard
   const isImage = drawing?.file_type?.startsWith('image/') ?? false;
   const isPDF = drawing?.file_type === 'application/pdf';
 
+  // Generate signed URL for private bucket access
+  const getSignedUrl = async (filePath: string): Promise<string | null> => {
+    // If it's already a full URL (legacy data), return as-is
+    if (filePath.startsWith('http')) {
+      return filePath;
+    }
+    
+    const { data, error } = await supabase.storage
+      .from('project-documents')
+      .createSignedUrl(filePath, 3600); // 1 hour expiry
+    
+    if (error) {
+      console.error('Error creating signed URL:', error);
+      return null;
+    }
+    return data.signedUrl;
+  };
+
   useEffect(() => {
     if (open && drawing?.id) {
       fetchRevisionHistory();
+      fetchSignedUrl();
       // Reset view state when opening new drawing
       setZoom(1);
       setRotation(0);
       setPosition({ x: 0, y: 0 });
     }
   }, [drawing?.id, open]);
+
+  const fetchSignedUrl = async () => {
+    setUrlLoading(true);
+    const url = await getSignedUrl(drawing.file_url);
+    setSignedUrl(url);
+    setUrlLoading(false);
+  };
 
   const fetchRevisionHistory = async () => {
     // Find all versions of this drawing by sheet number
@@ -153,8 +181,11 @@ export const DrawingViewer = ({
     }
   };
 
-  const handleDownload = () => {
-    window.open(drawing.file_url, '_blank');
+  const handleDownload = async () => {
+    const url = signedUrl || await getSignedUrl(drawing.file_url);
+    if (url) {
+      window.open(url, '_blank');
+    }
   };
 
   const handleFullScreen = () => {
@@ -306,9 +337,25 @@ export const DrawingViewer = ({
               onWheel={handleWheel}
               style={{ cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default' }}
             >
-              {isImage ? (
+              {urlLoading ? (
+                <div className="flex flex-col items-center justify-center p-8 text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4" />
+                  <p className="text-sm text-muted-foreground">Loading drawing...</p>
+                </div>
+              ) : !signedUrl ? (
+                <div className="flex flex-col items-center justify-center p-8 text-center">
+                  <FileText className="h-16 w-16 text-muted-foreground mb-4" />
+                  <h3 className="font-semibold mb-2">Unable to load drawing</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    There was an error loading this file.
+                  </p>
+                  <Button onClick={fetchSignedUrl}>
+                    Try Again
+                  </Button>
+                </div>
+              ) : isImage ? (
                 <img 
-                  src={drawing.file_url} 
+                  src={signedUrl} 
                   alt={drawing.file_name}
                   className="max-w-none select-none"
                   draggable={false}
@@ -320,7 +367,7 @@ export const DrawingViewer = ({
                 />
               ) : isPDF ? (
                 <iframe 
-                  src={drawing.file_url}
+                  src={signedUrl}
                   className="w-full h-full"
                   title={drawing.file_name}
                   style={{

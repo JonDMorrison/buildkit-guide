@@ -171,9 +171,7 @@ export const DrawingUploadModal = ({
 
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage
-        .from("project-documents")
-        .getPublicUrl(filePath);
+      // Store just the file path - we'll generate signed URLs when viewing
 
       const { error: dbError } = await supabase
         .from('attachments')
@@ -181,7 +179,7 @@ export const DrawingUploadModal = ({
           project_id: selectedProjectId,
           file_name: title || file.name,
           file_type: file.type,
-          file_url: urlData.publicUrl,
+          file_url: filePath,
           file_size: file.size,
           document_type: drawingType,
           uploaded_by: user.id,
