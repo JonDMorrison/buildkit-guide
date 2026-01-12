@@ -7,9 +7,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { DrawingUploadModal } from "@/components/documents/DrawingUploadModal";
 import { DrawingViewer } from "@/components/documents/DrawingViewer";
+import { DrawingThumbnail } from "@/components/documents/DrawingThumbnail";
 import { useAuthRole } from "@/hooks/useAuthRole";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
-import { Plus, Search, Layers, Grid3x3, List, FileText } from "lucide-react";
+import { Plus, Search, Layers, Grid3x3, List } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -239,17 +240,11 @@ const Drawings = () => {
                 onClick={() => setSelectedDrawing(drawing)}
               >
                 <div className="aspect-[4/3] bg-muted relative overflow-hidden">
-                  {drawing.file_type.startsWith('image/') ? (
-                    <img 
-                      src={drawing.file_url} 
-                      alt={drawing.file_name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <FileText className="h-16 w-16 text-muted-foreground" />
-                    </div>
-                  )}
+                  <DrawingThumbnail 
+                    fileUrl={drawing.file_url}
+                    fileType={drawing.file_type}
+                    fileName={drawing.file_name}
+                  />
                   <div className="absolute top-2 left-2 flex gap-1">
                     {drawing.sheet_number && (
                       <Badge variant="secondary" className="font-mono text-xs">
