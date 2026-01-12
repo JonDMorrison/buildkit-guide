@@ -6,7 +6,8 @@ export type StorageBucket = 'task-photos' | 'deficiency-photos';
 
 interface UploadedFile {
   fileName: string;
-  fileUrl: string;
+  filePath: string; // Store the path, not the public URL
+  fileUrl: string; // For backward compatibility - now contains the path
   fileType: string;
   fileSize: number;
 }
@@ -23,7 +24,7 @@ interface AttachmentRecord {
   uploaded_by: string;
   file_name: string;
   file_type: string;
-  file_url: string;
+  file_url: string; // Now stores the file path for signed URL generation
   file_size: number;
   task_id?: string;
   deficiency_id?: string;
@@ -91,21 +92,19 @@ export const usePhotoUpload = (): UsePhotoUploadReturn => {
 
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${pathPrefix}/${Date.now()}.${fileExt}`;
+      const filePath = `${pathPrefix}/${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from(bucket)
-        .upload(fileName, file);
+        .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage
-        .from(bucket)
-        .getPublicUrl(fileName);
-
+      // Return the file path instead of public URL for signed URL generation
       return {
         fileName: file.name,
-        fileUrl: urlData.publicUrl,
+        filePath: filePath,
+        fileUrl: filePath, // Store path in file_url for backward compatibility
         fileType: file.type,
         fileSize: file.size,
       };
@@ -140,21 +139,19 @@ export const usePhotoUpload = (): UsePhotoUploadReturn => {
     try {
       const uploadPromises = validFiles.map(async (file, index) => {
         const fileExt = file.name.split('.').pop();
-        const fileName = `${pathPrefix}/${Date.now()}_${index}.${fileExt}`;
+        const filePath = `${pathPrefix}/${Date.now()}_${index}.${fileExt}`;
 
         const { error: uploadError } = await supabase.storage
           .from(bucket)
-          .upload(fileName, file);
+          .upload(filePath, file);
 
         if (uploadError) throw uploadError;
 
-        const { data: urlData } = supabase.storage
-          .from(bucket)
-          .getPublicUrl(fileName);
-
+        // Return the file path instead of public URL
         return {
           fileName: file.name,
-          fileUrl: urlData.publicUrl,
+          filePath: filePath,
+          fileUrl: filePath, // Store path for backward compatibility
           fileType: file.type,
           fileSize: file.size,
         };

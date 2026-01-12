@@ -1,9 +1,10 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { getSignedUrl } from '@/hooks/useSignedUrl';
 import { Paperclip, Plus, Download, Loader2, FileText, File } from 'lucide-react';
 
 interface Attachment {
@@ -46,6 +47,24 @@ export const TaskAttachments = ({
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+
+  // Generate signed URLs for all attachments
+  useEffect(() => {
+    const fetchSignedUrls = async () => {
+      const urls: Record<string, string> = {};
+      for (const attachment of attachments) {
+        const url = await getSignedUrl(attachment.file_url, 'deficiency-photos');
+        if (url) {
+          urls[attachment.id] = url;
+        }
+      }
+      setSignedUrls(urls);
+    };
+    if (attachments.length > 0) {
+      fetchSignedUrls();
+    }
+  }, [attachments]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -75,12 +94,7 @@ export const TaskAttachments = ({
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('deficiency-photos')
-        .getPublicUrl(filePath);
-
-      // Create attachment record
+      // Store the file path (not public URL) for signed URL generation
       const { error: dbError } = await supabase.from('attachments').insert({
         task_id: taskId,
         project_id: projectId,
@@ -88,7 +102,7 @@ export const TaskAttachments = ({
         file_name: file.name,
         file_type: file.type,
         file_size: file.size,
-        file_url: urlData.publicUrl,
+        file_url: filePath, // Store path, not public URL
       });
 
       if (dbError) throw dbError;
@@ -159,13 +173,14 @@ export const TaskAttachments = ({
         <div className="space-y-1">
           {attachments.map((attachment) => {
             const FileIcon = getFileIcon(attachment.file_type);
+            const url = signedUrls[attachment.id];
             return (
               <a
                 key={attachment.id}
-                href={attachment.file_url}
+                href={url || '#'}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 group"
+                className={`flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 group ${!url ? 'opacity-50 pointer-events-none' : ''}`}
               >
                 <div className="h-8 w-8 rounded bg-muted flex items-center justify-center shrink-0">
                   <FileIcon className="h-4 w-4 text-muted-foreground" />

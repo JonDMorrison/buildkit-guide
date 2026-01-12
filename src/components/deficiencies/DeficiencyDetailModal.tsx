@@ -9,6 +9,7 @@ import { PhotoUpload } from "./PhotoUpload";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CommentsSection } from "@/components/comments/CommentsSection";
 import { supabase } from "@/integrations/supabase/client";
+import { getSignedUrl } from "@/hooks/useSignedUrl";
 import { format } from "date-fns";
 import { Loader2, MapPin, Calendar, Image as ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -30,6 +31,7 @@ export const DeficiencyDetailModal = ({
   const [loading, setLoading] = useState(false);
   const [deficiency, setDeficiency] = useState<any>(null);
   const [attachments, setAttachments] = useState<any[]>([]);
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [newStatus, setNewStatus] = useState("");
   const [newPhotos, setNewPhotos] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -76,6 +78,16 @@ export const DeficiencyDetailModal = ({
         .order("created_at", { ascending: true });
 
       if (attachmentsError) throw attachmentsError;
+
+      // Generate signed URLs for attachments
+      const urls: Record<string, string> = {};
+      for (const att of attachmentsData || []) {
+        const url = await getSignedUrl(att.file_url, 'deficiency-photos');
+        if (url) {
+          urls[att.id] = url;
+        }
+      }
+      setSignedUrls(urls);
 
       setDeficiency(deficiencyData);
       setAttachments(attachmentsData || []);
@@ -137,16 +149,13 @@ export const DeficiencyDetailModal = ({
 
         if (uploadError) throw uploadError;
 
-        const { data: urlData } = supabase.storage
-          .from("deficiency-photos")
-          .getPublicUrl(fileName);
-
+        // Store file path instead of public URL
         await supabase.from("attachments").insert({
           deficiency_id: deficiencyId,
           project_id: deficiency.project_id,
           file_name: photo.name,
           file_type: photo.type,
-          file_url: urlData.publicUrl,
+          file_url: fileName, // Store path for signed URL generation
           file_size: photo.size,
           uploaded_by: userData.user.id,
         });
@@ -244,19 +253,26 @@ export const DeficiencyDetailModal = ({
             <div>
               <Label className="text-base font-semibold mb-3 block">Photos</Label>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {photoAttachments.map((photo) => (
-                  <div
-                    key={photo.id}
-                    className="aspect-square rounded-lg overflow-hidden bg-muted cursor-pointer hover:opacity-80 transition-opacity"
-                    onClick={() => window.open(photo.file_url, "_blank")}
-                  >
-                    <img
-                      src={photo.file_url}
-                      alt={photo.file_name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                ))}
+                {photoAttachments.map((photo) => {
+                  const url = signedUrls[photo.id];
+                  return (
+                    <div
+                      key={photo.id}
+                      className={`aspect-square rounded-lg overflow-hidden bg-muted cursor-pointer hover:opacity-80 transition-opacity ${!url ? 'flex items-center justify-center' : ''}`}
+                      onClick={() => url && window.open(url, "_blank")}
+                    >
+                      {url ? (
+                        <img
+                          src={url}
+                          alt={photo.file_name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -355,18 +371,21 @@ export const DeficiencyDetailModal = ({
             <div>
               <Label className="text-base font-semibold mb-3 block">Documents</Label>
               <div className="space-y-2">
-                {documentAttachments.map((doc) => (
-                  <a
-                    key={doc.id}
-                    href={doc.file_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
-                  >
-                    <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-foreground truncate">{doc.file_name}</span>
-                  </a>
-                ))}
+                {documentAttachments.map((doc) => {
+                  const url = signedUrls[doc.id];
+                  return (
+                    <a
+                      key={doc.id}
+                      href={url || '#'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`flex items-center gap-2 p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors ${!url ? 'opacity-50 pointer-events-none' : ''}`}
+                    >
+                      <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-foreground truncate">{doc.file_name}</span>
+                    </a>
+                  );
+                })}
               </div>
             </div>
           )}
