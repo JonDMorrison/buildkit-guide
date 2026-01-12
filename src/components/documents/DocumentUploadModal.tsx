@@ -154,19 +154,14 @@ export const DocumentUploadModal = ({
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from("project-documents")
-        .getPublicUrl(filePath);
-
-      // Create attachment record
+      // Store file path instead of public URL for signed URL generation
       const { error: dbError } = await supabase
         .from('attachments')
         .insert({
           project_id: selectedProjectId,
           file_name: title || file.name,
           file_type: file.type,
-          file_url: urlData.publicUrl,
+          file_url: filePath, // Store path, not public URL
           file_size: file.size,
           document_type: documentType,
           uploaded_by: user.id,
@@ -175,10 +170,15 @@ export const DocumentUploadModal = ({
       if (dbError) throw dbError;
 
       // Call edge function to process the document for AI
+      // Generate a signed URL for processing
+      const { data: signedData } = await supabase.storage
+        .from("project-documents")
+        .createSignedUrl(filePath, 3600);
+
       try {
         await supabase.functions.invoke("process-document", {
           body: {
-            fileUrl: urlData.publicUrl,
+            fileUrl: signedData?.signedUrl || filePath,
             fileName: title || file.name,
             projectId: selectedProjectId,
             documentType,

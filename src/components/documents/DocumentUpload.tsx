@@ -96,10 +96,10 @@ export const DocumentUpload = ({ projectId, onUploadComplete }: DocumentUploadPr
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
+      // Generate signed URL for processing
+      const { data: signedData } = await supabase.storage
         .from("project-documents")
-        .getPublicUrl(filePath);
+        .createSignedUrl(filePath, 3600);
 
       setUploadProgress("Processing document...");
 
@@ -108,7 +108,7 @@ export const DocumentUpload = ({ projectId, onUploadComplete }: DocumentUploadPr
         "process-document",
         {
           body: {
-            fileUrl: urlData.publicUrl,
+            fileUrl: signedData?.signedUrl || filePath,
             fileName: file.name,
             projectId,
             documentType,

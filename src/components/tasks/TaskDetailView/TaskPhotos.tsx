@@ -1,9 +1,10 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { usePhotoUpload } from '@/hooks/usePhotoUpload';
+import { getSignedUrl } from '@/hooks/useSignedUrl';
 import { Camera, Plus, X, Loader2, ZoomIn } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 
@@ -34,7 +35,25 @@ export const TaskPhotos = ({
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const { uploading, uploadSingle, createAttachmentRecord } = usePhotoUpload();
+
+  // Generate signed URLs for all photos
+  useEffect(() => {
+    const fetchSignedUrls = async () => {
+      const urls: Record<string, string> = {};
+      for (const photo of attachments) {
+        const url = await getSignedUrl(photo.file_url, 'task-photos');
+        if (url) {
+          urls[photo.id] = url;
+        }
+      }
+      setSignedUrls(urls);
+    };
+    if (attachments.length > 0) {
+      fetchSignedUrls();
+    }
+  }, [attachments]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -53,7 +72,7 @@ export const TaskPhotos = ({
         file_name: result.fileName,
         file_type: result.fileType,
         file_size: result.fileSize,
-        file_url: result.fileUrl,
+        file_url: result.filePath, // Store path for signed URL generation
       });
 
       if (success) {
@@ -64,6 +83,13 @@ export const TaskPhotos = ({
 
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+  };
+
+  const handlePreview = async (photoId: string) => {
+    const url = signedUrls[photoId];
+    if (url) {
+      setPreviewUrl(url);
     }
   };
 
@@ -125,22 +151,32 @@ export const TaskPhotos = ({
         </div>
       ) : (
         <div className="grid grid-cols-3 gap-2">
-          {attachments.map((photo) => (
-            <button
-              key={photo.id}
-              onClick={() => setPreviewUrl(photo.file_url)}
-              className="relative aspect-square rounded-lg overflow-hidden bg-muted group"
-            >
-              <img
-                src={photo.file_url}
-                alt={photo.file_name}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-                <ZoomIn className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
-            </button>
-          ))}
+          {attachments.map((photo) => {
+            const url = signedUrls[photo.id];
+            return (
+              <button
+                key={photo.id}
+                onClick={() => handlePreview(photo.id)}
+                className="relative aspect-square rounded-lg overflow-hidden bg-muted group"
+                disabled={!url}
+              >
+                {url ? (
+                  <img
+                    src={url}
+                    alt={photo.file_name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                  <ZoomIn className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </button>
+            );
+          })}
         </div>
       )}
 

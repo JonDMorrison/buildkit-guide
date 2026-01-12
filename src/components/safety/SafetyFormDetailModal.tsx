@@ -22,6 +22,7 @@ import { AmendmentHistory } from "./AmendmentHistory";
 import { RightToRefuseTimeline } from "./RightToRefuseTimeline";
 import { SafetyAssurancePanel } from "./SafetyAssurancePanel";
 import { useProjectRole } from "@/hooks/useProjectRole";
+import { getSignedUrl } from "@/hooks/useSignedUrl";
 
 interface SafetyFormDetailModalProps {
   isOpen: boolean;
@@ -134,6 +135,7 @@ export const SafetyFormDetailModal = ({
   const [form, setForm] = useState<SafetyForm | null>(null);
   const [entries, setEntries] = useState<FormEntry[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [acknowledgments, setAcknowledgments] = useState<Acknowledgment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -196,6 +198,16 @@ export const SafetyFormDetailModal = ({
         .select("*")
         .eq("safety_form_id", formId);
       setAttachments(attachmentsData || []);
+
+      // Generate signed URLs for attachments
+      const urls: Record<string, string> = {};
+      for (const att of attachmentsData || []) {
+        const url = await getSignedUrl(att.file_url, 'deficiency-photos');
+        if (url) {
+          urls[att.id] = url;
+        }
+      }
+      setSignedUrls(urls);
 
       // Fetch attendees
       const { data: attendeesData } = await supabase
@@ -465,18 +477,25 @@ export const SafetyFormDetailModal = ({
                   <h3 className="font-semibold">Photos ({attachments.length})</h3>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  {attachments.map((attachment) => (
-                    <div
-                      key={attachment.id}
-                      className="relative aspect-square rounded-lg overflow-hidden border border-border bg-muted"
-                    >
-                      <img
-                        src={attachment.file_url}
-                        alt={attachment.file_name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ))}
+                  {attachments.map((attachment) => {
+                    const url = signedUrls[attachment.id];
+                    return (
+                      <div
+                        key={attachment.id}
+                        className={`relative aspect-square rounded-lg overflow-hidden border border-border bg-muted ${!url ? 'flex items-center justify-center' : ''}`}
+                      >
+                        {url ? (
+                          <img
+                            src={url}
+                            alt={attachment.file_name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </Card>
             )}
