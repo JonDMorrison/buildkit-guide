@@ -445,24 +445,37 @@ export const DrawingViewer = ({
                   {pdfLoading ? (
                     <div className="flex flex-col items-center justify-center p-8 text-center">
                       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4" />
-                      <p className="text-sm text-muted-foreground">Rendering PDF...</p>
+                      <p className="text-sm text-muted-foreground">Loading PDF...</p>
                     </div>
                   ) : pdfObjectUrl ? (
-                    <iframe 
-                      src={pdfObjectUrl}
-                      className="w-full h-full border-0"
-                      title={drawing.file_name}
+                    <object
+                      data={pdfObjectUrl}
+                      type="application/pdf"
+                      className="w-full h-full"
                       style={{
                         transform: `scale(${zoom})`,
                         transformOrigin: 'center center',
                       }}
-                    />
+                    >
+                      {/* Fallback if object tag doesn't render PDF */}
+                      <div className="flex flex-col items-center justify-center p-8 text-center h-full">
+                        <FileText className="h-16 w-16 text-muted-foreground mb-4" />
+                        <h3 className="font-semibold mb-2">PDF Preview Unavailable</h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Your browser cannot display this PDF inline. Click below to open it.
+                        </p>
+                        <Button onClick={handleDownload}>
+                          <Download className="h-4 w-4 mr-2" />
+                          Open PDF
+                        </Button>
+                      </div>
+                    </object>
                   ) : (
                     <div className="flex flex-col items-center justify-center p-8 text-center">
                       <FileText className="h-16 w-16 text-muted-foreground mb-4" />
-                      <h3 className="font-semibold mb-2">PDF preview blocked</h3>
+                      <h3 className="font-semibold mb-2">Unable to load PDF</h3>
                       <p className="text-sm text-muted-foreground mb-4">
-                        Chrome blocked the embedded preview for this PDF. Use Open PDF to view it in a new tab.
+                        There was an error loading this PDF. Click below to open it in a new tab.
                       </p>
                       <div className="flex gap-2">
                         <Button onClick={handleDownload}>
