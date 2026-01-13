@@ -18,8 +18,15 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Upload, FileText, Loader2, X, Image, Layers } from "lucide-react";
+import { Upload, FileText, Loader2, X, Image, Layers, Zap, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { 
+  compressDrawing, 
+  shouldCompressDrawing, 
+  formatFileSize, 
+  estimateCompressedSize 
+} from "@/lib/imageCompression";
+import { Progress } from "@/components/ui/progress";
 
 interface DrawingUploadModalProps {
   open: boolean;
@@ -39,7 +46,15 @@ export const DrawingUploadModal = ({
   const { toast } = useToast();
   const { user } = useAuth();
   const [uploading, setUploading] = useState(false);
+  const [compressing, setCompressing] = useState(false);
+  const [compressionProgress, setCompressionProgress] = useState<string>('');
   const [file, setFile] = useState<File | null>(null);
+  const [compressedFile, setCompressedFile] = useState<Blob | null>(null);
+  const [compressionInfo, setCompressionInfo] = useState<{
+    originalSize: number;
+    compressedSize: number;
+    willCompress: boolean;
+  } | null>(null);
   const [title, setTitle] = useState("");
   const [sheetNumber, setSheetNumber] = useState("");
   const [revisionNumber, setRevisionNumber] = useState("A");
@@ -97,7 +112,7 @@ export const DrawingUploadModal = ({
     }
   };
 
-  const handleFileSelect = (selectedFile: File) => {
+  const handleFileSelect = async (selectedFile: File) => {
     const maxSize = 50 * 1024 * 1024; // 50MB for drawings
 
     if (selectedFile.size > maxSize) {
@@ -128,8 +143,65 @@ export const DrawingUploadModal = ({
     }
 
     setFile(selectedFile);
+    setCompressedFile(null);
+    setCompressionInfo(null);
+    
     if (!title) {
       setTitle(selectedFile.name.replace(/\.[^/.]+$/, ""));
+    }
+
+    // Check if compression is needed
+    if (shouldCompressDrawing(selectedFile, 10)) {
+      const estimatedSize = estimateCompressedSize(selectedFile.size);
+      setCompressionInfo({
+        originalSize: selectedFile.size,
+        compressedSize: estimatedSize,
+        willCompress: true,
+      });
+      
+      // Auto-compress in background
+      setCompressing(true);
+      setCompressionProgress('Loading image...');
+      
+      try {
+        const compressed = await compressDrawing(selectedFile, {
+          onProgress: (stage) => {
+            if (stage === 'loading') setCompressionProgress('Loading image...');
+            if (stage === 'compressing') setCompressionProgress('Optimizing...');
+            if (stage === 'done') setCompressionProgress('Done!');
+          }
+        });
+        
+        setCompressedFile(compressed);
+        setCompressionInfo({
+          originalSize: selectedFile.size,
+          compressedSize: compressed.size,
+          willCompress: true,
+        });
+        
+        toast({
+          title: "Image optimized",
+          description: `Reduced from ${formatFileSize(selectedFile.size)} to ${formatFileSize(compressed.size)}`,
+        });
+      } catch (error) {
+        console.error('Compression failed:', error);
+        // Fall back to original file
+        setCompressionInfo(null);
+        toast({
+          title: "Optimization skipped",
+          description: "Uploading original file instead.",
+        });
+      } finally {
+        setCompressing(false);
+        setCompressionProgress('');
+      }
+    } else if (selectedFile.type === 'application/pdf' && selectedFile.size > 20 * 1024 * 1024) {
+      // Show hint for large PDFs
+      setCompressionInfo({
+        originalSize: selectedFile.size,
+        compressedSize: selectedFile.size,
+        willCompress: false,
+      });
     }
   };
 
@@ -161,13 +233,20 @@ export const DrawingUploadModal = ({
     setUploading(true);
 
     try {
-      const fileExt = file.name.split(".").pop();
+      // Use compressed file if available, otherwise use original
+      const fileToUpload = compressedFile || file;
+      const uploadSize = fileToUpload.size;
+      
+      // For compressed files, use .jpg extension since we convert to JPEG
+      const fileExt = compressedFile ? 'jpg' : file.name.split(".").pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
       const filePath = `${selectedProjectId}/drawings/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from("project-documents")
-        .upload(filePath, file);
+        .upload(filePath, fileToUpload, {
+          contentType: compressedFile ? 'image/jpeg' : file.type,
+        });
 
       if (uploadError) throw uploadError;
 
@@ -178,9 +257,9 @@ export const DrawingUploadModal = ({
         .insert({
           project_id: selectedProjectId,
           file_name: title || file.name,
-          file_type: file.type,
+          file_type: compressedFile ? 'image/jpeg' : file.type,
           file_url: filePath,
-          file_size: file.size,
+          file_size: uploadSize,
           document_type: drawingType,
           uploaded_by: user.id,
           sheet_number: sheetNumber || null,
@@ -191,13 +270,19 @@ export const DrawingUploadModal = ({
 
       if (dbError) throw dbError;
 
+      const savedMessage = compressionInfo?.willCompress 
+        ? ` (optimized from ${formatFileSize(compressionInfo.originalSize)})`
+        : '';
+      
       toast({
         title: "Drawing uploaded",
-        description: `${title || file.name} (Rev ${revisionNumber}) has been uploaded.`,
+        description: `${title || file.name} (Rev ${revisionNumber}) has been uploaded${savedMessage}.`,
       });
 
       // Reset form
       setFile(null);
+      setCompressedFile(null);
+      setCompressionInfo(null);
       setTitle("");
       setSheetNumber("");
       setRevisionNumber("A");
@@ -273,29 +358,70 @@ export const DrawingUploadModal = ({
             />
             
             {file ? (
-              <div className="flex items-center justify-center gap-3">
-                {file.type.startsWith('image/') ? (
-                  <Image className="h-8 w-8 text-primary" />
-                ) : (
-                  <FileText className="h-8 w-8 text-primary" />
-                )}
-                <div className="text-left">
-                  <p className="font-medium">{file.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {(file.size / 1024 / 1024).toFixed(2)} MB
-                  </p>
+              <div className="space-y-3">
+                <div className="flex items-center justify-center gap-3">
+                  {file.type.startsWith('image/') ? (
+                    <Image className="h-8 w-8 text-primary" />
+                  ) : (
+                    <FileText className="h-8 w-8 text-primary" />
+                  )}
+                  <div className="text-left flex-1">
+                    <p className="font-medium truncate max-w-[280px]">{file.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {formatFileSize(file.size)}
+                      {compressionInfo?.willCompress && compressedFile && (
+                        <span className="text-green-600 ml-2">
+                          → {formatFileSize(compressionInfo.compressedSize)}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFile(null);
+                      setCompressedFile(null);
+                      setCompressionInfo(null);
+                      if (fileInputRef.current) fileInputRef.current.value = "";
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setFile(null);
-                    if (fileInputRef.current) fileInputRef.current.value = "";
-                  }}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+                
+                {/* Compression status */}
+                {compressing && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Zap className="h-4 w-4 animate-pulse text-amber-500" />
+                      <span>{compressionProgress}</span>
+                    </div>
+                    <Progress value={compressionProgress === 'Done!' ? 100 : 50} className="h-1" />
+                  </div>
+                )}
+                
+                {/* Compression result */}
+                {compressionInfo?.willCompress && compressedFile && !compressing && (
+                  <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 rounded-md px-3 py-2">
+                    <Zap className="h-4 w-4" />
+                    <span>
+                      Optimized: {formatFileSize(compressionInfo.originalSize)} → {formatFileSize(compressionInfo.compressedSize)}
+                      {' '}({Math.round((1 - compressionInfo.compressedSize / compressionInfo.originalSize) * 100)}% smaller)
+                    </span>
+                  </div>
+                )}
+                
+                {/* Large PDF warning */}
+                {compressionInfo && !compressionInfo.willCompress && file.type === 'application/pdf' && file.size > 20 * 1024 * 1024 && (
+                  <div className="flex items-center gap-2 text-sm text-amber-600 bg-amber-50 rounded-md px-3 py-2">
+                    <AlertCircle className="h-4 w-4" />
+                    <span>
+                      Large PDF ({formatFileSize(file.size)}). Consider using a PDF optimizer tool for faster uploads.
+                    </span>
+                  </div>
+                )}
               </div>
             ) : (
               <>
@@ -370,13 +496,18 @@ export const DrawingUploadModal = ({
 
           <Button
             onClick={handleUpload}
-            disabled={!file || !selectedProjectId || uploading}
+            disabled={!file || !selectedProjectId || uploading || compressing}
             className="w-full"
           >
             {uploading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Uploading...
+              </>
+            ) : compressing ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Optimizing...
               </>
             ) : (
               <>
