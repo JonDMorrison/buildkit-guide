@@ -16,11 +16,9 @@ import {
   Layers,
 } from "lucide-react";
 
-// Set up PDF.js worker - use inline worker to avoid CDN/CORS issues
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.mjs",
-  import.meta.url
-).toString();
+// Set up PDF.js worker using Vite-bundled asset (no CDN)
+import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 interface PdfViewerProps {
   signedUrl: string;

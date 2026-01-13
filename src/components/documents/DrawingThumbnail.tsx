@@ -4,8 +4,9 @@ import { FileText } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import * as pdfjs from "pdfjs-dist";
 
-// Set up PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+// Set up PDF.js worker using Vite-bundled asset (no CDN)
+import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 interface DrawingThumbnailProps {
   fileUrl: string;
