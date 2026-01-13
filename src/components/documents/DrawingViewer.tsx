@@ -46,6 +46,12 @@ export const DrawingViewer = ({
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [urlLoading, setUrlLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
+
+  // PDF preview: Chrome may block cross-origin PDFs in iframes; we load as a Blob URL instead.
+  const [pdfObjectUrl, setPdfObjectUrl] = useState<string | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfError, setPdfError] = useState(false);
+
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Safely check file type with null guard
@@ -58,11 +64,11 @@ export const DrawingViewer = ({
     if (filePath.startsWith('http')) {
       return filePath;
     }
-    
+
     const { data, error } = await supabase.storage
       .from('project-documents')
       .createSignedUrl(filePath, 3600); // 1 hour expiry
-    
+
     if (error) {
       console.error('Error creating signed URL:', error);
       return null;
@@ -78,6 +84,11 @@ export const DrawingViewer = ({
       setPosition({ x: 0, y: 0 });
       setImageError(false);
       setSignedUrl(null);
+
+      setPdfError(false);
+      setPdfLoading(false);
+      setPdfObjectUrl(null);
+
       fetchRevisionHistory();
       fetchSignedUrl();
     }
@@ -88,7 +99,6 @@ export const DrawingViewer = ({
     setImageError(false);
     try {
       const url = await getSignedUrl(drawing.file_url);
-      console.log('Signed URL generated:', url ? 'success' : 'failed', 'for file type:', drawing.file_type);
       setSignedUrl(url);
     } catch (error) {
       console.error('Error fetching signed URL:', error);
@@ -96,6 +106,48 @@ export const DrawingViewer = ({
     }
     setUrlLoading(false);
   };
+
+  // For PDFs, fetch the file as a Blob and render via a Blob URL to avoid browser iframe blocking.
+  useEffect(() => {
+    if (!open || !isPDF || !signedUrl) return;
+
+    let cancelled = false;
+
+    const run = async () => {
+      setPdfLoading(true);
+      setPdfError(false);
+      try {
+        const res = await fetch(signedUrl);
+        if (!res.ok) {
+          throw new Error(`Failed to load PDF (HTTP ${res.status})`);
+        }
+        const blob = await res.blob();
+        if (cancelled) return;
+        const objUrl = URL.createObjectURL(blob);
+        setPdfObjectUrl(objUrl);
+      } catch (err) {
+        console.error('Error loading PDF:', err);
+        if (!cancelled) {
+          setPdfError(true);
+          setPdfObjectUrl(null);
+        }
+      } finally {
+        if (!cancelled) setPdfLoading(false);
+      }
+    };
+
+    run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [signedUrl, isPDF, open]);
+
+  useEffect(() => {
+    return () => {
+      if (pdfObjectUrl) URL.revokeObjectURL(pdfObjectUrl);
+    };
+  }, [pdfObjectUrl]);
 
   const fetchRevisionHistory = async () => {
     // Find all versions of this drawing by sheet number
@@ -389,17 +441,47 @@ export const DrawingViewer = ({
                   }}
                 />
               ) : isPDF ? (
-                <div className="w-full h-full flex flex-col items-center justify-center">
-                  <iframe 
-                    src={signedUrl}
-                    className="w-full h-full border-0"
-                    title={drawing.file_name}
-                    style={{
-                      transform: `scale(${zoom})`,
-                      transformOrigin: 'center center',
-                    }}
-                    onError={() => console.error('PDF iframe failed to load')}
-                  />
+                <div className="w-full h-full flex items-center justify-center">
+                  {pdfLoading ? (
+                    <div className="flex flex-col items-center justify-center p-8 text-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4" />
+                      <p className="text-sm text-muted-foreground">Rendering PDF...</p>
+                    </div>
+                  ) : pdfObjectUrl ? (
+                    <iframe 
+                      src={pdfObjectUrl}
+                      className="w-full h-full border-0"
+                      title={drawing.file_name}
+                      style={{
+                        transform: `scale(${zoom})`,
+                        transformOrigin: 'center center',
+                      }}
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center p-8 text-center">
+                      <FileText className="h-16 w-16 text-muted-foreground mb-4" />
+                      <h3 className="font-semibold mb-2">PDF preview blocked</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Chrome blocked the embedded preview for this PDF. Use Open PDF to view it in a new tab.
+                      </p>
+                      <div className="flex gap-2">
+                        <Button onClick={handleDownload}>
+                          <Download className="h-4 w-4 mr-2" />
+                          Open PDF
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setPdfObjectUrl(null);
+                            setPdfError(false);
+                            fetchSignedUrl();
+                          }}
+                        >
+                          Retry
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center p-8 text-center">
