@@ -155,22 +155,55 @@ export const PdfViewer = ({
   const currentPageRef = useRef<PDFPageProxy | null>(null);
   const renderTaskRef = useRef<pdfjs.RenderTask | null>(null);
 
-  // Track container size with ResizeObserver
+  // Track container size with ResizeObserver + fallback measurement
   useEffect(() => {
     if (!containerRef.current) return;
+
+    // Immediate measurement fallback
+    const measureContainer = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        if (rect.width > 0 && rect.width !== containerWidth) {
+          console.log(`[PDF] Container measured: ${rect.width}px`);
+          setContainerWidth(rect.width);
+        }
+      }
+    };
+
+    // Measure immediately
+    measureContainer();
+    // Also measure after a short delay (in case of layout settling)
+    const timeoutId = setTimeout(measureContainer, 100);
+    const timeoutId2 = setTimeout(measureContainer, 500);
 
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const width = entry.contentRect.width;
         if (width > 0 && width !== containerWidth) {
+          console.log(`[PDF] ResizeObserver width: ${width}px`);
           setContainerWidth(width);
         }
       }
     });
 
     resizeObserver.observe(containerRef.current);
-    return () => resizeObserver.disconnect();
+    return () => {
+      clearTimeout(timeoutId);
+      clearTimeout(timeoutId2);
+      resizeObserver.disconnect();
+    };
   }, [containerWidth]);
+
+  // Re-measure when PDF doc loads (container might be ready now)
+  useEffect(() => {
+    if (pdfDoc && containerRef.current && containerWidth === 0) {
+      const rect = containerRef.current.getBoundingClientRect();
+      if (rect.width > 0) {
+        console.log(`[PDF] Post-load container: ${rect.width}px`);
+        setContainerWidth(rect.width);
+      }
+    }
+  }, [pdfDoc, containerWidth]);
 
   // Load PDF document with fallback to arrayBuffer method
   useEffect(() => {
