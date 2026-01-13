@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { FileText } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { pdfjs } from "@/lib/pdfjs";
+import { pdfjs, defaultLoadOptions } from "@/lib/pdfjs";
 
 interface DrawingThumbnailProps {
   fileUrl: string;
@@ -78,7 +78,7 @@ export const DrawingThumbnail = ({ fileUrl, fileType, fileName }: DrawingThumbna
 
     const renderPdfThumbnail = async () => {
       try {
-        const loadingTask = pdfjs.getDocument({ url: signedUrl });
+        const loadingTask = pdfjs.getDocument({ url: signedUrl, ...defaultLoadOptions });
         const pdf = await loadingTask.promise;
         const page = await pdf.getPage(1);
         

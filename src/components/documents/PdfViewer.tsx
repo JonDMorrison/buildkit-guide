@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { pdfjs } from "@/lib/pdfjs";
+import { pdfjs, defaultLoadOptions } from "@/lib/pdfjs";
 import type { PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist";
 import { TransformWrapper, TransformComponent, useControls } from "react-zoom-pan-pinch";
 import { Button } from "@/components/ui/button";
@@ -127,7 +127,7 @@ export const PdfViewer = ({
       try {
         const loadingTask = pdfjs.getDocument({
           url: signedUrl,
-          disableAutoFetch: false,
+          ...defaultLoadOptions,
         });
 
         const doc = await loadingTask.promise;
@@ -228,7 +228,16 @@ export const PdfViewer = ({
 
       renderTaskRef.current = renderTask;
 
-      await renderTask.promise;
+      try {
+        await renderTask.promise;
+      } catch (renderErr) {
+        // If it's not a cancellation, surface the error
+        if (renderErr instanceof Error && !renderErr.message.includes("Rendering cancelled")) {
+          console.error("PDF render error:", renderErr);
+          setError(`Failed to render page: ${renderErr.message}`);
+        }
+        throw renderErr;
+      }
       renderTaskRef.current = null;
     } catch (err) {
       // Ignore cancelled render errors
