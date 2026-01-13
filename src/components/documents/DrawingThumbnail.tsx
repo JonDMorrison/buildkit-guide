@@ -2,11 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { FileText } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import * as pdfjs from "pdfjs-dist";
-
-// Set up PDF.js worker using Vite-bundled asset (no CDN)
-import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
-pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+import { pdfjs } from "@/lib/pdfjs";
 
 interface DrawingThumbnailProps {
   fileUrl: string;

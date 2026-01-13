@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import * as pdfjs from "pdfjs-dist";
+import { pdfjs } from "@/lib/pdfjs";
 import type { PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist";
 import { TransformWrapper, TransformComponent, useControls } from "react-zoom-pan-pinch";
 import { Button } from "@/components/ui/button";
@@ -15,10 +15,6 @@ import {
   FileText,
   Layers,
 } from "lucide-react";
-
-// Set up PDF.js worker using Vite-bundled asset (no CDN)
-import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
-pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 interface PdfViewerProps {
   signedUrl: string;
