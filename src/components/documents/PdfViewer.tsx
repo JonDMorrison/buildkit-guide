@@ -156,6 +156,9 @@ export const PdfViewer = ({
   const renderTaskRef = useRef<pdfjs.RenderTask | null>(null);
 
   // Track container size with ResizeObserver + fallback measurement
+  // Use ref to track last width and avoid stale closure issues
+  const lastWidthRef = useRef(0);
+  
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -163,8 +166,9 @@ export const PdfViewer = ({
     const measureContainer = () => {
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
-        if (rect.width > 0 && rect.width !== containerWidth) {
+        if (rect.width > 0 && rect.width !== lastWidthRef.current) {
           console.log(`[PDF] Container measured: ${rect.width}px`);
+          lastWidthRef.current = rect.width;
           setContainerWidth(rect.width);
         }
       }
@@ -179,8 +183,9 @@ export const PdfViewer = ({
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const width = entry.contentRect.width;
-        if (width > 0 && width !== containerWidth) {
+        if (width > 0 && width !== lastWidthRef.current) {
           console.log(`[PDF] ResizeObserver width: ${width}px`);
+          lastWidthRef.current = width;
           setContainerWidth(width);
         }
       }
@@ -192,18 +197,19 @@ export const PdfViewer = ({
       clearTimeout(timeoutId2);
       resizeObserver.disconnect();
     };
-  }, [containerWidth]);
+  }, []); // Run once on mount - no dependencies needed
 
   // Re-measure when PDF doc loads (container might be ready now)
   useEffect(() => {
-    if (pdfDoc && containerRef.current && containerWidth === 0) {
+    if (pdfDoc && containerRef.current && lastWidthRef.current === 0) {
       const rect = containerRef.current.getBoundingClientRect();
       if (rect.width > 0) {
         console.log(`[PDF] Post-load container: ${rect.width}px`);
+        lastWidthRef.current = rect.width;
         setContainerWidth(rect.width);
       }
     }
-  }, [pdfDoc, containerWidth]);
+  }, [pdfDoc]);
 
   // Load PDF document with fallback to arrayBuffer method
   useEffect(() => {
