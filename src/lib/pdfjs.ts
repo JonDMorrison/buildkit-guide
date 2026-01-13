@@ -12,6 +12,7 @@ import * as pdfjs from "pdfjs-dist/build/pdf.mjs";
 // Vite-friendly worker URL (bundled, same-origin)
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
+// Configure worker source
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 // Strongest guarantee: provide an actual Worker instance so PDF.js never tries
@@ -35,6 +36,20 @@ if (typeof window !== "undefined") {
     // Keeping workerSrc set to a local URL still prevents CDN usage.
   }
 }
+
+/**
+ * Default document loading options to prevent range/stream issues with signed URLs.
+ * Some CDN/storage backends don't support HTTP range requests properly, causing
+ * PDF.js to load metadata but fail on page content.
+ */
+export const defaultLoadOptions = {
+  // Disable range requests - forces full file download
+  disableRange: true,
+  // Disable streaming - ensures complete data before parsing
+  disableStream: true,
+  // Disable auto-fetch of linked resources
+  disableAutoFetch: false,
+};
 
 export { pdfjs };
 
