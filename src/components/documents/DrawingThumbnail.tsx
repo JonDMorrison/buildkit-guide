@@ -84,9 +84,9 @@ export const DrawingThumbnail = ({ fileUrl, fileType, fileName }: DrawingThumbna
         
         // Calculate scale to fit thumbnail (target ~200px width)
         const targetWidth = 200;
-        const viewport = page.getViewport({ scale: 1 });
+        const viewport = page.getViewport({ scale: 1, rotation: page.rotate || 0 });
         const scale = targetWidth / viewport.width;
-        const scaledViewport = page.getViewport({ scale });
+        const scaledViewport = page.getViewport({ scale, rotation: page.rotate || 0 });
 
         // Create offscreen canvas
         const canvas = document.createElement('canvas');

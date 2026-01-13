@@ -183,8 +183,14 @@ export const PdfViewer = ({
       const page = await pdfDoc.getPage(currentPage);
       currentPageRef.current = page;
 
+      // Respect the PDF page's built-in rotation (some drawing sets come rotated)
+      const effectiveRotation = ((page.rotate || 0) + rotation) % 360;
+
       // Get viewport at scale 1 to calculate dimensions
-      const unscaledViewport = page.getViewport({ scale: 1, rotation });
+      const unscaledViewport = page.getViewport({
+        scale: 1,
+        rotation: effectiveRotation,
+      });
 
       // Calculate scale to fit container width with some padding
       const padding = 32;
@@ -195,7 +201,10 @@ export const PdfViewer = ({
       const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
       const renderScale = baseScale * pixelRatio;
 
-      const viewport = page.getViewport({ scale: renderScale, rotation });
+      const viewport = page.getViewport({
+        scale: renderScale,
+        rotation: effectiveRotation,
+      });
 
       const canvas = canvasRef.current;
       const context = canvas.getContext("2d");
@@ -254,7 +263,8 @@ export const PdfViewer = ({
 
       try {
         const page = await pdfDoc.getPage(pageNum);
-        const viewport = page.getViewport({ scale: 0.2, rotation: 0 });
+        const effectiveRotation = (page.rotate || 0) % 360;
+        const viewport = page.getViewport({ scale: 0.2, rotation: effectiveRotation });
 
         const canvas = document.createElement("canvas");
         const context = canvas.getContext("2d");
