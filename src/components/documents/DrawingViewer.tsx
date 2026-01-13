@@ -18,9 +18,12 @@ import {
   RotateCw,
   Maximize2,
   History,
+  ExternalLink,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
+import { getSignedUrl } from "@/hooks/useSignedUrl";
+import { PdfViewer } from "./PdfViewer";
 import type { Drawing, DrawingRevision } from "@/types/drawings";
 
 interface DrawingViewerProps {
@@ -47,34 +50,11 @@ export const DrawingViewer = ({
   const [urlLoading, setUrlLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
 
-  // PDF preview: Chrome may block cross-origin PDFs in iframes; we load as a Blob URL instead.
-  const [pdfObjectUrl, setPdfObjectUrl] = useState<string | null>(null);
-  const [pdfLoading, setPdfLoading] = useState(false);
-  const [pdfError, setPdfError] = useState(false);
-
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Safely check file type with null guard
   const isImage = drawing?.file_type?.startsWith('image/') ?? false;
   const isPDF = drawing?.file_type === 'application/pdf';
-
-  // Generate signed URL for private bucket access
-  const getSignedUrl = async (filePath: string): Promise<string | null> => {
-    // If it's already a full URL (legacy data), return as-is
-    if (filePath.startsWith('http')) {
-      return filePath;
-    }
-
-    const { data, error } = await supabase.storage
-      .from('project-documents')
-      .createSignedUrl(filePath, 3600); // 1 hour expiry
-
-    if (error) {
-      console.error('Error creating signed URL:', error);
-      return null;
-    }
-    return data.signedUrl;
-  };
 
   useEffect(() => {
     if (open && drawing?.id) {
@@ -85,10 +65,6 @@ export const DrawingViewer = ({
       setImageError(false);
       setSignedUrl(null);
 
-      setPdfError(false);
-      setPdfLoading(false);
-      setPdfObjectUrl(null);
-
       fetchRevisionHistory();
       fetchSignedUrl();
     }
@@ -98,7 +74,7 @@ export const DrawingViewer = ({
     setUrlLoading(true);
     setImageError(false);
     try {
-      const url = await getSignedUrl(drawing.file_url);
+      const url = await getSignedUrl(drawing.file_url, 'project-documents');
       setSignedUrl(url);
     } catch (error) {
       console.error('Error fetching signed URL:', error);
@@ -106,48 +82,6 @@ export const DrawingViewer = ({
     }
     setUrlLoading(false);
   };
-
-  // For PDFs, fetch the file as a Blob and render via a Blob URL to avoid browser iframe blocking.
-  useEffect(() => {
-    if (!open || !isPDF || !signedUrl) return;
-
-    let cancelled = false;
-
-    const run = async () => {
-      setPdfLoading(true);
-      setPdfError(false);
-      try {
-        const res = await fetch(signedUrl);
-        if (!res.ok) {
-          throw new Error(`Failed to load PDF (HTTP ${res.status})`);
-        }
-        const blob = await res.blob();
-        if (cancelled) return;
-        const objUrl = URL.createObjectURL(blob);
-        setPdfObjectUrl(objUrl);
-      } catch (err) {
-        console.error('Error loading PDF:', err);
-        if (!cancelled) {
-          setPdfError(true);
-          setPdfObjectUrl(null);
-        }
-      } finally {
-        if (!cancelled) setPdfLoading(false);
-      }
-    };
-
-    run();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [signedUrl, isPDF, open]);
-
-  useEffect(() => {
-    return () => {
-      if (pdfObjectUrl) URL.revokeObjectURL(pdfObjectUrl);
-    };
-  }, [pdfObjectUrl]);
 
   const fetchRevisionHistory = async () => {
     // Find all versions of this drawing by sheet number
@@ -244,9 +178,9 @@ export const DrawingViewer = ({
   };
 
   const handleDownload = async () => {
-    const url = signedUrl || await getSignedUrl(drawing.file_url);
+    const url = signedUrl || await getSignedUrl(drawing.file_url, 'project-documents');
     if (url) {
-      window.open(url, '_blank');
+      window.open(url, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -441,61 +375,31 @@ export const DrawingViewer = ({
                   }}
                 />
               ) : isPDF ? (
-                <div className="w-full h-full flex items-center justify-center">
-                  {pdfLoading ? (
-                    <div className="flex flex-col items-center justify-center p-8 text-center">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4" />
-                      <p className="text-sm text-muted-foreground">Loading PDF...</p>
+                signedUrl ? (
+                  <PdfViewer
+                    signedUrl={signedUrl}
+                    fileName={drawing.file_name}
+                    onOpenExternal={handleDownload}
+                    onRetry={fetchSignedUrl}
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center p-8 text-center">
+                    <FileText className="h-16 w-16 text-muted-foreground mb-4" />
+                    <h3 className="font-semibold mb-2">Unable to load PDF</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      There was an error loading this PDF.
+                    </p>
+                    <div className="flex gap-2">
+                      <Button onClick={handleDownload}>
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Open PDF
+                      </Button>
+                      <Button variant="outline" onClick={fetchSignedUrl}>
+                        Retry
+                      </Button>
                     </div>
-                  ) : pdfObjectUrl ? (
-                    <object
-                      data={pdfObjectUrl}
-                      type="application/pdf"
-                      className="w-full h-full"
-                      style={{
-                        transform: `scale(${zoom})`,
-                        transformOrigin: 'center center',
-                      }}
-                    >
-                      {/* Fallback if object tag doesn't render PDF */}
-                      <div className="flex flex-col items-center justify-center p-8 text-center h-full">
-                        <FileText className="h-16 w-16 text-muted-foreground mb-4" />
-                        <h3 className="font-semibold mb-2">PDF Preview Unavailable</h3>
-                        <p className="text-sm text-muted-foreground mb-4">
-                          Your browser cannot display this PDF inline. Click below to open it.
-                        </p>
-                        <Button onClick={handleDownload}>
-                          <Download className="h-4 w-4 mr-2" />
-                          Open PDF
-                        </Button>
-                      </div>
-                    </object>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center p-8 text-center">
-                      <FileText className="h-16 w-16 text-muted-foreground mb-4" />
-                      <h3 className="font-semibold mb-2">Unable to load PDF</h3>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        There was an error loading this PDF. Click below to open it in a new tab.
-                      </p>
-                      <div className="flex gap-2">
-                        <Button onClick={handleDownload}>
-                          <Download className="h-4 w-4 mr-2" />
-                          Open PDF
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            setPdfObjectUrl(null);
-                            setPdfError(false);
-                            fetchSignedUrl();
-                          }}
-                        >
-                          Retry
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                  </div>
+                )
               ) : (
                 <div className="flex flex-col items-center justify-center p-8 text-center">
                   <FileText className="h-16 w-16 text-muted-foreground mb-4" />
