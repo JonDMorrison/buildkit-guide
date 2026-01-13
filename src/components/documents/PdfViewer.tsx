@@ -4,6 +4,8 @@ import type { PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist";
 import { TransformWrapper, TransformComponent, useControls } from "react-zoom-pan-pinch";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   ZoomIn,
   ZoomOut,
@@ -14,6 +16,7 @@ import {
   RefreshCw,
   FileText,
   Layers,
+  Bug,
 } from "lucide-react";
 
 interface PdfViewerProps {
@@ -27,6 +30,23 @@ interface PageThumbnail {
   pageNum: number;
   dataUrl: string | null;
   loading: boolean;
+}
+
+interface DebugInfo {
+  containerWidth: number;
+  viewportWidth: number;
+  viewportHeight: number;
+  canvasWidth: number;
+  canvasHeight: number;
+  baseScale: number;
+  renderScale: number;
+  pixelRatio: number;
+  loadMethod: "url" | "arrayBuffer" | "none";
+  renderStarted: string | null;
+  renderCompleted: string | null;
+  ocgEnabled: boolean;
+  pageRotation: number;
+  effectiveRotation: number;
 }
 
 // Separate component for zoom controls to access transform state via context
@@ -71,6 +91,29 @@ const ZoomControls = () => {
   );
 };
 
+// Debug overlay component
+const DebugOverlay = ({ info }: { info: DebugInfo }) => (
+  <div className="absolute top-2 left-2 z-30 bg-black/80 text-white text-xs font-mono p-3 rounded-lg max-w-xs overflow-auto">
+    <div className="font-bold mb-2 text-yellow-400">🐛 PDF Debug Info</div>
+    <div className="space-y-1">
+      <div>Container: {info.containerWidth}px</div>
+      <div>Viewport: {info.viewportWidth} × {info.viewportHeight}</div>
+      <div>Canvas: {info.canvasWidth} × {info.canvasHeight}</div>
+      <div>Base scale: {info.baseScale.toFixed(3)}</div>
+      <div>Render scale: {info.renderScale.toFixed(3)}</div>
+      <div>Pixel ratio: {info.pixelRatio}</div>
+      <div>Load method: <span className={info.loadMethod === "arrayBuffer" ? "text-green-400" : "text-blue-400"}>{info.loadMethod}</span></div>
+      <div>Page rotation: {info.pageRotation}°</div>
+      <div>Effective rotation: {info.effectiveRotation}°</div>
+      <div>OCG forced: {info.ocgEnabled ? "✅" : "❌"}</div>
+      <div className="text-gray-400 mt-2">
+        {info.renderStarted && <div>Started: {info.renderStarted}</div>}
+        {info.renderCompleted && <div>Completed: {info.renderCompleted}</div>}
+      </div>
+    </div>
+  </div>
+);
+
 export const PdfViewer = ({
   signedUrl,
   fileName,
@@ -87,6 +130,25 @@ export const PdfViewer = ({
   const [showThumbnails, setShowThumbnails] = useState(false);
   const [thumbnails, setThumbnails] = useState<PageThumbnail[]>([]);
   const [rotation, setRotation] = useState(0);
+  const [useIframeFallback, setUseIframeFallback] = useState(false);
+  const [showDebug, setShowDebug] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<DebugInfo>({
+    containerWidth: 0,
+    viewportWidth: 0,
+    viewportHeight: 0,
+    canvasWidth: 0,
+    canvasHeight: 0,
+    baseScale: 0,
+    renderScale: 0,
+    pixelRatio: 1,
+    loadMethod: "none",
+    renderStarted: null,
+    renderCompleted: null,
+    ocgEnabled: false,
+    pageRotation: 0,
+    effectiveRotation: 0,
+  });
+  const [loadMethod, setLoadMethod] = useState<"url" | "arrayBuffer">("url");
 
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -110,7 +172,7 @@ export const PdfViewer = ({
     return () => resizeObserver.disconnect();
   }, [containerWidth]);
 
-  // Load PDF document
+  // Load PDF document with fallback to arrayBuffer method
   useEffect(() => {
     if (!signedUrl) return;
 
@@ -124,43 +186,92 @@ export const PdfViewer = ({
       setTotalPages(0);
       setThumbnails([]);
 
+      // Try URL method first
+      let doc: PDFDocumentProxy | null = null;
+      let usedMethod: "url" | "arrayBuffer" = "url";
+
       try {
+        console.log("[PDF] Attempting URL load method...");
         const loadingTask = pdfjs.getDocument({
           url: signedUrl,
           ...defaultLoadOptions,
         });
 
-        const doc = await loadingTask.promise;
+        doc = await loadingTask.promise;
+        console.log(`[PDF] URL method succeeded. Pages: ${doc.numPages}`);
+      } catch (urlErr) {
+        console.warn("[PDF] URL method failed, trying arrayBuffer fallback:", urlErr);
+        
+        // Fallback to arrayBuffer method
+        try {
+          const response = await fetch(signedUrl);
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          const arrayBuffer = await response.arrayBuffer();
+          console.log(`[PDF] Downloaded ${arrayBuffer.byteLength} bytes, loading via arrayBuffer...`);
+          
+          const loadingTask = pdfjs.getDocument({
+            data: arrayBuffer,
+            ...defaultLoadOptions,
+          });
 
-        if (cancelled) {
-          doc.destroy();
-          return;
-        }
-
-        setPdfDoc(doc);
-        setTotalPages(doc.numPages);
-        setThumbnails(
-          Array.from({ length: doc.numPages }, (_, i) => ({
-            pageNum: i + 1,
-            dataUrl: null,
-            loading: false,
-          }))
-        );
-      } catch (err) {
-        console.error("Error loading PDF:", err);
-        if (!cancelled) {
-          setError(
-            err instanceof Error ? err.message : "Failed to load PDF document"
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
+          doc = await loadingTask.promise;
+          usedMethod = "arrayBuffer";
+          console.log(`[PDF] ArrayBuffer method succeeded. Pages: ${doc.numPages}`);
+        } catch (bufErr) {
+          console.error("[PDF] ArrayBuffer method also failed:", bufErr);
+          throw bufErr;
         }
       }
+
+      if (cancelled) {
+        doc?.destroy();
+        return;
+      }
+
+      setLoadMethod(usedMethod);
+      setDebugInfo(prev => ({ ...prev, loadMethod: usedMethod }));
+
+      // Force all Optional Content Groups (layers) to be visible
+      try {
+        const ocConfig = await doc.getOptionalContentConfig();
+        if (ocConfig) {
+          console.log("[PDF] Optional Content Groups found, forcing all visible");
+          // Get all groups and set them visible
+          const groups = ocConfig.getGroups();
+          if (groups && typeof groups === 'object') {
+            Object.keys(groups).forEach(groupId => {
+              ocConfig.setVisibility(groupId, true);
+            });
+          }
+          setDebugInfo(prev => ({ ...prev, ocgEnabled: true }));
+        }
+      } catch (ocgErr) {
+        console.log("[PDF] No OCG or error reading OCG:", ocgErr);
+      }
+
+      setPdfDoc(doc);
+      setTotalPages(doc.numPages);
+      setThumbnails(
+        Array.from({ length: doc.numPages }, (_, i) => ({
+          pageNum: i + 1,
+          dataUrl: null,
+          loading: false,
+        }))
+      );
+      setLoading(false);
     };
 
-    loadPdf();
+    loadPdf().catch(err => {
+      console.error("Error loading PDF:", err);
+      if (!cancelled) {
+        setError(
+          err instanceof Error ? err.message : "Failed to load PDF document"
+        );
+        setLoading(false);
+      }
+    });
 
     return () => {
       cancelled = true;
@@ -178,13 +289,16 @@ export const PdfViewer = ({
     }
 
     setPageLoading(true);
+    const renderStartTime = new Date().toISOString();
+    setDebugInfo(prev => ({ ...prev, renderStarted: renderStartTime, renderCompleted: null }));
 
     try {
       const page = await pdfDoc.getPage(currentPage);
       currentPageRef.current = page;
 
+      const pageRotation = page.rotate || 0;
       // Respect the PDF page's built-in rotation (some drawing sets come rotated)
-      const effectiveRotation = ((page.rotate || 0) + rotation) % 360;
+      const effectiveRotation = (pageRotation + rotation) % 360;
 
       // Get viewport at scale 1 to calculate dimensions
       const unscaledViewport = page.getViewport({
@@ -213,6 +327,9 @@ export const PdfViewer = ({
         throw new Error("Could not get canvas context");
       }
 
+      // Clear canvas before rendering
+      context.clearRect(0, 0, canvas.width, canvas.height);
+
       // Set canvas dimensions
       canvas.width = viewport.width;
       canvas.height = viewport.height;
@@ -220,6 +337,23 @@ export const PdfViewer = ({
       // Set display size (CSS)
       canvas.style.width = `${viewport.width / pixelRatio}px`;
       canvas.style.height = `${viewport.height / pixelRatio}px`;
+
+      // Update debug info
+      setDebugInfo(prev => ({
+        ...prev,
+        containerWidth,
+        viewportWidth: Math.round(viewport.width),
+        viewportHeight: Math.round(viewport.height),
+        canvasWidth: canvas.width,
+        canvasHeight: canvas.height,
+        baseScale,
+        renderScale,
+        pixelRatio,
+        pageRotation,
+        effectiveRotation,
+      }));
+
+      console.log(`[PDF] Rendering page ${currentPage}: canvas=${canvas.width}x${canvas.height}, scale=${renderScale.toFixed(3)}`);
 
       const renderTask = page.render({
         canvasContext: context,
@@ -230,10 +364,13 @@ export const PdfViewer = ({
 
       try {
         await renderTask.promise;
+        const renderEndTime = new Date().toISOString();
+        setDebugInfo(prev => ({ ...prev, renderCompleted: renderEndTime }));
+        console.log(`[PDF] Page ${currentPage} render completed at ${renderEndTime}`);
       } catch (renderErr) {
         // If it's not a cancellation, surface the error
         if (renderErr instanceof Error && !renderErr.message.includes("Rendering cancelled")) {
-          console.error("PDF render error:", renderErr);
+          console.error("[PDF] Render error:", renderErr);
           setError(`Failed to render page: ${renderErr.message}`);
         }
         throw renderErr;
@@ -244,15 +381,17 @@ export const PdfViewer = ({
       if (err instanceof Error && err.message.includes("Rendering cancelled")) {
         return;
       }
-      console.error("Error rendering page:", err);
+      console.error("[PDF] Error rendering page:", err);
     } finally {
       setPageLoading(false);
     }
   }, [pdfDoc, currentPage, containerWidth, rotation]);
 
   useEffect(() => {
-    renderPage();
-  }, [renderPage]);
+    if (!useIframeFallback) {
+      renderPage();
+    }
+  }, [renderPage, useIframeFallback]);
 
   // Generate thumbnails lazily
   const generateThumbnail = useCallback(
@@ -377,16 +516,52 @@ export const PdfViewer = ({
         <FileText className="h-16 w-16 text-muted-foreground mb-4" />
         <h3 className="font-semibold mb-2">Unable to load PDF</h3>
         <p className="text-sm text-muted-foreground mb-4 max-w-md">{error}</p>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap justify-center">
           <Button variant="outline" onClick={handleRetry}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Retry
+          </Button>
+          <Button variant="outline" onClick={() => setUseIframeFallback(true)}>
+            Use Browser Viewer
           </Button>
           <Button onClick={onOpenExternal}>
             <ExternalLink className="h-4 w-4 mr-2" />
             Open PDF
           </Button>
         </div>
+      </div>
+    );
+  }
+
+  // Iframe fallback mode
+  if (useIframeFallback) {
+    return (
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between gap-2 p-2 border-b bg-muted/30">
+          <span className="text-sm text-muted-foreground">Browser PDF Viewer</span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setUseIframeFallback(false)}
+            >
+              Try Canvas Viewer
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onOpenExternal}
+            >
+              <ExternalLink className="h-3 w-3 mr-1" />
+              Open PDF
+            </Button>
+          </div>
+        </div>
+        <iframe
+          src={signedUrl}
+          className="flex-1 w-full border-0"
+          title={fileName || "PDF Document"}
+        />
       </div>
     );
   }
@@ -422,6 +597,17 @@ export const PdfViewer = ({
 
         {/* Zoom & Tools */}
         <div className="flex items-center gap-1">
+          {/* Debug toggle */}
+          <Button
+            variant={showDebug ? "secondary" : "ghost"}
+            size="icon"
+            onClick={() => setShowDebug(!showDebug)}
+            className="h-8 w-8"
+            title="Show debug info"
+          >
+            <Bug className="h-4 w-4" />
+          </Button>
+          
           {totalPages > 1 && (
             <Button
               variant={showThumbnails ? "secondary" : "ghost"}
@@ -443,6 +629,19 @@ export const PdfViewer = ({
             <RotateCcw className="h-4 w-4" />
           </Button>
           <div className="w-px h-6 bg-border mx-1 hidden sm:block" />
+          
+          {/* Iframe fallback toggle */}
+          <div className="flex items-center gap-2 px-2">
+            <Switch
+              id="iframe-mode"
+              checked={useIframeFallback}
+              onCheckedChange={setUseIframeFallback}
+            />
+            <Label htmlFor="iframe-mode" className="text-xs cursor-pointer">
+              Browser
+            </Label>
+          </div>
+          
           <Button
             variant="outline"
             size="sm"
@@ -500,6 +699,9 @@ export const PdfViewer = ({
         ref={containerRef}
         className="flex-1 overflow-hidden bg-muted relative"
       >
+        {/* Debug overlay */}
+        {showDebug && <DebugOverlay info={debugInfo} />}
+        
         {pageLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
