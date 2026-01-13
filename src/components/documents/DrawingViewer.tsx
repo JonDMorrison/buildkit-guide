@@ -45,6 +45,7 @@ export const DrawingViewer = ({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [urlLoading, setUrlLoading] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Safely check file type with null guard
@@ -71,19 +72,28 @@ export const DrawingViewer = ({
 
   useEffect(() => {
     if (open && drawing?.id) {
-      fetchRevisionHistory();
-      fetchSignedUrl();
       // Reset view state when opening new drawing
       setZoom(1);
       setRotation(0);
       setPosition({ x: 0, y: 0 });
+      setImageError(false);
+      setSignedUrl(null);
+      fetchRevisionHistory();
+      fetchSignedUrl();
     }
   }, [drawing?.id, open]);
 
   const fetchSignedUrl = async () => {
     setUrlLoading(true);
-    const url = await getSignedUrl(drawing.file_url);
-    setSignedUrl(url);
+    setImageError(false);
+    try {
+      const url = await getSignedUrl(drawing.file_url);
+      console.log('Signed URL generated:', url ? 'success' : 'failed', 'for file type:', drawing.file_type);
+      setSignedUrl(url);
+    } catch (error) {
+      console.error('Error fetching signed URL:', error);
+      setSignedUrl(null);
+    }
     setUrlLoading(false);
   };
 
@@ -353,12 +363,25 @@ export const DrawingViewer = ({
                     Try Again
                   </Button>
                 </div>
+              ) : imageError ? (
+                <div className="flex flex-col items-center justify-center p-8 text-center">
+                  <FileText className="h-16 w-16 text-muted-foreground mb-4" />
+                  <h3 className="font-semibold mb-2">Unable to display drawing</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    The image could not be loaded. Try downloading it instead.
+                  </p>
+                  <Button onClick={handleDownload}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download File
+                  </Button>
+                </div>
               ) : isImage ? (
                 <img 
                   src={signedUrl} 
                   alt={drawing.file_name}
                   className="max-w-none select-none"
                   draggable={false}
+                  onError={() => setImageError(true)}
                   style={{
                     transform: `translate(${position.x}px, ${position.y}px) scale(${zoom}) rotate(${rotation}deg)`,
                     transformOrigin: 'center center',
@@ -366,15 +389,18 @@ export const DrawingViewer = ({
                   }}
                 />
               ) : isPDF ? (
-                <iframe 
-                  src={signedUrl}
-                  className="w-full h-full"
-                  title={drawing.file_name}
-                  style={{
-                    transform: `scale(${zoom})`,
-                    transformOrigin: 'center center',
-                  }}
-                />
+                <div className="w-full h-full flex flex-col items-center justify-center">
+                  <iframe 
+                    src={signedUrl}
+                    className="w-full h-full border-0"
+                    title={drawing.file_name}
+                    style={{
+                      transform: `scale(${zoom})`,
+                      transformOrigin: 'center center',
+                    }}
+                    onError={() => console.error('PDF iframe failed to load')}
+                  />
+                </div>
               ) : (
                 <div className="flex flex-col items-center justify-center p-8 text-center">
                   <FileText className="h-16 w-16 text-muted-foreground mb-4" />
