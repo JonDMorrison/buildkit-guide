@@ -323,6 +323,7 @@ const Drawings = () => {
             open={!!selectedDrawing}
             onOpenChange={(open) => !open && setSelectedDrawing(null)}
             onUploadRevision={() => handleUploadRevision(selectedDrawing)}
+            onDelete={fetchDrawings}
           />
         )}
       </div>
