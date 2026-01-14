@@ -1,16 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle, FileX, Ban, FolderSearch, MessageSquareWarning, FileStack, TrendingDown, Clock, MapPin, Brain, Shield, Wifi, WifiOff, ChevronDown, ChevronUp, Receipt, FileCheck, Mic } from "lucide-react";
+import { CheckCircle, FileX, Ban, FolderSearch, MessageSquareWarning, FileStack, TrendingDown, Clock, MapPin, Brain, Shield, Wifi, WifiOff, ChevronDown, ChevronUp, Receipt, FileCheck, Mic, ClipboardList, AlertTriangle, Calendar, HardHat, Users, Sparkles } from "lucide-react";
 import { useState } from "react";
 import heroBackground from "@/assets/hero-construction-bg.jpg";
 import problemChaos from "@/assets/problem-chaos.jpg";
 import successOrganized from "@/assets/success-organized.jpg";
-import iconTasks from "@/assets/icon-tasks.png";
-import iconBlocker from "@/assets/icon-blocker.png";
-import iconLookahead from "@/assets/icon-lookahead.png";
-import iconSafety from "@/assets/icon-safety.png";
-import iconManpower from "@/assets/icon-manpower.png";
-import iconAI from "@/assets/icon-ai.png";
 import projectPathLogo from "@/assets/project-path-logo.png";
 import { PublicNav } from "@/components/PublicNav";
 
@@ -228,30 +222,32 @@ export default function Landing() {
             {[{
               title: "Task Accountability",
               description: "Every trade sees exactly what they owe—and when. No more chasing updates.",
-              icon: iconTasks
+              Icon: ClipboardList
             }, {
               title: "Instant Blocker Reporting",
               description: "Workers flag issues in one tap. You see them instantly. Problems get solved.",
-              icon: iconBlocker
+              Icon: AlertTriangle
             }, {
               title: "2-Week Lookahead",
               description: "Visual plan of the next two weeks. See conflicts before they cost you.",
-              icon: iconLookahead
+              Icon: Calendar
             }, {
               title: "Safety Done Right",
               description: "Complete daily safety logs in under 3 minutes. AI suggests hazards based on weather and tasks.",
-              icon: iconSafety
+              Icon: HardHat
             }, {
               title: "Manpower Planning",
               description: "Request crews with one tap. Prevent shortages before they delay the job.",
-              icon: iconManpower
+              Icon: Users
             }, {
               title: "AI Support",
               description: "Ask questions about your project documents. Draft emails in seconds. Identify risks automatically.",
-              icon: iconAI
+              Icon: Sparkles
             }].map((feature, index) => (
               <div key={index} className="p-5 md:p-6 bg-card rounded-lg border border-border hover:border-accent/50 hover:shadow-md transition-all">
-                <img src={feature.icon} alt={feature.title} className="w-14 h-14 md:w-16 md:h-16 mb-3 md:mb-4 rounded-lg" loading="lazy" />
+                <div className="w-14 h-14 md:w-16 md:h-16 mb-3 md:mb-4 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <feature.Icon className="w-7 h-7 md:w-8 md:h-8 text-primary" strokeWidth={1.5} />
+                </div>
                 <h4 className="text-lg md:text-xl font-bold text-foreground mb-2 md:mb-3">{feature.title}</h4>
                 <p className="text-sm md:text-base text-muted-foreground leading-relaxed">{feature.description}</p>
               </div>
