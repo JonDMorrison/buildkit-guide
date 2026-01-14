@@ -47,6 +47,7 @@ const TimesheetPeriods = lazy(() => import("./pages/TimesheetPeriods"));
 const TimeDiagnostics = lazy(() => import("./pages/TimeDiagnostics"));
 const Drawings = lazy(() => import("./pages/Drawings"));
 const HoursTracking = lazy(() => import("./pages/HoursTracking"));
+const Setup = lazy(() => import("./pages/Setup"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -127,6 +128,14 @@ const App = () => (
                     <PublicRoute>
                       <ResponsibleAI />
                     </PublicRoute>
+                  }
+                />
+                <Route
+                  path="/setup"
+                  element={
+                    <ProtectedRoute>
+                      <Setup />
+                    </ProtectedRoute>
                   }
                 />
                 <Route
