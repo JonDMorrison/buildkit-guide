@@ -21,10 +21,11 @@ interface Project {
 }
 
 const ROLE_OPTIONS = [
+  { value: 'admin', label: 'Administrator', description: 'Full access to manage the organization' },
+  { value: 'project_manager', label: 'Project Manager' },
+  { value: 'foreman', label: 'Foreman' },
   { value: 'internal_worker', label: 'Internal Worker' },
   { value: 'external_trade', label: 'External Trade' },
-  { value: 'foreman', label: 'Foreman' },
-  { value: 'project_manager', label: 'Project Manager' },
 ];
 
 export const InviteUserModal = ({

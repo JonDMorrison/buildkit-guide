@@ -126,6 +126,24 @@ serve(async (req: Request) => {
         }
       }
 
+      // Add admin role to user_roles table if invited as admin
+      if (invitation.role === 'admin') {
+        const { error: roleError } = await supabase
+          .from("user_roles")
+          .upsert({
+            user_id: userId,
+            role: 'admin',
+          }, {
+            onConflict: "user_id,role",
+          });
+
+        if (roleError) {
+          console.error("Error adding admin role:", roleError);
+        } else {
+          log('info', 'Admin role granted to existing user', { userId });
+        }
+      }
+
       // Mark invitation as accepted
       await supabase
         .from("invitations")
@@ -226,6 +244,22 @@ serve(async (req: Request) => {
 
       if (projectError) {
         console.error("Error adding to project:", projectError);
+      }
+    }
+
+    // Add admin role to user_roles table if invited as admin
+    if (invitation.role === 'admin') {
+      const { error: roleError } = await supabase
+        .from("user_roles")
+        .insert({
+          user_id: newUserId,
+          role: 'admin',
+        });
+
+      if (roleError) {
+        console.error("Error adding admin role:", roleError);
+      } else {
+        log('info', 'Admin role granted to new user', { userId: newUserId });
       }
     }
 
