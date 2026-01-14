@@ -35,7 +35,7 @@ export const PublicNav = () => {
           className="flex items-center cursor-pointer" 
           onClick={() => navigate('/')}
         >
-          <img src={projectPathLogo} alt="Project Path" className="h-24 w-auto" />
+          <img src={projectPathLogo} alt="Project Path" className="h-10 md:h-14 w-auto" />
         </div>
         
         {/* Desktop Navigation */}
