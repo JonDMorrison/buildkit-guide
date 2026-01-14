@@ -56,7 +56,7 @@ export default function Landing() {
       <PublicNav />
 
       {/* Hero Section */}
-      <section className="pt-28 md:pt-32 pb-16 md:pb-20 px-4 relative overflow-hidden min-h-[90vh] md:min-h-[80vh] flex items-center" style={{
+      <section className="pt-20 md:pt-32 pb-16 md:pb-20 px-4 relative overflow-hidden min-h-[100dvh] md:min-h-[80vh] flex items-center" style={{
         backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.85)), url(${heroBackground})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center'
@@ -74,15 +74,15 @@ export default function Landing() {
                 No credit card required • Free 14-day trial • Setup in minutes
               </p>
               <div className="flex flex-col gap-3 justify-center lg:justify-start w-full max-w-md mx-auto lg:mx-0">
-                <Button size="lg" onClick={handleGetStarted} className="w-full h-14 md:h-16 text-base md:text-lg bg-accent hover:bg-accent/90 text-white font-semibold shadow-xl">
+                <Button size="lg" onClick={handleGetStarted} className="w-full h-11 md:h-16 text-sm md:text-lg bg-accent hover:bg-accent/90 text-white font-semibold shadow-xl">
                   Start Your Free Trial
                 </Button>
-                <Button size="lg" variant="outline" onClick={handleSeeHowItWorks} className="w-full h-14 md:h-16 text-base md:text-lg bg-white/15 text-white border-white/40 hover:bg-white/25 font-semibold backdrop-blur-sm">
+                <Button size="lg" variant="outline" onClick={handleSeeHowItWorks} className="w-full h-11 md:h-16 text-sm md:text-lg bg-white/15 text-white border-white/40 hover:bg-white/25 font-semibold backdrop-blur-sm">
                   See How It Works
                 </Button>
               </div>
             </div>
-            <div className="flex justify-center mt-8 lg:mt-0">
+            <div className="hidden lg:flex justify-center mt-8 lg:mt-0">
               <img alt="Project Path App Dashboard" className="w-full max-w-md lg:max-w-lg rounded-lg shadow-2xl" loading="eager" src="/lovable-uploads/4e1b85d6-7eda-4f22-abb7-fb02a677b21c.png" />
             </div>
           </div>
