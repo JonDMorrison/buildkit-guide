@@ -299,91 +299,16 @@ export const DrawingViewer = ({
 
           {/* Main Viewer */}
           <div className="flex-1 flex flex-col overflow-hidden">
-            {/* Zoom Controls */}
-            <div className="flex items-center justify-center gap-2 p-2 border-b bg-muted/30">
-              <Button variant="ghost" size="icon" onClick={handleZoomOut}>
-                <ZoomOut className="h-4 w-4" />
-              </Button>
-              <span className="text-sm font-medium w-16 text-center">
-                {Math.round(zoom * 100)}%
-              </span>
-              <Button variant="ghost" size="icon" onClick={handleZoomIn}>
-                <ZoomIn className="h-4 w-4" />
-              </Button>
-              <div className="w-px h-6 bg-border mx-2" />
-              <Button variant="ghost" size="icon" onClick={handleRotate}>
-                <RotateCw className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="sm" onClick={handleReset}>
-                Reset
-              </Button>
-            </div>
-
-            {/* Drawing Canvas */}
-            <div 
-              ref={containerRef}
-              className="flex-1 overflow-hidden bg-muted flex items-center justify-center touch-none"
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-              onWheel={handleWheel}
-              style={{ cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default' }}
-            >
-              {urlLoading ? (
-                <div className="flex flex-col items-center justify-center p-8 text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4" />
-                  <p className="text-sm text-muted-foreground">Loading drawing...</p>
-                </div>
-              ) : !signedUrl ? (
-                <div className="flex flex-col items-center justify-center p-8 text-center">
-                  <FileText className="h-16 w-16 text-muted-foreground mb-4" />
-                  <h3 className="font-semibold mb-2">Unable to load drawing</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    There was an error loading this file.
-                  </p>
-                  <Button onClick={fetchSignedUrl}>
-                    Try Again
-                  </Button>
-                </div>
-              ) : imageError ? (
-                <div className="flex flex-col items-center justify-center p-8 text-center">
-                  <FileText className="h-16 w-16 text-muted-foreground mb-4" />
-                  <h3 className="font-semibold mb-2">Unable to display drawing</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    The image could not be loaded. Try downloading it instead.
-                  </p>
-                  <Button onClick={handleDownload}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Download File
-                  </Button>
-                </div>
-              ) : isImage ? (
-                <img 
-                  src={signedUrl} 
-                  alt={drawing.file_name}
-                  className="max-w-none select-none"
-                  draggable={false}
-                  onError={() => setImageError(true)}
-                  style={{
-                    transform: `translate(${position.x}px, ${position.y}px) scale(${zoom}) rotate(${rotation}deg)`,
-                    transformOrigin: 'center center',
-                    transition: isDragging ? 'none' : 'transform 0.2s ease',
-                  }}
-                />
-              ) : isPDF ? (
-                signedUrl ? (
-                  <PdfViewer
-                    signedUrl={signedUrl}
-                    fileName={drawing.file_name}
-                    onOpenExternal={handleDownload}
-                    onRetry={fetchSignedUrl}
-                  />
-                ) : (
-                  <div className="flex flex-col items-center justify-center p-8 text-center">
+            {/* For PDFs, render PdfViewer directly - it has its own controls */}
+            {isPDF ? (
+              <div className="flex-1 overflow-hidden">
+                {urlLoading ? (
+                  <div className="flex flex-col items-center justify-center p-8 text-center h-full">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4" />
+                    <p className="text-sm text-muted-foreground">Loading PDF...</p>
+                  </div>
+                ) : !signedUrl ? (
+                  <div className="flex flex-col items-center justify-center p-8 text-center h-full">
                     <FileText className="h-16 w-16 text-muted-foreground mb-4" />
                     <h3 className="font-semibold mb-2">Unable to load PDF</h3>
                     <p className="text-sm text-muted-foreground mb-4">
@@ -399,21 +324,108 @@ export const DrawingViewer = ({
                       </Button>
                     </div>
                   </div>
-                )
-              ) : (
-                <div className="flex flex-col items-center justify-center p-8 text-center">
-                  <FileText className="h-16 w-16 text-muted-foreground mb-4" />
-                  <h3 className="font-semibold mb-2">Preview not available</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    This file type cannot be previewed.
-                  </p>
-                  <Button onClick={handleDownload}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Download File
+                ) : (
+                  <PdfViewer
+                    signedUrl={signedUrl}
+                    fileName={drawing.file_name}
+                    onOpenExternal={handleDownload}
+                    onRetry={fetchSignedUrl}
+                  />
+                )}
+              </div>
+            ) : (
+              <>
+                {/* Zoom Controls - only for images */}
+                <div className="flex items-center justify-center gap-2 p-2 border-b bg-muted/30">
+                  <Button variant="ghost" size="icon" onClick={handleZoomOut}>
+                    <ZoomOut className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm font-medium w-16 text-center">
+                    {Math.round(zoom * 100)}%
+                  </span>
+                  <Button variant="ghost" size="icon" onClick={handleZoomIn}>
+                    <ZoomIn className="h-4 w-4" />
+                  </Button>
+                  <div className="w-px h-6 bg-border mx-2" />
+                  <Button variant="ghost" size="icon" onClick={handleRotate}>
+                    <RotateCw className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={handleReset}>
+                    Reset
                   </Button>
                 </div>
-              )}
-            </div>
+
+                {/* Image Canvas */}
+                <div 
+                  ref={containerRef}
+                  className="flex-1 overflow-hidden bg-muted flex items-center justify-center touch-none"
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                  onMouseLeave={handleMouseUp}
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                  onWheel={handleWheel}
+                  style={{ cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default' }}
+                >
+                  {urlLoading ? (
+                    <div className="flex flex-col items-center justify-center p-8 text-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4" />
+                      <p className="text-sm text-muted-foreground">Loading drawing...</p>
+                    </div>
+                  ) : !signedUrl ? (
+                    <div className="flex flex-col items-center justify-center p-8 text-center">
+                      <FileText className="h-16 w-16 text-muted-foreground mb-4" />
+                      <h3 className="font-semibold mb-2">Unable to load drawing</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        There was an error loading this file.
+                      </p>
+                      <Button onClick={fetchSignedUrl}>
+                        Try Again
+                      </Button>
+                    </div>
+                  ) : imageError ? (
+                    <div className="flex flex-col items-center justify-center p-8 text-center">
+                      <FileText className="h-16 w-16 text-muted-foreground mb-4" />
+                      <h3 className="font-semibold mb-2">Unable to display drawing</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        The image could not be loaded. Try downloading it instead.
+                      </p>
+                      <Button onClick={handleDownload}>
+                        <Download className="h-4 w-4 mr-2" />
+                        Download File
+                      </Button>
+                    </div>
+                  ) : isImage ? (
+                    <img 
+                      src={signedUrl} 
+                      alt={drawing.file_name}
+                      className="max-w-none select-none"
+                      draggable={false}
+                      onError={() => setImageError(true)}
+                      style={{
+                        transform: `translate(${position.x}px, ${position.y}px) scale(${zoom}) rotate(${rotation}deg)`,
+                        transformOrigin: 'center center',
+                        transition: isDragging ? 'none' : 'transform 0.2s ease',
+                      }}
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center p-8 text-center">
+                      <FileText className="h-16 w-16 text-muted-foreground mb-4" />
+                      <h3 className="font-semibold mb-2">Preview not available</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        This file type cannot be previewed.
+                      </p>
+                      <Button onClick={handleDownload}>
+                        <Download className="h-4 w-4 mr-2" />
+                        Download File
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
 
