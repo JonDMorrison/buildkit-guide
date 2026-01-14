@@ -412,20 +412,20 @@ export const PdfViewer = ({
     }
   };
 
-  // Loading state
+  // Loading state - use absolute positioning to prevent layout shifts
   if (loading) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+      <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center bg-muted">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4" />
         <p className="text-sm text-muted-foreground">Loading PDF...</p>
       </div>
     );
   }
 
-  // Error state
+  // Error state - use absolute positioning to prevent layout shifts
   if (error) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+      <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center bg-muted">
         <FileText className="h-16 w-16 text-muted-foreground mb-4" />
         <h3 className="font-semibold mb-2">Unable to load PDF</h3>
         <p className="text-sm text-muted-foreground mb-4 max-w-md">{error}</p>
