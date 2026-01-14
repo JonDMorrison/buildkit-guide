@@ -1,4 +1,5 @@
-import { User, LogOut, Shield, Settings, Users, FileText, Receipt, Rocket } from 'lucide-react';
+import { useState } from 'react';
+import { User, LogOut, Shield, Settings, Users, FileText, Receipt, Rocket, Bug } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useProjectRole } from '@/hooks/useProjectRole';
@@ -14,12 +15,14 @@ import {
 } from './ui/dropdown-menu';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Badge } from './ui/badge';
+import { ReportIssueModal } from './ReportIssueModal';
 
 export const UserMenu = () => {
   const { user, signOut } = useAuth();
   const { roles, isAdmin } = useUserRole();
   const { isGlobalAdmin, projectRoles } = useProjectRole();
   const navigate = useNavigate();
+  const [reportIssueOpen, setReportIssueOpen] = useState(false);
 
   if (!user) return null;
 
@@ -105,12 +108,21 @@ export const UserMenu = () => {
           <Settings className="mr-2 h-4 w-4" />
           <span>Notification Settings</span>
         </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setReportIssueOpen(true)}>
+          <Bug className="mr-2 h-4 w-4" />
+          <span>Report an Issue</span>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={signOut}>
           <LogOut className="mr-2 h-4 w-4" />
           <span>Log out</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
+
+      <ReportIssueModal
+        open={reportIssueOpen}
+        onOpenChange={setReportIssueOpen}
+      />
     </DropdownMenu>
   );
 };
