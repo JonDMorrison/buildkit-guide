@@ -3,9 +3,6 @@ import { pdfjs, defaultLoadOptions } from "@/lib/pdfjs";
 import type { PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist";
 import { TransformWrapper, TransformComponent, useControls } from "react-zoom-pan-pinch";
 import { Button } from "@/components/ui/button";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import {
   ZoomIn,
   ZoomOut,
@@ -15,8 +12,6 @@ import {
   ExternalLink,
   RefreshCw,
   FileText,
-  Layers,
-  Bug,
 } from "lucide-react";
 
 interface PdfViewerProps {
@@ -24,29 +19,6 @@ interface PdfViewerProps {
   fileName?: string;
   onOpenExternal: () => void;
   onRetry?: () => void;
-}
-
-interface PageThumbnail {
-  pageNum: number;
-  dataUrl: string | null;
-  loading: boolean;
-}
-
-interface DebugInfo {
-  containerWidth: number;
-  viewportWidth: number;
-  viewportHeight: number;
-  canvasWidth: number;
-  canvasHeight: number;
-  baseScale: number;
-  renderScale: number;
-  pixelRatio: number;
-  loadMethod: "url" | "arrayBuffer" | "none";
-  renderStarted: string | null;
-  renderCompleted: string | null;
-  ocgEnabled: boolean;
-  pageRotation: number;
-  effectiveRotation: number;
 }
 
 // Separate component for zoom controls to access transform state via context
@@ -91,29 +63,6 @@ const ZoomControls = () => {
   );
 };
 
-// Debug overlay component
-const DebugOverlay = ({ info }: { info: DebugInfo }) => (
-  <div className="absolute top-2 left-2 z-30 bg-black/80 text-white text-xs font-mono p-3 rounded-lg max-w-xs overflow-auto">
-    <div className="font-bold mb-2 text-yellow-400">🐛 PDF Debug Info</div>
-    <div className="space-y-1">
-      <div>Container: {info.containerWidth}px</div>
-      <div>Viewport: {info.viewportWidth} × {info.viewportHeight}</div>
-      <div>Canvas: {info.canvasWidth} × {info.canvasHeight}</div>
-      <div>Base scale: {info.baseScale.toFixed(3)}</div>
-      <div>Render scale: {info.renderScale.toFixed(3)}</div>
-      <div>Pixel ratio: {info.pixelRatio}</div>
-      <div>Load method: <span className={info.loadMethod === "arrayBuffer" ? "text-green-400" : "text-blue-400"}>{info.loadMethod}</span></div>
-      <div>Page rotation: {info.pageRotation}°</div>
-      <div>Effective rotation: {info.effectiveRotation}°</div>
-      <div>OCG forced: {info.ocgEnabled ? "✅" : "❌"}</div>
-      <div className="text-gray-400 mt-2">
-        {info.renderStarted && <div>Started: {info.renderStarted}</div>}
-        {info.renderCompleted && <div>Completed: {info.renderCompleted}</div>}
-      </div>
-    </div>
-  </div>
-);
-
 export const PdfViewer = ({
   signedUrl,
   fileName,
@@ -128,27 +77,8 @@ export const PdfViewer = ({
   const [error, setError] = useState<string | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [containerHeight, setContainerHeight] = useState(0);
-  const [showThumbnails, setShowThumbnails] = useState(false);
-  const [thumbnails, setThumbnails] = useState<PageThumbnail[]>([]);
   const [rotation, setRotation] = useState(0);
   const [useIframeFallback, setUseIframeFallback] = useState(false);
-  const [showDebug, setShowDebug] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<DebugInfo>({
-    containerWidth: 0,
-    viewportWidth: 0,
-    viewportHeight: 0,
-    canvasWidth: 0,
-    canvasHeight: 0,
-    baseScale: 0,
-    renderScale: 0,
-    pixelRatio: 1,
-    loadMethod: "none",
-    renderStarted: null,
-    renderCompleted: null,
-    ocgEnabled: false,
-    pageRotation: 0,
-    effectiveRotation: 0,
-  });
   const [loadMethod, setLoadMethod] = useState<"url" | "arrayBuffer">("url");
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -231,7 +161,7 @@ export const PdfViewer = ({
       setPdfDoc(null);
       setCurrentPage(1);
       setTotalPages(0);
-      setThumbnails([]);
+      
 
       // Try URL method first
       let doc: PDFDocumentProxy | null = null;
@@ -278,7 +208,6 @@ export const PdfViewer = ({
       }
 
       setLoadMethod(usedMethod);
-      setDebugInfo(prev => ({ ...prev, loadMethod: usedMethod }));
 
       // Force all Optional Content Groups (layers) to be visible
       try {
@@ -292,7 +221,6 @@ export const PdfViewer = ({
               ocConfig.setVisibility(groupId, true);
             });
           }
-          setDebugInfo(prev => ({ ...prev, ocgEnabled: true }));
         }
       } catch (ocgErr) {
         console.log("[PDF] No OCG or error reading OCG:", ocgErr);
@@ -300,13 +228,6 @@ export const PdfViewer = ({
 
       setPdfDoc(doc);
       setTotalPages(doc.numPages);
-      setThumbnails(
-        Array.from({ length: doc.numPages }, (_, i) => ({
-          pageNum: i + 1,
-          dataUrl: null,
-          loading: false,
-        }))
-      );
       setLoading(false);
     };
 
@@ -336,8 +257,6 @@ export const PdfViewer = ({
     }
 
     setPageLoading(true);
-    const renderStartTime = new Date().toISOString();
-    setDebugInfo(prev => ({ ...prev, renderStarted: renderStartTime, renderCompleted: null }));
 
     try {
       const page = await pdfDoc.getPage(currentPage);
@@ -389,21 +308,6 @@ export const PdfViewer = ({
       canvas.style.width = `${viewport.width / pixelRatio}px`;
       canvas.style.height = `${viewport.height / pixelRatio}px`;
 
-      // Update debug info
-      setDebugInfo(prev => ({
-        ...prev,
-        containerWidth,
-        viewportWidth: Math.round(viewport.width),
-        viewportHeight: Math.round(viewport.height),
-        canvasWidth: canvas.width,
-        canvasHeight: canvas.height,
-        baseScale,
-        renderScale,
-        pixelRatio,
-        pageRotation,
-        effectiveRotation,
-      }));
-
       console.log(`[PDF] Rendering page ${currentPage}: canvas=${canvas.width}x${canvas.height}, scale=${renderScale.toFixed(3)}`);
 
       const renderTask = page.render({
@@ -415,9 +319,7 @@ export const PdfViewer = ({
 
       try {
         await renderTask.promise;
-        const renderEndTime = new Date().toISOString();
-        setDebugInfo(prev => ({ ...prev, renderCompleted: renderEndTime }));
-        console.log(`[PDF] Page ${currentPage} render completed at ${renderEndTime}`);
+        console.log(`[PDF] Page ${currentPage} render completed`);
       } catch (renderErr) {
         // If it's not a cancellation, surface the error
         if (renderErr instanceof Error && !renderErr.message.includes("Rendering cancelled")) {
@@ -443,78 +345,6 @@ export const PdfViewer = ({
       renderPage();
     }
   }, [renderPage, useIframeFallback]);
-
-  // Generate thumbnails lazily
-  const generateThumbnail = useCallback(
-    async (pageNum: number) => {
-      if (!pdfDoc) return;
-
-      // Check if already loading or loaded
-      const existing = thumbnails.find((t) => t.pageNum === pageNum);
-      if (existing?.dataUrl || existing?.loading) return;
-
-      // Mark as loading
-      setThumbnails((prev) =>
-        prev.map((t) =>
-          t.pageNum === pageNum ? { ...t, loading: true } : t
-        )
-      );
-
-      try {
-        const page = await pdfDoc.getPage(pageNum);
-        const effectiveRotation = (page.rotate || 0) % 360;
-        const viewport = page.getViewport({ scale: 0.2, rotation: effectiveRotation });
-
-        const canvas = document.createElement("canvas");
-        const context = canvas.getContext("2d");
-
-        if (!context) return;
-
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-
-        await page.render({
-          canvasContext: context,
-          viewport,
-        }).promise;
-
-        const dataUrl = canvas.toDataURL("image/png", 0.7);
-
-        setThumbnails((prev) =>
-          prev.map((t) =>
-            t.pageNum === pageNum
-              ? { ...t, dataUrl, loading: false }
-              : t
-          )
-        );
-      } catch (err) {
-        console.error(`Error generating thumbnail for page ${pageNum}:`, err);
-        setThumbnails((prev) =>
-          prev.map((t) =>
-            t.pageNum === pageNum ? { ...t, loading: false } : t
-          )
-        );
-      }
-    },
-    [pdfDoc, thumbnails, rotation]
-  );
-
-  // Generate first few thumbnails when panel opens
-  useEffect(() => {
-    if (!showThumbnails || !pdfDoc) return;
-
-    // Generate first 5 thumbnails immediately, then queue the rest
-    const initialBatch = Math.min(5, totalPages);
-
-    for (let i = 1; i <= initialBatch; i++) {
-      generateThumbnail(i);
-    }
-
-    // Queue remaining with delays to avoid blocking
-    for (let i = initialBatch + 1; i <= totalPages; i++) {
-      setTimeout(() => generateThumbnail(i), (i - initialBatch) * 100);
-    }
-  }, [showThumbnails, pdfDoc, totalPages, generateThumbnail]);
 
   const handlePrevPage = () => {
     if (currentPage > 1) {
@@ -646,113 +476,24 @@ export const PdfViewer = ({
           </Button>
         </div>
 
-        {/* Zoom & Tools */}
-        <div className="flex items-center gap-1">
-          {/* Debug toggle */}
-          <Button
-            variant={showDebug ? "secondary" : "ghost"}
-            size="icon"
-            onClick={() => setShowDebug(!showDebug)}
-            className="h-8 w-8"
-            title="Show debug info"
-          >
-            <Bug className="h-4 w-4" />
-          </Button>
-          
-          {totalPages > 1 && (
-            <Button
-              variant={showThumbnails ? "secondary" : "ghost"}
-              size="icon"
-              onClick={() => setShowThumbnails(!showThumbnails)}
-              className="h-8 w-8"
-              title="Show pages"
-            >
-              <Layers className="h-4 w-4" />
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleRotate}
-            className="h-8 w-8"
-            title="Rotate"
-          >
-            <RotateCcw className="h-4 w-4" />
-          </Button>
-          <div className="w-px h-6 bg-border mx-1 hidden sm:block" />
-          
-          {/* Iframe fallback toggle */}
-          <div className="flex items-center gap-2 px-2">
-            <Switch
-              id="iframe-mode"
-              checked={useIframeFallback}
-              onCheckedChange={setUseIframeFallback}
-            />
-            <Label htmlFor="iframe-mode" className="text-xs cursor-pointer">
-              Browser
-            </Label>
-          </div>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onOpenExternal}
-            className="h-8 text-xs"
-          >
-            <ExternalLink className="h-3 w-3 mr-1" />
-            <span className="hidden sm:inline">Open PDF</span>
-          </Button>
-        </div>
+        {/* Open External */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onOpenExternal}
+          className="h-8 text-xs"
+        >
+          <ExternalLink className="h-3 w-3 mr-1" />
+          <span className="hidden sm:inline">Open PDF</span>
+        </Button>
       </div>
 
-      {/* Thumbnail Strip */}
-      {showThumbnails && totalPages > 1 && (
-        <div className="border-b bg-muted/20 p-2">
-          <ScrollArea className="w-full">
-            <div className="flex gap-2 pb-2">
-              {thumbnails.map((thumb) => (
-                <button
-                  key={thumb.pageNum}
-                  onClick={() => handlePageJump(thumb.pageNum)}
-                  className={`flex-shrink-0 w-16 h-20 rounded border-2 overflow-hidden transition-all ${
-                    thumb.pageNum === currentPage
-                      ? "border-primary ring-2 ring-primary/20"
-                      : "border-border hover:border-primary/50"
-                  }`}
-                >
-                  {thumb.dataUrl ? (
-                    <img
-                      src={thumb.dataUrl}
-                      alt={`Page ${thumb.pageNum}`}
-                      className="w-full h-full object-contain bg-white"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-muted">
-                      {thumb.loading ? (
-                        <div className="animate-spin rounded-full h-4 w-4 border-b border-primary" />
-                      ) : (
-                        <span className="text-xs text-muted-foreground">
-                          {thumb.pageNum}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </button>
-              ))}
-            </div>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
-        </div>
-      )}
 
       {/* PDF Canvas with Zoom/Pan */}
       <div
         ref={containerRef}
         className="flex-1 overflow-hidden bg-muted relative"
       >
-        {/* Debug overlay */}
-        {showDebug && <DebugOverlay info={debugInfo} />}
-        
         {pageLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
