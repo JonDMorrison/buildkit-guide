@@ -45,10 +45,10 @@ interface Trade {
   name: string;
   trade_type: string | null;
   company_name: string | null;
-  contact_name: string | null;
   contact_phone: string | null;
   contact_email: string | null;
-  project_id: string | null;
+  organization_id: string;
+  is_active: boolean;
 }
 
 interface Project {
@@ -98,7 +98,6 @@ export function TradesManagementModal({
   const [tradeName, setTradeName] = useState('');
   const [tradeType, setTradeType] = useState('');
   const [companyName, setCompanyName] = useState('');
-  const [contactName, setContactName] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [contactEmail, setContactEmail] = useState('');
 
@@ -130,25 +129,25 @@ export function TradesManagementModal({
     fetchData();
   }, [open, activeOrganizationId]);
 
-  // Fetch trades when project changes
+  // Fetch trades for the organization
   useEffect(() => {
-    if (!selectedProjectId) return;
+    if (!activeOrganizationId || !open) return;
 
     const fetchTrades = async () => {
       const { data, error } = await supabase
         .from('trades')
         .select('*')
-        .eq('project_id', selectedProjectId)
+        .eq('organization_id', activeOrganizationId)
         .order('name');
 
       if (!error && data) {
-        setTrades(data as Trade[]);
+        setTrades(data as unknown as Trade[]);
         onTradeCountChange?.(data.length);
       }
     };
 
     fetchTrades();
-  }, [selectedProjectId, onTradeCountChange]);
+  }, [activeOrganizationId, open, onTradeCountChange]);
 
   const resetForm = () => {
     setIsEditing(false);
@@ -156,7 +155,6 @@ export function TradesManagementModal({
     setTradeName('');
     setTradeType('');
     setCompanyName('');
-    setContactName('');
     setContactPhone('');
     setContactEmail('');
   };
@@ -167,7 +165,6 @@ export function TradesManagementModal({
     setTradeName(trade.name);
     setTradeType(trade.trade_type || '');
     setCompanyName(trade.company_name || '');
-    setContactName(trade.contact_name || '');
     setContactPhone(trade.contact_phone || '');
     setContactEmail(trade.contact_email || '');
   };
@@ -182,10 +179,10 @@ export function TradesManagementModal({
       return;
     }
 
-    if (!selectedProjectId) {
+    if (!activeOrganizationId) {
       toast({
-        title: 'Project required',
-        description: 'Please select a project first.',
+        title: 'Organization required',
+        description: 'No active organization found.',
         variant: 'destructive',
       });
       return;
@@ -196,12 +193,11 @@ export function TradesManagementModal({
     try {
       const tradeData = {
         name: tradeName.trim(),
-        trade_type: tradeType || null,
-        company_name: companyName.trim() || null,
-        contact_name: contactName.trim() || null,
+        trade_type: tradeType || 'General',
+        company_name: companyName.trim() || '',
         contact_phone: contactPhone.trim() || null,
         contact_email: contactEmail.trim() || null,
-        project_id: selectedProjectId,
+        organization_id: activeOrganizationId,
       };
 
       if (editingTradeId) {
@@ -212,7 +208,7 @@ export function TradesManagementModal({
         
         if (error) throw error;
         
-        setTrades(trades.map(t => t.id === editingTradeId ? { ...t, ...tradeData } : t));
+        setTrades(trades.map(t => t.id === editingTradeId ? { ...t, ...tradeData, id: t.id, is_active: t.is_active } : t));
         toast({ title: 'Trade updated' });
       } else {
         const { data, error } = await supabase
@@ -223,7 +219,7 @@ export function TradesManagementModal({
         
         if (error) throw error;
         
-        const newTrades = [...trades, data as Trade];
+        const newTrades = [...trades, data as unknown as Trade];
         setTrades(newTrades);
         onTradeCountChange?.(newTrades.length);
         toast({ title: 'Trade added' });
@@ -335,15 +331,6 @@ export function TradesManagementModal({
                   placeholder="Full company name"
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="contactName">Contact Person</Label>
-                <Input
-                  id="contactName"
-                  placeholder="Primary contact"
-                  value={contactName}
-                  onChange={(e) => setContactName(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
