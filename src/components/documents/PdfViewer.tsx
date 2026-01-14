@@ -98,14 +98,18 @@ export const PdfViewer = ({
     const measureContainer = () => {
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
+        // Use clientWidth/Height as fallback - more reliable in some flex contexts
+        const width = rect.width || containerRef.current.clientWidth;
+        const height = rect.height || containerRef.current.clientHeight || 400; // Fallback minimum
+        
         // Only update if we have valid dimensions that differ from stored values
-        if (rect.width > 0 && rect.height > 50) { // Require minimum height to avoid premature renders
-          if (rect.width !== lastWidthRef.current || rect.height !== lastHeightRef.current) {
-            console.log(`[PDF] Container measured: ${rect.width}px x ${rect.height}px`);
-            lastWidthRef.current = rect.width;
-            lastHeightRef.current = rect.height;
-            setContainerWidth(rect.width);
-            setContainerHeight(rect.height);
+        if (width > 0 && height >= 100) {
+          if (width !== lastWidthRef.current || height !== lastHeightRef.current) {
+            console.log(`[PDF] Container measured: ${width}px x ${height}px`);
+            lastWidthRef.current = width;
+            lastHeightRef.current = height;
+            setContainerWidth(width);
+            setContainerHeight(height);
           }
         }
       }
@@ -120,8 +124,12 @@ export const PdfViewer = ({
 
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        const { width, height } = entry.contentRect;
-        if (width > 0 && height > 50) { // Require minimum height
+        // Use borderBoxSize if available (more accurate) or fallback to contentRect
+        const borderBox = entry.borderBoxSize?.[0];
+        const width = borderBox?.inlineSize || entry.contentRect.width;
+        const height = borderBox?.blockSize || entry.contentRect.height || 400;
+        
+        if (width > 0 && height >= 100) {
           if (width !== lastWidthRef.current || height !== lastHeightRef.current) {
             console.log(`[PDF] ResizeObserver: ${width}px x ${height}px`);
             lastWidthRef.current = width;
@@ -472,7 +480,7 @@ export const PdfViewer = ({
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-hidden h-full min-h-0">
       {/* Controls Bar */}
       <div className="flex items-center justify-between gap-2 p-2 border-b bg-muted/30 flex-wrap">
         {/* Page Navigation */}
@@ -516,7 +524,8 @@ export const PdfViewer = ({
       {/* PDF Canvas with Zoom/Pan */}
       <div
         ref={containerRef}
-        className="flex-1 overflow-hidden bg-muted relative"
+        className="flex-1 overflow-hidden bg-muted relative min-h-0 h-full"
+        style={{ minHeight: '400px' }}
       >
         {pageLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10">
