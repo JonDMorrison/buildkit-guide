@@ -144,15 +144,17 @@ export function useSetupProgress() {
         .eq('is_deleted', false);
       
       if (projects && projects.length > 0) {
-        const projectIds = projects.map(p => p.id);
+        // Check trades (now organization-based)
         const { count: tradeCount } = await supabase
           .from('trades')
           .select('id', { count: 'exact', head: true })
-          .in('project_id', projectIds);
+          .eq('organization_id', activeOrganizationId);
         
         if (tradeCount && tradeCount >= 3) {
           detected.step_trades_configured = true;
         }
+
+        const projectIds = projects.map(p => p.id);
 
         // Check project members
         const { count: assignmentCount } = await supabase
@@ -276,11 +278,22 @@ export function useSetupProgress() {
   }, [updateMutation]);
 
   const markAllComplete = useCallback(() => {
-    const allComplete: Partial<SetupProgress> = {};
-    stepKeys.forEach(key => {
-      allComplete[key] = true;
-    });
-    allComplete.completed_at = new Date().toISOString();
+    const allComplete: Partial<SetupProgress> = {
+      step_org_created: true,
+      step_timezone_set: true,
+      step_first_project: true,
+      step_first_job_site: true,
+      step_first_invite: true,
+      step_trades_configured: true,
+      step_users_assigned: true,
+      step_time_tracking_enabled: true,
+      step_time_tracking_configured: true,
+      step_ppe_reviewed: true,
+      step_first_safety_form: true,
+      step_hazard_library: true,
+      step_first_drawing: true,
+      completed_at: new Date().toISOString(),
+    };
     updateMutation.mutate(allComplete);
   }, [updateMutation]);
 

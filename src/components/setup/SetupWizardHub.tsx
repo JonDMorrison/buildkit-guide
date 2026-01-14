@@ -16,6 +16,7 @@ import { TradesManagementModal } from './steps/TradesManagementModal';
 import { TimeTrackingSettingsModal } from './steps/TimeTrackingSettingsModal';
 import { CreateProjectModal } from '@/components/CreateProjectModal';
 import { InviteUserModal } from '@/components/users/InviteUserModal';
+import { useCurrentProject } from '@/hooks/useCurrentProject';
 import { cn } from '@/lib/utils';
 
 export function SetupWizardHub() {
@@ -399,7 +400,11 @@ export function SetupWizardHub() {
         open={showCreateProjectModal}
         onOpenChange={(isOpen) => {
           setShowCreateProjectModal(isOpen);
-          if (!isOpen) markStepComplete('step_first_project');
+        }}
+        onSuccess={() => {
+          setShowCreateProjectModal(false);
+          markStepComplete('step_first_project');
+        }}
       />
 
       <InviteUserModal
