@@ -20,7 +20,7 @@ const log = (level: 'info' | 'warn' | 'error', message: string, data?: Record<st
 
 // Zod schema for input validation
 const AcceptInviteSchema = z.object({
-  token: z.string().uuid("Invalid invitation token format"),
+  token: z.string().length(64, "Invalid invitation token format").regex(/^[a-f0-9]+$/, "Invalid token format"),
   password: z.string().min(6, "Password must be at least 6 characters").max(100, "Password too long"),
   fullName: z.string().min(1).max(100).optional(),
 });
