@@ -18,8 +18,11 @@ import { CreateProjectModal } from '@/components/CreateProjectModal';
 import { InviteUserModal } from '@/components/users/InviteUserModal';
 import { useCurrentProject } from '@/hooks/useCurrentProject';
 import { cn } from '@/lib/utils';
+interface SetupWizardHubProps {
+  forceShow?: boolean;
+}
 
-export function SetupWizardHub() {
+export function SetupWizardHub({ forceShow = false }: SetupWizardHubProps) {
   const navigate = useNavigate();
   const { currentProjectId } = useCurrentProject();
   const {
@@ -44,8 +47,8 @@ export function SetupWizardHub() {
   const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
 
-  // Don't show if dismissed or complete
-  if (isLoading || isDismissed || isComplete) {
+  // Don't show if dismissed or complete (unless forceShow is true)
+  if (isLoading || (!forceShow && (isDismissed || isComplete))) {
     return null;
   }
 
