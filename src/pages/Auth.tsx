@@ -155,7 +155,7 @@ const Auth = () => {
         <div className="flex flex-col items-center mb-8">
           <img 
             src={projectPulseLogo} 
-            alt="Project Pulse" 
+            alt="Project Path" 
             className="w-auto h-20 mb-4"
           />
           <p className="text-sm text-muted-foreground">Field coordination made simple</p>
