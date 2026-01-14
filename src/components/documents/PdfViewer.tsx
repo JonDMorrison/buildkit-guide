@@ -127,6 +127,7 @@ export const PdfViewer = ({
   const [pageLoading, setPageLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
+  const [containerHeight, setContainerHeight] = useState(0);
   const [showThumbnails, setShowThumbnails] = useState(false);
   const [thumbnails, setThumbnails] = useState<PageThumbnail[]>([]);
   const [rotation, setRotation] = useState(0);
@@ -156,8 +157,9 @@ export const PdfViewer = ({
   const renderTaskRef = useRef<pdfjs.RenderTask | null>(null);
 
   // Track container size with ResizeObserver + fallback measurement
-  // Use ref to track last width and avoid stale closure issues
+  // Use ref to track last dimensions and avoid stale closure issues
   const lastWidthRef = useRef(0);
+  const lastHeightRef = useRef(0);
   
   useEffect(() => {
     if (!containerRef.current) return;
@@ -166,10 +168,12 @@ export const PdfViewer = ({
     const measureContainer = () => {
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
-        if (rect.width > 0 && rect.width !== lastWidthRef.current) {
-          console.log(`[PDF] Container measured: ${rect.width}px`);
+        if (rect.width > 0 && (rect.width !== lastWidthRef.current || rect.height !== lastHeightRef.current)) {
+          console.log(`[PDF] Container measured: ${rect.width}px x ${rect.height}px`);
           lastWidthRef.current = rect.width;
+          lastHeightRef.current = rect.height;
           setContainerWidth(rect.width);
+          setContainerHeight(rect.height);
         }
       }
     };
@@ -182,11 +186,13 @@ export const PdfViewer = ({
 
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        const width = entry.contentRect.width;
-        if (width > 0 && width !== lastWidthRef.current) {
-          console.log(`[PDF] ResizeObserver width: ${width}px`);
+        const { width, height } = entry.contentRect;
+        if (width > 0 && (width !== lastWidthRef.current || height !== lastHeightRef.current)) {
+          console.log(`[PDF] ResizeObserver: ${width}px x ${height}px`);
           lastWidthRef.current = width;
+          lastHeightRef.current = height;
           setContainerWidth(width);
+          setContainerHeight(height);
         }
       }
     });
@@ -201,12 +207,14 @@ export const PdfViewer = ({
 
   // Re-measure when PDF doc loads (container might be ready now)
   useEffect(() => {
-    if (pdfDoc && containerRef.current && lastWidthRef.current === 0) {
+    if (pdfDoc && containerRef.current && (lastWidthRef.current === 0 || lastHeightRef.current === 0)) {
       const rect = containerRef.current.getBoundingClientRect();
-      if (rect.width > 0) {
-        console.log(`[PDF] Post-load container: ${rect.width}px`);
+      if (rect.width > 0 && rect.height > 0) {
+        console.log(`[PDF] Post-load container: ${rect.width}px x ${rect.height}px`);
         lastWidthRef.current = rect.width;
+        lastHeightRef.current = rect.height;
         setContainerWidth(rect.width);
+        setContainerHeight(rect.height);
       }
     }
   }, [pdfDoc]);
@@ -319,7 +327,7 @@ export const PdfViewer = ({
 
   // Render current page when page/container changes
   const renderPage = useCallback(async () => {
-    if (!pdfDoc || !canvasRef.current || containerWidth === 0) return;
+    if (!pdfDoc || !canvasRef.current || containerWidth === 0 || containerHeight === 0) return;
 
     // Cancel any ongoing render
     if (renderTaskRef.current) {
@@ -345,10 +353,14 @@ export const PdfViewer = ({
         rotation: effectiveRotation,
       });
 
-      // Calculate scale to fit container width with some padding
-      const padding = 32;
+      // Calculate scale to fit container - use smaller of width or height to fit whole page
+      const padding = 16; // Minimal padding for better space utilization
       const availableWidth = containerWidth - padding;
-      const baseScale = availableWidth / unscaledViewport.width;
+      const availableHeight = containerHeight - padding;
+      
+      const scaleX = availableWidth / unscaledViewport.width;
+      const scaleY = availableHeight / unscaledViewport.height;
+      const baseScale = Math.min(scaleX, scaleY); // Fit entire page in view
 
       // Use device pixel ratio for sharper rendering on high-DPI screens
       const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
@@ -424,7 +436,7 @@ export const PdfViewer = ({
     } finally {
       setPageLoading(false);
     }
-  }, [pdfDoc, currentPage, containerWidth, rotation]);
+  }, [pdfDoc, currentPage, containerWidth, containerHeight, rotation]);
 
   useEffect(() => {
     if (!useIframeFallback) {
