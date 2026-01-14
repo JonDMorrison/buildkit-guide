@@ -314,8 +314,8 @@ export default function Landing() {
               const Icon = item.icon;
               return (
                 <div key={index} className="p-5 bg-card rounded-lg border border-border text-center">
-                  <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-4">
-                    <Icon className="h-6 w-6 text-green-600" />
+                  <div className="w-12 h-12 rounded-full bg-status-complete/10 flex items-center justify-center mx-auto mb-4">
+                    <Icon className="h-6 w-6 text-status-complete" />
                   </div>
                   <h4 className="text-lg font-bold text-foreground mb-2">{item.title}</h4>
                   <p className="text-sm text-muted-foreground">{item.description}</p>
@@ -347,7 +347,7 @@ export default function Landing() {
               description: "Start tracking tasks, logging safety, and saving time."
             }].map((item, index) => (
               <div key={index} className="text-center">
-                <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-[#FF6B35] text-white text-xl md:text-2xl font-bold flex items-center justify-center mx-auto mb-3 md:mb-4 shadow-lg">
+                <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-primary text-primary-foreground text-xl md:text-2xl font-bold flex items-center justify-center mx-auto mb-3 md:mb-4 shadow-lg">
                   {item.step}
                 </div>
                 <h4 className="text-lg md:text-xl font-bold text-foreground mb-2">{item.title}</h4>
@@ -368,7 +368,7 @@ export default function Landing() {
             Eliminate downtime. Prevent schedule slippage. Keep the GC happy. Protect your margins.
           </p>
           <div className="flex flex-col gap-3 justify-center w-full max-w-md mx-auto">
-            <Button size="lg" onClick={handleGetStarted} className="w-full h-14 md:h-16 text-base md:text-lg bg-[#FF6B35] hover:bg-[#FF6B35]/90 text-white font-semibold shadow-xl">
+            <Button size="lg" onClick={handleGetStarted} className="w-full h-14 md:h-16 text-base md:text-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-xl">
               Start Your Free Trial
             </Button>
             <Button size="lg" variant="outline" onClick={handleSeePricing} className="w-full h-14 md:h-16 text-base md:text-lg font-semibold">
@@ -391,7 +391,7 @@ export default function Landing() {
           <div className="grid sm:grid-cols-2 gap-3 md:gap-4 mb-6 md:mb-8">
             {["Trades show up ready", "Blockers handled fast", "Safety always documented", "Shorter meetings", "Clear next steps", "On-time completion"].map((item, index) => (
               <div key={index} className="flex items-start gap-3 p-4 md:p-5 bg-card/90 backdrop-blur-md rounded-lg shadow-sm">
-                <CheckCircle className="h-6 w-6 md:h-7 md:w-7 text-[#FF6B35] flex-shrink-0 mt-0.5" strokeWidth={2.5} />
+                <CheckCircle className="h-6 w-6 md:h-7 md:w-7 text-primary flex-shrink-0 mt-0.5" strokeWidth={2.5} />
                 <p className="text-base md:text-lg text-foreground font-semibold">{item}</p>
               </div>
             ))}
@@ -434,7 +434,7 @@ export default function Landing() {
       </section>
 
       {/* Final CTA Section - NEW */}
-      <section className="py-20 md:py-28 px-4 bg-[#FF6B35]">
+      <section className="py-20 md:py-28 px-4 bg-primary">
         <div className="container mx-auto max-w-3xl text-center">
           <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-4 leading-tight">
             Stop Chasing Updates. Start Building.
@@ -446,7 +446,7 @@ export default function Landing() {
             <Button 
               size="lg" 
               onClick={handleGetStarted} 
-              className="w-full sm:w-auto h-14 md:h-16 px-8 text-base md:text-lg bg-white text-[#FF6B35] hover:bg-white/90 font-bold shadow-xl"
+              className="w-full sm:w-auto h-14 md:h-16 px-8 text-base md:text-lg bg-white text-primary hover:bg-white/90 font-bold shadow-xl"
             >
               Start Your Free Trial
             </Button>
