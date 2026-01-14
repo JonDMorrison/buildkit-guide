@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Shield, Lock, FileCheck, Eye, Users, FileText, ChevronRight } from "lucide-react";
 import trustHero from "@/assets/trust-integrity-hero.jpg";
-import projectPulseLogo from "@/assets/project-pulse-logo.png";
+import projectPathLogo from "@/assets/project-path-logo.png";
 import { PublicNav } from "@/components/PublicNav";
 
 export default function SafetySecurity() {
@@ -194,7 +194,7 @@ export default function SafetySecurity() {
         <div className="container mx-auto max-w-6xl">
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-2">
-              <img src={projectPulseLogo} alt="Project Path" className="h-8 w-auto max-w-[120px]" />
+              <img src={projectPathLogo} alt="Project Path" className="h-8 w-auto max-w-[120px]" />
               <p className="text-sm text-muted-foreground">
                 © 2025 Project Path. Built for the field.
               </p>

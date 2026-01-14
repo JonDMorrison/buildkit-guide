@@ -6,7 +6,7 @@ import {
   TrendingUp, Zap, MapPin, Fingerprint, ClipboardCheck
 } from "lucide-react";
 import featuresHero from "@/assets/features-hero.jpg";
-import projectPulseLogo from "@/assets/project-pulse-logo.png";
+import projectPathLogo from "@/assets/project-path-logo.png";
 import { PublicNav } from "@/components/PublicNav";
 
 interface FeatureCardProps {
@@ -337,7 +337,7 @@ export default function Features() {
         <div className="container mx-auto max-w-6xl">
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-2">
-              <img src={projectPulseLogo} alt="Project Path" className="h-8 w-auto max-w-[120px]" />
+              <img src={projectPathLogo} alt="Project Path" className="h-8 w-auto max-w-[120px]" />
               <p className="text-sm text-muted-foreground">
                 © 2025 Project Path. Built for the field.
               </p>

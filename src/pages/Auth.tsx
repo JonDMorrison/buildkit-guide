@@ -9,7 +9,7 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import projectPulseLogo from '@/assets/project-pulse-logo.png';
+import projectPathLogo from '@/assets/project-path-logo.png';
 
 const signInSchema = z.object({
   email: z.string().trim().email({ message: 'Invalid email address' }),
@@ -154,7 +154,7 @@ const Auth = () => {
       <Card className="w-full max-w-md p-8">
         <div className="flex flex-col items-center mb-8">
           <img 
-            src={projectPulseLogo} 
+            src={projectPathLogo} 
             alt="Project Path" 
             className="w-auto h-20 mb-4"
           />
