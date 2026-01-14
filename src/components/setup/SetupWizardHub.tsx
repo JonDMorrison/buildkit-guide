@@ -358,9 +358,18 @@ export function SetupWizardHub({ forceShow = false }: SetupWizardHubProps) {
                 Reset Progress
               </Button>
               
-              <p className="text-xs text-muted-foreground">
-                Need help? Contact support at support@projectpulse.com
-              </p>
+              <div className="flex items-center gap-4">
+                <p className="text-xs text-muted-foreground">
+                  Need help? Contact support at support@projectpulse.com
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/dashboard')}
+                >
+                  Close
+                </Button>
+              </div>
             </div>
           </CardContent>
         )}
