@@ -294,7 +294,7 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
           <>
             <CardHeader className="text-center pt-8 pb-4">
               <div className="mx-auto mb-4 relative">
-                <img src={projectPulseLogo} alt="Project Pulse" className="h-20 w-auto mx-auto" />
+                <img src={projectPulseLogo} alt="Project Path" className="h-20 w-auto mx-auto" />
                 <div className="absolute -right-2 -bottom-2 bg-primary text-primary-foreground rounded-full p-2">
                   <PartyPopper className="h-5 w-5" />
                 </div>
@@ -310,7 +310,7 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
               <div className="bg-muted/50 rounded-xl p-6 text-center">
                 <Rocket className="h-12 w-12 text-primary mx-auto mb-3" />
                 <p className="text-muted-foreground">
-                  Project Pulse helps you keep every trade accountable and your construction projects on track. 
+                  Project Path helps you keep every trade accountable and your construction projects on track. 
                   No more chasing updates or buried spreadsheets.
                 </p>
               </div>

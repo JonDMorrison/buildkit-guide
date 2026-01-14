@@ -88,7 +88,7 @@ serve(async (req: Request) => {
       .from("projects")
       .insert({
         name: "📋 Sample Project - Downtown Office Build",
-        description: "This is a sample project to help you explore Build Sense. Feel free to add tasks, create safety forms, and experiment with all features!",
+        description: "This is a sample project to help you explore Project Path. Feel free to add tasks, create safety forms, and experiment with all features!",
         location: "123 Main Street, Downtown",
         job_number: "SAMPLE-001",
         status: "active",

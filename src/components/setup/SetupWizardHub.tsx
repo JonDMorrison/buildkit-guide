@@ -68,7 +68,7 @@ export function SetupWizardHub({ forceShow = false }: SetupWizardHubProps) {
   }> = {
     step_org_created: {
       label: 'Organization Created',
-      description: 'Your company is set up in Project Pulse',
+      description: 'Your company is set up in Project Path',
       timeEstimate: '✓ Done',
       helpText: 'This step is automatically completed when you sign up.',
     },
@@ -172,7 +172,7 @@ export function SetupWizardHub({ forceShow = false }: SetupWizardHubProps) {
                 <Rocket className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <h3 className="font-semibold text-lg">Get Started with Project Pulse</h3>
+                <h3 className="font-semibold text-lg">Get Started with Project Path</h3>
                 <p className="text-sm text-muted-foreground">
                   Complete these steps to set up your organization for success
                 </p>
@@ -360,7 +360,7 @@ export function SetupWizardHub({ forceShow = false }: SetupWizardHubProps) {
               
               <div className="flex items-center gap-4">
                 <p className="text-xs text-muted-foreground">
-                  Need help? Contact support at support@projectpulse.com
+                  Need help? Contact support at support@projectpath.app
                 </p>
                 <Button
                   variant="outline"

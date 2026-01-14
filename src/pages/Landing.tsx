@@ -83,7 +83,7 @@ export default function Landing() {
               </div>
             </div>
             <div className="flex justify-center mt-8 lg:mt-0">
-              <img alt="Project Pulse App Dashboard" className="w-full max-w-md lg:max-w-lg rounded-lg shadow-2xl" loading="eager" src="/lovable-uploads/4e1b85d6-7eda-4f22-abb7-fb02a677b21c.png" />
+              <img alt="Project Path App Dashboard" className="w-full max-w-md lg:max-w-lg rounded-lg shadow-2xl" loading="eager" src="/lovable-uploads/4e1b85d6-7eda-4f22-abb7-fb02a677b21c.png" />
             </div>
           </div>
         </div>
@@ -133,7 +133,7 @@ export default function Landing() {
             Free Up Capacity Without Adding a Staff Member
           </h3>
           <p className="text-lg md:text-xl text-white/80 mb-8 leading-relaxed max-w-2xl mx-auto">
-            Your PM spends 40% of their day chasing updates. Project Pulse gives that time back.
+            Your PM spends 40% of their day chasing updates. Project Path gives that time back.
           </p>
           <div className="grid sm:grid-cols-3 gap-6 text-left">
             <div className="bg-white/10 p-5 rounded-lg border border-white/20">
@@ -490,9 +490,9 @@ export default function Landing() {
         <div className="container mx-auto max-w-6xl">
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-2">
-              <img src={projectPulseLogo} alt="Project Pulse" className="h-8 w-auto max-w-[120px]" />
+              <img src={projectPulseLogo} alt="Project Path" className="h-8 w-auto max-w-[120px]" />
               <p className="text-sm text-foreground/70">
-                © 2025 Project Pulse. Built for the field.
+                © 2025 Project Path. Built for the field.
               </p>
             </div>
             <div className="flex flex-wrap justify-center gap-4">

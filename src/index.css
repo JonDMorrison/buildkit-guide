@@ -8,7 +8,7 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Project Pulse Brand Colors - Electric Blue/Cyan Theme */
+    /* Project Path Brand Colors - Electric Blue/Cyan Theme */
     --brand-primary-dark: 0 0% 5%;          /* Near Black */
     --brand-primary-light: 0 0% 15%;        /* Dark Gray */
     --brand-accent-cyan: 195 100% 50%;      /* Electric Cyan */

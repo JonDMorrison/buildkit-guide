@@ -138,7 +138,7 @@ serve(async (req: Request) => {
 
     // Build the invite link dynamically from request origin or env var
     const origin = req.headers.get("origin");
-    const appUrl = Deno.env.get("APP_URL") || origin || "https://project-pulse.lovable.app";
+    const appUrl = Deno.env.get("APP_URL") || origin || "https://projectpath.app";
     const inviteLink = `${appUrl}/accept-invite?token=${invitation.token}`;
 
     log('info', 'Invitation created', { 
@@ -158,9 +158,9 @@ serve(async (req: Request) => {
       
       try {
         const emailResponse = await resend.emails.send({
-          from: "Project Pulse <noreply@projectpath.app>",
+          from: "Project Path <noreply@projectpath.app>",
           to: [email],
-          subject: `${inviterName} invited you to join Project Pulse`,
+          subject: `${inviterName} invited you to join Project Path`,
           html: `
             <!DOCTYPE html>
             <html>
@@ -170,18 +170,18 @@ serve(async (req: Request) => {
             </head>
             <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
               <div style="text-align: center; margin-bottom: 30px;">
-                <h1 style="color: #E53935; margin: 0; font-size: 28px;">Project Pulse</h1>
+                <h1 style="color: #E53935; margin: 0; font-size: 28px;">Project Path</h1>
                 <p style="color: #666; margin-top: 5px;">Construction Project Management</p>
               </div>
               
               <div style="background: linear-gradient(135deg, #E53935 0%, #EF5350 100%); color: white; padding: 30px; border-radius: 12px; text-align: center; margin-bottom: 30px;">
                 <h2 style="margin: 0 0 10px 0; font-size: 24px;">You're Invited! 🎉</h2>
-                <p style="margin: 0; opacity: 0.9; font-size: 16px;">Join the team on Project Pulse</p>
+                <p style="margin: 0; opacity: 0.9; font-size: 16px;">Join the team on Project Path</p>
               </div>
               
               <p style="font-size: 16px;">Hi ${recipientName},</p>
               
-              <p style="font-size: 16px;"><strong>${inviterName}</strong> has invited you to join their team on Project Pulse - the construction project management platform that keeps every trade accountable and your schedule on track.</p>
+              <p style="font-size: 16px;"><strong>${inviterName}</strong> has invited you to join their team on Project Path - the construction project management platform that keeps every trade accountable and your schedule on track.</p>
               
               <div style="text-align: center; margin: 35px 0;">
                 <a href="${inviteLink}" style="display: inline-block; background: #E53935; color: white; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-weight: bold; font-size: 16px;">Accept Invitation</a>
@@ -192,8 +192,8 @@ serve(async (req: Request) => {
               <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
               
               <p style="font-size: 12px; color: #999; text-align: center;">
-                Project Pulse - Keep your job site moving<br>
-                <a href="${appUrl}" style="color: #E53935;">projectpulse.app</a>
+                Project Path - Keep your job site moving<br>
+                <a href="${appUrl}" style="color: #E53935;">projectpath.app</a>
               </p>
             </body>
             </html>
