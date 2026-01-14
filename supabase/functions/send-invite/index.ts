@@ -72,7 +72,23 @@ serve(async (req: Request) => {
     }
     
     const { email, fullName, projectId, role } = parseResult.data;
-    log('info', 'Processing invitation', { email: email.substring(0, 3) + '***' });
+    log('info', 'Processing invitation', { email: email.substring(0, 3) + '***', role });
+
+    // Security check: Only admins can invite other admins
+    if (role === 'admin') {
+      const { data: inviterAdminRole } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "admin")
+        .single();
+
+      if (!inviterAdminRole) {
+        log('warn', 'Non-admin attempted to invite admin', { inviterId: user.id });
+        throw new Error("Only administrators can invite other administrators");
+      }
+      log('info', 'Admin invite authorized', { inviterId: user.id });
+    }
 
     // Check if user already exists
     const { data: existingProfile } = await supabase
