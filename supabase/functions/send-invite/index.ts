@@ -148,64 +148,95 @@ serve(async (req: Request) => {
     // SECURITY: Don't log the full invite link in production
 
     // Send email if Resend is configured
+    let emailSent = false;
+    let emailError: string | null = null;
+    
     if (resendApiKey) {
       const resend = new Resend(resendApiKey);
       
       const recipientName = fullName || email.split("@")[0];
       
-      const emailResponse = await resend.emails.send({
-        from: "Project Pulse <onboarding@resend.dev>",
-        to: [email],
-        subject: `${inviterName} invited you to join Project Pulse`,
-        html: `
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          </head>
-          <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="text-align: center; margin-bottom: 30px;">
-              <h1 style="color: #E53935; margin: 0; font-size: 28px;">Project Pulse</h1>
-              <p style="color: #666; margin-top: 5px;">Construction Project Management</p>
-            </div>
-            
-            <div style="background: linear-gradient(135deg, #E53935 0%, #EF5350 100%); color: white; padding: 30px; border-radius: 12px; text-align: center; margin-bottom: 30px;">
-              <h2 style="margin: 0 0 10px 0; font-size: 24px;">You're Invited! 🎉</h2>
-              <p style="margin: 0; opacity: 0.9; font-size: 16px;">Join the team on Project Pulse</p>
-            </div>
-            
-            <p style="font-size: 16px;">Hi ${recipientName},</p>
-            
-            <p style="font-size: 16px;"><strong>${inviterName}</strong> has invited you to join their team on Project Pulse - the construction project management platform that keeps every trade accountable and your schedule on track.</p>
-            
-            <div style="text-align: center; margin: 35px 0;">
-              <a href="${inviteLink}" style="display: inline-block; background: #E53935; color: white; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-weight: bold; font-size: 16px;">Accept Invitation</a>
-            </div>
-            
-            <p style="font-size: 14px; color: #666;">This invitation will expire in 7 days. If you didn't expect this email, you can safely ignore it.</p>
-            
-            <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-            
-            <p style="font-size: 12px; color: #999; text-align: center;">
-              Project Pulse - Keep your job site moving<br>
-              <a href="${appUrl}" style="color: #E53935;">projectpulse.app</a>
-            </p>
-          </body>
-          </html>
-        `,
-      });
+      try {
+        const emailResponse = await resend.emails.send({
+          from: "Project Pulse <onboarding@resend.dev>",
+          to: [email],
+          subject: `${inviterName} invited you to join Project Pulse`,
+          html: `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <div style="text-align: center; margin-bottom: 30px;">
+                <h1 style="color: #E53935; margin: 0; font-size: 28px;">Project Pulse</h1>
+                <p style="color: #666; margin-top: 5px;">Construction Project Management</p>
+              </div>
+              
+              <div style="background: linear-gradient(135deg, #E53935 0%, #EF5350 100%); color: white; padding: 30px; border-radius: 12px; text-align: center; margin-bottom: 30px;">
+                <h2 style="margin: 0 0 10px 0; font-size: 24px;">You're Invited! 🎉</h2>
+                <p style="margin: 0; opacity: 0.9; font-size: 16px;">Join the team on Project Pulse</p>
+              </div>
+              
+              <p style="font-size: 16px;">Hi ${recipientName},</p>
+              
+              <p style="font-size: 16px;"><strong>${inviterName}</strong> has invited you to join their team on Project Pulse - the construction project management platform that keeps every trade accountable and your schedule on track.</p>
+              
+              <div style="text-align: center; margin: 35px 0;">
+                <a href="${inviteLink}" style="display: inline-block; background: #E53935; color: white; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-weight: bold; font-size: 16px;">Accept Invitation</a>
+              </div>
+              
+              <p style="font-size: 14px; color: #666;">This invitation will expire in 7 days. If you didn't expect this email, you can safely ignore it.</p>
+              
+              <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+              
+              <p style="font-size: 12px; color: #999; text-align: center;">
+                Project Pulse - Keep your job site moving<br>
+                <a href="${appUrl}" style="color: #E53935;">projectpulse.app</a>
+              </p>
+            </body>
+            </html>
+          `,
+        });
 
-      console.log("Email sent successfully:", emailResponse);
+        // Check if Resend returned an error in the response
+        if (emailResponse.error) {
+          emailError = emailResponse.error.message || 'Failed to send email';
+          log('error', 'Resend API error', { 
+            error: emailResponse.error.message,
+            name: emailResponse.error.name
+          });
+        } else {
+          emailSent = true;
+          log('info', 'Email sent successfully', { emailId: emailResponse.data?.id });
+        }
+      } catch (err: any) {
+        emailError = err.message || 'Failed to send email';
+        log('error', 'Email send exception', { error: err.message });
+      }
     } else {
-      console.log("RESEND_API_KEY not configured, skipping email send");
+      log('warn', 'RESEND_API_KEY not configured, skipping email send');
+      emailError = 'Email service not configured';
     }
+
+    // Return response with email status
+    const responseMessage = emailSent 
+      ? "Invitation sent successfully" 
+      : emailError?.includes('domain') 
+        ? "Invitation created but email could not be sent. Please verify your domain at resend.com/domains to enable email sending."
+        : emailError 
+          ? `Invitation created but email failed: ${emailError}` 
+          : "Invitation created (email service not configured)";
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: resendApiKey ? "Invitation sent successfully" : "Invitation created (email not sent - Resend not configured)",
-        // SECURITY: Don't expose inviteLink in production response
+        emailSent,
+        emailError,
+        message: responseMessage,
+        // Include invite link for manual sharing when email fails
+        ...(emailError && { inviteLink }),
       }),
       {
         status: 200,

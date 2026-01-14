@@ -2148,6 +2148,88 @@ export type Database = {
           },
         ]
       }
+      support_issues: {
+        Row: {
+          browser_info: Json | null
+          category: string
+          created_at: string
+          current_route: string | null
+          description: string
+          id: string
+          organization_id: string | null
+          priority: string
+          project_id: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          screenshot_url: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          browser_info?: Json | null
+          category?: string
+          created_at?: string
+          current_route?: string | null
+          description: string
+          id?: string
+          organization_id?: string | null
+          priority?: string
+          project_id?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          screenshot_url?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          browser_info?: Json | null
+          category?: string
+          created_at?: string
+          current_route?: string | null
+          description?: string
+          id?: string
+          organization_id?: string | null
+          priority?: string
+          project_id?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          screenshot_url?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_issues_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_issues_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_issues_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_progress"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_assignments: {
         Row: {
           assigned_at: string

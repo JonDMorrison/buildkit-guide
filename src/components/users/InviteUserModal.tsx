@@ -103,10 +103,41 @@ export const InviteUserModal = ({
         throw new Error(data.error);
       }
 
-      toast({
-        title: 'Invitation sent',
-        description: `An invitation has been sent to ${email}`,
-      });
+      // Check if email was actually sent
+      if (data.emailSent) {
+        toast({
+          title: 'Invitation sent',
+          description: `An invitation email has been sent to ${email}`,
+        });
+      } else if (data.emailError) {
+        // Invitation created but email failed - show warning with invite link
+        toast({
+          title: 'Invitation created',
+          description: data.emailError.includes('domain') 
+            ? 'Email could not be sent. Please share this link manually or verify your domain at resend.com/domains'
+            : `Email delivery failed: ${data.emailError}. You can share the invite link manually.`,
+          variant: 'destructive',
+          duration: 10000,
+        });
+        
+        // If we got an invite link back, copy it to clipboard
+        if (data.inviteLink) {
+          try {
+            await navigator.clipboard.writeText(data.inviteLink);
+            toast({
+              title: 'Invite link copied',
+              description: 'The invite link has been copied to your clipboard. Share it manually with the user.',
+            });
+          } catch {
+            console.log('Could not copy to clipboard');
+          }
+        }
+      } else {
+        toast({
+          title: 'Invitation created',
+          description: `Invitation created for ${email}`,
+        });
+      }
 
       // Reset form
       setEmail('');
