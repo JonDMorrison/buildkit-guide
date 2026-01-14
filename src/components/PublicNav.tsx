@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Menu } from "lucide-react";
 import { Button } from "./ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
-import projectPulseLogo from "@/assets/project-pulse-logo.png";
+import projectPathLogo from "@/assets/project-path-logo.png";
 
 interface NavItem {
   label: string;
@@ -35,7 +35,7 @@ export const PublicNav = () => {
           className="flex items-center cursor-pointer" 
           onClick={() => navigate('/')}
         >
-          <img src={projectPulseLogo} alt="Project Path" className="h-24 w-auto" />
+          <img src={projectPathLogo} alt="Project Path" className="h-24 w-auto" />
         </div>
         
         {/* Desktop Navigation */}
@@ -87,7 +87,7 @@ export const PublicNav = () => {
             <SheetContent side="right" className="w-[280px] sm:w-[320px]">
               <SheetHeader className="text-left mb-6">
                 <SheetTitle>
-                  <img src={projectPulseLogo} alt="Project Path" className="h-20 w-auto" />
+                  <img src={projectPathLogo} alt="Project Path" className="h-20 w-auto" />
                 </SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col gap-4">
