@@ -1,0 +1,6 @@
+# Bun package manager config
+# Speeds up installs in constrained build environments by skipping optionalDependencies
+# (e.g. native node-canvas pulled in optionally by some packages)
+
+[install]
+optional = false
