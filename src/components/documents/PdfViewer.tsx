@@ -313,9 +313,11 @@ export const PdfViewer = ({
       const scaleY = availableHeight / unscaledViewport.height;
       const baseScale = Math.min(scaleX, scaleY); // Fit entire page in view
 
-      // Use device pixel ratio for sharper rendering on high-DPI screens
+      // Render at higher resolution for crisp zooming (3x for sharp details when zoomed)
+      // This creates a larger canvas that stays sharp when the user zooms in
       const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
-      const renderScale = baseScale * pixelRatio;
+      const zoomQualityMultiplier = 3; // Render 3x larger for sharp zoom
+      const renderScale = baseScale * pixelRatio * zoomQualityMultiplier;
 
       const viewport = page.getViewport({
         scale: renderScale,
@@ -336,9 +338,10 @@ export const PdfViewer = ({
       canvas.width = viewport.width;
       canvas.height = viewport.height;
 
-      // Set display size (CSS)
-      canvas.style.width = `${viewport.width / pixelRatio}px`;
-      canvas.style.height = `${viewport.height / pixelRatio}px`;
+      // Set display size (CSS) - divide by both pixelRatio and quality multiplier
+      const displayScale = pixelRatio * zoomQualityMultiplier;
+      canvas.style.width = `${viewport.width / displayScale}px`;
+      canvas.style.height = `${viewport.height / displayScale}px`;
 
       console.log(`[PDF] Rendering page ${currentPage}: canvas=${canvas.width}x${canvas.height}, scale=${renderScale.toFixed(3)}`);
 
@@ -536,11 +539,11 @@ export const PdfViewer = ({
         <TransformWrapper
           initialScale={1}
           minScale={0.5}
-          maxScale={4}
+          maxScale={10}
           centerOnInit
-          doubleClick={{ mode: "toggle", step: 0.7 }}
+          doubleClick={{ mode: "toggle", step: 1.5 }}
           panning={{ velocityDisabled: true }}
-          wheel={{ smoothStep: 0.05 }}
+          wheel={{ smoothStep: 0.08 }}
         >
           <ZoomControls />
           <TransformComponent
