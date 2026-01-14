@@ -6,6 +6,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { 
@@ -19,11 +30,13 @@ import {
   Maximize2,
   History,
   ExternalLink,
+  Trash2,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { getSignedUrl } from "@/hooks/useSignedUrl";
 import { PdfViewer } from "./PdfViewer";
+import { toast } from "sonner";
 import type { Drawing, DrawingRevision } from "@/types/drawings";
 
 interface DrawingViewerProps {
@@ -31,13 +44,15 @@ interface DrawingViewerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUploadRevision?: () => void;
+  onDelete?: () => void;
 }
 
 export const DrawingViewer = ({ 
   drawing, 
   open, 
   onOpenChange,
-  onUploadRevision
+  onUploadRevision,
+  onDelete
 }: DrawingViewerProps) => {
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
@@ -49,6 +64,33 @@ export const DrawingViewer = ({
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [urlLoading, setUrlLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      // Delete from storage first
+      const filePath = drawing.file_url.replace('project-documents/', '');
+      await supabase.storage.from('project-documents').remove([filePath]);
+      
+      // Delete from database
+      const { error } = await supabase
+        .from('attachments')
+        .delete()
+        .eq('id', drawing.id);
+
+      if (error) throw error;
+
+      toast.success('Drawing deleted successfully');
+      onOpenChange(false);
+      onDelete?.();
+    } catch (error) {
+      console.error('Error deleting drawing:', error);
+      toast.error('Failed to delete drawing');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -251,6 +293,35 @@ export const DrawingViewer = ({
               >
                 <Maximize2 className="h-4 w-4" />
               </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 sm:h-9 sm:w-9 text-destructive hover:text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Drawing</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete "{drawing.file_name}"? This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDelete}
+                      disabled={isDeleting}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      {isDeleting ? 'Deleting...' : 'Delete'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
         </DialogHeader>
