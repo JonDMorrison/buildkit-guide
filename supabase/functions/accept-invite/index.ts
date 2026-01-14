@@ -18,6 +18,22 @@ const log = (level: 'info' | 'warn' | 'error', message: string, data?: Record<st
   }));
 };
 
+// Map project roles to organization roles
+// Project roles: admin, project_manager, foreman, internal_worker, external_trade
+// Org roles: admin, hr, pm, foreman, internal_worker, external_trade
+const mapToOrgRole = (projectRole: string): string => {
+  const roleMap: Record<string, string> = {
+    'admin': 'admin',
+    'project_manager': 'pm',
+    'foreman': 'foreman',
+    'internal_worker': 'internal_worker',
+    'external_trade': 'external_trade',
+    'hr': 'hr',
+    'pm': 'pm',
+  };
+  return roleMap[projectRole] || 'internal_worker';
+};
+
 // Zod schema for input validation
 const AcceptInviteSchema = z.object({
   token: z.string().length(64, "Invalid invitation token format").regex(/^[a-f0-9]+$/, "Invalid token format"),
@@ -75,10 +91,16 @@ serve(async (req: Request) => {
       throw new Error("Invitation not found or already used");
     }
 
-    // These checks are now handled by the query filter above
+    // Check expiration
     if (new Date(invitation.expires_at) < new Date()) {
       throw new Error("Invitation has expired. Please request a new invite.");
     }
+
+    // Determine roles for org and project
+    const projectRole = invitation.role || "internal_worker";
+    const orgRole = mapToOrgRole(projectRole);
+    
+    log('info', 'Role mapping', { projectRole, orgRole });
 
     // Check if user already exists
     const { data: existingProfile } = await supabase
@@ -98,7 +120,7 @@ serve(async (req: Request) => {
           .upsert({
             user_id: userId,
             organization_id: invitation.organization_id,
-            role: invitation.role || "internal_worker",
+            role: orgRole,
             is_active: true,
           }, {
             onConflict: "user_id,organization_id",
@@ -116,7 +138,7 @@ serve(async (req: Request) => {
           .upsert({
             user_id: userId,
             project_id: invitation.project_id,
-            role: invitation.role || "internal_worker",
+            role: projectRole,
           }, {
             onConflict: "user_id,project_id",
           });
@@ -223,7 +245,7 @@ serve(async (req: Request) => {
         .insert({
           user_id: newUserId,
           organization_id: invitation.organization_id,
-          role: invitation.role || "internal_worker",
+          role: orgRole,
           is_active: true,
         });
 
@@ -239,7 +261,7 @@ serve(async (req: Request) => {
         .insert({
           user_id: newUserId,
           project_id: invitation.project_id,
-          role: invitation.role || "internal_worker",
+          role: projectRole,
         });
 
       if (projectError) {
@@ -275,14 +297,15 @@ serve(async (req: Request) => {
     log('info', 'User successfully created and added to org', { 
       email: invitation.email,
       hasOrg: !!invitation.organization_id,
-      hasProject: !!invitation.project_id
+      hasProject: !!invitation.project_id,
+      projectRole,
+      orgRole
     });
 
     return new Response(
       JSON.stringify({
         success: true,
         message: "Account created successfully",
-        // Don't expose userId in response for security
       }),
       {
         status: 200,
