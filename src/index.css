@@ -8,10 +8,10 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Project Path Brand Colors - Electric Blue/Cyan Theme */
+    /* Project Path Brand Colors - Matching Logo Blue */
     --brand-primary-dark: 0 0% 5%;          /* Near Black */
     --brand-primary-light: 0 0% 15%;        /* Dark Gray */
-    --brand-accent-cyan: 195 100% 50%;      /* Electric Cyan */
+    --brand-accent-blue: 201 100% 45%;      /* Logo Blue - #00A3E0 */
     --brand-muted-grey: 210 10% 40%;        /* Cool Gray */
     
     /* Base surfaces - dark theme */
@@ -24,34 +24,34 @@ All colors MUST be HSL.
     --popover: 0 0% 10%;
     --popover-foreground: 0 0% 95%;
 
-    /* Primary - Electric Cyan */
-    --primary: 195 100% 50%;
-    --primary-foreground: 0 0% 5%;
+    /* Primary - Logo Blue */
+    --primary: 201 100% 45%;
+    --primary-foreground: 0 0% 100%;
 
-    /* Secondary - Darker Cyan */
-    --secondary: 195 80% 30%;
-    --secondary-foreground: 0 0% 95%;
+    /* Secondary - Darker Blue */
+    --secondary: 201 85% 35%;
+    --secondary-foreground: 0 0% 100%;
 
     /* Muted - Dark Gray */
     --muted: 0 0% 15%;
     --muted-foreground: 0 0% 60%;
 
-    /* Accent - Electric Cyan */
-    --accent: 195 100% 50%;
-    --accent-foreground: 0 0% 5%;
+    /* Accent - Logo Blue */
+    --accent: 201 100% 45%;
+    --accent-foreground: 0 0% 100%;
 
     /* Status colors - construction standard */
     --status-complete: 145 60% 45%;         /* Green for success */
     --status-complete-foreground: 0 0% 100%;
     
-    --status-progress: 195 100% 50%;        /* Cyan for progress */
-    --status-progress-foreground: 0 0% 5%;
+    --status-progress: 201 100% 45%;        /* Blue for progress */
+    --status-progress-foreground: 0 0% 100%;
     
     --status-issue: 0 70% 55%;              /* Red for issues */
     --status-issue-foreground: 0 0% 100%;
 
-    --status-info: 195 100% 50%;
-    --status-info-foreground: 0 0% 5%;
+    --status-info: 201 100% 45%;
+    --status-info-foreground: 0 0% 100%;
 
     --destructive: 0 70% 55%;
     --destructive-foreground: 0 0% 100%;
@@ -59,7 +59,7 @@ All colors MUST be HSL.
     /* Borders and inputs - subtle dark */
     --border: 0 0% 20%;
     --input: 0 0% 20%;
-    --ring: 195 100% 50%;
+    --ring: 201 100% 45%;
 
     --radius: 0.5rem;
 
@@ -68,7 +68,7 @@ All colors MUST be HSL.
     --tab-bar-height: 64px;
     
     /* Blueprint pattern */
-    --blueprint-grid: 195 100% 50%;
+    --blueprint-grid: 201 100% 45%;
   }
 }
 
