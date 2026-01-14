@@ -2074,6 +2074,80 @@ export type Database = {
           },
         ]
       }
+      setup_checklist_progress: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          dismissed_at: string | null
+          id: string
+          organization_id: string
+          step_first_drawing: boolean | null
+          step_first_invite: boolean | null
+          step_first_job_site: boolean | null
+          step_first_project: boolean | null
+          step_first_safety_form: boolean | null
+          step_hazard_library: boolean | null
+          step_org_created: boolean | null
+          step_ppe_reviewed: boolean | null
+          step_time_tracking_configured: boolean | null
+          step_time_tracking_enabled: boolean | null
+          step_timezone_set: boolean | null
+          step_trades_configured: boolean | null
+          step_users_assigned: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          dismissed_at?: string | null
+          id?: string
+          organization_id: string
+          step_first_drawing?: boolean | null
+          step_first_invite?: boolean | null
+          step_first_job_site?: boolean | null
+          step_first_project?: boolean | null
+          step_first_safety_form?: boolean | null
+          step_hazard_library?: boolean | null
+          step_org_created?: boolean | null
+          step_ppe_reviewed?: boolean | null
+          step_time_tracking_configured?: boolean | null
+          step_time_tracking_enabled?: boolean | null
+          step_timezone_set?: boolean | null
+          step_trades_configured?: boolean | null
+          step_users_assigned?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          dismissed_at?: string | null
+          id?: string
+          organization_id?: string
+          step_first_drawing?: boolean | null
+          step_first_invite?: boolean | null
+          step_first_job_site?: boolean | null
+          step_first_project?: boolean | null
+          step_first_safety_form?: boolean | null
+          step_hazard_library?: boolean | null
+          step_org_created?: boolean | null
+          step_ppe_reviewed?: boolean | null
+          step_time_tracking_configured?: boolean | null
+          step_time_tracking_enabled?: boolean | null
+          step_timezone_set?: boolean | null
+          step_trades_configured?: boolean | null
+          step_users_assigned?: boolean | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "setup_checklist_progress_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_assignments: {
         Row: {
           assigned_at: string
