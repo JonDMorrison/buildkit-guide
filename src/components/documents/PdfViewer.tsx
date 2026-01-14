@@ -98,31 +98,37 @@ export const PdfViewer = ({
     const measureContainer = () => {
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
-        if (rect.width > 0 && (rect.width !== lastWidthRef.current || rect.height !== lastHeightRef.current)) {
-          console.log(`[PDF] Container measured: ${rect.width}px x ${rect.height}px`);
-          lastWidthRef.current = rect.width;
-          lastHeightRef.current = rect.height;
-          setContainerWidth(rect.width);
-          setContainerHeight(rect.height);
+        // Only update if we have valid dimensions that differ from stored values
+        if (rect.width > 0 && rect.height > 50) { // Require minimum height to avoid premature renders
+          if (rect.width !== lastWidthRef.current || rect.height !== lastHeightRef.current) {
+            console.log(`[PDF] Container measured: ${rect.width}px x ${rect.height}px`);
+            lastWidthRef.current = rect.width;
+            lastHeightRef.current = rect.height;
+            setContainerWidth(rect.width);
+            setContainerHeight(rect.height);
+          }
         }
       }
     };
 
     // Measure immediately
     measureContainer();
-    // Also measure after a short delay (in case of layout settling)
+    // Also measure after delays to catch layout settling
     const timeoutId = setTimeout(measureContainer, 100);
-    const timeoutId2 = setTimeout(measureContainer, 500);
+    const timeoutId2 = setTimeout(measureContainer, 300);
+    const timeoutId3 = setTimeout(measureContainer, 600);
 
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
-        if (width > 0 && (width !== lastWidthRef.current || height !== lastHeightRef.current)) {
-          console.log(`[PDF] ResizeObserver: ${width}px x ${height}px`);
-          lastWidthRef.current = width;
-          lastHeightRef.current = height;
-          setContainerWidth(width);
-          setContainerHeight(height);
+        if (width > 0 && height > 50) { // Require minimum height
+          if (width !== lastWidthRef.current || height !== lastHeightRef.current) {
+            console.log(`[PDF] ResizeObserver: ${width}px x ${height}px`);
+            lastWidthRef.current = width;
+            lastHeightRef.current = height;
+            setContainerWidth(width);
+            setContainerHeight(height);
+          }
         }
       }
     });
@@ -131,21 +137,39 @@ export const PdfViewer = ({
     return () => {
       clearTimeout(timeoutId);
       clearTimeout(timeoutId2);
+      clearTimeout(timeoutId3);
       resizeObserver.disconnect();
     };
   }, []); // Run once on mount - no dependencies needed
 
   // Re-measure when PDF doc loads (container might be ready now)
   useEffect(() => {
-    if (pdfDoc && containerRef.current && (lastWidthRef.current === 0 || lastHeightRef.current === 0)) {
-      const rect = containerRef.current.getBoundingClientRect();
-      if (rect.width > 0 && rect.height > 0) {
-        console.log(`[PDF] Post-load container: ${rect.width}px x ${rect.height}px`);
-        lastWidthRef.current = rect.width;
-        lastHeightRef.current = rect.height;
-        setContainerWidth(rect.width);
-        setContainerHeight(rect.height);
-      }
+    if (pdfDoc && containerRef.current) {
+      // Always try to get accurate measurements after PDF loads
+      const measureAfterLoad = () => {
+        if (containerRef.current) {
+          const rect = containerRef.current.getBoundingClientRect();
+          if (rect.width > 0 && rect.height > 50) {
+            if (rect.width !== lastWidthRef.current || rect.height !== lastHeightRef.current) {
+              console.log(`[PDF] Post-load container: ${rect.width}px x ${rect.height}px`);
+              lastWidthRef.current = rect.width;
+              lastHeightRef.current = rect.height;
+              setContainerWidth(rect.width);
+              setContainerHeight(rect.height);
+            }
+          }
+        }
+      };
+      
+      // Measure immediately and with delays
+      measureAfterLoad();
+      const t1 = setTimeout(measureAfterLoad, 100);
+      const t2 = setTimeout(measureAfterLoad, 300);
+      
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+      };
     }
   }, [pdfDoc]);
 

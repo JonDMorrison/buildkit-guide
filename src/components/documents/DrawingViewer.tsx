@@ -301,7 +301,7 @@ export const DrawingViewer = ({
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* For PDFs, render PdfViewer directly - it has its own controls */}
             {isPDF ? (
-              <div className="flex-1 overflow-hidden">
+              <div className="flex-1 overflow-hidden h-full min-h-0">
                 {urlLoading ? (
                   <div className="flex flex-col items-center justify-center p-8 text-center h-full">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4" />
