@@ -158,7 +158,7 @@ serve(async (req: Request) => {
       
       try {
         const emailResponse = await resend.emails.send({
-          from: "Project Pulse <onboarding@resend.dev>",
+          from: "Project Pulse <noreply@projectpath.app>",
           to: [email],
           subject: `${inviterName} invited you to join Project Pulse`,
           html: `
