@@ -194,9 +194,9 @@ export default function SafetySecurity() {
         <div className="container mx-auto max-w-6xl">
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-2">
-              <img src={projectPulseLogo} alt="Project Pulse" className="h-8 w-auto max-w-[120px]" />
+              <img src={projectPulseLogo} alt="Project Path" className="h-8 w-auto max-w-[120px]" />
               <p className="text-sm text-muted-foreground">
-                © 2025 Project Pulse. Built for the field.
+                © 2025 Project Path. Built for the field.
               </p>
             </div>
             <div className="flex flex-wrap justify-center gap-4">

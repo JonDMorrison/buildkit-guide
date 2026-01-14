@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, CheckCircle, XCircle, PartyPopper } from 'lucide-react';
-import projectPulseLogo from '@/assets/project-pulse-logo.png';
+import projectPathLogo from '@/assets/project-pulse-logo.png';
 
 type InviteStatus = 'loading' | 'valid' | 'expired' | 'already_used' | 'not_found' | 'error';
 
@@ -222,7 +222,7 @@ export default function AcceptInvite() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
-            <img src={projectPulseLogo} alt="Project Pulse" className="h-16 w-auto mx-auto" />
+            <img src={projectPathLogo} alt="Project Path" className="h-16 w-auto mx-auto" />
           </div>
           <CardDescription>
             You've been invited to join. Set up your password to get started.

@@ -47,7 +47,7 @@ export default function Landing() {
     },
     {
       question: "What if we have no cell signal on site?",
-      answer: "Project Pulse works offline. Time entries, safety forms, and task updates queue locally and sync automatically when you reconnect. Never lose data."
+      answer: "Project Path works offline. Time entries, safety forms, and task updates queue locally and sync automatically when you reconnect. Never lose data."
     }
   ];
 
