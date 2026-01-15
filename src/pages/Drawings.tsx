@@ -10,7 +10,7 @@ import { DrawingViewer } from "@/components/documents/DrawingViewer";
 import { DrawingThumbnail } from "@/components/documents/DrawingThumbnail";
 import { useAuthRole } from "@/hooks/useAuthRole";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
-import { Plus, Search, Layers, Grid3x3, List } from "lucide-react";
+import { Plus, Search, Layers, Grid3x3, List, Trash2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -28,7 +28,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
 import type { Drawing } from "@/types/drawings";
 
 interface Project {
@@ -48,6 +59,8 @@ const Drawings = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [drawingToDelete, setDrawingToDelete] = useState<Drawing | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Fix: Check upload permission for any project when "all" is selected
   const canUpload = (selectedProject !== 'all' && can('upload_documents', selectedProject)) || 
@@ -137,6 +150,46 @@ const Drawings = () => {
   const handleUploadRevision = (drawing: Drawing) => {
     setRevisionDrawing(drawing);
     setSelectedDrawing(null);
+  };
+
+  const handleDeleteDrawing = async () => {
+    if (!drawingToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      // Delete from storage first
+      const filePath = drawingToDelete.file_url.startsWith('http') 
+        ? drawingToDelete.file_url.split('/').pop() 
+        : drawingToDelete.file_url;
+      
+      if (filePath) {
+        await supabase.storage
+          .from('project-documents')
+          .remove([filePath]);
+      }
+
+      // Delete from database
+      const { error } = await supabase
+        .from('attachments')
+        .delete()
+        .eq('id', drawingToDelete.id);
+
+      if (error) throw error;
+
+      toast.success('Drawing deleted successfully');
+      fetchDrawings();
+    } catch (error) {
+      console.error('Error deleting drawing:', error);
+      toast.error('Failed to delete drawing');
+    } finally {
+      setIsDeleting(false);
+      setDrawingToDelete(null);
+    }
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent, drawing: Drawing) => {
+    e.stopPropagation();
+    setDrawingToDelete(drawing);
   };
 
   if (loading) {
@@ -236,7 +289,7 @@ const Drawings = () => {
             {filteredDrawings.map((drawing) => (
               <Card 
                 key={drawing.id} 
-                className="cursor-pointer hover:shadow-md transition-shadow overflow-hidden"
+                className="cursor-pointer hover:shadow-md transition-shadow overflow-hidden group relative"
                 onClick={() => setSelectedDrawing(drawing)}
               >
                 <div className="aspect-[4/3] bg-muted relative overflow-hidden">
@@ -255,6 +308,14 @@ const Drawings = () => {
                       Rev {drawing.revision_number || 'A'}
                     </Badge>
                   </div>
+                  {/* Delete button - appears on hover */}
+                  <button
+                    onClick={(e) => handleDeleteClick(e, drawing)}
+                    className="absolute top-2 right-2 p-1.5 bg-destructive text-destructive-foreground rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/90"
+                    aria-label="Delete drawing"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
                 <CardContent className="p-3">
                   <h4 className="font-medium text-sm truncate">{drawing.file_name}</h4>
@@ -326,6 +387,28 @@ const Drawings = () => {
             onDelete={fetchDrawings}
           />
         )}
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={!!drawingToDelete} onOpenChange={(open) => !open && setDrawingToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Drawing</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete "{drawingToDelete?.file_name}"? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteDrawing}
+                disabled={isDeleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </Layout>
   );
