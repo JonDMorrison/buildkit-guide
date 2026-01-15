@@ -114,6 +114,8 @@ export default function Dashboard() {
       return projectsWithProgress;
     },
     enabled: !!user?.id,
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
   });
 
   useEffect(() => {
@@ -135,6 +137,8 @@ export default function Dashboard() {
       return data;
     },
     enabled: !!currentProjectId,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 
   const { data: tasks = [] } = useQuery({
@@ -150,6 +154,8 @@ export default function Dashboard() {
       return data || [];
     },
     enabled: !!user && !!currentProjectId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 
   const { data: blockers = [] } = useQuery({
@@ -164,6 +170,8 @@ export default function Dashboard() {
       return data || [];
     },
     enabled: !!currentProjectId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 
   const { data: safetyForms = [] } = useQuery({
@@ -180,6 +188,8 @@ export default function Dashboard() {
       return data || [];
     },
     enabled: !!(currentProjectId && (isPM || isForeman)),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 
   const { data: todayLog } = useQuery({
@@ -196,6 +206,8 @@ export default function Dashboard() {
       return data;
     },
     enabled: !!currentProjectId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 
   // Fetch active trades with names and task counts
@@ -232,6 +244,8 @@ export default function Dashboard() {
       return Array.from(tradeMap.values()).sort((a, b) => b.taskCount - a.taskCount);
     },
     enabled: !!currentProjectId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 
   const activeTrades = activeTradesData.length;
@@ -261,6 +275,8 @@ export default function Dashboard() {
       }));
     },
     enabled: !!currentProjectId,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 
   // Memoized metrics calculations to prevent unnecessary recalculations
