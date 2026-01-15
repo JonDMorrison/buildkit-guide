@@ -3,7 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { CheckCircle, FileX, Ban, FolderSearch, MessageSquareWarning, FileStack, TrendingDown, Clock, MapPin, Brain, Shield, Wifi, WifiOff, ChevronDown, ChevronUp, Receipt, FileCheck, Mic, ClipboardList, AlertTriangle, Calendar, HardHat, Users, Sparkles } from "lucide-react";
 import { useState } from "react";
 import heroBackground from "@/assets/hero-construction-bg.jpg";
-import problemChaos from "@/assets/problem-chaos.jpg";
+import screenshotTasks from "@/assets/screenshot-tasks.png";
+import screenshotSafety from "@/assets/screenshot-safety.png";
+import screenshotBlockers from "@/assets/screenshot-blockers.png";
+import screenshotLookahead from "@/assets/screenshot-lookahead.png";
+import screenshotAi from "@/assets/screenshot-ai.png";
 import successOrganized from "@/assets/success-organized.jpg";
 import projectPathLogo from "@/assets/project-path-logo.png";
 import { PublicNav } from "@/components/PublicNav";
@@ -83,119 +87,233 @@ export default function Landing() {
         </div>
       </section>
 
-
-      {/* The Problem */}
-      <section className="py-16 md:py-20 px-4 bg-muted/30 relative">
-        <div className="absolute inset-0 opacity-20">
-          <img src={problemChaos} alt="Construction site chaos" className="w-full h-full object-cover" loading="lazy" />
-        </div>
-        <div className="container mx-auto max-w-4xl relative z-10">
-          <p className="text-center text-lg md:text-xl text-muted-foreground mb-4 font-medium">Sound familiar?</p>
-          <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-6 md:mb-8 text-center leading-tight">
-            Projects Fall Behind When Trades Do Not Stay Aligned
-          </h3>
-          <div className="grid sm:grid-cols-2 gap-3 md:gap-4 mb-6 md:mb-8">
-            {[
-              { icon: FileX, text: "Gantt charts get buried and forgotten" },
-              { icon: Ban, text: "Blocked tasks go unreported" },
-              { icon: FolderSearch, text: "Safety forms live in too many places" },
-              { icon: MessageSquareWarning, text: "PMs chase updates all day" },
-              { icon: FileStack, text: "Foremen drown in admin" },
-              { icon: TrendingDown, text: "Little delays turn into big problems" }
-            ].map((item, index) => {
-              const Icon = item.icon;
-              return (
-                <div key={index} className="flex items-start gap-3 p-4 md:p-5 bg-transparent backdrop-blur-sm rounded-lg border border-border hover:border-destructive/30 transition-colors">
-                  <div className="flex-shrink-0 mt-0.5">
-                    <Icon className="h-6 w-6 md:h-7 md:w-7 text-destructive" strokeWidth={2.5} />
+      {/* The Problem - Emotional Text + Image */}
+      <section className="py-16 md:py-24 px-4 bg-muted/30">
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid lg:grid-cols-2 gap-10 md:gap-16 items-center">
+            <div className="order-2 lg:order-1">
+              <p className="text-primary font-semibold mb-3 uppercase tracking-wide text-sm">The Problem</p>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-6 leading-tight">
+                Projects Fall Behind When Trades Don't Stay Aligned
+              </h2>
+              <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
+                Your PM spends 40% of their day chasing updates. Gantt charts get buried. Blocked tasks go unreported until they become expensive problems.
+              </p>
+              <div className="space-y-3">
+                {[
+                  "Scattered tools create scattered information",
+                  "Safety forms live in filing cabinets",
+                  "Little delays compound into big problems"
+                ].map((item, index) => (
+                  <div key={index} className="flex items-center gap-3">
+                    <div className="w-6 h-6 rounded-full bg-destructive/10 flex items-center justify-center flex-shrink-0">
+                      <TrendingDown className="h-4 w-4 text-destructive" />
+                    </div>
+                    <p className="text-foreground font-medium">{item}</p>
                   </div>
-                  <p className="text-base md:text-lg text-foreground font-medium">{item.text}</p>
-                </div>
-              );
-            })}
-          </div>
-          <p className="text-base md:text-lg text-center max-w-2xl mx-auto leading-relaxed font-semibold text-foreground">
-            There's a better way.
-          </p>
-        </div>
-      </section>
-
-      {/* Free Up Capacity - Major Differentiator */}
-      <section className="py-16 md:py-20 px-4 bg-primary">
-        <div className="container mx-auto max-w-4xl text-center">
-          <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-4 md:mb-6 leading-tight">
-            Free Up Capacity Without Adding a Staff Member
-          </h3>
-          <p className="text-lg md:text-xl text-white/80 mb-8 leading-relaxed max-w-2xl mx-auto">
-            Your PM spends 40% of their day chasing updates. Project Path gives that time back.
-          </p>
-          <div className="grid sm:grid-cols-3 gap-6 text-left">
-            <div className="bg-white/10 p-5 rounded-lg border border-white/20">
-              <p className="text-white font-semibold mb-2">Replace Scattered Tools</p>
-              <p className="text-white/70 text-sm">One app replaces your spreadsheets, group texts, and endless meetings.</p>
+                ))}
+              </div>
             </div>
-            <div className="bg-white/10 p-5 rounded-lg border border-white/20">
-              <p className="text-white font-semibold mb-2">Coordinate 10 Trades</p>
-              <p className="text-white/70 text-sm">Your foreman coordinates 10 trades with one screen. No phone tag.</p>
-            </div>
-            <div className="bg-white/10 p-5 rounded-lg border border-white/20">
-              <p className="text-white font-semibold mb-2">Like Adding a Coordinator</p>
-              <p className="text-white/70 text-sm">Get the benefits of a full-time coordinator without adding headcount.</p>
+            <div className="order-1 lg:order-2">
+              <img 
+                src={screenshotBlockers} 
+                alt="Blocker reporting interface" 
+                className="w-full rounded-xl shadow-2xl border border-border"
+                loading="lazy"
+              />
             </div>
           </div>
         </div>
       </section>
 
-      {/* Time Tracking Feature - NEW */}
-      <section className="py-16 md:py-20 px-4 bg-background">
+      {/* Task Accountability - Text Left, Image Right */}
+      <section className="py-16 md:py-24 px-4 bg-background">
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid lg:grid-cols-2 gap-10 md:gap-16 items-center">
+            <div>
+              <p className="text-primary font-semibold mb-3 uppercase tracking-wide text-sm">Task Management</p>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-6 leading-tight">
+                Every Trade Knows Exactly What They Owe
+              </h2>
+              <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
+                No more chasing updates or wondering who's on what. Every task has an owner, a deadline, and clear visibility. When something's blocked, you know instantly—not when it's too late.
+              </p>
+              <div className="space-y-4">
+                {[
+                  { icon: ClipboardList, text: "Tasks assigned with clear ownership" },
+                  { icon: AlertTriangle, text: "Instant blocker reporting" },
+                  { icon: Calendar, text: "2-week lookahead for planning" }
+                ].map((item, index) => {
+                  const Icon = item.icon;
+                  return (
+                    <div key={index} className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Icon className="h-5 w-5 text-primary" />
+                      </div>
+                      <p className="text-foreground font-medium">{item.text}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div>
+              <img 
+                src={screenshotTasks} 
+                alt="Task management interface" 
+                className="w-full rounded-xl shadow-2xl border border-border"
+                loading="lazy"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Safety - Text Right, Image Left */}
+      <section className="py-16 md:py-24 px-4 bg-muted/30">
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid lg:grid-cols-2 gap-10 md:gap-16 items-center">
+            <div className="order-2 lg:order-1">
+              <img 
+                src={screenshotSafety} 
+                alt="Safety form interface" 
+                className="w-full rounded-xl shadow-2xl border border-border"
+                loading="lazy"
+              />
+            </div>
+            <div className="order-1 lg:order-2">
+              <p className="text-primary font-semibold mb-3 uppercase tracking-wide text-sm">Safety Done Right</p>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-6 leading-tight">
+                Complete Safety Logs in Under 3 Minutes
+              </h2>
+              <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
+                AI suggests today's hazards based on weather and scheduled tasks. Workers acknowledge with digital signatures. Everything is audit-ready from the moment it's submitted.
+              </p>
+              <div className="space-y-4">
+                {[
+                  { icon: HardHat, text: "Daily safety logs with AI suggestions" },
+                  { icon: FileCheck, text: "Digital signatures and timestamps" },
+                  { icon: Shield, text: "Tamper-evident records" }
+                ].map((item, index) => {
+                  const Icon = item.icon;
+                  return (
+                    <div key={index} className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Icon className="h-5 w-5 text-primary" />
+                      </div>
+                      <p className="text-foreground font-medium">{item.text}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Time Tracking - Text Left, Image Right */}
+      <section className="py-16 md:py-24 px-4 bg-background">
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid lg:grid-cols-2 gap-10 md:gap-16 items-center">
+            <div>
+              <p className="text-primary font-semibold mb-3 uppercase tracking-wide text-sm">Time Tracking</p>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-6 leading-tight">
+                Accurate Timesheets Without the Arguments
+              </h2>
+              <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
+                Your crew checks in with one tap. GPS verification proves job site presence. No more buddy punching, no more disputes. Export payroll-ready reports in seconds.
+              </p>
+              <div className="space-y-4">
+                {[
+                  { icon: Clock, text: "One-tap check-in from any phone" },
+                  { icon: MapPin, text: "GPS verification eliminates disputes" },
+                  { icon: FileCheck, text: "Works with any payroll system" }
+                ].map((item, index) => {
+                  const Icon = item.icon;
+                  return (
+                    <div key={index} className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+                        <Icon className="h-5 w-5 text-accent" />
+                      </div>
+                      <p className="text-foreground font-medium">{item.text}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div>
+              <img 
+                src={screenshotLookahead} 
+                alt="Lookahead and planning interface" 
+                className="w-full rounded-xl shadow-2xl border border-border"
+                loading="lazy"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* AI Section - Text Right, Image Left */}
+      <section className="py-16 md:py-24 px-4 bg-primary">
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid lg:grid-cols-2 gap-10 md:gap-16 items-center">
+            <div className="order-2 lg:order-1">
+              <img 
+                src={screenshotAi} 
+                alt="AI assistant interface" 
+                className="w-full rounded-xl shadow-2xl"
+                loading="lazy"
+              />
+            </div>
+            <div className="order-1 lg:order-2">
+              <div className="inline-flex items-center gap-2 bg-primary-foreground/10 backdrop-blur-sm rounded-full px-4 py-2 mb-4">
+                <Brain className="h-4 w-4 text-primary-foreground" />
+                <span className="text-sm font-medium text-primary-foreground">Powered by AI</span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary-foreground mb-6 leading-tight">
+                AI That Actually Understands Construction
+              </h2>
+              <p className="text-lg text-primary-foreground/80 mb-6 leading-relaxed">
+                Ask questions about your project documents in plain English. Draft professional escalation emails in seconds. Get hazard suggestions based on real conditions.
+              </p>
+              <div className="space-y-4">
+                {[
+                  { icon: FolderSearch, text: "Document Q&A with source references" },
+                  { icon: MessageSquareWarning, text: "Escalation emails drafted instantly" },
+                  { icon: Receipt, text: "Receipt scanning and categorization" }
+                ].map((item, index) => {
+                  const Icon = item.icon;
+                  return (
+                    <div key={index} className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary-foreground/10 flex items-center justify-center flex-shrink-0">
+                        <Icon className="h-5 w-5 text-primary-foreground" />
+                      </div>
+                      <p className="text-primary-foreground font-medium">{item.text}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Built for the Field - Condensed Icon Section */}
+      <section className="py-16 md:py-20 px-4 bg-muted/30">
         <div className="container mx-auto max-w-5xl">
           <div className="text-center mb-10 md:mb-12">
             <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4 leading-tight">
-              Time Tracking That Actually Works
-            </h3>
-            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-              Your crew checks in with one tap. You get accurate timesheets without the arguments.
-            </p>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {[
-              { icon: Clock, title: "One-Tap Check-In", description: "Workers clock in and out from their phone. No paper, no buddy punching." },
-              { icon: MapPin, title: "GPS Verification", description: "Automatic location stamps prove job site presence. Disputes disappear." },
-              { icon: FileCheck, title: "Payroll-Ready Export", description: "Download timesheets in seconds. Works with any payroll system." },
-              { icon: MessageSquareWarning, title: "Adjustment Requests", description: "Workers request corrections with documented reasons. Full audit trail." }
-            ].map((item, index) => {
-              const Icon = item.icon;
-              return (
-                <div key={index} className="p-5 bg-card rounded-lg border border-border hover:border-accent/50 hover:shadow-md transition-all text-center">
-                  <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-4">
-                    <Icon className="h-6 w-6 text-accent" />
-                  </div>
-                  <h4 className="text-lg font-bold text-foreground mb-2">{item.title}</h4>
-                  <p className="text-sm text-muted-foreground">{item.description}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* The Guide - Field First */}
-      <section className="py-16 md:py-20 px-4 bg-muted/30">
-        <div className="container mx-auto max-w-5xl">
-          <div className="text-center mb-10">
-            <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4 md:mb-6 leading-tight">
               Built for the Site, Not the Office
             </h3>
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-              The best project management app for field teams. Designed for gloved hands and bright sunlight.
+              Designed for gloved hands, bright sunlight, and spotty cell signal.
             </p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {[
-              { icon: WifiOff, title: "Works Offline", description: "Queue entries when connectivity drops. Sync when you're back online." },
-              { icon: CheckCircle, title: "Big Tap Targets", description: "Designed for gloved hands and one-hand operation." },
-              { icon: Shield, title: "High Contrast", description: "Readable in direct sunlight on any phone." },
-              { icon: Mic, title: "Voice Input", description: "Dictate notes and reports hands-free." }
+              { icon: WifiOff, title: "Works Offline", description: "Sync when you reconnect" },
+              { icon: CheckCircle, title: "Big Tap Targets", description: "One-hand operation" },
+              { icon: Shield, title: "High Contrast", description: "Readable in sunlight" },
+              { icon: Mic, title: "Voice Input", description: "Dictate notes hands-free" }
             ].map((item, index) => {
               const Icon = item.icon;
               return (
@@ -203,7 +321,7 @@ export default function Landing() {
                   <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                     <Icon className="h-6 w-6 text-primary" />
                   </div>
-                  <h4 className="text-lg font-bold text-foreground mb-2">{item.title}</h4>
+                  <h4 className="text-lg font-bold text-foreground mb-1">{item.title}</h4>
                   <p className="text-sm text-muted-foreground">{item.description}</p>
                 </div>
               );
@@ -212,125 +330,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* The Solution */}
-      <section id="solution" className="py-16 md:py-20 px-4 bg-background">
-        <div className="container mx-auto max-w-5xl">
-          <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-8 md:mb-12 text-center leading-tight">
-            Keep Your Site Moving
-          </h3>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
-            {[{
-              title: "Task Accountability",
-              description: "Every trade sees exactly what they owe—and when. No more chasing updates.",
-              Icon: ClipboardList
-            }, {
-              title: "Instant Blocker Reporting",
-              description: "Workers flag issues in one tap. You see them instantly. Problems get solved.",
-              Icon: AlertTriangle
-            }, {
-              title: "2-Week Lookahead",
-              description: "Visual plan of the next two weeks. See conflicts before they cost you.",
-              Icon: Calendar
-            }, {
-              title: "Safety Done Right",
-              description: "Complete daily safety logs in under 3 minutes. AI suggests hazards based on weather and tasks.",
-              Icon: HardHat
-            }, {
-              title: "Manpower Planning",
-              description: "Request crews with one tap. Prevent shortages before they delay the job.",
-              Icon: Users
-            }, {
-              title: "AI Support",
-              description: "Ask questions about your project documents. Draft emails in seconds. Identify risks automatically.",
-              Icon: Sparkles
-            }].map((feature, index) => (
-              <div key={index} className="p-5 md:p-6 bg-card rounded-lg border border-border hover:border-accent/50 hover:shadow-md transition-all">
-                <div className="w-14 h-14 md:w-16 md:h-16 mb-3 md:mb-4 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <feature.Icon className="w-7 h-7 md:w-8 md:h-8 text-primary" strokeWidth={1.5} />
-                </div>
-                <h4 className="text-lg md:text-xl font-bold text-foreground mb-2 md:mb-3">{feature.title}</h4>
-                <p className="text-sm md:text-base text-muted-foreground leading-relaxed">{feature.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* AI-Powered Section - NEW */}
-      {/* AI Section - Redesigned */}
-      <section className="py-16 md:py-20 px-4 bg-gradient-to-br from-primary via-primary to-primary/90">
-        <div className="container mx-auto max-w-5xl">
-          <div className="text-center mb-10 md:mb-12">
-            <div className="inline-flex items-center gap-2 bg-primary-foreground/10 backdrop-blur-sm rounded-full px-4 py-2 mb-4">
-              <Brain className="h-4 w-4 text-primary-foreground" />
-              <span className="text-sm font-medium text-primary-foreground">Powered by AI</span>
-            </div>
-            <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary-foreground mb-4 leading-tight">
-              AI That Understands Construction
-            </h3>
-            <p className="text-lg md:text-xl text-primary-foreground/80 max-w-2xl mx-auto">
-              Not generic AI. Purpose-built for construction workflows.
-            </p>
-          </div>
-          <div className="grid sm:grid-cols-2 gap-5">
-            {[
-              { icon: Shield, title: "Smart Hazard Suggestions", description: "AI suggests today's hazards based on weather conditions and scheduled tasks. Complete safety logs faster." },
-              { icon: Receipt, title: "Receipt Intelligence", description: "Snap a photo of any receipt. AI extracts vendor, amount, category, and line items automatically." },
-              { icon: FolderSearch, title: "Document Q&A", description: "Ask questions about your project documents in plain English. Get answers with source references." },
-              { icon: MessageSquareWarning, title: "Escalation Drafts", description: "Draft professional escalation emails in seconds. AI understands construction context and urgency." }
-            ].map((item, index) => {
-              const Icon = item.icon;
-              return (
-                <div
-                  key={index}
-                  className="p-6 bg-card rounded-xl border border-border shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
-                >
-                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                    <Icon className="h-6 w-6 text-primary" />
-                  </div>
-                  <h4 className="text-lg font-bold text-foreground mb-2">{item.title}</h4>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* Trust & Compliance Section - NEW */}
-      <section className="py-16 md:py-20 px-4 bg-muted/30">
-        <div className="container mx-auto max-w-5xl">
-          <div className="text-center mb-10 md:mb-12">
-            <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4 leading-tight">
-              Built for Inspections. Ready for Audits.
-            </h3>
-            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-              When the inspector shows up, you're ready. Every record is complete, signed, and tamper-evident.
-            </p>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {[
-              { icon: Shield, title: "Tamper-Evident Records", description: "Digital fingerprints on every safety form. Prove records weren't altered." },
-              { icon: FileCheck, title: "Complete Audit Trail", description: "Every change logged with who, what, and when. Nothing gets lost." },
-              { icon: FileStack, title: "One-Tap PDF Export", description: "Export inspection-ready documents in seconds. Professional formatting included." },
-              { icon: CheckCircle, title: "Digital Signatures", description: "Worker acknowledgments captured with timestamps. No more signature sheets." }
-            ].map((item, index) => {
-              const Icon = item.icon;
-              return (
-                <div key={index} className="p-5 bg-card rounded-lg border border-border text-center">
-                  <div className="w-12 h-12 rounded-full bg-status-complete/10 flex items-center justify-center mx-auto mb-4">
-                    <Icon className="h-6 w-6 text-status-complete" />
-                  </div>
-                  <h4 className="text-lg font-bold text-foreground mb-2">{item.title}</h4>
-                  <p className="text-sm text-muted-foreground">{item.description}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* The Plan */}
+      {/* The Plan - 3 Steps */}
       <section id="plan" className="py-16 md:py-20 px-4 bg-background">
         <div className="container mx-auto max-w-4xl">
           <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-8 md:mb-12 text-center leading-tight">
@@ -362,7 +362,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Value and CTA Combined */}
+      {/* Value CTA */}
       <section className="py-16 md:py-20 px-4 bg-muted/30">
         <div className="container mx-auto max-w-3xl text-center">
           <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4 md:mb-6 leading-tight">
@@ -406,7 +406,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* FAQ Section - NEW */}
+      {/* FAQ Section */}
       <section className="py-16 md:py-20 px-4 bg-muted/30">
         <div className="container mx-auto max-w-3xl">
           <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-8 md:mb-12 text-center leading-tight">
@@ -437,20 +437,20 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Final CTA Section - NEW */}
+      {/* Final CTA Section */}
       <section className="py-20 md:py-28 px-4 bg-primary">
         <div className="container mx-auto max-w-3xl text-center">
-          <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-4 leading-tight">
+          <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary-foreground mb-4 leading-tight">
             Stop Chasing Updates. Start Building.
           </h3>
-          <p className="text-lg md:text-xl text-white/90 mb-8 max-w-xl mx-auto">
+          <p className="text-lg md:text-xl text-primary-foreground/90 mb-8 max-w-xl mx-auto">
             Join contractors who finish on time and protect their margins.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
             <Button 
               size="lg" 
               onClick={handleGetStarted} 
-              className="w-full sm:w-auto h-14 md:h-16 px-8 text-base md:text-lg bg-white text-primary hover:bg-white/90 font-bold shadow-xl"
+              className="w-full sm:w-auto h-14 md:h-16 px-8 text-base md:text-lg bg-primary-foreground text-primary hover:bg-primary-foreground/90 font-bold shadow-xl"
             >
               Start Your Free Trial
             </Button>
@@ -458,18 +458,18 @@ export default function Landing() {
               size="lg" 
               variant="outline" 
               onClick={handleSeeHowItWorks} 
-              className="w-full sm:w-auto h-14 md:h-16 px-8 text-base md:text-lg bg-transparent text-white border-white/50 hover:bg-white/10 font-semibold"
+              className="w-full sm:w-auto h-14 md:h-16 px-8 text-base md:text-lg bg-transparent text-primary-foreground border-primary-foreground/50 hover:bg-primary-foreground/10 font-semibold"
             >
               Book a Demo
             </Button>
           </div>
-          <p className="text-sm text-white/70 mt-6">
+          <p className="text-sm text-primary-foreground/70 mt-6">
             No credit card required • Free 14-day trial • Cancel anytime
           </p>
         </div>
       </section>
 
-      {/* Trust Badges - NEW */}
+      {/* Trust Badges */}
       <section className="py-8 px-4 bg-card border-t border-border">
         <div className="container mx-auto max-w-4xl">
           <div className="flex flex-wrap justify-center items-center gap-6 md:gap-12 text-sm text-muted-foreground">
