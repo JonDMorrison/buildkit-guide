@@ -112,8 +112,8 @@ export const DrawingThumbnail = ({ fileUrl, fileType, fileName }: DrawingThumbna
         const pdf = await loadingTask.promise;
         const page = await pdf.getPage(1);
         
-        // Smaller target width for faster rendering (150px instead of 200px)
-        const targetWidth = 150;
+        // Higher target width for sharper thumbnails (was 150px)
+        const targetWidth = 400;
         const viewport = page.getViewport({ scale: 1, rotation: page.rotate || 0 });
         const scale = targetWidth / viewport.width;
         const scaledViewport = page.getViewport({ scale, rotation: page.rotate || 0 });
@@ -135,8 +135,8 @@ export const DrawingThumbnail = ({ fileUrl, fileType, fileName }: DrawingThumbna
           viewport: scaledViewport,
         }).promise;
 
-        // Use JPEG for smaller file size (faster conversion)
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        // Higher JPEG quality for sharper thumbnails (was 0.7)
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
         setPdfThumbnailUrl(dataUrl);
         
         // Cleanup
@@ -168,6 +168,7 @@ export const DrawingThumbnail = ({ fileUrl, fileType, fileName }: DrawingThumbna
           alt={fileName}
           className="w-full h-full object-cover"
           loading="lazy"
+          style={{ imageRendering: 'auto' }}
         />
       </div>
     );
