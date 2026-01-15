@@ -285,8 +285,8 @@ export default function Landing() {
                   <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                     <Icon className="h-6 w-6 text-primary" />
                   </div>
-                  <h4 className="text-lg font-bold text-foreground mb-2">{item.title}</h4>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
+                  <h4 className="text-lg font-bold text-slate-900 mb-2">{item.title}</h4>
+                  <p className="text-sm text-slate-600 leading-relaxed">{item.description}</p>
                 </div>
               );
             })}
