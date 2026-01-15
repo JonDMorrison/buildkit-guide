@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { FileText } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,6 +9,76 @@ interface DrawingThumbnailProps {
   fileType: string;
   fileName: string;
 }
+
+// Cache configuration
+const CACHE_PREFIX = 'pdf_thumb_';
+const CACHE_EXPIRY_DAYS = 7;
+
+// Helper to generate cache key from file URL
+const getCacheKey = (fileUrl: string): string => {
+  // Use a hash of the URL to keep keys short
+  let hash = 0;
+  for (let i = 0; i < fileUrl.length; i++) {
+    const char = fileUrl.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return `${CACHE_PREFIX}${Math.abs(hash)}`;
+};
+
+// Get cached thumbnail
+const getCachedThumbnail = (fileUrl: string): string | null => {
+  try {
+    const key = getCacheKey(fileUrl);
+    const cached = localStorage.getItem(key);
+    if (!cached) return null;
+    
+    const { dataUrl, timestamp } = JSON.parse(cached);
+    const expiryTime = CACHE_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
+    
+    if (Date.now() - timestamp > expiryTime) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    
+    return dataUrl;
+  } catch {
+    return null;
+  }
+};
+
+// Save thumbnail to cache
+const cacheThumbnail = (fileUrl: string, dataUrl: string): void => {
+  try {
+    const key = getCacheKey(fileUrl);
+    localStorage.setItem(key, JSON.stringify({
+      dataUrl,
+      timestamp: Date.now(),
+    }));
+  } catch (e) {
+    // localStorage might be full, clean up old entries
+    cleanupOldCache();
+  }
+};
+
+// Clean up old cache entries when storage is full
+const cleanupOldCache = (): void => {
+  try {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith(CACHE_PREFIX)) {
+        keysToRemove.push(key);
+      }
+    }
+    // Remove oldest half of cached thumbnails
+    keysToRemove.slice(0, Math.ceil(keysToRemove.length / 2)).forEach(key => {
+      localStorage.removeItem(key);
+    });
+  } catch {
+    // Ignore cleanup errors
+  }
+};
 
 export const DrawingThumbnail = ({ fileUrl, fileType, fileName }: DrawingThumbnailProps) => {
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
@@ -22,8 +92,22 @@ export const DrawingThumbnail = ({ fileUrl, fileType, fileName }: DrawingThumbna
   const isImage = fileType?.startsWith('image/') ?? false;
   const isPDF = fileType === 'application/pdf';
 
+  // Check cache immediately for PDFs
+  useEffect(() => {
+    if (isPDF && fileUrl) {
+      const cached = getCachedThumbnail(fileUrl);
+      if (cached) {
+        setPdfThumbnailUrl(cached);
+        setLoading(false);
+      }
+    }
+  }, [isPDF, fileUrl]);
+
   // Intersection Observer for lazy loading
   useEffect(() => {
+    // Skip if already have cached thumbnail
+    if (pdfThumbnailUrl) return;
+    
     const element = containerRef.current;
     if (!element) return;
 
@@ -45,10 +129,13 @@ export const DrawingThumbnail = ({ fileUrl, fileType, fileName }: DrawingThumbna
 
     observer.observe(element);
     return () => observer.disconnect();
-  }, []);
+  }, [pdfThumbnailUrl]);
 
   // Fetch signed URL only when visible
   useEffect(() => {
+    // Skip if already have cached thumbnail
+    if (pdfThumbnailUrl) return;
+    
     if (!isVisible || !fileUrl) {
       if (!fileUrl) setLoading(false);
       return;
@@ -97,10 +184,12 @@ export const DrawingThumbnail = ({ fileUrl, fileType, fileName }: DrawingThumbna
     };
 
     fetchSignedUrl();
-  }, [fileUrl, isVisible]);
+  }, [fileUrl, isVisible, pdfThumbnailUrl]);
 
-  // Render PDF first page as thumbnail - optimized for speed
+  // Render PDF first page as thumbnail - with caching
   useEffect(() => {
+    // Skip if already have cached thumbnail
+    if (pdfThumbnailUrl) return;
     if (!isPDF || !signedUrl || loading) return;
 
     const renderPdfThumbnail = async () => {
@@ -112,7 +201,7 @@ export const DrawingThumbnail = ({ fileUrl, fileType, fileName }: DrawingThumbna
         const pdf = await loadingTask.promise;
         const page = await pdf.getPage(1);
         
-        // Higher target width for sharper thumbnails (was 150px)
+        // Higher target width for sharper thumbnails
         const targetWidth = 400;
         const viewport = page.getViewport({ scale: 1, rotation: page.rotate || 0 });
         const scale = targetWidth / viewport.width;
@@ -135,9 +224,12 @@ export const DrawingThumbnail = ({ fileUrl, fileType, fileName }: DrawingThumbna
           viewport: scaledViewport,
         }).promise;
 
-        // Higher JPEG quality for sharper thumbnails (was 0.7)
+        // Higher JPEG quality for sharper thumbnails
         const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
         setPdfThumbnailUrl(dataUrl);
+        
+        // Cache the thumbnail for instant loading next time
+        cacheThumbnail(fileUrl, dataUrl);
         
         // Cleanup
         pdf.destroy();
@@ -148,10 +240,10 @@ export const DrawingThumbnail = ({ fileUrl, fileType, fileName }: DrawingThumbna
     };
 
     renderPdfThumbnail();
-  }, [isPDF, signedUrl, loading]);
+  }, [isPDF, signedUrl, loading, fileUrl, pdfThumbnailUrl]);
 
-  // Before visible or initial loading state
-  if (!isVisible || loading) {
+  // Before visible or initial loading state (skip if cached)
+  if (!pdfThumbnailUrl && (!isVisible || loading)) {
     return (
       <div ref={containerRef} className="w-full h-full">
         <Skeleton className="w-full h-full" />
@@ -159,7 +251,7 @@ export const DrawingThumbnail = ({ fileUrl, fileType, fileName }: DrawingThumbna
     );
   }
 
-  // PDF with rendered thumbnail
+  // PDF with rendered thumbnail (cached or freshly generated)
   if (isPDF && pdfThumbnailUrl) {
     return (
       <div ref={containerRef} className="w-full h-full">
