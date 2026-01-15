@@ -8,4 +8,4 @@
 # no effect on the browser app runtime.
 
 [install]
-optional = false
+optional = true
