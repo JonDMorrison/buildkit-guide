@@ -311,10 +311,10 @@ const Drawings = () => {
                   {/* Delete button - appears on hover */}
                   <button
                     onClick={(e) => handleDeleteClick(e, drawing)}
-                    className="absolute top-2 right-2 p-1.5 bg-destructive text-destructive-foreground rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/90"
+                    className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center bg-destructive/70 text-destructive-foreground rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/80"
                     aria-label="Delete drawing"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
                 <CardContent className="p-3">
