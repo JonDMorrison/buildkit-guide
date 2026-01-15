@@ -261,14 +261,14 @@ export default function Landing() {
       <section className="py-16 md:py-20 px-4 bg-gradient-to-br from-primary via-primary to-primary/90">
         <div className="container mx-auto max-w-5xl">
           <div className="text-center mb-10 md:mb-12">
-            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2 mb-4">
-              <Brain className="h-4 w-4 text-white" />
-              <span className="text-sm font-medium text-white">Powered by AI</span>
+            <div className="inline-flex items-center gap-2 bg-primary-foreground/10 backdrop-blur-sm rounded-full px-4 py-2 mb-4">
+              <Brain className="h-4 w-4 text-primary-foreground" />
+              <span className="text-sm font-medium text-primary-foreground">Powered by AI</span>
             </div>
-            <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-4 leading-tight">
+            <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary-foreground mb-4 leading-tight">
               AI That Understands Construction
             </h3>
-            <p className="text-lg md:text-xl text-white/80 max-w-2xl mx-auto">
+            <p className="text-lg md:text-xl text-primary-foreground/80 max-w-2xl mx-auto">
               Not generic AI. Purpose-built for construction workflows.
             </p>
           </div>
@@ -281,12 +281,15 @@ export default function Landing() {
             ].map((item, index) => {
               const Icon = item.icon;
               return (
-                <div key={index} className="p-6 bg-white rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                <div
+                  key={index}
+                  className="p-6 bg-card rounded-xl border border-border shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+                >
                   <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                     <Icon className="h-6 w-6 text-primary" />
                   </div>
-                  <h4 className="text-lg font-bold text-slate-900 mb-2">{item.title}</h4>
-                  <p className="text-sm text-slate-600 leading-relaxed">{item.description}</p>
+                  <h4 className="text-lg font-bold text-foreground mb-2">{item.title}</h4>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
                 </div>
               );
             })}
