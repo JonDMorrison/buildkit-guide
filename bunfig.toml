@@ -1,0 +1,11 @@
+# Bun configuration to keep installs fast & reliable in hosted build environments.
+#
+# Our preview builds have a hard time limit. Some transitive dependencies declare
+# heavy optionalDependencies (e.g. native modules like `canvas`) that can trigger
+# long downloads/compilation and cause `bun install` to time out.
+#
+# Disabling optional dependencies keeps installs deterministic and typically has
+# no effect on the browser app runtime.
+
+[install]
+optional = false
