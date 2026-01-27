@@ -65,6 +65,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       },
     });
     
+    // If signup succeeded, send trial notification email (fire and forget)
+    if (!error) {
+      supabase.functions.invoke('notify-trial-signup', {
+        body: { 
+          fullName, 
+          email,
+          company: undefined // Company not collected during signup currently
+        }
+      }).catch(err => console.error('Failed to send trial notification:', err));
+    }
+    
     return { error };
   };
 
