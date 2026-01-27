@@ -101,3 +101,6 @@ verify_jwt = true
 
 [functions.create-sample-project]
 verify_jwt = true
+
+[functions.notify-trial-signup]
+verify_jwt = false
