@@ -87,6 +87,22 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Video Section */}
+      <section className="py-12 md:py-16 px-4 bg-background">
+        <div className="container mx-auto max-w-4xl">
+          <div className="aspect-video rounded-xl overflow-hidden shadow-2xl border border-border">
+            <iframe
+              src="https://player.vimeo.com/video/1159202838?h=&badge=0&autopause=0&player_id=0&app_id=58479"
+              className="w-full h-full"
+              frameBorder="0"
+              allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
+              allowFullScreen
+              title="Project Path Demo Video"
+            />
+          </div>
+        </div>
+      </section>
+
       {/* The Problem - Emotional Text + Image */}
       <section className="py-16 md:py-24 px-4 bg-muted/30">
         <div className="container mx-auto max-w-6xl">
