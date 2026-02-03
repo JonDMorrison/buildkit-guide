@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAuthRole } from "@/hooks/useAuthRole";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
+import { EmptyState } from "@/components/EmptyState";
 import { useDashboardLayout } from "@/hooks/useDashboardLayout";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -386,6 +387,21 @@ export default function Dashboard() {
       <Layout>
         <div className="flex items-center justify-center h-full">
           <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent"></div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Show empty state for users with no projects
+  if (!userProjects || userProjects.length === 0) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-full min-h-[60vh]">
+          <EmptyState
+            icon={<Building2 className="h-8 w-8" />}
+            title="Welcome to ProjectPath"
+            description="You haven't been added to any projects yet. Ask your organization admin to invite you to a project to get started."
+          />
         </div>
       </Layout>
     );

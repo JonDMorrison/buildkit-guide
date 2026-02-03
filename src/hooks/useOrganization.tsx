@@ -21,9 +21,6 @@ interface OrganizationContextType {
 
 const OrganizationContext = createContext<OrganizationContextType | undefined>(undefined);
 
-// Default organization ID for single-org installs
-const DEFAULT_ORG_ID = '00000000-0000-0000-0000-000000000001';
-
 export const OrganizationProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -89,14 +86,13 @@ export const OrganizationProvider = ({ children }: { children: ReactNode }) => {
             setOrgRole(membership?.role || null);
           }
         } else {
-          // Fallback to default org for users without memberships
-          setActiveOrganizationIdState(DEFAULT_ORG_ID);
+          // User has no organization memberships - leave null
+          setActiveOrganizationIdState(null);
           setOrgRole(null);
         }
       } catch (error) {
         console.error('Error fetching organizations:', error);
-        // Fallback to default org
-        setActiveOrganizationIdState(DEFAULT_ORG_ID);
+        setActiveOrganizationIdState(null);
       } finally {
         setLoading(false);
       }
