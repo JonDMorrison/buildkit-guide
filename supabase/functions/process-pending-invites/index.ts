@@ -45,20 +45,21 @@ serve(async (req: Request) => {
     // Get the user from the Authorization header
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
+      log('warn', 'Missing or invalid Authorization header');
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Create client with user's auth to get their info
-    const userSupabase = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
-      global: { headers: { Authorization: authHeader } }
-    });
-
-    const { data: { user }, error: userError } = await userSupabase.auth.getUser();
+    // Decode the JWT to get user info (service role can validate)
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Use service role client to get user from token
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     
     if (userError || !user) {
+      log('warn', 'Failed to validate token', { error: userError?.message });
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
