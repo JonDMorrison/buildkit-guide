@@ -392,17 +392,43 @@ export default function Dashboard() {
     );
   }
 
+  // Check if user can create projects (global PM or admin)
+  const { can: canCreateProject } = useAuthRole();
+  const canCreate = canCreateProject('create_projects');
+
   // Show empty state for users with no projects
   if (!userProjects || userProjects.length === 0) {
     return (
       <Layout>
         <div className="flex items-center justify-center h-full min-h-[60vh]">
-          <EmptyState
-            icon={<Building2 className="h-8 w-8" />}
-            title="Welcome to ProjectPath"
-            description="You haven't been added to any projects yet. Ask your organization admin to invite you to a project to get started."
-          />
+          <div className="text-center space-y-6">
+            <EmptyState
+              icon={<Building2 className="h-8 w-8" />}
+              title="Welcome to ProjectPath"
+              description={canCreate 
+                ? "You don't have any projects yet. Create your first project to get started."
+                : "You haven't been added to any projects yet. Ask your organization admin to invite you to a project to get started."
+              }
+            />
+            {canCreate && (
+              <Button 
+                onClick={() => setQuickAddModalOpen(true)}
+                className="gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Create New Project
+              </Button>
+            )}
+          </div>
         </div>
+        
+        {/* QuickAddModal for creating new project */}
+        <QuickAddModal
+          open={quickAddModalOpen}
+          onOpenChange={setQuickAddModalOpen}
+          currentProjectId={null}
+          onSuccess={() => {}}
+        />
       </Layout>
     );
   }

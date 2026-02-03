@@ -59,6 +59,41 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
       const validatedData = projectSchema.parse(form);
       setLoading(true);
 
+      let orgId = activeOrganizationId;
+
+      // If user has no organization, create one for them
+      if (!orgId && user?.id) {
+        const orgName = user.email?.split('@')[0] 
+          ? `${user.email.split('@')[0]}'s Organization`
+          : 'My Organization';
+        
+        const { data: newOrg, error: orgError } = await supabase
+          .from('organizations')
+          .insert({ name: orgName })
+          .select()
+          .single();
+
+        if (orgError) throw new Error(`Failed to create organization: ${orgError.message}`);
+        
+        orgId = newOrg.id;
+
+        // Add user as admin of the new organization
+        const { error: memberError } = await supabase
+          .from('organization_memberships')
+          .insert({
+            user_id: user.id,
+            organization_id: orgId,
+            role: 'admin',
+            is_active: true,
+          });
+
+        if (memberError) throw new Error(`Failed to set organization membership: ${memberError.message}`);
+      }
+
+      if (!orgId) {
+        throw new Error('Unable to determine organization for project');
+      }
+
       const { data, error } = await supabase
         .from('projects')
         .insert({
@@ -70,7 +105,7 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
           end_date: validatedData.endDate || null,
           status: 'planning',
           created_by: user?.id,
-          organization_id: activeOrganizationId,
+          organization_id: orgId,
         })
         .select()
         .single();
@@ -85,6 +120,10 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
           role: 'project_manager',
         });
       }
+
+      // Invalidate organization queries so the new org shows up
+      queryClient.invalidateQueries({ queryKey: ['organizations'] });
+      queryClient.invalidateQueries({ queryKey: ['organization-memberships'] });
 
       toast({
         title: 'Project created',
