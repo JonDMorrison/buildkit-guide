@@ -54,7 +54,7 @@ const quickAddOptions: QuickAddOption[] = [
     description: 'Create a new construction project',
     icon: FolderPlus,
     color: 'text-blue-500',
-    permission: 'create_project',
+    permission: 'manage_project', // PM+ can create projects
   },
   {
     id: 'task',
@@ -62,7 +62,7 @@ const quickAddOptions: QuickAddOption[] = [
     description: 'Add a task to coordinate work',
     icon: ListTodo,
     color: 'text-green-500',
-    permission: 'create_task',
+    permission: 'create_tasks',
   },
   {
     id: 'deficiency',
@@ -70,7 +70,7 @@ const quickAddOptions: QuickAddOption[] = [
     description: 'Report a deficiency or issue',
     icon: AlertTriangle,
     color: 'text-amber-500',
-    permission: 'create_deficiency',
+    permission: 'create_deficiencies',
   },
   {
     id: 'safety',
@@ -78,7 +78,7 @@ const quickAddOptions: QuickAddOption[] = [
     description: 'Submit a safety form',
     icon: ShieldCheck,
     color: 'text-red-500',
-    permission: 'create_safety_form',
+    permission: 'create_safety',
   },
   {
     id: 'manpower',
@@ -94,7 +94,7 @@ const quickAddOptions: QuickAddOption[] = [
     description: 'Create today\'s daily log',
     icon: ClipboardList,
     color: 'text-cyan-500',
-    permission: 'create_daily_log',
+    permission: 'create_safety', // Same permission as safety forms (PM/Foreman)
   },
   {
     id: 'document',
@@ -102,7 +102,7 @@ const quickAddOptions: QuickAddOption[] = [
     description: 'Upload plans, RFIs, permits',
     icon: FileText,
     color: 'text-indigo-500',
-    permission: 'upload_document',
+    permission: 'upload_documents',
   },
   {
     id: 'receipt',
