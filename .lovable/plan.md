@@ -1,65 +1,96 @@
 
-## Problem Identified
+## Plan: Ensure Clean Account Creation Without Inherited Data
 
-Jordan Pughe cannot create projects because of missing permissions. The database Row-Level Security (RLS) policy requires users to have either:
-1. **Admin role**, OR
-2. **Project Manager role** (globally assigned)
+### Problem
+When new accounts are created, the `useOrganization` hook falls back to a hardcoded "Default Organization" ID even when the user has no actual membership. This creates a confusing state where users might appear to be in an organization they don't belong to, potentially seeing project dropdowns with demo data.
 
-Jordan currently has **neither** - no entries exist in the `user_roles` table for their account.
-
----
-
-## Root Cause
-
-The "Create Project" button is visible to Jordan (the frontend check uses `isAdmin || isPM()`), but when they actually try to save, the database blocks the insert because Jordan lacks the required role in the `user_roles` table.
+### Solution Overview
+1. Remove the default organization fallback for users without memberships
+2. Show an appropriate empty state or onboarding flow for users with no organization
+3. Ensure the Dashboard handles the "no projects" case gracefully
 
 ---
 
-## Solution Options
+### Technical Changes
 
-**Option A: Add Jordan as a Project Manager (Recommended)**
-- Insert a `project_manager` role for Jordan in the `user_roles` table
-- This gives them permission to create new projects and manage them
-- Best for team leads who need to create and coordinate projects
+#### 1. Update `useOrganization` Hook
+**File:** `src/hooks/useOrganization.tsx`
 
-**Option B: Add Jordan as an Admin**
-- Insert an `admin` role for Jordan
-- This gives them full access to everything in the app
-- Best for senior managers who need complete oversight
+Remove the fallback to `DEFAULT_ORG_ID` when a user has no organization memberships:
 
----
+```typescript
+// BEFORE (problematic):
+} else {
+  // Fallback to default org for users without memberships
+  setActiveOrganizationIdState(DEFAULT_ORG_ID);
+  setOrgRole(null);
+}
 
-## Implementation Steps
-
-1. **Add role to `user_roles` table** for Jordan's user ID (`250fa4b2-2f13-4760-b04a-b3e4a2fe5ee7`)
-
-2. **Add organization membership** (optional but recommended) - Jordan should also be added to the organization so they appear in team lists and can be assigned to projects properly
-
----
-
-## Technical Details
-
-The following SQL will grant Jordan project manager permissions:
-
-```sql
--- Add project_manager role for Jordan
-INSERT INTO user_roles (user_id, role)
-VALUES ('250fa4b2-2f13-4760-b04a-b3e4a2fe5ee7', 'project_manager');
-
--- Add to default organization (recommended)
-INSERT INTO organization_memberships (user_id, organization_id, role, is_active)
-VALUES (
-  '250fa4b2-2f13-4760-b04a-b3e4a2fe5ee7',
-  '00000000-0000-0000-0000-000000000001',
-  'pm',
-  true
-);
+// AFTER (clean):
+} else {
+  // User has no organization memberships - leave null
+  setActiveOrganizationIdState(null);
+  setOrgRole(null);
+}
 ```
 
-After these changes, Jordan will be able to create projects immediately (may need to refresh the browser).
+Also update the error fallback to not default to the org:
+```typescript
+// BEFORE:
+} catch (error) {
+  console.error('Error fetching organizations:', error);
+  setActiveOrganizationIdState(DEFAULT_ORG_ID);
+}
+
+// AFTER:
+} catch (error) {
+  console.error('Error fetching organizations:', error);
+  setActiveOrganizationIdState(null);
+}
+```
+
+#### 2. Update Dashboard to Handle No Organization
+**File:** `src/pages/Dashboard.tsx`
+
+Add an empty state when user has no organization or projects:
+
+```typescript
+// After the project query, before rendering:
+if (!userProjects || userProjects.length === 0) {
+  return (
+    <Layout>
+      <div className="flex flex-col items-center justify-center h-full gap-4 p-8 text-center">
+        <Building2 className="h-16 w-16 text-muted-foreground" />
+        <h2 className="text-xl font-semibold">Welcome to ProjectPath</h2>
+        <p className="text-muted-foreground max-w-md">
+          You haven't been added to any projects yet. Ask your organization 
+          admin to invite you to a project to get started.
+        </p>
+      </div>
+    </Layout>
+  );
+}
+```
+
+#### 3. Remove `DEFAULT_ORG_ID` Constant
+**File:** `src/hooks/useOrganization.tsx`
+
+Remove the constant entirely since it should no longer be used:
+
+```typescript
+// DELETE this line:
+const DEFAULT_ORG_ID = '00000000-0000-0000-0000-000000000001';
+```
 
 ---
 
-## Recommendation
+### What This Achieves
 
-I recommend **Option A** (Project Manager role) unless Jordan needs full admin access to all features. Would you like me to proceed with adding Jordan as a Project Manager?
+- **Clean Slate:** New users without invitations will see an empty/onboarding state, not demo data
+- **No Cross-Org Data Leakage:** Users can only see organizations they're actually members of
+- **Clear UX:** Users understand they need to be invited to access projects
+- **RLS Alignment:** Frontend state now matches what RLS policies would allow anyway
+
+### Files to Modify
+1. `src/hooks/useOrganization.tsx` - Remove default org fallback
+2. `src/pages/Dashboard.tsx` - Add empty state for users with no projects
