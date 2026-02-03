@@ -24,11 +24,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Track if this is the initial session check
     let isInitialLoad = true;
     
+    // Helper to process pending invitations for a session
+    const processPendingInvites = async (session: Session) => {
+      try {
+        const { data, error } = await supabase.functions.invoke('process-pending-invites', {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        });
+        if (error) {
+          console.error('Failed to process pending invites:', error);
+        } else if (data?.processed > 0) {
+          console.log(`Processed ${data.processed} pending invitation(s)`);
+        }
+      } catch (err) {
+        console.error('Error processing pending invites:', err);
+      }
+    };
+    
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
+        
+        // Process pending invitations on sign-in or sign-up
+        if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session) {
+          // Use setTimeout to avoid blocking the auth flow
+          setTimeout(() => processPendingInvites(session), 0);
+        }
         
         // Only redirect on actual sign-in events (not session refresh/token refresh)
         // and only if not during initial load (to preserve current route)

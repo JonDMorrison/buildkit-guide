@@ -104,3 +104,6 @@ verify_jwt = true
 
 [functions.notify-trial-signup]
 verify_jwt = false
+
+[functions.process-pending-invites]
+verify_jwt = false
