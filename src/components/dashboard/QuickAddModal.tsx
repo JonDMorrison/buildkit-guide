@@ -54,7 +54,7 @@ const quickAddOptions: QuickAddOption[] = [
     description: 'Create a new construction project',
     icon: FolderPlus,
     color: 'text-blue-500',
-    permission: 'manage_project', // PM+ can create projects
+    permission: 'create_projects',
   },
   {
     id: 'task',

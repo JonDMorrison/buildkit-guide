@@ -64,6 +64,18 @@ export const useAuthRole = (projectId?: string) => {
 
   // Permission helpers - all require project context
   const can = (permission: string, pid?: string): boolean => {
+    // Some permissions are org/global-scoped and should not depend on a selected project.
+    // (QuickAdd: creating a new project is allowed for Admins and PMs even if the
+    // currently selected project is one they don't manage.)
+    if (permission === 'create_projects') {
+      const targetProject = pid || projectId;
+      return (
+        isAdmin ||
+        globalRoles.includes('project_manager') ||
+        (!!targetProject && isPM(targetProject))
+      );
+    }
+
     const targetProject = pid || projectId;
     if (!targetProject) return false;
     if (isAdmin) return true;
