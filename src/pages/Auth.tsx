@@ -204,7 +204,7 @@ const Auth = () => {
               <img 
                 src={projectPathLogo} 
                 alt="Project Path" 
-                className="h-16 w-auto mb-6"
+                className="h-32 w-auto mb-6"
               />
               <h1 className="text-4xl xl:text-5xl font-bold text-white leading-tight">
                 Build smarter,<br />
@@ -247,7 +247,7 @@ const Auth = () => {
             <img 
               src={projectPathLogo} 
               alt="Project Path" 
-              className="h-14 w-auto mx-auto mb-2"
+              className="h-28 w-auto mx-auto mb-2"
             />
             <p className="text-sm text-muted-foreground">Field coordination made simple</p>
           </div>

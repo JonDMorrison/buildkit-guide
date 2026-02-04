@@ -35,7 +35,7 @@ export const PublicNav = () => {
           className="flex items-center cursor-pointer" 
           onClick={() => navigate('/')}
         >
-          <img src={projectPathLogo} alt="Project Path" className="h-10 md:h-14 w-auto" />
+          <img src={projectPathLogo} alt="Project Path" className="h-20 md:h-28 w-auto" />
         </div>
         
         {/* Desktop Navigation */}
@@ -87,7 +87,7 @@ export const PublicNav = () => {
             <SheetContent side="right" className="w-[280px] sm:w-[320px]">
               <SheetHeader className="text-left mb-6">
                 <SheetTitle>
-                  <img src={projectPathLogo} alt="Project Path" className="h-20 w-auto" />
+                  <img src={projectPathLogo} alt="Project Path" className="h-40 w-auto" />
                 </SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col gap-4">
