@@ -1,9 +1,11 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.86.0";
+import { createRemoteJWKSet, jwtVerify } from "https://esm.sh/jose@5.9.6";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 // Structured logging helper
@@ -38,12 +40,16 @@ serve(async (req: Request) => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Client used ONLY for DB writes/reads (bypasses RLS)
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { persistSession: false },
+    });
 
     // Get the user from the Authorization header
-    const authHeader = req.headers.get('Authorization');
+    const authHeader = req.headers.get('authorization') ?? req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       log('warn', 'Missing or invalid Authorization header');
       return new Response(
@@ -52,34 +58,46 @@ serve(async (req: Request) => {
       );
     }
 
-    // Decode the JWT to get user info (service role can validate)
     const token = authHeader.replace('Bearer ', '');
-    
-    // Use service role client to get user from token
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    
-    if (userError || !user) {
-      log('warn', 'Failed to validate token', { error: userError?.message });
+
+    // Validate token by verifying its signature against the remote JWKS.
+    // This avoids session-based failures like "Auth session missing!" / "session_not_found".
+    const tokenLen = token?.length ?? 0;
+    const jwks = createRemoteJWKSet(new URL(`${supabaseUrl}/auth/v1/keys`));
+
+    let payload: Record<string, unknown>;
+    try {
+      const verified = await jwtVerify(token, jwks, {
+        issuer: `${supabaseUrl}/auth/v1`,
+      });
+      payload = verified.payload as unknown as Record<string, unknown>;
+    } catch (err) {
+      log('warn', 'Failed to validate token', {
+        error: String(err),
+        tokenPresent: tokenLen > 0,
+        tokenLen,
+      });
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const userId = user.id;
-    const userEmail = user.email;
+    const userId = payload.sub as string | undefined;
+    const userEmail = payload.email as string | undefined;
 
-    if (!userEmail) {
+    if (!userId || !userEmail) {
+      log('warn', 'JWT claims missing expected fields', { hasUserId: !!userId, hasEmail: !!userEmail });
       return new Response(
-        JSON.stringify({ error: 'No email found for user' }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     log('info', 'Processing pending invites for user', { userId, email: userEmail });
 
     // Find all pending invitations for this email
-    const { data: pendingInvites, error: invitesError } = await supabase
+    const { data: pendingInvites, error: invitesError } = await supabaseAdmin
       .from("invitations")
       .select("*")
       .eq("email", userEmail)
@@ -117,7 +135,7 @@ serve(async (req: Request) => {
       try {
         // Add to organization if specified
         if (invitation.organization_id) {
-          const { error: orgError } = await supabase
+          const { error: orgError } = await supabaseAdmin
             .from("organization_memberships")
             .upsert({
               user_id: userId,
@@ -137,7 +155,7 @@ serve(async (req: Request) => {
 
         // Add to project if specified
         if (invitation.project_id) {
-          const { error: projectError } = await supabase
+          const { error: projectError } = await supabaseAdmin
             .from("project_members")
             .upsert({
               user_id: userId,
@@ -156,7 +174,7 @@ serve(async (req: Request) => {
 
         // Add to user_roles table for admin or project_manager roles (global permissions)
         if (invitation.role === 'admin' || invitation.role === 'project_manager') {
-          const { error: roleError } = await supabase
+          const { error: roleError } = await supabaseAdmin
             .from("user_roles")
             .upsert({
               user_id: userId,
@@ -174,7 +192,7 @@ serve(async (req: Request) => {
         }
 
         // Mark invitation as accepted
-        await supabase
+        await supabaseAdmin
           .from("invitations")
           .update({ 
             status: "accepted",
