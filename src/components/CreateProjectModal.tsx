@@ -143,9 +143,18 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
         });
         setErrors(newErrors);
       } else {
+        // Extract error message from various error formats (Supabase, PostgREST, Error objects)
+        let errorMessage = 'An unexpected error occurred';
+        if (error instanceof Error) {
+          errorMessage = error.message;
+        } else if (error && typeof error === 'object') {
+          const err = error as { message?: string; error_description?: string; details?: string; hint?: string };
+          errorMessage = err.message || err.error_description || err.details || err.hint || 'An unexpected error occurred';
+        }
+        
         toast({
           title: 'Error creating project',
-          description: error instanceof Error ? error.message : 'Unknown error',
+          description: errorMessage,
           variant: 'destructive',
         });
       }
