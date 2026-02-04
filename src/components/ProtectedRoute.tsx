@@ -23,31 +23,32 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const onboardingQuery = useQuery({
     queryKey: ["profile-onboarding", user?.id],
     enabled: !!user && !loading && !isWelcomeRoute,
-    queryFn: async (): Promise<OnboardingProfile | null> => {
-      if (!user) return null;
-      try {
-        const { data: profile, error } = await supabase
-          .from("profiles")
-          .select("has_onboarded")
-          .eq("id", user.id)
-          .single();
-
-        if (error) {
-          console.error("Error checking onboarding status:", error);
-          return null;
-        }
-
-        return { has_onboarded: !!profile?.has_onboarded };
-      } catch (error) {
-        console.error("Error checking onboarding status:", error);
-        return null;
+    queryFn: async (): Promise<OnboardingProfile> => {
+      if (!user) {
+        // No user means we can't check, default to onboarded to prevent redirect loop
+        return { has_onboarded: true };
       }
+      
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("has_onboarded")
+        .eq("id", user.id)
+        .single();
+
+      if (error) {
+        console.error("Error checking onboarding status:", error);
+        // On error, default to onboarded to prevent redirect loop
+        return { has_onboarded: true };
+      }
+
+      // Only return false if explicitly false in the database
+      return { has_onboarded: profile?.has_onboarded ?? true };
     },
     staleTime: 60 * 60 * 1000, // 1 hour
     gcTime: 24 * 60 * 60 * 1000, // 24 hours
     refetchOnWindowFocus: false,
     refetchOnMount: false,
-    retry: 0,
+    retry: 1, // Allow one retry for transient errors
   });
 
   if (loading) {
@@ -67,7 +68,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   }
 
   // Skip onboarding check if already on welcome page
-  if (!isWelcomeRoute && onboardingQuery.isLoading && !onboardingQuery.data) {
+  if (!isWelcomeRoute && onboardingQuery.isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <div className="w-full max-w-md space-y-4">
@@ -79,7 +80,9 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     );
   }
 
-  const needsOnboarding = onboardingQuery.data?.has_onboarded === false;
+  // Only redirect to welcome if we have confirmed data showing user hasn't onboarded
+  // Default to NOT redirecting if data is missing/errored to prevent flash
+  const needsOnboarding = onboardingQuery.isSuccess && onboardingQuery.data?.has_onboarded === false;
 
   if (!isWelcomeRoute && needsOnboarding) {
     return <Navigate to="/welcome" replace />;
