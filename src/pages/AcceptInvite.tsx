@@ -222,7 +222,7 @@ export default function AcceptInvite() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
-            <img src={projectPathLogo} alt="Project Path" className="h-16 w-auto mx-auto" />
+            <img src={projectPathLogo} alt="Project Path" className="h-32 w-auto mx-auto" />
           </div>
           <CardDescription>
             You've been invited to join. Set up your password to get started.

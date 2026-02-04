@@ -510,7 +510,7 @@ export default function Landing() {
         <div className="container mx-auto max-w-6xl">
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-2">
-              <img src={projectPathLogo} alt="Project Path" className="h-8 w-auto max-w-[120px]" />
+              <img src={projectPathLogo} alt="Project Path" className="h-16 w-auto max-w-[240px]" />
               <p className="text-sm text-foreground/70">
                 © 2025 Project Path. Built for the field.
               </p>

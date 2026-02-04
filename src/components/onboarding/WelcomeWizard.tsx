@@ -294,7 +294,7 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
           <>
             <CardHeader className="text-center pt-8 pb-4">
               <div className="mx-auto mb-4 relative">
-                <img src={projectPathLogo} alt="Project Path" className="h-20 w-auto mx-auto" />
+                <img src={projectPathLogo} alt="Project Path" className="h-40 w-auto mx-auto" />
                 <div className="absolute -right-2 -bottom-2 bg-primary text-primary-foreground rounded-full p-2">
                   <PartyPopper className="h-5 w-5" />
                 </div>
