@@ -23,11 +23,18 @@ export default function Welcome() {
 
   const checkOnboardingStatus = async () => {
     try {
-      const { data: profile } = await supabase
+      const { data: profile, error } = await supabase
         .from('profiles')
         .select('has_onboarded')
         .eq('id', user!.id)
         .single();
+
+      if (error) {
+        console.error('Error checking onboarding status:', error);
+        // On error, assume onboarded to prevent showing wizard incorrectly
+        navigate('/dashboard');
+        return;
+      }
 
       if (profile?.has_onboarded) {
         navigate('/dashboard');
@@ -37,7 +44,8 @@ export default function Welcome() {
       setChecking(false);
     } catch (error) {
       console.error('Error checking onboarding status:', error);
-      setChecking(false);
+      // On error, redirect to dashboard rather than showing wizard
+      navigate('/dashboard');
     }
   };
 
