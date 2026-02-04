@@ -5,8 +5,8 @@ import { EmptyState } from "@/components/EmptyState";
 import { NoAccess } from "@/components/NoAccess";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LookaheadTimeline } from "@/components/lookahead/LookaheadTimeline";
 import { LookaheadMobileView } from "@/components/lookahead/LookaheadMobileView";
@@ -27,7 +27,7 @@ const Lookahead = () => {
   const { can, loading: roleLoading } = useAuthRole(currentProjectId || undefined);
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [horizonOnly, setHorizonOnly] = useState(false);
+  
   const [startDate, setStartDate] = useState(new Date());
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(false);
@@ -92,7 +92,7 @@ const Lookahead = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [startDate, horizonOnly, selectedProjectId]);
+  }, [startDate, selectedProjectId]);
 
   const fetchTasks = async () => {
     if (!selectedProjectId) return;
@@ -142,12 +142,6 @@ const Lookahead = () => {
           _blockerCount: blockerCounts[task.id] || 0,
         }));
 
-        // Apply Horizon Only filter
-        if (horizonOnly) {
-          tasksWithBlockers = tasksWithBlockers.filter(
-            task => task.trades?.company_name?.toLowerCase().includes('horizon')
-          );
-        }
 
         setTasks(tasksWithBlockers);
       } else {
@@ -328,18 +322,6 @@ const Lookahead = () => {
               <Button variant="outline" size="icon" onClick={nextWeek}>
                 <ChevronRight className="h-4 w-4" />
               </Button>
-            </div>
-
-            {/* Horizon Only Toggle */}
-            <div className="flex items-center space-x-2 sm:pl-4 sm:border-l sm:border-border">
-              <Switch
-                id="horizon-only"
-                checked={horizonOnly}
-                onCheckedChange={setHorizonOnly}
-              />
-              <Label htmlFor="horizon-only" className="cursor-pointer font-medium text-sm">
-                Horizon Only
-              </Label>
             </div>
           </div>
 

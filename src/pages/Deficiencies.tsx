@@ -5,6 +5,7 @@ import { SectionHeader } from "@/components/SectionHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DeficiencyFilters } from "@/components/deficiencies/DeficiencyFilters";
 import { DeficiencyListView } from "@/components/deficiencies/DeficiencyListView";
 import { DeficiencyDetailModal } from "@/components/deficiencies/DeficiencyDetailModal";
@@ -17,7 +18,9 @@ import { AlertCircle, Plus, Upload } from "lucide-react";
 const Deficiencies = () => {
   const navigate = useNavigate();
   const { currentProjectId } = useCurrentProject();
-  const { can, isPM, isAdmin, loading: roleLoading } = useAuthRole(currentProjectId || undefined);
+  const [projects, setProjects] = useState<any[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(currentProjectId);
+  const { can, isPM, isAdmin, loading: roleLoading } = useAuthRole(selectedProjectId || undefined);
   const [deficiencies, setDeficiencies] = useState<any[]>([]);
   const [filteredDeficiencies, setFilteredDeficiencies] = useState<any[]>([]);
   const [trades, setTrades] = useState<any[]>([]);
@@ -28,12 +31,39 @@ const Deficiencies = () => {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
+  // Sync selectedProjectId with currentProjectId from URL
+  useEffect(() => {
+    if (currentProjectId && currentProjectId !== selectedProjectId) {
+      setSelectedProjectId(currentProjectId);
+    }
+  }, [currentProjectId]);
+
+  // Fetch projects for selector
+  useEffect(() => {
+    const fetchProjects = async () => {
+      const { data } = await supabase
+        .from('projects')
+        .select('id, name')
+        .eq('is_deleted', false)
+        .order('name');
+      
+      setProjects(data || []);
+      // Only set default if no project selected
+      if (!selectedProjectId && data && data.length > 0) {
+        setSelectedProjectId(data[0].id);
+      }
+    };
+    fetchProjects();
+  }, []);
+
   // Permission checks
-  const canCreateDeficiencies = currentProjectId ? can('create_deficiencies', currentProjectId) : false;
+  const canCreateDeficiencies = selectedProjectId ? can('create_deficiencies', selectedProjectId) : false;
 
   useEffect(() => {
-    fetchDeficiencies();
-    fetchTrades();
+    if (selectedProjectId) {
+      fetchDeficiencies();
+      fetchTrades();
+    }
 
     const channel = supabase
       .channel("deficiencies-changes")
@@ -45,7 +75,9 @@ const Deficiencies = () => {
           table: "deficiencies",
         },
         () => {
-          fetchDeficiencies();
+          if (selectedProjectId) {
+            fetchDeficiencies();
+          }
         }
       )
       .subscribe();
@@ -53,13 +85,15 @@ const Deficiencies = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [selectedProjectId]);
 
   useEffect(() => {
     filterDeficiencies();
   }, [deficiencies, selectedTrade, selectedStatus]);
 
   const fetchDeficiencies = async () => {
+    if (!selectedProjectId) return;
+    
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -72,6 +106,7 @@ const Deficiencies = () => {
             trade_type
           )
         `)
+        .eq("project_id", selectedProjectId)
         .eq("is_deleted", false)
         .order("created_at", { ascending: false });
 
@@ -168,19 +203,35 @@ const Deficiencies = () => {
           } : undefined}
         />
 
-        {/* Import from GC button - only visible to PM/Admin */}
-        {(isPM || isAdmin) && currentProjectId && (
-          <div className="flex justify-end mb-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate(`/projects/${currentProjectId}/deficiency-import`)}
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              Import from GC
-            </Button>
+        {/* Project Selector */}
+        <div className="mb-4 p-4 bg-card rounded-lg border border-border">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <Select value={selectedProjectId || undefined} onValueChange={setSelectedProjectId}>
+              <SelectTrigger className="w-full sm:w-[280px] font-semibold">
+                <SelectValue placeholder="Select a project" />
+              </SelectTrigger>
+              <SelectContent>
+                {projects.map((project) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    {project.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Import from GC button - only visible to PM/Admin */}
+            {(isPM || isAdmin) && selectedProjectId && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate(`/projects/${selectedProjectId}/deficiency-import`)}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Import from GC
+              </Button>
+            )}
           </div>
-        )}
+        </div>
 
         {deficiencies.length === 0 ? (
           <EmptyState
@@ -229,6 +280,7 @@ const Deficiencies = () => {
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
           onCreate={fetchDeficiencies}
+          projectId={selectedProjectId || undefined}
         />
       </div>
     </Layout>

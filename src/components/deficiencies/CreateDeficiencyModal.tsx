@@ -15,12 +15,14 @@ interface CreateDeficiencyModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreate: () => void;
+  projectId?: string;
 }
 
 export const CreateDeficiencyModal = ({
   isOpen,
   onClose,
   onCreate,
+  projectId,
 }: CreateDeficiencyModalProps) => {
   const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState<any[]>([]);
@@ -29,7 +31,7 @@ export const CreateDeficiencyModal = ({
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    project_id: "",
+    project_id: projectId || "",
     assigned_trade_id: "",
     location: "",
     priority: "3",
@@ -37,6 +39,13 @@ export const CreateDeficiencyModal = ({
   });
   const { toast } = useToast();
   const { uploadMultiple, createAttachmentRecord } = usePhotoUpload();
+
+  // Update project_id when projectId prop changes
+  useEffect(() => {
+    if (projectId) {
+      setFormData(prev => ({ ...prev, project_id: projectId }));
+    }
+  }, [projectId]);
 
   useEffect(() => {
     if (isOpen) {
