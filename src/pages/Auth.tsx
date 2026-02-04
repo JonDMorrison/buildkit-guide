@@ -27,6 +27,31 @@ const signUpSchema = signInSchema.extend({
 type SignInForm = z.infer<typeof signInSchema>;
 type SignUpForm = z.infer<typeof signUpSchema>;
 
+// InputWrapper defined outside component to prevent re-creation on each render
+const InputWrapper = ({ 
+  icon: Icon, 
+  error, 
+  children 
+}: { 
+  icon: React.ElementType; 
+  error?: string; 
+  children: React.ReactNode;
+}) => (
+  <div className="space-y-1.5">
+    <div className={cn(
+      "relative flex items-center rounded-xl border bg-background/50 backdrop-blur-sm transition-all duration-200",
+      "focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary",
+      error ? "border-destructive" : "border-border/50 hover:border-border"
+    )}>
+      <Icon className="absolute left-4 h-5 w-5 text-muted-foreground pointer-events-none" />
+      {children}
+    </div>
+    {error && (
+      <p className="text-xs text-destructive pl-1 animate-fade-in">{error}</p>
+    )}
+  </div>
+);
+
 const features = [
   "Real-time project coordination",
   "AI-powered task management",
@@ -156,29 +181,6 @@ const Auth = () => {
     }
   };
 
-  const InputWrapper = ({ 
-    icon: Icon, 
-    error, 
-    children 
-  }: { 
-    icon: React.ElementType; 
-    error?: string; 
-    children: React.ReactNode;
-  }) => (
-    <div className="space-y-1.5">
-      <div className={cn(
-        "relative flex items-center rounded-xl border bg-background/50 backdrop-blur-sm transition-all duration-200",
-        "focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary",
-        error ? "border-destructive" : "border-border/50 hover:border-border"
-      )}>
-        <Icon className="absolute left-4 h-5 w-5 text-muted-foreground pointer-events-none" />
-        {children}
-      </div>
-      {error && (
-        <p className="text-xs text-destructive pl-1 animate-fade-in">{error}</p>
-      )}
-    </div>
-  );
 
   return (
     <div className="min-h-screen flex">
