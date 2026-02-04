@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.86.0";
-import { createRemoteJWKSet, jwtVerify } from "https://esm.sh/jose@5.9.6";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -60,22 +59,20 @@ serve(async (req: Request) => {
 
     const token = authHeader.replace('Bearer ', '');
 
-    // Validate token by verifying its signature against the remote JWKS.
-    // This avoids session-based failures like "Auth session missing!" / "session_not_found".
-    const tokenLen = token?.length ?? 0;
-    const jwks = createRemoteJWKSet(new URL(`${supabaseUrl}/auth/v1/keys`));
+    // Use Supabase client with user's token to validate it
+    const supabaseWithAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { persistSession: false },
+      global: { headers: { Authorization: authHeader } }
+    });
 
-    let payload: Record<string, unknown>;
-    try {
-      const verified = await jwtVerify(token, jwks, {
-        issuer: `${supabaseUrl}/auth/v1`,
-      });
-      payload = verified.payload as unknown as Record<string, unknown>;
-    } catch (err) {
+    // Validate token by getting the user - this verifies the JWT server-side
+    const { data: { user }, error: userError } = await supabaseWithAuth.auth.getUser();
+
+    if (userError || !user) {
       log('warn', 'Failed to validate token', {
-        error: String(err),
-        tokenPresent: tokenLen > 0,
-        tokenLen,
+        error: userError?.message || 'No user returned',
+        tokenPresent: token.length > 0,
+        tokenLen: token.length,
       });
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
@@ -83,11 +80,11 @@ serve(async (req: Request) => {
       );
     }
 
-    const userId = payload.sub as string | undefined;
-    const userEmail = payload.email as string | undefined;
+    const userId = user.id;
+    const userEmail = user.email;
 
     if (!userId || !userEmail) {
-      log('warn', 'JWT claims missing expected fields', { hasUserId: !!userId, hasEmail: !!userEmail });
+      log('warn', 'User missing expected fields', { hasUserId: !!userId, hasEmail: !!userEmail });
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
