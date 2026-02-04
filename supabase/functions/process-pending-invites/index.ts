@@ -79,14 +79,21 @@ serve(async (req: Request) => {
     const userError = userRes.error;
 
     if (userError || !user) {
+      // IMPORTANT: Do not return 401 here. This function is called opportunistically during auth flows,
+      // and a 401 can bubble up into app-level "blank screen" error states.
       log('warn', 'Failed to validate token', {
         error: userError?.message || 'No user returned',
         tokenPresent: token.length > 0,
         tokenLen: token.length,
       });
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({
+          success: true,
+          skipped: true,
+          message: 'Invalid or expired token (skipping invite processing)',
+          processed: 0,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -96,8 +103,13 @@ serve(async (req: Request) => {
     if (!userId || !userEmail) {
       log('warn', 'User missing expected fields', { hasUserId: !!userId, hasEmail: !!userEmail });
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({
+          success: true,
+          skipped: true,
+          message: 'Token validated but missing required claims (skipping invite processing)',
+          processed: 0,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
