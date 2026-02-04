@@ -68,7 +68,9 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   }
 
   // Skip onboarding check if already on welcome page
-  if (!isWelcomeRoute && onboardingQuery.isLoading) {
+  // Check isPending too - covers the gap when query transitions from disabled to enabled
+  const isQuerySettled = onboardingQuery.isSuccess || onboardingQuery.isError;
+  if (!isWelcomeRoute && !isQuerySettled) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <div className="w-full max-w-md space-y-4">
