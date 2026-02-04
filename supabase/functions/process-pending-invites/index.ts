@@ -50,10 +50,17 @@ serve(async (req: Request) => {
     // Get the user from the Authorization header
     const authHeader = req.headers.get('authorization') ?? req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
+      // Don't hard-fail the app if this gets called before the client has a session token.
+      // We simply skip processing and return a safe success payload.
       log('warn', 'Missing or invalid Authorization header');
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({
+          success: true,
+          skipped: true,
+          message: 'No authorization token available yet',
+          processed: 0,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -65,8 +72,11 @@ serve(async (req: Request) => {
       global: { headers: { Authorization: authHeader } }
     });
 
-    // Validate token by getting the user - this verifies the JWT server-side
-    const { data: { user }, error: userError } = await supabaseWithAuth.auth.getUser();
+    // Validate token by getting the user (PASS the JWT explicitly).
+    // Calling getUser() without a token can produce "Auth session missing!" in edge runtimes.
+    const userRes = await supabaseWithAuth.auth.getUser(token);
+    const user = userRes.data?.user;
+    const userError = userRes.error;
 
     if (userError || !user) {
       log('warn', 'Failed to validate token', {
