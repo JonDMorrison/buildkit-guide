@@ -62,6 +62,7 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
       let orgId = activeOrganizationId;
 
       // If user has no organization, create one for them
+      // The database trigger will automatically add them as admin
       if (!orgId && user?.id) {
         const orgName = user.email?.split('@')[0] 
           ? `${user.email.split('@')[0]}'s Organization`
@@ -76,18 +77,6 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
         if (orgError) throw new Error(`Failed to create organization: ${orgError.message}`);
         
         orgId = newOrg.id;
-
-        // Add user as admin of the new organization
-        const { error: memberError } = await supabase
-          .from('organization_memberships')
-          .insert({
-            user_id: user.id,
-            organization_id: orgId,
-            role: 'admin',
-            is_active: true,
-          });
-
-        if (memberError) throw new Error(`Failed to set organization membership: ${memberError.message}`);
       }
 
       if (!orgId) {
