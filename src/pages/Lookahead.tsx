@@ -35,14 +35,18 @@ const Lookahead = () => {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [projects, setProjects] = useState<any[]>([]);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(currentProjectId);
   const [forecastModalOpen, setForecastModalOpen] = useState(false);
   const [forecastLoading, setForecastLoading] = useState(false);
   const [forecastData, setForecastData] = useState<any>(null);
   const [delayedTaskIds, setDelayedTaskIds] = useState<string[]>([]);
 
-  // Check if user has permission to view lookahead
-  const canViewLookahead = selectedProjectId ? can('view_lookahead', selectedProjectId) : false;
+  // Sync selectedProjectId with currentProjectId from URL
+  useEffect(() => {
+    if (currentProjectId && currentProjectId !== selectedProjectId) {
+      setSelectedProjectId(currentProjectId);
+    }
+  }, [currentProjectId]);
 
   useEffect(() => {
     // Fetch projects
@@ -54,12 +58,16 @@ const Lookahead = () => {
         .order('name');
       
       setProjects(data || []);
-      if (data && data.length > 0) {
+      // Only set default if no project selected and none from URL
+      if (!selectedProjectId && data && data.length > 0) {
         setSelectedProjectId(data[0].id);
       }
     };
     fetchProjects();
   }, []);
+
+  // Check if user has permission to view lookahead
+  const canViewLookahead = selectedProjectId ? can('view_lookahead', selectedProjectId) : false;
 
   useEffect(() => {
     if (!selectedProjectId) return;
