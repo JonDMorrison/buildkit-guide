@@ -45,6 +45,7 @@ interface QuickAddOption {
   icon: React.ElementType;
   color: string;
   permission?: string;
+  requiresProject?: boolean;
 }
 
 const quickAddOptions: QuickAddOption[] = [
@@ -95,6 +96,7 @@ const quickAddOptions: QuickAddOption[] = [
     icon: ClipboardList,
     color: 'text-cyan-500',
     permission: 'create_safety', // Same permission as safety forms (PM/Foreman)
+    requiresProject: true,
   },
   {
     id: 'document',
@@ -110,6 +112,7 @@ const quickAddOptions: QuickAddOption[] = [
     description: 'Capture an expense receipt',
     icon: Receipt,
     color: 'text-orange-500',
+    requiresProject: true,
   },
 ];
 
@@ -172,8 +175,11 @@ export const QuickAddModal = ({
     onSuccess?.();
   };
 
-  // Filter options based on permissions
+  // Filter options based on permissions and project requirement
   const availableOptions = quickAddOptions.filter((option) => {
+    // If option requires a project and none is selected, hide it
+    if (option.requiresProject && !currentProjectId) return false;
+    
     if (!option.permission) return true;
     if (!currentProjectId) {
       // Only show project creation if no project selected
