@@ -23,6 +23,7 @@ interface WeatherInfoModalProps {
   todayLog: DailyLog | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  projectId?: string | null;
 }
 
 const getWeatherIcon = (weather: string | null) => {
@@ -35,12 +36,12 @@ const getWeatherIcon = (weather: string | null) => {
   return <Cloud className="h-5 w-5 text-muted-foreground" />;
 };
 
-export const WeatherInfoModal = ({ todayLog, open, onOpenChange }: WeatherInfoModalProps) => {
+export const WeatherInfoModal = ({ todayLog, open, onOpenChange, projectId }: WeatherInfoModalProps) => {
   const navigate = useNavigate();
 
   const handleNavigate = () => {
     onOpenChange(false);
-    navigate("/daily-logs");
+    navigate(projectId ? `/daily-logs?projectId=${projectId}` : "/daily-logs");
   };
 
   return (
