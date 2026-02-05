@@ -1,5 +1,3 @@
-import heic2any from 'heic2any';
-
 /**
  * Check if a file is a HEIC/HEIF format
  */
@@ -20,6 +18,7 @@ export const isHeicFile = (file: File): boolean => {
 /**
  * Convert HEIC file to JPEG
  * Returns original file if not HEIC or conversion fails
+ * Uses dynamic import to avoid bundling issues
  */
 export const convertHeicToJpeg = async (file: File): Promise<File> => {
   if (!isHeicFile(file)) {
@@ -27,6 +26,9 @@ export const convertHeicToJpeg = async (file: File): Promise<File> => {
   }
 
   try {
+    // Dynamic import to avoid module resolution issues at startup
+    const heic2any = (await import('heic2any')).default;
+    
     const convertedBlob = await heic2any({
       blob: file,
       toType: 'image/jpeg',
