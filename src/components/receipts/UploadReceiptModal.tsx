@@ -10,8 +10,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { compressImage, formatFileSize } from '@/lib/imageCompression';
+import { isHeicFile, convertHeicToJpeg } from '@/lib/heicConversion';
 import { RECEIPT_CATEGORIES, ReceiptCategory } from '@/hooks/useReceipts';
-
 interface UploadReceiptModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -83,8 +83,9 @@ export const UploadReceiptModal = ({
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
 
-    // Validate file type
-    if (!selectedFile.type.startsWith('image/')) {
+    // Validate file type (allow HEIC files from iPhone/Android)
+    const isImage = selectedFile.type.startsWith('image/') || isHeicFile(selectedFile);
+    if (!isImage) {
       toast({
         title: 'Invalid file type',
         description: 'Please select an image file.',
@@ -93,18 +94,33 @@ export const UploadReceiptModal = ({
       return;
     }
 
-    setFile(selectedFile);
-    setPreview(URL.createObjectURL(selectedFile));
-    setUploadedReceiptId(null);
-    setUploadedFilePath(null);
-    setAiParsed(false);
-
-    // Pre-compress to show estimated size
     try {
-      const compressed = await compressImage(selectedFile);
+      // Convert HEIC to JPEG if needed
+      let processedFile = selectedFile;
+      if (isHeicFile(selectedFile)) {
+        toast({
+          title: 'Converting image...',
+          description: 'Converting HEIC format to JPEG',
+        });
+        processedFile = await convertHeicToJpeg(selectedFile);
+      }
+
+      setFile(processedFile);
+      setPreview(URL.createObjectURL(processedFile));
+      setUploadedReceiptId(null);
+      setUploadedFilePath(null);
+      setAiParsed(false);
+
+      // Pre-compress to show estimated size
+      const compressed = await compressImage(processedFile);
       setCompressedSize(compressed.size);
-    } catch (error) {
-      console.error('Compression preview error:', error);
+    } catch (error: any) {
+      console.error('File processing error:', error);
+      toast({
+        title: 'Error processing image',
+        description: error.message || 'Please try a different image.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -332,7 +348,7 @@ export const UploadReceiptModal = ({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,.heic,.heif"
               capture="environment"
               onChange={handleFileSelect}
               className="hidden"
