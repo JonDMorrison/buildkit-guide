@@ -24,6 +24,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/
 import { GripVertical } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Checkbox } from '../ui/checkbox';
 
 interface AssignedWorker {
   id: string;
@@ -116,6 +117,7 @@ const AssignedWorkersAvatars = ({ assignments }: { assignments?: AssignedWorker[
 };
 
 const SortableTaskItem = ({ task, onTaskClick, canReorder }: SortableTaskItemProps) => {
+  const { toast } = useToast();
   const {
     attributes,
     listeners,
@@ -129,6 +131,32 @@ const SortableTaskItem = ({ task, onTaskClick, canReorder }: SortableTaskItemPro
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+  };
+
+  const handleCheckboxChange = async (checked: boolean) => {
+    const newStatus = checked ? 'done' : 'not_started';
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ status: newStatus })
+        .eq('id', task.id);
+
+      if (error) throw error;
+      
+      toast({
+        title: checked ? 'Task completed' : 'Task reopened',
+        description: task.title,
+      });
+      
+      // Trigger a refresh by clicking (which will refetch)
+      window.location.reload();
+    } catch (err: any) {
+      toast({
+        title: 'Error updating task',
+        description: err.message,
+        variant: 'destructive',
+      });
+    }
   };
 
   const getStatusBadgeType = (status: string): 'complete' | 'blocked' | 'progress' | 'info' => {
@@ -175,6 +203,12 @@ const SortableTaskItem = ({ task, onTaskClick, canReorder }: SortableTaskItemPro
           <GripVertical className="h-5 w-5" />
         </button>
       )}
+      <Checkbox
+        checked={task.status === 'done'}
+        onCheckedChange={handleCheckboxChange}
+        onClick={(e) => e.stopPropagation()}
+        className="flex-shrink-0"
+      />
       <div className="flex-1">
         <ListItem
           title={task.title}
@@ -192,6 +226,7 @@ const SortableTaskItem = ({ task, onTaskClick, canReorder }: SortableTaskItemPro
               {task.trades && <TradeBadge trade={task.trades.trade_type as any} />}
             </div>
           }
+          showChevron={false}
           onClick={() => onTaskClick(task.id)}
         />
       </div>
