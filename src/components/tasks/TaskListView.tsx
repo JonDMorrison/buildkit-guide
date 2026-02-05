@@ -131,7 +131,7 @@ const SortableTaskItem = ({ task, onTaskClick, canReorder }: SortableTaskItemPro
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const getStatusBadgeType = (status: string) => {
+  const getStatusBadgeType = (status: string): 'complete' | 'blocked' | 'progress' | 'info' => {
     switch (status) {
       case 'done':
         return 'complete';
@@ -141,6 +141,21 @@ const SortableTaskItem = ({ task, onTaskClick, canReorder }: SortableTaskItemPro
         return 'progress';
       default:
         return 'info';
+    }
+  };
+
+  const getStatusLabel = (status: string): string => {
+    switch (status) {
+      case 'done':
+        return 'Done';
+      case 'blocked':
+        return 'Blocked';
+      case 'in_progress':
+        return 'In Progress';
+      case 'not_started':
+        return 'Not Started';
+      default:
+        return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     }
   };
 
@@ -170,7 +185,7 @@ const SortableTaskItem = ({ task, onTaskClick, canReorder }: SortableTaskItemPro
               task.priority === 1 ? 'Urgent' : ''
             )
           }
-          leading={<StatusBadge status={getStatusBadgeType(task.status)} dotOnly />}
+          leading={<StatusBadge status={getStatusBadgeType(task.status)} label={getStatusLabel(task.status)} />}
           trailing={
             <div className="flex items-center gap-2">
               <AssignedWorkersAvatars assignments={task.task_assignments} />
