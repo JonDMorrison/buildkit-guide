@@ -147,9 +147,6 @@ const SortableTaskItem = ({ task, onTaskClick, canReorder }: SortableTaskItemPro
         title: checked ? 'Task completed' : 'Task reopened',
         description: task.title,
       });
-      
-      // Trigger a refresh by clicking (which will refetch)
-      window.location.reload();
     } catch (err: any) {
       toast({
         title: 'Error updating task',
