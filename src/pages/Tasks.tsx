@@ -36,8 +36,8 @@ const Tasks = () => {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [initialFilters, setInitialFilters] = useState<TaskFiltersType | null>(null);
 
-  // Permission checks
-  const canCreateTasks = currentProjectId ? can('create_tasks', currentProjectId) : false;
+  // Permission checks - allow task creation if user can create in current project or is PM/Admin globally
+  const canCreateTasks = can('create_tasks', currentProjectId || undefined);
   const showLimitedView = isWorker(currentProjectId || undefined);
 
   const fetchTasks = async () => {
