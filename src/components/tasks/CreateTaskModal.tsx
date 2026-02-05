@@ -30,7 +30,7 @@ const taskSchema = z.object({
   title: z.string().trim().min(3, 'Title must be at least 3 characters'),
   description: z.string().trim().optional(),
   projectId: z.string().min(1, 'Please select a project'),
-  tradeId: z.string().min(1, 'Please select a trade'),
+  tradeId: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   priority: z.number().min(1).max(5),
@@ -168,7 +168,7 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
         title: validatedData.title,
         description: validatedData.description,
         project_id: validatedData.projectId,
-        assigned_trade_id: validatedData.tradeId,
+        assigned_trade_id: validatedData.tradeId || null,
         start_date: validatedData.startDate || null,
         end_date: validatedData.endDate || null,
         priority: validatedData.priority,
@@ -335,12 +335,20 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
             </Select>
           </FormField>
 
-          <FormField label="Assigned Trade" required error={errors.tradeId}>
-            <Select value={form.tradeId} onValueChange={(v) => setForm({ ...form, tradeId: v })}>
+          <FormField label="Assigned Trade" error={errors.tradeId}>
+            <Select value={form.tradeId || ""} onValueChange={(v) => setForm({ ...form, tradeId: v === "__none__" ? "" : v })}>
               <SelectTrigger className="min-h-[52px] bg-card border-border">
-                <SelectValue placeholder="Select trade" />
+                <SelectValue placeholder="Select trade (optional)" />
               </SelectTrigger>
               <SelectContent className="bg-card border-border z-50">
+                <SelectItem value="__none__">
+                  <span className="text-muted-foreground">No trade assigned</span>
+                </SelectItem>
+                {trades.length === 0 && (
+                  <div className="px-2 py-3 text-sm text-muted-foreground text-center">
+                    No trades available. Create one in Setup.
+                  </div>
+                )}
                 {trades.map((trade) => (
                   <SelectItem key={trade.id} value={trade.id}>
                     {trade.name} ({trade.trade_type})
