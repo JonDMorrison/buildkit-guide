@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
 import { SignatureCapture } from "./SignatureCapture";
 import { useToast } from "@/hooks/use-toast";
 import { useSafetyFormSubmit } from "@/hooks/useSafetyFormSubmit";
@@ -150,11 +151,10 @@ export const NearMissForm = ({
                   <Calendar className="h-4 w-4" />
                   Date *
                 </Label>
-                <Input
-                  type="date"
+                <DatePicker
                   value={formData.date}
-                  onChange={(e) => handleChange("date", e.target.value)}
-                  required
+                  onChange={(v) => handleChange("date", v)}
+                  placeholder="Select date"
                 />
               </div>
               <div className="w-32">
@@ -163,6 +163,7 @@ export const NearMissForm = ({
                   type="time"
                   value={formData.time}
                   onChange={(e) => handleChange("time", e.target.value)}
+                  className="min-h-[52px]"
                 />
               </div>
             </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { FormField } from "@/components/FormField";
+import { DatePicker } from "@/components/ui/date-picker";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Sparkles } from "lucide-react";
@@ -45,6 +46,7 @@ export const DailyLogForm = ({
     handleSubmit,
     reset,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<DailyLogFormData>({
     defaultValues: existingLog || {
@@ -187,9 +189,10 @@ export const DailyLogForm = ({
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <FormField label="Date" required error={errors.log_date?.message}>
-            <Input
-              type="date"
-              {...register('log_date', { required: 'Date is required' })}
+            <DatePicker
+              value={watch('log_date')}
+              onChange={(v) => setValue('log_date', v)}
+              placeholder="Select date"
               disabled={!!existingLog}
             />
           </FormField>

@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Loader2, Users } from 'lucide-react';
 
 interface CreateManpowerRequestModalProps {
@@ -269,13 +270,12 @@ export const CreateManpowerRequestModal = ({
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="required_date">Start Date *</Label>
-              <Input
-                id="required_date"
-                type="date"
+              <DatePicker
                 value={form.required_date}
-                onChange={(e) => setForm({ ...form, required_date: e.target.value })}
+                onChange={(v) => setForm({ ...form, required_date: v })}
+                placeholder="Select date"
                 className={errors.required_date ? 'border-destructive' : ''}
               />
               {errors.required_date && (
