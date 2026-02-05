@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
 import { PhotoUpload } from "./PhotoUpload";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -273,11 +274,10 @@ export const CreateDeficiencyModal = ({
 
           <div className="space-y-2">
             <Label className="text-base font-semibold">Due Date</Label>
-            <Input
-              type="date"
+            <DatePicker
               value={formData.due_date}
-              onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-              className="h-12"
+              onChange={(v) => setFormData({ ...formData, due_date: v })}
+              placeholder="Select due date"
             />
           </div>
 

@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { DatePicker } from "@/components/ui/date-picker";
 import { SignatureCapture } from "./SignatureCapture";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -246,10 +247,10 @@ export const ToolboxMeetingWizard = ({ isOpen, onClose, onSuccess }: ToolboxMeet
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Date</Label>
-                  <Input
-                    type="date"
+                  <DatePicker
                     value={meetingDate}
-                    onChange={(e) => setMeetingDate(e.target.value)}
+                    onChange={(v) => setMeetingDate(v)}
+                    placeholder="Select date"
                   />
                 </div>
                 <div className="space-y-2">
@@ -258,6 +259,7 @@ export const ToolboxMeetingWizard = ({ isOpen, onClose, onSuccess }: ToolboxMeet
                     type="time"
                     value={meetingTime}
                     onChange={(e) => setMeetingTime(e.target.value)}
+                    className="min-h-[52px]"
                   />
                 </div>
               </div>

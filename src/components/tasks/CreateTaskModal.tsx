@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
+import { DatePicker } from '../ui/date-picker';
 import { Loader2, X, UserPlus } from 'lucide-react';
 import { Badge } from '../ui/badge';
 
@@ -360,21 +361,19 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
 
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Start Date" error={errors.startDate}>
-              <Input
-                type="date"
+              <DatePicker
                 value={form.startDate}
-                onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-                className="min-h-[52px]"
+                onChange={(v) => setForm({ ...form, startDate: v })}
+                placeholder="Select start date"
               />
             </FormField>
 
             <FormField label="End Date" error={errors.endDate}>
-              <Input
-                type="date"
+              <DatePicker
                 value={form.endDate}
-                onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                min={form.startDate}
-                className="min-h-[52px]"
+                onChange={(v) => setForm({ ...form, endDate: v })}
+                placeholder="Select end date"
+                minDate={form.startDate}
               />
             </FormField>
           </div>
@@ -550,21 +549,19 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
             {form.requestedCrewSize && form.requestedCrewSize > 0 && (
               <div className="grid grid-cols-2 gap-4">
                 <FormField label="Start Date">
-                  <Input
-                    type="date"
+                  <DatePicker
                     value={form.manpowerStartDate}
-                    onChange={(e) => setForm({ ...form, manpowerStartDate: e.target.value })}
-                    className="min-h-[52px]"
+                    onChange={(v) => setForm({ ...form, manpowerStartDate: v })}
+                    placeholder="Select start"
                   />
                 </FormField>
 
                 <FormField label="End Date">
-                  <Input
-                    type="date"
+                  <DatePicker
                     value={form.manpowerEndDate}
-                    onChange={(e) => setForm({ ...form, manpowerEndDate: e.target.value })}
-                    min={form.manpowerStartDate}
-                    className="min-h-[52px]"
+                    onChange={(v) => setForm({ ...form, manpowerEndDate: v })}
+                    placeholder="Select end"
+                    minDate={form.manpowerStartDate}
                   />
                 </FormField>
               </div>

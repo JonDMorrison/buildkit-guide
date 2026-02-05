@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DatePicker } from '@/components/ui/date-picker';
 import { 
   Camera, 
   Receipt as ReceiptIcon, 
@@ -241,21 +242,20 @@ export const PMReceiptsView = ({ projectId }: PMReceiptsViewProps) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Date Range */}
             <div className="space-y-2">
-              <Label className="text-[#1C3B23]">Start Date</Label>
-              <Input
-                type="date"
+              <Label className="text-foreground">Start Date</Label>
+              <DatePicker
                 value={startDate ? format(startDate, 'yyyy-MM-dd') : ''}
-                onChange={(e) => setStartDate(e.target.value ? new Date(e.target.value) : null)}
-                className="border-[#A0ADA3]/30"
+                onChange={(v) => setStartDate(v ? new Date(v) : null)}
+                placeholder="Select start"
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-[#1C3B23]">End Date</Label>
-              <Input
-                type="date"
+              <Label className="text-foreground">End Date</Label>
+              <DatePicker
                 value={endDate ? format(endDate, 'yyyy-MM-dd') : ''}
-                onChange={(e) => setEndDate(e.target.value ? new Date(e.target.value) : null)}
-                className="border-[#A0ADA3]/30"
+                onChange={(v) => setEndDate(v ? new Date(v) : null)}
+                placeholder="Select end"
+                minDate={startDate ? format(startDate, 'yyyy-MM-dd') : undefined}
               />
             </div>
 

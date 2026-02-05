@@ -13,6 +13,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { FormField } from './FormField';
+import { DatePicker } from './ui/date-picker';
 import { Loader2 } from 'lucide-react';
 
 const projectSchema = z.object({
@@ -194,11 +195,10 @@ export const EditProjectModal = ({ open, onOpenChange, project, onSuccess }: Edi
               label="Start Date"
               error={errors.startDate}
             >
-              <Input
-                type="date"
+              <DatePicker
                 value={form.startDate}
-                onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-                className="min-h-[52px]"
+                onChange={(v) => setForm({ ...form, startDate: v })}
+                placeholder="Select start date"
               />
             </FormField>
 
@@ -206,11 +206,11 @@ export const EditProjectModal = ({ open, onOpenChange, project, onSuccess }: Edi
               label="End Date"
               error={errors.endDate}
             >
-              <Input
-                type="date"
+              <DatePicker
                 value={form.endDate}
-                onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                className="min-h-[52px]"
+                onChange={(v) => setForm({ ...form, endDate: v })}
+                placeholder="Select end date"
+                minDate={form.startDate}
               />
             </FormField>
           </div>

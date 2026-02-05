@@ -13,6 +13,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
+import { DatePicker } from '../ui/date-picker';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 
 interface RequestManpowerModalProps {
@@ -144,13 +145,12 @@ export const RequestManpowerModal = ({
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="required_date">Start Date *</Label>
-              <Input
-                id="required_date"
-                type="date"
+              <DatePicker
                 value={form.required_date}
-                onChange={(e) => setForm({ ...form, required_date: e.target.value })}
+                onChange={(v) => setForm({ ...form, required_date: v })}
+                placeholder="Select date"
                 className={errors.required_date ? 'border-destructive' : ''}
               />
               {errors.required_date && (

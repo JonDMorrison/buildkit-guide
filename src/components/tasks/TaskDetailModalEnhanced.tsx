@@ -20,6 +20,7 @@ import { TradeBadge } from '../TradeBadge';
 import { StatusBadge } from '../StatusBadge';
 import { Separator } from '../ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { DatePicker } from '../ui/date-picker';
 import {
   Select,
   SelectContent,
@@ -403,13 +404,14 @@ export const TaskDetailModalEnhanced = ({
                 <span className="font-semibold">Start Date</span>
               </div>
               {editMode ? (
-                <Input
-                  type="date"
-                  value={editForm.start_date}
-                  onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })}
-                  className="ml-6"
-                  disabled={!canEditDates}
-                />
+                <div className="ml-6">
+                  <DatePicker
+                    value={editForm.start_date}
+                    onChange={(v) => setEditForm({ ...editForm, start_date: v })}
+                    placeholder="Select start date"
+                    disabled={!canEditDates}
+                  />
+                </div>
               ) : (
                 <p className="text-sm text-muted-foreground ml-6">
                   {task.start_date ? new Date(task.start_date).toLocaleDateString() : 'Not set'}
@@ -423,14 +425,15 @@ export const TaskDetailModalEnhanced = ({
                 <span className="font-semibold">End Date</span>
               </div>
               {editMode ? (
-                <Input
-                  type="date"
-                  value={editForm.end_date}
-                  onChange={(e) => setEditForm({ ...editForm, end_date: e.target.value })}
-                  min={editForm.start_date}
-                  className="ml-6"
-                  disabled={!canEditDates}
-                />
+                <div className="ml-6">
+                  <DatePicker
+                    value={editForm.end_date}
+                    onChange={(v) => setEditForm({ ...editForm, end_date: v })}
+                    placeholder="Select end date"
+                    minDate={editForm.start_date}
+                    disabled={!canEditDates}
+                  />
+                </div>
               ) : (
                 <p className="text-sm text-muted-foreground ml-6">
                   {task.end_date ? new Date(task.end_date).toLocaleDateString() : 'Not set'}
