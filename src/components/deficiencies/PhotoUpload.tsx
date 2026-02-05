@@ -4,7 +4,7 @@ import { Camera, X, Upload, Loader2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-
+import { isHeicFile, convertHeicToJpeg } from "@/lib/heicConversion";
 interface PhotoUploadProps {
   photos: File[];
   onPhotosChange: (photos: File[]) => void;
@@ -91,7 +91,16 @@ export const PhotoUpload = ({
       const newPreviews: string[] = [];
 
       for (let i = 0; i < files.length && photos.length + newPhotos.length < maxPhotos; i++) {
-        const file = files[i];
+        let file = files[i];
+        
+        // Convert HEIC to JPEG if needed
+        if (isHeicFile(file)) {
+          toast({
+            title: 'Converting image...',
+            description: 'Converting HEIC format to JPEG',
+          });
+          file = await convertHeicToJpeg(file);
+        }
         
         // Compress the image
         const compressedFile = await compressImage(file);
@@ -104,8 +113,13 @@ export const PhotoUpload = ({
 
       onPhotosChange([...photos, ...newPhotos]);
       setPreviews([...previews, ...newPreviews]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error processing images:", error);
+      toast({
+        title: 'Error processing image',
+        description: error.message || 'Please try a different image.',
+        variant: 'destructive',
+      });
     } finally {
       setCompressing(false);
     }
@@ -206,7 +220,7 @@ export const PhotoUpload = ({
           <input
             ref={cameraInputRef}
             type="file"
-            accept="image/*"
+            accept="image/*,.heic,.heif"
             capture="environment"
             multiple
             onChange={(e) => handleFileSelect(e.target.files)}
@@ -216,7 +230,7 @@ export const PhotoUpload = ({
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/*,.heic,.heif"
             multiple
             onChange={(e) => handleFileSelect(e.target.files)}
             className="hidden"

@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { getSignedUrl } from '@/hooks/useSignedUrl';
+import { isHeicFile, convertHeicToJpeg } from '@/lib/heicConversion';
 import { Paperclip, Plus, Download, Loader2, FileText, File } from 'lucide-react';
 
 interface Attachment {
@@ -67,7 +68,7 @@ export const TaskAttachments = ({
   }, [attachments]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    let file = e.target.files?.[0];
     if (!file || !user) return;
 
     // Validate file size (max 50MB)
@@ -83,6 +84,15 @@ export const TaskAttachments = ({
     setUploading(true);
 
     try {
+      // Convert HEIC to JPEG if needed
+      if (isHeicFile(file)) {
+        toast({
+          title: 'Converting image...',
+          description: 'Converting HEIC format to JPEG',
+        });
+        file = await convertHeicToJpeg(file);
+      }
+
       // Upload to storage
       const fileExt = file.name.split('.').pop();
       const fileName = `${taskId}/${Date.now()}.${fileExt}`;
@@ -112,7 +122,7 @@ export const TaskAttachments = ({
     } catch (err: any) {
       toast({
         title: 'Upload failed',
-        description: err.message,
+        description: err.message || 'Please try again',
         variant: 'destructive',
       });
     } finally {
@@ -142,6 +152,7 @@ export const TaskAttachments = ({
             <input
               ref={fileInputRef}
               type="file"
+              accept="*/*,.heic,.heif"
               onChange={handleUpload}
               className="hidden"
             />
