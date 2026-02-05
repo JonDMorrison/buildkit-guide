@@ -557,6 +557,7 @@ export default function Dashboard() {
             todayLog={todayLog}
             open={weatherPopoverOpen}
             onOpenChange={setWeatherPopoverOpen}
+            projectId={currentProjectId}
           />
           <CrewInfoModal
             crewCount={todayLog?.crew_count || 0}
