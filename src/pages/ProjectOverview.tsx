@@ -32,7 +32,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, AlertTriangle, Shield, CheckCircle2, FileText, Users, Calendar, Plus, MoreVertical, Archive, Receipt, Pencil, FileImage } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Shield, CheckCircle2, FileText, Users, Calendar, Plus, MoreVertical, Archive, Receipt, Pencil, FileImage, Trash2 } from 'lucide-react';
 
 interface Project {
   id: string;
@@ -61,6 +61,7 @@ const ProjectOverview = () => {
   const [stats, setStats] = useState<ProjectStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
 
   const canManageProject = projectId ? can('manage_project', projectId) : false;
@@ -220,6 +221,13 @@ const ProjectOverview = () => {
                   <Archive className="h-4 w-4 mr-2" />
                   Archive Project
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setDeleteDialogOpen(true)}
+                  className="text-destructive"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Project
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -358,6 +366,53 @@ const ProjectOverview = () => {
                 className="bg-status-issue hover:bg-status-issue/90"
               >
                 Archive Project
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Permanently Delete Project?</AlertDialogTitle>
+              <AlertDialogDescription className="space-y-2">
+                <span className="block">This will permanently delete "{project.name}" and all associated data including:</span>
+                <span className="block font-medium text-destructive">• All tasks, blockers, and assignments</span>
+                <span className="block font-medium text-destructive">• All documents, drawings, and attachments</span>
+                <span className="block font-medium text-destructive">• All safety forms and deficiency records</span>
+                <span className="block font-medium text-destructive">• All receipts and daily logs</span>
+                <span className="block mt-2">This action cannot be undone. Consider archiving instead if you may need this data later.</span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={async () => {
+                  try {
+                    const { error } = await supabase
+                      .from('projects')
+                      .delete()
+                      .eq('id', projectId);
+                    if (error) throw error;
+                    toast({
+                      title: 'Project deleted',
+                      description: 'The project has been permanently deleted.',
+                    });
+                    navigate('/');
+                  } catch (error: any) {
+                    toast({
+                      title: 'Error deleting project',
+                      description: error.message,
+                      variant: 'destructive',
+                    });
+                  } finally {
+                    setDeleteDialogOpen(false);
+                  }
+                }}
+                className="bg-destructive hover:bg-destructive/90"
+              >
+                Delete Permanently
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

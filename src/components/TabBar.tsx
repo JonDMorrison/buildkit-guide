@@ -68,14 +68,14 @@ export const TabBar = () => {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 h-tab-bar bg-card border-t border-border safe-area-bottom">
-      <div className="flex items-center h-full w-full">
+      <div className="flex items-center h-full w-full overflow-x-auto scrollbar-hide">
         {visibleTabs.map((tab) => {
           const Icon = tab.icon;
           return (
             <NavLink
               key={tab.path}
               to={tab.path}
-              className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full text-muted-foreground transition-colors"
+              className="flex flex-col items-center justify-center gap-0.5 min-w-[64px] flex-shrink-0 h-full text-muted-foreground transition-colors px-1"
               activeClassName="text-primary"
             >
               <Icon className="h-5 w-5" />
