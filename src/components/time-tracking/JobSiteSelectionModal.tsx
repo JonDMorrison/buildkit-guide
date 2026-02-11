@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MapPin, AlertTriangle, Building2, MapPinOff, Zap } from 'lucide-react';
+import { MapPin, AlertTriangle, Building2, MapPinOff, Zap, Plus } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -15,6 +15,7 @@ import { JobSite } from '@/hooks/useJobSites';
 import { LocationPreviewMap } from './LocationPreviewMap';
 import { VoiceNotesInput } from './VoiceNotesInput';
 import { SmartJobSiteSuggestion } from './SmartJobSiteSuggestion';
+import { CreateJobSiteModal } from '@/components/setup/steps/CreateJobSiteModal';
 
 interface JobSiteSelectionModalProps {
   open: boolean;
@@ -25,6 +26,8 @@ interface JobSiteSelectionModalProps {
   locationUnavailable?: boolean;
   userLocation?: { lat: number; lng: number; accuracy: number } | null;
   autoSelectSingle?: boolean;
+  projectId?: string;
+  onJobSiteCreated?: () => void;
 }
 
 export function JobSiteSelectionModal({
@@ -36,9 +39,12 @@ export function JobSiteSelectionModal({
   locationUnavailable = false,
   userLocation = null,
   autoSelectSingle = true,
+  projectId,
+  onJobSiteCreated,
 }: JobSiteSelectionModalProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
+  const [showCreateJobSite, setShowCreateJobSite] = useState(false);
 
   // Auto-select if only one job site and autoSelectSingle is true
   useEffect(() => {
@@ -111,12 +117,24 @@ export function JobSiteSelectionModal({
               Loading job sites...
             </div>
           ) : jobSites.length === 0 ? (
-            <Alert>
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                No job sites configured for this project. Your check-in will be flagged for review.
-              </AlertDescription>
-            </Alert>
+            <div className="space-y-3">
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  No job sites configured for this project. Create one now, or check in without one (entry will be flagged for review).
+                </AlertDescription>
+              </Alert>
+              {projectId && (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setShowCreateJobSite(true)}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Job Site
+                </Button>
+              )}
+            </div>
           ) : (
             <>
               {/* Single job site - simplified view */}
@@ -217,6 +235,19 @@ export function JobSiteSelectionModal({
           </Button>
         </div>
       </DialogContent>
+
+      {/* Inline Create Job Site modal */}
+      {projectId && (
+        <CreateJobSiteModal
+          open={showCreateJobSite}
+          onOpenChange={setShowCreateJobSite}
+          projectId={projectId}
+          onSuccess={() => {
+            setShowCreateJobSite(false);
+            onJobSiteCreated?.();
+          }}
+        />
+      )}
     </Dialog>
   );
 }
