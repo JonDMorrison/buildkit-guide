@@ -562,6 +562,8 @@ export default function TimeTracking() {
           locationUnavailable={locationWarning === 'location_unavailable'}
           userLocation={pendingLocation}
           autoSelectSingle={true}
+          projectId={currentProjectId || undefined}
+          onJobSiteCreated={refetchAll}
         />
         <GeofenceErrorModal open={showGeofenceError} onOpenChange={setShowGeofenceError} distance={geofenceError.distance} radius={geofenceError.radius} jobSiteName={geofenceError.jobSiteName} />
         <TimeEntryDetailDrawer entry={selectedEntry} open={showDetailDrawer} onOpenChange={setShowDetailDrawer} onRequestAdjustment={handleRequestAdjustment} />
