@@ -18,6 +18,7 @@ import {
   Clock,
   X,
   Search,
+  Building2,
 } from 'lucide-react';
 import { useGlobalSearch, SearchResult, SearchResultType } from '@/hooks/useGlobalSearch';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +30,7 @@ interface GlobalSearchModalProps {
 }
 
 const typeIcons: Record<SearchResultType, React.ReactNode> = {
+  project: <Building2 className="h-4 w-4 text-primary" />,
   task: <CheckSquare className="h-4 w-4 text-primary" />,
   deficiency: <AlertTriangle className="h-4 w-4 text-destructive" />,
   document: <FileText className="h-4 w-4 text-blue-500" />,
@@ -37,6 +39,7 @@ const typeIcons: Record<SearchResultType, React.ReactNode> = {
 };
 
 const typeLabels: Record<SearchResultType, string> = {
+  project: 'Projects',
   task: 'Tasks',
   deficiency: 'Deficiencies',
   document: 'Documents',
@@ -193,6 +196,15 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
 
         {hasResults && (
           <>
+            {results.projects.length > 0 && (
+              <>
+                <CommandGroup heading={typeLabels.project}>
+                  {results.projects.map(renderResultItem)}
+                </CommandGroup>
+                <CommandSeparator />
+              </>
+            )}
+
             {results.tasks.length > 0 && (
               <>
                 <CommandGroup heading={typeLabels.task}>

@@ -131,13 +131,16 @@ export const useDashboardLayout = (projectId: string | null) => {
 
       const { error } = await supabase
         .from('dashboard_layouts')
-        .upsert({
-          user_id: user.id,
-          project_id: projectId,
-          layout: JSON.parse(JSON.stringify(newLayouts)),
-          hidden_widgets: newHiddenWidgets,
-          updated_at: new Date().toISOString(),
-        } as any);
+        .upsert(
+          {
+            user_id: user.id,
+            project_id: projectId,
+            layout: JSON.parse(JSON.stringify(newLayouts)),
+            hidden_widgets: newHiddenWidgets,
+            updated_at: new Date().toISOString(),
+          } as any,
+          { onConflict: 'user_id,project_id' }
+        );
 
       if (error) throw error;
       return { layouts: newLayouts, hiddenWidgets: newHiddenWidgets };
