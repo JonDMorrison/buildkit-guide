@@ -69,6 +69,7 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
     recentSearches,
     addRecentSearch,
     clearRecentSearches,
+    currentProjectId,
   } = useGlobalSearch();
 
   // Reset query when modal closes
@@ -142,7 +143,9 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
               <Search className="h-10 w-10 text-muted-foreground/50" />
               <p>No results found for "{query}"</p>
               <p className="text-xs text-muted-foreground">
-                Try different keywords or check spelling
+                {!currentProjectId 
+                  ? "Select a project first to search within it" 
+                  : "Try different keywords or check spelling"}
               </p>
             </div>
           </CommandEmpty>

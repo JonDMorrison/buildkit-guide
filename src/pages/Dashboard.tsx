@@ -451,17 +451,7 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      {/* Dashboard Settings in TopNav area - responsive positioning */}
-      <div className="fixed top-0 right-[120px] sm:right-[160px] z-40 h-nav flex items-center">
-        <DashboardCustomizer
-          isEditMode={isEditMode}
-          setIsEditMode={setIsEditMode}
-          hiddenWidgets={hiddenWidgets}
-          onToggleWidget={toggleWidget}
-          onSave={handleSaveLayout}
-          onReset={resetLayout}
-        />
-      </div>
+      {/* Dashboard Settings removed from fixed positioning */}
       
       <div className="dashboard-container py-6 pb-24 md:pb-8">
         <div className="dashboard-section">
@@ -553,6 +543,14 @@ export default function Dashboard() {
               </div>
 
               <div className="flex items-center gap-2">
+                <DashboardCustomizer
+                  isEditMode={isEditMode}
+                  setIsEditMode={setIsEditMode}
+                  hiddenWidgets={hiddenWidgets}
+                  onToggleWidget={toggleWidget}
+                  onSave={handleSaveLayout}
+                  onReset={resetLayout}
+                />
                 <Button 
                   onClick={() => setQuickAddModalOpen(true)} 
                   size="sm" 
