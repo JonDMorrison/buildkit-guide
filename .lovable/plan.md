@@ -1,206 +1,96 @@
 
-## What’s actually happening (root cause)
+# Additional UX Issues Found (Similar to Melissa's Feedback)
 
-### 1) The request is failing at the database layer with an RLS error
-When you click **Create Project**, the frontend sends:
+Based on a thorough audit of the codebase and live mobile testing, here are additional problems that a user like Melissa would encounter:
 
-- `POST /rest/v1/projects?select=*`
-- with `Prefer: return=representation` (because the code does `.insert(...).select().single()`)
+---
 
-Your network logs show the backend response:
+## Issue 1: Tab Bar Labels Overlap on Mobile
 
-- **HTTP 403**
-- `{"code":"42501","message":"new row violates row-level security policy for table \"projects\""}`
+**Problem:** On mobile (390px), all 10 tab labels ("Dashboard", "Tasks", "Hours", "Lookahead", "Manpower", "Drawings", "Deficiencies", "Safety", "Receipts", "Time") render in a single row with `flex-1` sizing. The labels visibly collide and truncate into each other (e.g., "LookaheadManpowerDrawingsDeficienciesSafety" runs together as seen in the screenshot).
 
-So project creation is not failing “mysteriously”; it’s being blocked by Row Level Security.
+**Fix:** Make the tab bar horizontally scrollable on mobile with `overflow-x-auto` and give each tab a `min-w-[64px]` instead of relying on `flex-1` to squeeze all 10 tabs into ~390px. This is the standard mobile pattern (similar to Instagram, YouTube, etc.).
 
-### 2) Why you see “Unknown error” in the UI instead of the real message
-In `src/components/CreateProjectModal.tsx`, the catch block does:
+**File:** `src/components/TabBar.tsx`
 
-```ts
-description: error instanceof Error ? error.message : 'Unknown error'
-```
+---
 
-Supabase/PostgREST errors are often *plain objects* (not `instanceof Error`), so the UI frequently falls back to `"Unknown error"` even when the backend returned a useful message.
+## Issue 2: AI Button Still Overlaps Receipts Tab on Mobile
 
-### 3) The policies we changed were necessary, but not sufficient
-You shared the last migration diff (`supabase/migrations/20260204133341_033acad1-db98-45ef-9f1e-e422a0a7b044.sql`) which:
+**Problem:** The AI floating button is positioned at `bottom-[calc(var(--tab-bar-height)+16px)] right-4`. While it no longer covers the Receipts icon directly, it sits very close to the tab bar and can obscure content at the bottom of pages. On pages with bottom-anchored content (like Receipts list items), it blocks interaction.
 
-- Updated **projects INSERT** policy to allow org admins/PMs
-- Updated **project_members INSERT** policy to allow creator to add themselves (within 30s)
+**Fix:** Increase the bottom offset to `bottom-[calc(var(--tab-bar-height)+24px)]` and reduce the button size on mobile from `h-14 w-14` to `h-12 w-12`.
 
-Those changes *do exist* in the database right now (confirmed via `pg_policies`).
+**File:** `src/components/ai-assist/AIAssistButton.tsx`
 
-### 4) The hidden “chicken-and-egg” problem: INSERT is using RETURNING, and RETURNING is blocked by the projects SELECT policy
-Your current **projects SELECT** policy (defined in `supabase/migrations/20251213224611_9ff27cdd-19f2-4fab-bb55-7c791892fa20.sql`) is:
+---
 
-```sql
-USING (
-  is_project_member(auth.uid(), id)
-  AND has_org_membership(organization_id)
-);
-```
+## Issue 3: Dashboard Settings Gear Uses Fixed Positioning That Breaks on Different Screen Sizes
 
-Meaning: a user can only “see” a project row if they are already in `project_members`.
+**Problem:** The settings gear is positioned with `fixed top-0 right-[120px] sm:right-[160px] z-40`. This hardcoded pixel offset doesn't account for varying TopNav content widths (e.g., notification badge count changing width, different avatar sizes). On some screen widths, it still overlaps the search icon or notification bell.
 
-But the create flow is:
+**Fix:** Instead of using fixed positioning with pixel offsets, move the DashboardCustomizer settings gear *into* the TopNav's flex container (or into the dashboard header area next to the "Add" and "Tasks" buttons), eliminating the overlap entirely.
 
-1) Insert into `projects` and ask the backend to return the inserted row (`select=*`)
-2) Then insert into `project_members` using the returned `project.id`
+**File:** `src/pages/Dashboard.tsx`
 
-At the moment of (1), the user is **not yet** a project member, so the row is not visible under the SELECT policy.
+---
 
-Because the insert is being executed with a “return the created row” behavior, the database ends up enforcing visibility rules at that point, and the operation fails with the RLS error you’re seeing.
+## Issue 4: No Way to Delete a Project (Only Archive)
 
-This is why it keeps failing even after loosening the INSERT policy.
+**Problem:** Melissa asked about editing *and deleting* a project. The app only supports "Archive" via the Project Overview page's three-dot menu. There's no actual delete option. For a user who created a test project or made a mistake, archiving feels incomplete -- they'd expect to be able to permanently remove it.
 
-## Where this lives in the codebase
+**Fix:** Add a "Delete Project" option to the dropdown menu (with a confirmation dialog that warns about permanent data loss). Gate it behind an admin/owner permission check. Keep "Archive" as the soft-delete default.
 
-### Frontend (create flow + error handling)
-- `src/components/CreateProjectModal.tsx`
-  - The insert is: `supabase.from('projects').insert(...).select().single()`
-  - The “Unknown error” comes from `error instanceof Error ? ... : 'Unknown error'`
-- Entry points that open this modal:
-  - `src/pages/Index.tsx` (Projects list page)
-  - `src/components/dashboard/QuickAddModal.tsx` (Quick Add → New Project)
-- Organization context feeding `organization_id`:
-  - `src/hooks/useOrganization.tsx`
+**File:** `src/pages/ProjectOverview.tsx`
 
-### Database policies + helper functions
-- Project SELECT policy (the one causing the “returning row” problem):
-  - `supabase/migrations/20251213224611_9ff27cdd-19f2-4fab-bb55-7c791892fa20.sql`
-- Recent policy edits you shared:
-  - `supabase/migrations/20260204133215_01877c31-92cc-4e9a-bcb9-fb69df6ea45f.sql`
-  - `supabase/migrations/20260204133341_033acad1-db98-45ef-9f1e-e422a0a7b044.sql`
-- Helper functions involved:
-  - `public.is_org_admin`, `public.is_admin`, `public.has_role`, `public.is_project_member`, `public.has_org_membership`
+---
 
-## Everything I checked / tried (audit trail)
+## Issue 5: Receipts Page Loses Project Context When Navigating Away and Back
 
-1) Confirmed the backend error from the client network log:
-   - The failing call is `POST .../rest/v1/projects?select=*`
-   - Response is `42501 new row violates row-level security policy for table "projects"`
+**Problem:** Navigating to `/receipts` shows "No Project Selected" even though a project was selected on the dashboard. The `useCurrentProject` hook persists project ID via URL params, but the Receipts page doesn't read from the same source, requiring the user to re-select a project.
 
-2) Verified the *current* policies in the database (not just migrations):
-   - `projects` has an INSERT policy named **“Org members with appropriate role can insert projects”**
-   - `project_members` has an INSERT policy named **“Admin, PM, or org admin can add project members”**
+**Fix:** Ensure the Receipts page reads `currentProjectId` from the same `useCurrentProject` hook used by the Dashboard, so project context carries across page navigations.
 
-3) Verified helper functions are present and SECURITY DEFINER:
-   - `is_org_admin`, `is_admin`, `has_role`, `has_project_role`, `is_project_member`, `has_org_membership`
+**File:** `src/pages/Receipts.tsx`
 
-4) Verified Jon’s org-admin status evaluates correctly:
-   - `is_org_admin(jon_user_id, jon_org_id) = true`
+---
 
-5) Found the structural mismatch:
-   - The create call requests a returned representation (because `.select().single()`)
-   - But `projects` SELECT policy requires project membership that doesn’t exist yet at that time
+## Issue 6: Global Search Doesn't Show Results When Not Logged In / No Project Selected
 
-## Proposed fix (make project creation reliable in all cases)
+**Problem:** The `useGlobalSearch` hook queries data scoped to the current project. If no project is selected (which happens on several pages), search returns nothing with no explanation to the user.
 
-### A) Fix the database policies so “create + return” works reliably
-**Goal:** a creator must be allowed to see the newly created project row immediately (at least for the purpose of returning it), without opening security holes.
+**Fix:** When no project is selected, show a hint message: "Select a project first to search within it" instead of the generic "No results found."
 
-1) Update the `projects` SELECT policy:
-   - Change from:
-     - “only project members can view”
-   - To:
-     - “project members OR the creator can view”
-   - Keep the org isolation check:
-     - still require `has_org_membership(organization_id)` so ex-members can’t keep viewing org data
+**File:** `src/components/GlobalSearchModal.tsx`
 
-   Conceptually:
-   ```sql
-   USING (
-     has_org_membership(organization_id)
-     AND (
-       is_project_member(auth.uid(), id)
-       OR created_by = auth.uid()
-     )
-   );
-   ```
+---
 
-2) Tighten the `projects` INSERT policy to prevent abuse:
-   - Require `created_by = auth.uid()`
-   - Require org membership + role (admin/pm) for that `organization_id` (except true global admins, if you want that)
-   - This prevents a user from spoofing `created_by` to gain access via the new SELECT rule.
+## Summary of Changes
 
-   Conceptually:
-   ```sql
-   WITH CHECK (
-     created_by = auth.uid()
-     AND (
-       is_admin(auth.uid())
-       OR exists (
-         select 1
-         from organization_memberships om
-         where om.user_id = auth.uid()
-           and om.organization_id = organization_id
-           and om.role in ('admin','pm')
-           and om.is_active = true
-       )
-     )
-   );
-   ```
+| # | Issue | File(s) | Effort |
+|---|-------|---------|--------|
+| 1 | Tab bar label overlap on mobile | `TabBar.tsx` | Small |
+| 2 | AI button proximity to tab bar | `AIAssistButton.tsx` | Small |
+| 3 | Settings gear fixed positioning | `Dashboard.tsx` | Medium |
+| 4 | No project delete option | `ProjectOverview.tsx` | Medium |
+| 5 | Receipts loses project context | `Receipts.tsx` | Small |
+| 6 | Search empty state when no project | `GlobalSearchModal.tsx` | Small |
 
-3) Remove the fragile “30 seconds” window on `project_members` INSERT:
-   - Allow creators to add themselves to their own project **without a time limit**, but only when:
-     - `user_id = auth.uid()` AND project `created_by = auth.uid()`
-   - This avoids edge failures on slow networks / background tabs.
+---
 
-### B) Fix the frontend so you never see “Unknown error” again
-In `src/components/CreateProjectModal.tsx`:
+## Technical Details
 
-1) Improve error message extraction:
-   - If `error` is an object with a `message` string, show it.
-   - If it’s a PostgREST-like object (`{ code, message, hint, details }`), format it for the toast.
-   - This will immediately surface RLS messages instead of “Unknown error”.
+**Tab Bar Fix (Issue 1):**
+- Change the nav container from `flex` with `flex-1` children to `overflow-x-auto` with `min-w-[64px]` per tab
+- Add `scrollbar-hide` class to prevent visible scrollbar
+- Keep current active state styling
 
-2) Add one guard to reduce race conditions:
-   - Disable “Create Project” submission until organization context is done loading, or ensure an `organization_id` is present before trying to insert.
+**Settings Gear Fix (Issue 3):**
+- Remove the `fixed top-0 right-[120px]` wrapper from Dashboard.tsx
+- Place the `DashboardCustomizer` inline in the dashboard header, next to the "Add" and "Tasks" buttons
 
-### C) Add “foundation-level” tests and safeguards
-1) Add an E2E test that covers:
-   - Org admin creates project successfully
-   - Org PM creates project successfully
-   - Worker cannot create project (UI hides it; API would fail)
-   - Newly created project appears in the Projects list immediately
-
-2) Add a regression test for the specific previously-broken scenario:
-   - Create project via UI → ensures the INSERT returning path works (no RLS failure)
-
-## Validation matrix (how we’ll prove it’s fixed “in all other cases”)
-
-After implementing the changes:
-
-1) Org Admin (like jon@brandsinblooms.com)
-   - Create project from Index page
-   - Create project from Quick Add
-   - Verify it appears immediately and navigation to `/projects/:id` works
-
-2) Org PM
-   - Same as above
-
-3) Foreman / Worker roles
-   - Confirm no “Add Project” CTA
-   - Confirm backend rejects project inserts if attempted
-
-4) New user with no org
-   - Create project triggers org creation first
-   - Ensure project create succeeds and project shows up
-
-5) Removed-from-org user
-   - Ensure they cannot see org projects even if they created them (the `has_org_membership(organization_id)` part prevents “creator lingering access”)
-
-## Implementation steps (what I would change next once you approve)
-
-1) Create a new database migration to:
-   - Update `projects` SELECT policy to include `created_by = auth.uid()` path (still gated by `has_org_membership`)
-   - Tighten `projects` INSERT policy to require `created_by = auth.uid()` and correct org role
-   - Update `project_members` INSERT policy to remove the 30-second time window and replace with “creator can always self-add”
-
-2) Update `src/components/CreateProjectModal.tsx`:
-   - Improve error handling (no more “Unknown error”)
-   - Optionally block submission until org context is ready
-
-3) Add/extend E2E test coverage for project creation
-
+**Project Delete (Issue 4):**
+- Add a new `DropdownMenuItem` for "Delete Project" with a `Trash2` icon
+- Add a second `AlertDialog` for delete confirmation with stronger warning language
+- Implement `handleDeleteProject` that cascades deletes or checks for dependent data first
+- Gate behind `canManageProject` permission
