@@ -4,6 +4,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Settings, Save, RotateCcw, X, Eye, EyeOff } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface DashboardCustomizerProps {
   isEditMode: boolean;
@@ -84,54 +85,57 @@ export const DashboardCustomizer = ({
                 Toggle widgets on/off and drag to rearrange your dashboard layout.
               </SheetDescription>
             </SheetHeader>
-            <div className="mt-6 space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Widget Visibility</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {Object.entries(WIDGET_NAMES).map(([id, name]) => (
-                    <div key={id} className="flex items-center justify-between">
-                      <Label htmlFor={id} className="flex items-center gap-2 cursor-pointer">
-                        {hiddenWidgets.includes(id) ? (
-                          <EyeOff className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <Eye className="h-4 w-4 text-secondary" />
-                        )}
-                        {name}
-                      </Label>
-                      <Switch
-                        id={id}
-                        checked={!hiddenWidgets.includes(id)}
-                        onCheckedChange={() => onToggleWidget(id)}
-                      />
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
+            <ScrollArea className="mt-6 h-[calc(100vh-140px)]">
+              <div className="space-y-6 pr-4">
+                {/* Edit Layout first so it's immediately visible */}
+                <Card className="bg-muted/50 border-primary/30">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Edit Layout</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Enable edit mode to drag and resize widgets.
+                    </p>
+                    <Button
+                      onClick={() => setIsEditMode(true)}
+                      className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                    >
+                      <Settings className="h-4 w-4 mr-2" />
+                      Enable Edit Mode
+                    </Button>
+                  </CardContent>
+                </Card>
 
-              <Card className="bg-muted/50">
-                <CardHeader>
-                  <CardTitle className="text-base">Edit Layout</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Enable edit mode to drag widgets and resize them to your preferred layout.
-                  </p>
-                  <Button
-                    onClick={() => setIsEditMode(true)}
-                    className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-                  >
-                    <Settings className="h-4 w-4 mr-2" />
-                    Enable Edit Mode
-                  </Button>
-                </CardContent>
-              </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Widget Visibility</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {Object.entries(WIDGET_NAMES).map(([id, name]) => (
+                      <div key={id} className="flex items-center justify-between">
+                        <Label htmlFor={id} className="flex items-center gap-2 cursor-pointer">
+                          {hiddenWidgets.includes(id) ? (
+                            <EyeOff className="h-4 w-4 text-muted-foreground" />
+                          ) : (
+                            <Eye className="h-4 w-4 text-secondary" />
+                          )}
+                          {name}
+                        </Label>
+                        <Switch
+                          id={id}
+                          checked={!hiddenWidgets.includes(id)}
+                          onCheckedChange={() => onToggleWidget(id)}
+                        />
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
 
-              <div className="text-xs text-muted-foreground">
-                <p>💡 Tip: Your layout is saved per project and synced across devices.</p>
+                <div className="text-xs text-muted-foreground pb-4">
+                  <p>💡 Tip: Your layout is saved per project and synced across devices.</p>
+                </div>
               </div>
-            </div>
+            </ScrollArea>
           </SheetContent>
         </Sheet>
       )}
