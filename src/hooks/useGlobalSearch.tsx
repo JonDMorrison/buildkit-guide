@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
-export type SearchResultType = 'task' | 'deficiency' | 'document' | 'safety_form' | 'team_member';
+export type SearchResultType = 'project' | 'task' | 'deficiency' | 'document' | 'safety_form' | 'team_member';
 
 export interface SearchResult {
   id: string;
@@ -17,6 +17,7 @@ export interface SearchResult {
 }
 
 interface SearchData {
+  projects: SearchResult[];
   tasks: SearchResult[];
   deficiencies: SearchResult[];
   documents: SearchResult[];
@@ -54,6 +55,7 @@ export function useGlobalSearch() {
   const [query, setQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [searchData, setSearchData] = useState<SearchData>({
+    projects: [],
     tasks: [],
     deficiencies: [],
     documents: [],
@@ -68,6 +70,13 @@ export function useGlobalSearch() {
     const fetchSearchData = async () => {
       setIsLoading(true);
       try {
+        // Fetch projects
+        const { data: projects } = await supabase
+          .from('projects')
+          .select('id, name, location, status, job_number')
+          .eq('is_deleted', false)
+          .limit(200);
+
         // Fetch tasks
         const { data: tasks } = await supabase
           .from('tasks')
@@ -103,6 +112,14 @@ export function useGlobalSearch() {
           .limit(200);
 
         setSearchData({
+          projects: (projects || []).map(p => ({
+            id: p.id,
+            type: 'project' as const,
+            title: p.name,
+            subtitle: [p.job_number ? `#${p.job_number}` : null, p.location].filter(Boolean).join(' • ') || undefined,
+            status: p.status,
+            url: `/dashboard?projectId=${p.id}`,
+          })),
           tasks: (tasks || []).map(t => ({
             id: t.id,
             type: 'task' as const,
@@ -164,6 +181,7 @@ export function useGlobalSearch() {
   const results = useMemo(() => {
     if (!query.trim()) {
       return {
+        projects: [],
         tasks: [],
         deficiencies: [],
         documents: [],
@@ -189,6 +207,7 @@ export function useGlobalSearch() {
         .slice(0, 10);
     };
 
+    const filteredProjects = filterAndSort(searchData.projects);
     const filteredTasks = filterAndSort(searchData.tasks);
     const filteredDeficiencies = filterAndSort(searchData.deficiencies);
     const filteredDocuments = filterAndSort(searchData.documents);
@@ -196,12 +215,14 @@ export function useGlobalSearch() {
     const filteredTeamMembers = filterAndSort(searchData.teamMembers);
 
     return {
+      projects: filteredProjects,
       tasks: filteredTasks,
       deficiencies: filteredDeficiencies,
       documents: filteredDocuments,
       safetyForms: filteredSafetyForms,
       teamMembers: filteredTeamMembers,
       total: 
+        filteredProjects.length +
         filteredTasks.length + 
         filteredDeficiencies.length + 
         filteredDocuments.length + 

@@ -14,14 +14,14 @@ export const AIAssistButton = ({ onClick, hasNotification, className }: AIAssist
       onClick={onClick}
       size="icon"
       className={cn(
-        "fixed z-50 h-14 w-14 rounded-full shadow-lg",
+        "fixed z-40 h-14 w-14 rounded-full shadow-lg",
         "bg-accent hover:bg-accent/90 text-accent-foreground",
         "transition-all duration-300 hover:scale-105",
         // Desktop: bottom right
         "bottom-6 right-6",
-        // Mobile: centered above tab bar
+        // Mobile: bottom right above tab bar, not centered
         "md:bottom-6 md:right-6",
-        "max-md:bottom-[calc(var(--tab-bar-height)+16px)] max-md:left-1/2 max-md:-translate-x-1/2 max-md:right-auto",
+        "max-md:bottom-[calc(var(--tab-bar-height)+16px)] max-md:right-4",
         className
       )}
       aria-label="Open AI Assist"

@@ -28,13 +28,11 @@ import {
 } from "@/components/dashboard/widgets";
 import type { SnapshotTask, SnapshotTrade } from "@/components/dashboard/widgets";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
 import {
   CheckCircle2,
   ArrowRight,
@@ -42,6 +40,7 @@ import {
   ChevronDown,
   MoveIcon,
   Plus,
+  Search,
 } from "lucide-react";
 import { QuickAddModal } from "@/components/dashboard/QuickAddModal";
 import { format, isAfter, isBefore, addDays, startOfDay, subDays } from "date-fns";
@@ -57,6 +56,8 @@ export default function Dashboard() {
   const { currentProjectId, setCurrentProject } = useCurrentProject();
   const { isPM, isForeman } = useAuthRole(currentProjectId || undefined);
   const [currentBreakpoint, setCurrentBreakpoint] = useState("lg");
+  const [projectSearchOpen, setProjectSearchOpen] = useState(false);
+  const [projectSearchQuery, setProjectSearchQuery] = useState("");
   
   // Modal/popover states for snapshot strip
   const [startingModalOpen, setStartingModalOpen] = useState(false);
@@ -451,7 +452,7 @@ export default function Dashboard() {
   return (
     <Layout>
       {/* Dashboard Settings in TopNav area - responsive positioning */}
-      <div className="fixed top-0 right-[100px] sm:right-[140px] z-50 h-nav flex items-center">
+      <div className="fixed top-0 right-[120px] sm:right-[160px] z-40 h-nav flex items-center">
         <DashboardCustomizer
           isEditMode={isEditMode}
           setIsEditMode={setIsEditMode}
@@ -468,11 +469,16 @@ export default function Dashboard() {
           <div className="widget-card !bg-gradient-to-br !from-card !via-primary/5 !to-secondary/5">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div className="space-y-3">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
+                <Popover open={projectSearchOpen} onOpenChange={(open) => {
+                  setProjectSearchOpen(open);
+                  if (!open) setProjectSearchQuery("");
+                }}>
+                  <PopoverTrigger asChild>
                     <Button
                       variant="outline"
-                      className="justify-start gap-2 h-auto py-2 px-3 border-border hover:border-primary/50 hover:bg-muted hover:text-foreground data-[state=open]:bg-muted data-[state=open]:text-foreground"
+                      className="justify-start gap-2 h-auto py-2 px-3 border-border hover:border-primary/50 hover:bg-muted hover:text-foreground"
+                      role="combobox"
+                      aria-expanded={projectSearchOpen}
                     >
                       <Building2 className="h-4 w-4 text-primary" />
                       <div className="text-left">
@@ -483,37 +489,62 @@ export default function Dashboard() {
                       </div>
                       <ChevronDown className="h-4 w-4 text-muted-foreground" />
                     </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-[300px]">
-                    <DropdownMenuLabel className="text-xs uppercase tracking-wider text-muted-foreground">Switch Project</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {userProjects?.map((project: any) => (
-                      <DropdownMenuItem
-                        key={project.id}
-                        onClick={() => handleSetCurrentProject(project.id)}
-                        className="flex items-center gap-3 p-3 cursor-pointer"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            {project.id === currentProjectId && <CheckCircle2 className="h-3 w-3 text-status-complete" />}
-                            <p className="font-medium text-sm truncate">{project.name}</p>
-                          </div>
-                          {project.totalTasks > 0 && (
-                            <div className="flex items-center gap-2 mt-1.5">
-                              <div className="flex-1 h-1.5 bg-muted/30 rounded-full overflow-hidden">
-                                <div className="h-full bg-status-complete rounded-full transition-all" style={{ width: `${project.progress}%` }} />
-                              </div>
-                              <span className="text-xs font-medium text-muted-foreground">{project.progress}%</span>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-[300px] p-0" sideOffset={4}>
+                    <div className="p-2 border-b border-border">
+                      <Input
+                        placeholder="Search projects..."
+                        value={projectSearchQuery}
+                        onChange={(e) => setProjectSearchQuery(e.target.value)}
+                        className="h-8 text-sm"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="max-h-[250px] overflow-y-auto p-1">
+                      {(userProjects || [])
+                        .filter((p: any) => 
+                          !projectSearchQuery || 
+                          p.name.toLowerCase().includes(projectSearchQuery.toLowerCase()) ||
+                          p.location?.toLowerCase().includes(projectSearchQuery.toLowerCase())
+                        )
+                        .map((project: any) => (
+                        <button
+                          key={project.id}
+                          onClick={() => {
+                            handleSetCurrentProject(project.id);
+                            setProjectSearchOpen(false);
+                            setProjectSearchQuery("");
+                          }}
+                          className="flex items-center gap-3 p-3 cursor-pointer w-full text-left rounded-md hover:bg-muted transition-colors"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              {project.id === currentProjectId && <CheckCircle2 className="h-3 w-3 text-status-complete" />}
+                              <p className="font-medium text-sm truncate">{project.name}</p>
                             </div>
-                          )}
-                        </div>
-                        <Badge variant={getStatusBadgeVariant(project.status)} className="text-[10px]">
-                          {formatStatus(project.status)}
-                        </Badge>
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                            {project.totalTasks > 0 && (
+                              <div className="flex items-center gap-2 mt-1.5">
+                                <div className="flex-1 h-1.5 bg-muted/30 rounded-full overflow-hidden">
+                                  <div className="h-full bg-status-complete rounded-full transition-all" style={{ width: `${project.progress}%` }} />
+                                </div>
+                                <span className="text-xs font-medium text-muted-foreground">{project.progress}%</span>
+                              </div>
+                            )}
+                          </div>
+                          <Badge variant={getStatusBadgeVariant(project.status)} className="text-[10px]">
+                            {formatStatus(project.status)}
+                          </Badge>
+                        </button>
+                      ))}
+                      {(userProjects || []).filter((p: any) => 
+                        !projectSearchQuery || 
+                        p.name.toLowerCase().includes(projectSearchQuery.toLowerCase())
+                      ).length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-4">No projects found</p>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
 
                 <div>
                   <h1 className="text-2xl md:text-3xl font-bold text-foreground">Today on Site</h1>
@@ -618,11 +649,13 @@ export default function Dashboard() {
               rowHeight={78}
               isDraggable={isEditMode}
               isResizable={isEditMode}
+              compactType="vertical"
               onLayoutChange={handleLayoutChange}
               onBreakpointChange={handleBreakpointChange}
               draggableHandle=".drag-handle"
               margin={[16, 16]}
               containerPadding={[0, 0]}
+              useCSSTransforms={true}
             >
               {widgetIds.filter(id => !hiddenWidgets.includes(id)).map(widgetId => (
                 <div key={widgetId} className={`widget-wrapper ${isEditMode ? "ring-1 ring-primary/20" : ""}`}>
