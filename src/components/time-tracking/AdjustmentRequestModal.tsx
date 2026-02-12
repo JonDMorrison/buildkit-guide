@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { format, parseISO } from 'date-fns';
-import { AlertTriangle, Loader2, Clock, MapPin, FileText, Calendar } from 'lucide-react';
+import { AlertTriangle, Loader2, Clock, MapPin, FileText, Calendar, Plus } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -26,6 +26,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { TimeEntry } from '@/hooks/useRecentTimeEntries';
 import { JobSite } from '@/hooks/useJobSites';
+import { CreateJobSiteModal } from '@/components/setup/steps/CreateJobSiteModal';
 
 export type RequestType =
   | 'missed_check_in'
@@ -89,6 +90,7 @@ export function AdjustmentRequestModal({
   const [proposedCheckOut, setProposedCheckOut] = useState('');
   const [proposedJobSiteId, setProposedJobSiteId] = useState('');
   const [proposedNotes, setProposedNotes] = useState('');
+  const [showCreateJobSite, setShowCreateJobSite] = useState(false);
 
   // Pre-select request type when modal opens with a default
   useEffect(() => {
@@ -239,6 +241,7 @@ export function AdjustmentRequestModal({
     : ['missed_check_in', 'add_manual_entry'];
 
   return (
+    <>
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -347,18 +350,35 @@ export function AdjustmentRequestModal({
                       <span className="text-destructive">*</span>
                     )}
                   </Label>
-                  <Select value={proposedJobSiteId} onValueChange={setProposedJobSiteId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select job site" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {jobSites.map((site) => (
-                        <SelectItem key={site.id} value={site.id}>
-                          {site.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {jobSites.length === 0 ? (
+                    <div className="rounded-lg border border-dashed p-4 text-center space-y-3">
+                      <p className="text-sm text-muted-foreground">
+                        No job sites have been created for this project yet.
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowCreateJobSite(true)}
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Create Job Site
+                      </Button>
+                    </div>
+                  ) : (
+                    <Select value={proposedJobSiteId} onValueChange={setProposedJobSiteId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select job site" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {jobSites.map((site) => (
+                          <SelectItem key={site.id} value={site.id}>
+                            {site.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
               )}
 
@@ -413,5 +433,16 @@ export function AdjustmentRequestModal({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <CreateJobSiteModal
+      open={showCreateJobSite}
+      onOpenChange={setShowCreateJobSite}
+      projectId={projectId}
+      onCreated={(newSiteId) => {
+        setProposedJobSiteId(newSiteId);
+        onSuccess(); // triggers refetch of job sites in parent
+      }}
+    />
+    </>
   );
 }
