@@ -9,6 +9,7 @@ import { DrawingUploadModal } from "@/components/documents/DrawingUploadModal";
 import { DrawingViewer } from "@/components/documents/DrawingViewer";
 import { DrawingThumbnail } from "@/components/documents/DrawingThumbnail";
 import { useAuthRole } from "@/hooks/useAuthRole";
+import { NoAccess } from "@/components/NoAccess";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
 import { Plus, Search, Layers, Grid3x3, List, Trash2 } from "lucide-react";
 import {
@@ -49,7 +50,7 @@ interface Project {
 
 const Drawings = () => {
   const { currentProjectId } = useCurrentProject();
-  const { can } = useAuthRole(currentProjectId || undefined);
+  const { can, isAdmin, isPM, isForeman, loading: roleLoading } = useAuthRole(currentProjectId || undefined);
   const [selectedProject, setSelectedProject] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -191,6 +192,26 @@ const Drawings = () => {
     e.stopPropagation();
     setDrawingToDelete(drawing);
   };
+
+  const hasAccess = isAdmin || isPM() || isForeman();
+
+  if (roleLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-full py-16">
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent" />
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!hasAccess) {
+    return (
+      <Layout>
+        <NoAccess message="Drawings are only available to project managers and above." />
+      </Layout>
+    );
+  }
 
   if (loading) {
     return (

@@ -3,6 +3,9 @@ import { Layout } from "@/components/Layout";
 import { SectionHeader } from "@/components/SectionHeader";
 import { useHoursTracking, TaskHours, TradeHours } from "@/hooks/useHoursTracking";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
+import { useAuthRole } from "@/hooks/useAuthRole";
+import { useOrganizationRole } from "@/hooks/useOrganizationRole";
+import { NoAccess } from "@/components/NoAccess";
 import { 
   Clock, 
   TrendingUp, 
@@ -33,6 +36,8 @@ const HoursTracking = () => {
   const { currentProjectId } = useCurrentProject();
   const [selectedProject, setSelectedProject] = useState<string>(currentProjectId || "all");
   const [projects, setProjects] = useState<any[]>([]);
+  const { isAdmin, isPM, isForeman, loading: roleLoading } = useAuthRole(selectedProject === "all" ? undefined : selectedProject);
+  const { role: orgRole, isLoading: orgRoleLoading } = useOrganizationRole();
 
   const { data, isLoading } = useHoursTracking(
     selectedProject === "all" ? undefined : selectedProject
@@ -49,6 +54,26 @@ const HoursTracking = () => {
     };
     fetchProjects();
   }, []);
+
+  const hasAccess = isAdmin || isPM() || isForeman() || orgRole === 'admin' || orgRole === 'hr';
+
+  if (roleLoading || orgRoleLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-full py-16">
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent" />
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!hasAccess) {
+    return (
+      <Layout>
+        <NoAccess message="Hours tracking is only available to project managers, foremen, and office staff." />
+      </Layout>
+    );
+  }
 
   if (isLoading) {
     return (
