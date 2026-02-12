@@ -87,6 +87,11 @@ export default {
         'nav': 'var(--nav-height)',
         'tab-bar': 'var(--tab-bar-height)',
       },
+      boxShadow: {
+        'elevation-1': '0 1px 3px 0 rgb(0 0 0 / 0.12)',
+        'elevation-2': '0 4px 6px -1px rgb(0 0 0 / 0.15), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+        'elevation-3': '0 10px 25px -5px rgb(0 0 0 / 0.2), 0 8px 10px -6px rgb(0 0 0 / 0.15)',
+      },
       borderRadius: {
         xs: "var(--radius-xs)",
         sm: "var(--radius-sm)",
