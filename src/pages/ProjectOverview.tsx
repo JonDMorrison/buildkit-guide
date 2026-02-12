@@ -39,6 +39,7 @@ interface Project {
   name: string;
   job_number: string | null;
   location: string;
+  billing_address: string | null;
   description: string | null;
   status: string;
   start_date: string | null;

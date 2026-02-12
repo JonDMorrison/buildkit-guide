@@ -1559,6 +1559,7 @@ export type Database = {
       }
       projects: {
         Row: {
+          billing_address: string | null
           created_at: string
           created_by: string
           description: string | null
@@ -1574,6 +1575,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          billing_address?: string | null
           created_at?: string
           created_by: string
           description?: string | null
@@ -1589,6 +1591,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          billing_address?: string | null
           created_at?: string
           created_by?: string
           description?: string | null

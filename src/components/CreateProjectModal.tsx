@@ -22,7 +22,8 @@ import { Loader2 } from 'lucide-react';
 const projectSchema = z.object({
   name: z.string().trim().min(3, 'Project name must be at least 3 characters'),
   jobNumber: z.string().trim().optional(),
-  location: z.string().trim().min(5, 'Address must be at least 5 characters'),
+  location: z.string().trim().min(5, 'Job site address must be at least 5 characters'),
+  billingAddress: z.string().trim().optional(),
   description: z.string().trim().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
@@ -46,6 +47,7 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
     name: '',
     jobNumber: '',
     location: '',
+    billingAddress: '',
     description: '',
     startDate: '',
     endDate: '',
@@ -90,6 +92,7 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
           name: validatedData.name,
           job_number: validatedData.jobNumber || null,
           location: validatedData.location,
+          billing_address: validatedData.billingAddress || null,
           description: validatedData.description,
           start_date: validatedData.startDate || null,
           end_date: validatedData.endDate || null,
@@ -127,6 +130,7 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
         name: '',
         jobNumber: '',
         location: '',
+        billingAddress: '',
         description: '',
         startDate: '',
         endDate: '',
@@ -203,7 +207,7 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
           </div>
 
           <FormField
-            label="Address"
+            label="Job Site Address"
             required
             error={errors.location}
           >
@@ -211,6 +215,18 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
               value={form.location}
               onChange={(e) => setForm({ ...form, location: e.target.value })}
               placeholder="123 Main St, Seattle, WA"
+              className="min-h-[52px]"
+            />
+          </FormField>
+
+          <FormField
+            label="Billing Address"
+            error={errors.billingAddress}
+          >
+            <Input
+              value={form.billingAddress}
+              onChange={(e) => setForm({ ...form, billingAddress: e.target.value })}
+              placeholder="Optional — for invoicing purposes"
               className="min-h-[52px]"
             />
           </FormField>
