@@ -48,6 +48,7 @@ const TimeDiagnostics = lazy(() => import("./pages/TimeDiagnostics"));
 const Drawings = lazy(() => import("./pages/Drawings"));
 const HoursTracking = lazy(() => import("./pages/HoursTracking"));
 const Setup = lazy(() => import("./pages/Setup"));
+const JobCostReport = lazy(() => import("./pages/JobCostReport"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -345,6 +346,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <HoursTracking />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/job-cost-report"
+                  element={
+                    <ProtectedRoute>
+                      <JobCostReport />
                     </ProtectedRoute>
                   }
                 />

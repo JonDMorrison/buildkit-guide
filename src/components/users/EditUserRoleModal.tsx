@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,11 +43,21 @@ export const EditUserRoleModal = ({
   const [trades, setTrades] = useState<Trade[]>([]);
   const [selectedRole, setSelectedRole] = useState(member.role);
   const [selectedTrade, setSelectedTrade] = useState(member.trade_id || '');
+  const [billRate, setBillRate] = useState('');
 
   useEffect(() => {
     if (open) {
       setSelectedRole(member.role);
       setSelectedTrade(member.trade_id || '');
+      // Fetch current bill_rate
+      supabase
+        .from('project_members')
+        .select('bill_rate')
+        .eq('id', member.id)
+        .single()
+        .then(({ data }) => {
+          setBillRate(data?.bill_rate != null ? String(data.bill_rate) : '');
+        });
       fetchTrades();
     }
   }, [open, member]);
@@ -100,7 +111,8 @@ export const EditUserRoleModal = ({
         .update({
           role: selectedRole as any,
           trade_id: selectedRole === 'external_trade' ? selectedTrade : null,
-        })
+          bill_rate: billRate ? parseFloat(billRate) : null,
+        } as any)
         .eq('id', member.id);
 
       if (error) throw error;
@@ -171,6 +183,22 @@ export const EditUserRoleModal = ({
               </Select>
             </div>
           )}
+
+          <div className="space-y-2">
+            <Label htmlFor="billRate">Bill Rate ($/hr)</Label>
+            <Input
+              id="billRate"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="e.g. 65.00"
+              value={billRate}
+              onChange={(e) => setBillRate(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Hourly rate used for job cost reports. Leave blank if not applicable.
+            </p>
+          </div>
 
           <div className="flex gap-3 pt-4">
             <Button

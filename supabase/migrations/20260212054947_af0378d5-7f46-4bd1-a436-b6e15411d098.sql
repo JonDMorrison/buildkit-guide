@@ -1,0 +1,1 @@
+ALTER TABLE public.project_members ADD COLUMN bill_rate numeric DEFAULT NULL;
