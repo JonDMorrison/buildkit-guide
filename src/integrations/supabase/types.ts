@@ -1503,6 +1503,7 @@ export type Database = {
       }
       project_members: {
         Row: {
+          bill_rate: number | null
           created_at: string
           id: string
           project_id: string
@@ -1511,6 +1512,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          bill_rate?: number | null
           created_at?: string
           id?: string
           project_id: string
@@ -1519,6 +1521,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          bill_rate?: number | null
           created_at?: string
           id?: string
           project_id?: string
