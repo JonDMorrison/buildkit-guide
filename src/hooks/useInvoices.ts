@@ -35,7 +35,6 @@ export const useInvoices = () => {
 
   const fetchSettings = useCallback(async () => {
     if (!activeOrganizationId) return;
-    // Ensure settings row exists
     await supabase.from('invoice_settings').upsert(
       { organization_id: activeOrganizationId } as any,
       { onConflict: 'organization_id' }
@@ -66,10 +65,7 @@ export const useInvoices = () => {
 
   const createInvoice = async (invoice: Partial<Invoice>, lineItems: Partial<InvoiceLineItem>[]) => {
     if (!activeOrganizationId || !user) return null;
-
-    // Get next invoice number via RPC
     const { data: invNum } = await supabase.rpc('get_next_invoice_number', { org_id: activeOrganizationId });
-
     const { data, error } = await supabase
       .from('invoices')
       .insert({
@@ -80,13 +76,10 @@ export const useInvoices = () => {
       } as any)
       .select()
       .single();
-
     if (error) {
       toast({ title: 'Error creating invoice', description: error.message, variant: 'destructive' });
       return null;
     }
-
-    // Insert line items
     if (lineItems.length > 0 && data) {
       const items = lineItems.map((li, i) => ({
         ...li,
@@ -96,7 +89,6 @@ export const useInvoices = () => {
       }));
       await supabase.from('invoice_line_items').insert(items as any);
     }
-
     await fetchInvoices();
     return data;
   };
@@ -114,6 +106,19 @@ export const useInvoices = () => {
     return true;
   };
 
+  const deleteInvoice = async (id: string) => {
+    // Delete line items first, then the invoice
+    await supabase.from('invoice_line_items').delete().eq('invoice_id', id);
+    await supabase.from('invoice_payments').delete().eq('invoice_id', id);
+    const { error } = await supabase.from('invoices').delete().eq('id', id);
+    if (error) {
+      toast({ title: 'Error deleting invoice', description: error.message, variant: 'destructive' });
+      return false;
+    }
+    await fetchInvoices();
+    return true;
+  };
+
   const fetchLineItems = async (invoiceId: string): Promise<InvoiceLineItem[]> => {
     const { data } = await supabase
       .from('invoice_line_items')
@@ -124,7 +129,6 @@ export const useInvoices = () => {
   };
 
   const saveLineItems = async (invoiceId: string, items: Partial<InvoiceLineItem>[]) => {
-    // Delete existing and re-insert
     await supabase.from('invoice_line_items').delete().eq('invoice_id', invoiceId);
     if (items.length > 0) {
       const rows = items.map((li, i) => ({
@@ -140,7 +144,7 @@ export const useInvoices = () => {
   return {
     invoices, loading, settings,
     fetchInvoices, fetchSettings, updateSettings,
-    createInvoice, updateInvoice,
+    createInvoice, updateInvoice, deleteInvoice,
     fetchLineItems, saveLineItems,
   };
 };

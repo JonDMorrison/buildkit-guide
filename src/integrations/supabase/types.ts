@@ -1129,7 +1129,9 @@ export type Database = {
           company_address: string | null
           company_name: string | null
           created_at: string
+          currency: string | null
           default_payment_terms: string | null
+          from_email: string | null
           invoice_prefix: string | null
           logo_url: string | null
           next_invoice_number: number
@@ -1144,7 +1146,9 @@ export type Database = {
           company_address?: string | null
           company_name?: string | null
           created_at?: string
+          currency?: string | null
           default_payment_terms?: string | null
+          from_email?: string | null
           invoice_prefix?: string | null
           logo_url?: string | null
           next_invoice_number?: number
@@ -1159,7 +1163,9 @@ export type Database = {
           company_address?: string | null
           company_name?: string | null
           created_at?: string
+          currency?: string | null
           default_payment_terms?: string | null
+          from_email?: string | null
           invoice_prefix?: string | null
           logo_url?: string | null
           next_invoice_number?: number
