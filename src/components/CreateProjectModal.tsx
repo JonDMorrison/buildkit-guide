@@ -71,15 +71,14 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
           ? `${user.email.split('@')[0]}'s Organization`
           : 'My Organization';
         
-        const { data: newOrg, error: orgError } = await supabase
+        const newOrgId = crypto.randomUUID();
+        const { error: orgError } = await supabase
           .from('organizations')
-          .insert({ name: orgName })
-          .select()
-          .single();
+          .insert({ id: newOrgId, name: orgName });
 
         if (orgError) throw new Error(`Failed to create organization: ${orgError.message}`);
         
-        orgId = newOrg.id;
+        orgId = newOrgId;
       }
 
       if (!orgId) {
