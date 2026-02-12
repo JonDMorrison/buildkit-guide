@@ -70,6 +70,15 @@ const PageLoader = () => (
   </div>
 );
 
+// Preload critical routes during idle time
+if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+  requestIdleCallback(() => {
+    import('./pages/Tasks');
+    import('./pages/Safety');
+    import('./pages/Dashboard');
+  });
+}
+
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>

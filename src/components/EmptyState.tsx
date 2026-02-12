@@ -21,7 +21,7 @@ export const EmptyState = ({
   className 
 }: EmptyStateProps) => {
   return (
-    <div className={cn("flex flex-col items-center justify-center py-12 px-4 text-center", className)}>
+    <div role="status" aria-label={title} className={cn("flex flex-col items-center justify-center py-12 px-4 text-center", className)}>
       <div className="w-14 h-14 rounded-xl bg-surface-raised flex items-center justify-center mb-3 text-muted-foreground">
         {icon}
       </div>

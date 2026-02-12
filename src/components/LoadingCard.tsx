@@ -8,7 +8,7 @@ interface LoadingCardProps {
 
 export const LoadingCard = ({ className }: LoadingCardProps) => {
   return (
-    <Card className={cn("p-4", className)}>
+    <Card className={cn("p-4", className)} role="status" aria-label="Loading content" aria-busy="true">
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1 space-y-2">
           <Skeleton className="h-5 w-3/4" />

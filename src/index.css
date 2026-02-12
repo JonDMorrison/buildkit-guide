@@ -140,6 +140,40 @@ All colors MUST be HSL.
   }
 }
 
+/* Interaction utility classes */
+@layer components {
+  .interactive {
+    @apply transition-all duration-200 ease-out;
+  }
+  .interactive:hover {
+    transform: translateY(-1px);
+  }
+  .interactive:active {
+    transform: translateY(0px) scale(0.98);
+  }
+
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  .card-hover {
+    @apply transition-all duration-200;
+  }
+  .card-hover:hover {
+    @apply shadow-md border-primary/30;
+  }
+
+  .stagger-in > *:nth-child(1) { animation-delay: 0ms; }
+  .stagger-in > *:nth-child(2) { animation-delay: 50ms; }
+  .stagger-in > *:nth-child(3) { animation-delay: 100ms; }
+  .stagger-in > *:nth-child(4) { animation-delay: 150ms; }
+  .stagger-in > *:nth-child(5) { animation-delay: 200ms; }
+  .stagger-in > *:nth-child(6) { animation-delay: 250ms; }
+  .stagger-in > * {
+    animation-fill-mode: both;
+  }
+}
+
 /* Component utility classes */
 @layer components {
   .section-spacing {
@@ -157,6 +191,11 @@ All colors MUST be HSL.
   .inline-gap {
     @apply gap-2;
   }
+}
+
+/* Performance: image lazy loading */
+img {
+  content-visibility: auto;
 }
 
 /* Dashboard Widget System */
