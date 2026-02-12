@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -55,7 +55,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { currentProjectId, setCurrentProject } = useCurrentProject();
-  const { isPM, isForeman } = useAuthRole(currentProjectId || undefined);
+  const { isPM, isForeman, isAdmin, isInternalWorker, isExternalTrade, loading: roleLoading } = useAuthRole(currentProjectId || undefined);
   const [currentBreakpoint, setCurrentBreakpoint] = useState("lg");
   const [projectSearchOpen, setProjectSearchOpen] = useState(false);
   const [projectSearchQuery, setProjectSearchQuery] = useState("");
@@ -383,8 +383,13 @@ export default function Dashboard() {
   // Memoize handlers that are passed as props
   const handleSetCurrentProject = useCallback((projectId: string) => setCurrentProject(projectId), [setCurrentProject]);
 
+  // Redirect field/minimal tier users to /tasks
+  if (!roleLoading && !isAdmin && !isPM() && !isForeman() && (isInternalWorker() || isExternalTrade())) {
+    return <Navigate to="/tasks" replace />;
+  }
+
   // Only show loading spinner on initial load, not on tab refocus
-  if (layoutLoading && !layouts) {
+  if ((layoutLoading && !layouts) || roleLoading) {
     return (
       <Layout>
         <div className="flex items-center justify-center h-full">

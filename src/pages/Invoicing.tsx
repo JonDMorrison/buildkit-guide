@@ -8,6 +8,7 @@ import { useInvoicePayments } from "@/hooks/useInvoicePayments";
 import { useRecurringInvoices } from "@/hooks/useRecurringInvoices";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useOrganizationRole } from "@/hooks/useOrganizationRole";
+import { useAuthRole } from "@/hooks/useAuthRole";
 import { useInvoiceActivity } from "@/hooks/useInvoiceActivity";
 import { ClientFormModal } from "@/components/invoicing/ClientFormModal";
 import { CreateInvoiceModal } from "@/components/invoicing/CreateInvoiceModal";
@@ -131,8 +132,10 @@ const Invoicing = () => {
   });
   const settingsSnapshot = useRef("");
 
-  const canAccess = orgRole === "admin" || orgRole === "pm";
-  const isAdmin = orgRole === "admin";
+  // Also check global admin from useUserRole via useAuthRole
+  const { isAdmin: isGlobalAdmin } = useAuthRole();
+  const canAccess = isGlobalAdmin || orgRole === "admin" || orgRole === "pm";
+  const isAdmin = isGlobalAdmin || orgRole === "admin";
 
   useEffect(() => {
     if (prefillData?.prefillLineItems) {

@@ -12,6 +12,7 @@ import { DeficiencyDetailModal } from "@/components/deficiencies/DeficiencyDetai
 import { CreateDeficiencyModal } from "@/components/deficiencies/CreateDeficiencyModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthRole } from "@/hooks/useAuthRole";
+import { NoAccess } from "@/components/NoAccess";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
 import { AlertCircle, Plus, Upload } from "lucide-react";
 
@@ -20,7 +21,7 @@ const Deficiencies = () => {
   const { currentProjectId } = useCurrentProject();
   const [projects, setProjects] = useState<any[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(currentProjectId);
-  const { can, isPM, isAdmin, loading: roleLoading } = useAuthRole(selectedProjectId || undefined);
+  const { can, isPM, isForeman, isAdmin, loading: roleLoading } = useAuthRole(selectedProjectId || undefined);
   const [deficiencies, setDeficiencies] = useState<any[]>([]);
   const [filteredDeficiencies, setFilteredDeficiencies] = useState<any[]>([]);
   const [trades, setTrades] = useState<any[]>([]);
@@ -172,6 +173,27 @@ const Deficiencies = () => {
   const handleCreateDeficiency = () => {
     setIsCreateModalOpen(true);
   };
+
+  // Access guard: only Tier 1 roles (Admin, PM, Foreman)
+  const hasAccess = isAdmin || (selectedProjectId ? isPM(selectedProjectId) : false) || (selectedProjectId ? isForeman(selectedProjectId) : false);
+
+  if (roleLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-full py-16">
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent" />
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!hasAccess) {
+    return (
+      <Layout>
+        <NoAccess message="Deficiency management is only available to project managers and above." />
+      </Layout>
+    );
+  }
 
   if (loading) {
     return (
