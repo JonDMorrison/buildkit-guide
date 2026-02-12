@@ -1,135 +1,151 @@
 
 
-# Job Cost Report
+# Invoicing Module -- QA, UX/UI Audit and Improvement Plan
 
-Build a new **Job Cost Report** page that aggregates labor hours and material/expense receipts per project into a single cost summary, with CSV and PDF export for bookkeepers.
-
----
-
-## What It Does
-
-The report gives PMs and bookkeepers a single view of **total project costs** broken down by:
-
-- **Labor costs** -- time entries grouped by worker, multiplied by their bill rate
-- **Material/expense costs** -- receipts grouped by category (fuel, materials, tools, etc.)
-- **Combined totals** -- labor + materials = total job cost
-
-Exportable to **CSV** (for QuickBooks/Sage import) and **PDF** (for client-facing summaries).
+## Executive Summary
+The invoicing module has solid foundational coverage (clients, invoices, payments, aging, recurring, PDF, email). However, compared to industry tools like FreshBooks, Wave, or QuickBooks, there are functional bugs, missing safeguards, UX friction points, and feature gaps that need addressing before this is production-ready.
 
 ---
 
-## What Gets Built
+## CATEGORY 1: Bugs and Data Integrity Issues (Critical)
 
-### 1. Database: Add `bill_rate` to `project_members`
+### 1A. No confirmation before destructive actions
+- **Void**, **Delete Template**, **Credit Note**, and **Clone** actions execute immediately on click with no confirmation dialog. One mis-tap voids an invoice permanently.
+- **Fix**: Add AlertDialog confirmation for Void, Delete, and Credit Note actions.
 
-A new nullable `bill_rate numeric` column on the `project_members` table. This allows each worker to have a per-project hourly rate (e.g., $65/hr for a journeyman electrician on Project A, $55/hr on Project B).
+### 1B. Send button only appears on Draft invoices
+- Line 316: the Mail/Send button is gated to `inv.status === "draft"`, meaning you cannot re-send a "Sent" or "Overdue" invoice. Industry standard allows resending at any status.
+- **Fix**: Show the Send button for draft, sent, and overdue statuses.
 
-- Nullable so it doesn't break existing data
-- Editable by PM/Admin via the existing Edit User Role modal
+### 1C. No validation on overpayment
+- RecordPaymentModal allows entering an amount greater than the remaining balance, which could result in a negative balance with no warning.
+- **Fix**: Add a warning/cap when the amount exceeds the outstanding balance.
 
-### 2. Hook: `useJobCostReport`
+### 1D. Recurring templates have no automation
+- The recurring_invoice_templates table stores `next_issue_date` and `frequency`, but there is no scheduled function or cron job that actually generates invoices from them. The feature is UI-only.
+- **Fix**: Create a backend function (cron or manual trigger) that generates invoices from active templates whose `next_issue_date` has passed.
 
-A new data hook (`src/hooks/useJobCostReport.ts`) that fetches and aggregates:
+### 1E. Detail modal doesn't refresh after save
+- In InvoiceDetailModal, after saving line items and updating the invoice, the parent's `fetchInvoices()` is not called, and the detail modal still shows stale data (the `detailInvoice` object isn't refreshed).
+- **Fix**: After save, re-fetch the invoice and line items and update the modal state.
 
-- **Labor section**: Queries `time_entries` (status = 'closed') joined with `profiles` (for names) and `project_members` (for bill_rate). Groups by user, calculates hours x rate = cost.
-- **Materials section**: Queries `receipts` for the project, groups by category, sums amounts.
-- Returns a typed `JobCostReport` object with labor rows, material rows, and grand totals.
+### 1F. Logo not rendered in PDF
+- InvoicePDFExport.tsx never uses `settings.logo_url`. The logo upload exists in settings but the PDF generator completely ignores it.
+- **Fix**: Use jsPDF's `addImage()` to render the logo at the top of the PDF.
 
-### 3. Page: `/job-cost-report`
+### 1G. Invoice status never auto-transitions to "overdue"
+- There is no logic anywhere that moves a "sent" invoice to "overdue" when the due date passes. The status badge will always say "Sent" even months past due.
+- **Fix**: Either compute overdue status on-the-fly in the UI, or add a scheduled function to update statuses.
 
-A new page (`src/pages/JobCostReport.tsx`) accessible to PM/Admin roles, containing:
+---
 
-- **Project selector** (reuses existing pattern from HoursTracking page)
-- **Date range filter** (optional, to scope the report to a pay period or month)
-- **Summary cards**: Total Labor Cost, Total Material Cost, Total Job Cost
-- **Labor table**: Worker name, hours worked, bill rate, total cost
-- **Materials table**: Category, vendor, amount, date
-- **Export buttons**: CSV and PDF (reuses existing jspdf dependency)
-- Workers with no bill_rate set will show hours but "$0.00" cost with a warning indicator, prompting the PM to set their rate
+## CATEGORY 2: UX Friction and Missing Workflows
 
-### 4. UI: Add bill rate to Edit User Role modal
+### 2A. No search/filter on invoices
+- With dozens or hundreds of invoices, there's only a status filter dropdown. No search by invoice number, client name, or date range.
+- **Fix**: Add a search input and date range filters.
 
-Update `EditUserRoleModal.tsx` to include an optional "Bill Rate ($/hr)" field so PMs can set per-project rates for each team member.
+### 2B. No payment history visible in detail modal
+- InvoiceDetailModal shows total paid and balance, but there's no list of individual payments (dates, methods, references). The `useInvoicePayments` hook has `fetchPayments()` but it's never called in the detail view.
+- **Fix**: Add a "Payment History" section to the detail modal listing all recorded payments.
 
-### 5. Route and Navigation
+### 2C. No delete invoice capability
+- There's no way to delete a draft invoice. RLS allows admins to delete, but the UI has no delete button.
+- **Fix**: Add a delete action for draft invoices (with confirmation).
 
-- Add route `/job-cost-report` in `App.tsx`
-- Add navigation link accessible to PM/Admin roles
+### 2D. Invoice email uses `onboarding@resend.dev` sender
+- The edge function hardcodes `from: onboarding@resend.dev`. Emails will likely land in spam and look unprofessional. Resend requires a verified domain for production use.
+- **Fix**: Document the requirement for users to configure a verified domain, and add a "From Email" setting in invoice_settings.
+
+### 2E. Settings not auto-saved / no dirty-state indicator
+- The settings form requires manually clicking "Save Settings" but provides no visual indication when there are unsaved changes. Easy to navigate away and lose work.
+- **Fix**: Add a dirty-state indicator (e.g., highlighted save button or "unsaved changes" warning).
+
+### 2F. Client list has no invoice count or total billed
+- The Clients tab shows basic contact info but no relationship to invoicing data (how many invoices, total billed, outstanding balance).
+- **Fix**: Add computed columns for invoice count and outstanding balance per client.
+
+---
+
+## CATEGORY 3: UI Polish and Industry Parity
+
+### 3A. Invoice table not mobile-friendly
+- The 7-column invoice table breaks on small screens. No responsive adaptation.
+- **Fix**: Use a card-based layout on mobile with key info (number, client, total, status) and actions in a dropdown menu.
+
+### 3B. No invoice preview before sending
+- Users must download the PDF to see what the invoice looks like. There's no in-app preview.
+- **Fix**: Add an inline preview (rendered HTML) in the detail modal or a preview step in the Send flow.
+
+### 3C. Tab icons increase cognitive load on mobile
+- All five tab triggers have icons + text which crowds the TabsList on narrow screens.
+- **Fix**: Show icon-only tabs on mobile with tooltips.
+
+### 3D. Aging Report lacks export
+- The AR Aging report is view-only. Accountants need to export this data to CSV/PDF.
+- **Fix**: Add export buttons (CSV and PDF) to the Aging tab.
+
+### 3E. No currency configuration
+- Everything is hardcoded to USD (`$`). Canadian construction companies use CAD, and the system should support configurable currency symbols.
+- **Fix**: Add a currency field to invoice_settings and use it throughout.
+
+---
+
+## CATEGORY 4: Security and Access Control
+
+### 4A. No role gating on invoicing page
+- The page imports `useProjectRole` and `isGlobalAdmin` but never uses them to restrict access. Any org member (including workers) can access invoicing, create invoices, and void them.
+- **Fix**: Gate the invoicing page to Admin and Project Manager roles only.
+
+### 4B. Projects query not org-scoped
+- Line 107: `supabase.from("projects").select("id, name")` fetches all non-deleted projects without filtering by organization, potentially leaking project names across orgs.
+- **Fix**: Add `.eq('organization_id', activeOrganizationId)` to the projects query.
+
+---
+
+## Implementation Priority and Sequencing
+
+**Phase 1 -- Critical Fixes (bugs and data integrity)**
+1. Confirmation dialogs for destructive actions (1A)
+2. Fix overdue auto-detection (1G)
+3. Fix Send button visibility for non-draft statuses (1B)
+4. Add overpayment validation (1C)
+5. Render logo in PDF (1F)
+6. Scope projects query to organization (4B)
+7. Role-gate the invoicing page (4A)
+
+**Phase 2 -- UX Completeness**
+8. Search and date-range filters on invoices (2A)
+9. Payment history in detail modal (2B)
+10. Delete draft invoices (2C)
+11. Dirty-state indicator on settings (2E)
+12. Detail modal refresh after save (1E)
+13. Client invoice summary columns (2F)
+
+**Phase 3 -- Industry Parity and Polish**
+14. Recurring invoice automation (backend function) (1D)
+15. Mobile-responsive invoice table (3A)
+16. Aging report CSV/PDF export (3D)
+17. Currency configuration (3E)
+18. Email sender domain configuration (2D)
+19. Invoice preview before send (3B)
+20. Mobile tab optimization (3C)
 
 ---
 
 ## Technical Details
 
-### New Database Column
+### Files to modify:
+- `src/pages/Invoicing.tsx` -- role gating, confirmations, search, filters, org-scoped projects, send button logic, delete action, overdue computation, dirty state
+- `src/components/invoicing/InvoiceDetailModal.tsx` -- payment history section, refresh after save, inline preview
+- `src/components/invoicing/InvoicePDFExport.tsx` -- logo rendering, currency symbol
+- `src/components/invoicing/RecordPaymentModal.tsx` -- overpayment validation
+- `src/components/invoicing/AgingReport.tsx` -- CSV/PDF export buttons
+- `src/components/invoicing/SendInvoiceModal.tsx` -- allow resending
+- `src/types/invoicing.ts` -- currency field on InvoiceSettings
+- `supabase/functions/send-invoice-email/index.ts` -- configurable from address
+- New migration -- add `currency` column to `invoice_settings`
+- New edge function or cron -- recurring invoice generation
 
-```sql
-ALTER TABLE public.project_members 
-ADD COLUMN bill_rate numeric DEFAULT NULL;
-```
-
-No RLS changes needed -- existing project_members policies already control access.
-
-### `JobCostReport` Type Shape
-
-```typescript
-interface JobCostReport {
-  labor: {
-    rows: Array<{
-      userId: string;
-      userName: string;
-      hoursWorked: number;
-      billRate: number | null;
-      totalCost: number;
-    }>;
-    totalHours: number;
-    totalCost: number;
-  };
-  materials: {
-    rows: Array<{
-      id: string;
-      date: string;
-      vendor: string | null;
-      category: string;
-      amount: number;
-      notes: string | null;
-    }>;
-    totalCost: number;
-  };
-  grandTotal: number;
-}
-```
-
-### CSV Export Format
-
-Designed for QuickBooks-compatible import:
-
-```
-Section,Worker/Vendor,Category,Hours,Rate,Amount
-Labor,John Smith,,40.0,65.00,2600.00
-Labor,Jane Doe,,32.5,55.00,1787.50
-Materials,,Materials,,,450.00
-Materials,,Fuel,,,120.00
-,,,,TOTAL,4957.50
-```
-
-### PDF Export
-
-Uses existing `jspdf` dependency. Simple tabular layout with:
-- Project name, job number, date range header
-- Billing address and job site address
-- Labor and materials tables
-- Grand total footer
-
-### File Changes Summary
-
-| File | Change |
-|------|--------|
-| `supabase/migrations/...` | Add `bill_rate` column to `project_members` |
-| `src/types/job-cost-report.ts` | New type definitions |
-| `src/hooks/useJobCostReport.ts` | New data hook |
-| `src/pages/JobCostReport.tsx` | New page component |
-| `src/components/job-cost/JobCostExportCSV.tsx` | CSV export button |
-| `src/components/job-cost/JobCostExportPDF.tsx` | PDF export button |
-| `src/components/users/EditUserRoleModal.tsx` | Add bill rate field |
-| `src/App.tsx` | Add route |
+### Estimated scope: ~3 implementation rounds matching the phases above.
 
