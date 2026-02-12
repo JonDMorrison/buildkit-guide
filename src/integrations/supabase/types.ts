@@ -1080,6 +1080,50 @@ export type Database = {
           },
         ]
       }
+      invoice_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string
+          id: string
+          invoice_id: string
+          notes: string | null
+          payment_date: string
+          payment_method: string | null
+          reference_number: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by: string
+          id?: string
+          invoice_id: string
+          notes?: string | null
+          payment_date?: string
+          payment_method?: string | null
+          reference_number?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string
+          id?: string
+          invoice_id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_method?: string | null
+          reference_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_settings: {
         Row: {
           company_address: string | null
@@ -1135,9 +1179,11 @@ export type Database = {
       }
       invoices: {
         Row: {
+          amount_paid: number
           client_id: string | null
           created_at: string
           created_by: string
+          credit_note_for: string | null
           due_date: string | null
           id: string
           invoice_number: string
@@ -1154,9 +1200,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          amount_paid?: number
           client_id?: string | null
           created_at?: string
           created_by: string
+          credit_note_for?: string | null
           due_date?: string | null
           id?: string
           invoice_number: string
@@ -1173,9 +1221,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          amount_paid?: number
           client_id?: string | null
           created_at?: string
           created_by?: string
+          credit_note_for?: string | null
           due_date?: string | null
           id?: string
           invoice_number?: string
@@ -1197,6 +1247,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_credit_note_for_fkey"
+            columns: ["credit_note_for"]
+            isOneToOne: false
+            referencedRelation: "invoices"
             referencedColumns: ["id"]
           },
           {
@@ -1963,6 +2020,80 @@ export type Database = {
             columns: ["uploaded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recurring_invoice_templates: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          created_by: string
+          frequency: string
+          id: string
+          is_active: boolean
+          line_items: Json
+          next_issue_date: string
+          notes: string | null
+          organization_id: string
+          project_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          created_by: string
+          frequency?: string
+          id?: string
+          is_active?: boolean
+          line_items?: Json
+          next_issue_date: string
+          notes?: string | null
+          organization_id: string
+          project_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          created_by?: string
+          frequency?: string
+          id?: string
+          is_active?: boolean
+          line_items?: Json
+          next_issue_date?: string
+          notes?: string | null
+          organization_id?: string
+          project_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_invoice_templates_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_invoice_templates_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_invoice_templates_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_invoice_templates_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_progress"
             referencedColumns: ["id"]
           },
         ]

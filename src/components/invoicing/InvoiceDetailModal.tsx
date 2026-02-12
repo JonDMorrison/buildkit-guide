@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Plus, Trash2, FileText, Pencil, Save, X } from "lucide-react";
+import { Loader2, Plus, Trash2, FileText, Pencil, Save, X, DollarSign, Mail } from "lucide-react";
 import { format } from "date-fns";
 import type { Invoice, InvoiceLineItem, InvoiceSettings, Client } from "@/types/invoicing";
 
@@ -51,10 +51,12 @@ export const InvoiceDetailModal = ({
 
   const sc = statusConfig[invoice.status] || statusConfig.draft;
   const canEdit = invoice.status === "draft";
+  const isCreditNote = !!invoice.credit_note_for;
 
   const subtotal = editItems.reduce((s, li) => s + (Number(li.quantity) || 0) * (Number(li.unit_price) || 0), 0);
   const taxAmount = Math.round(subtotal * ((settings?.tax_rate || 0) / 100) * 100) / 100;
   const total = Math.round((subtotal + taxAmount) * 100) / 100;
+  const balance = Number(invoice.total) - Number(invoice.amount_paid || 0);
 
   const addLine = () => setEditItems([...editItems, { description: "", quantity: 1, unit_price: 0, category: "other" }]);
   const removeLine = (i: number) => setEditItems(editItems.filter((_, idx) => idx !== i));
@@ -68,12 +70,7 @@ export const InvoiceDetailModal = ({
     if (!onSaveLineItems || !onUpdateInvoice) return;
     setSaving(true);
     await onSaveLineItems(invoice.id, editItems);
-    await onUpdateInvoice(invoice.id, {
-      notes: editNotes || null,
-      subtotal,
-      tax_amount: taxAmount,
-      total,
-    });
+    await onUpdateInvoice(invoice.id, { notes: editNotes || null, subtotal, tax_amount: taxAmount, total });
     setSaving(false);
     setEditing(false);
   };
@@ -83,8 +80,9 @@ export const InvoiceDetailModal = ({
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
-            Invoice {invoice.invoice_number}
+            {isCreditNote ? "Credit Note" : "Invoice"} {invoice.invoice_number}
             <Badge variant={sc.variant}>{sc.label}</Badge>
+            {isCreditNote && <Badge variant="outline">Credit Note</Badge>}
           </DialogTitle>
         </DialogHeader>
 
@@ -132,7 +130,6 @@ export const InvoiceDetailModal = ({
                 </Button>
               )}
             </div>
-
             <Table>
               <TableHeader>
                 <TableRow>
@@ -148,42 +145,25 @@ export const InvoiceDetailModal = ({
                 {(editing ? editItems : lineItems).map((li, i) => (
                   <TableRow key={i}>
                     <TableCell>
-                      {editing ? (
-                        <Input value={li.description || ""} onChange={(e) => updateLine(i, "description", e.target.value)} />
-                      ) : (
-                        li.description
-                      )}
+                      {editing ? <Input value={li.description || ""} onChange={(e) => updateLine(i, "description", e.target.value)} /> : li.description}
                     </TableCell>
                     <TableCell className="capitalize">{li.category || "other"}</TableCell>
                     <TableCell className="text-right">
-                      {editing ? (
-                        <Input type="number" className="w-16 text-right" value={li.quantity} onChange={(e) => updateLine(i, "quantity", parseFloat(e.target.value) || 0)} />
-                      ) : (
-                        li.quantity
-                      )}
+                      {editing ? <Input type="number" className="w-16 text-right" value={li.quantity} onChange={(e) => updateLine(i, "quantity", parseFloat(e.target.value) || 0)} /> : li.quantity}
                     </TableCell>
                     <TableCell className="text-right">
-                      {editing ? (
-                        <Input type="number" className="w-24 text-right" value={li.unit_price} onChange={(e) => updateLine(i, "unit_price", parseFloat(e.target.value) || 0)} />
-                      ) : (
-                        `$${Number(li.unit_price).toFixed(2)}`
-                      )}
+                      {editing ? <Input type="number" className="w-24 text-right" value={li.unit_price} onChange={(e) => updateLine(i, "unit_price", parseFloat(e.target.value) || 0)} /> : `$${Number(li.unit_price).toFixed(2)}`}
                     </TableCell>
-                    <TableCell className="text-right font-medium">
-                      ${((Number(li.quantity) || 0) * (Number(li.unit_price) || 0)).toFixed(2)}
-                    </TableCell>
+                    <TableCell className="text-right font-medium">${((Number(li.quantity) || 0) * (Number(li.unit_price) || 0)).toFixed(2)}</TableCell>
                     {editing && (
                       <TableCell>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => removeLine(i)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => removeLine(i)}><Trash2 className="h-4 w-4" /></Button>
                       </TableCell>
                     )}
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-
             {editing && (
               <Button type="button" variant="outline" size="sm" className="mt-2" onClick={addLine}>
                 <Plus className="h-4 w-4 mr-1" /> Add Line
@@ -207,6 +187,18 @@ export const InvoiceDetailModal = ({
               <span>Total</span>
               <span>${(editing ? total : Number(invoice.total)).toFixed(2)}</span>
             </div>
+            {Number(invoice.amount_paid || 0) > 0 && !editing && (
+              <>
+                <div className="flex gap-8 text-sm">
+                  <span className="text-muted-foreground">Paid</span>
+                  <span className="text-primary font-medium">${Number(invoice.amount_paid).toFixed(2)}</span>
+                </div>
+                <div className="flex gap-8 text-base font-bold">
+                  <span>Balance Due</span>
+                  <span>${balance.toFixed(2)}</span>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Notes */}
