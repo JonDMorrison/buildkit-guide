@@ -12,8 +12,21 @@ All colors MUST be HSL.
     --brand-primary-dark: 0 0% 5%;          /* Near Black */
     --brand-primary-light: 0 0% 15%;        /* Dark Gray */
     --brand-accent-blue: 201 100% 45%;      /* Logo Blue - #00A3E0 */
+    --brand-accent-cyan: 187 100% 42%;      /* Cyan accent - #00B8D4 */
     --brand-muted-grey: 210 10% 40%;        /* Cool Gray */
     
+    /* Primary color scale (201 hue) */
+    --primary-50: 201 100% 95%;
+    --primary-100: 201 100% 88%;
+    --primary-200: 201 100% 78%;
+    --primary-300: 201 100% 65%;
+    --primary-400: 201 100% 55%;
+    --primary-500: 201 100% 45%;            /* Base primary */
+    --primary-600: 201 100% 38%;
+    --primary-700: 201 100% 30%;
+    --primary-800: 201 100% 22%;
+    --primary-900: 201 100% 15%;
+
     /* Base surfaces - dark theme */
     --background: 0 0% 7%;                  /* Near Black */
     --foreground: 0 0% 95%;                 /* Off White */
@@ -23,6 +36,10 @@ All colors MUST be HSL.
 
     --popover: 0 0% 10%;
     --popover-foreground: 0 0% 95%;
+
+    /* Surface variants */
+    --surface-raised: 0 0% 12%;
+    --surface-overlay: 0 0% 14%;
 
     /* Primary - Logo Blue */
     --primary: 201 100% 45%;
@@ -34,10 +51,10 @@ All colors MUST be HSL.
 
     /* Muted - Dark Gray */
     --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 60%;
+    --muted-foreground: 0 0% 63%;           /* Bumped from 60% for better AA on small text */
 
-    /* Accent - Logo Blue */
-    --accent: 201 100% 45%;
+    /* Accent - Lighter interactive blue */
+    --accent: 201 90% 55%;
     --accent-foreground: 0 0% 100%;
 
     /* Status colors - construction standard */
@@ -50,8 +67,11 @@ All colors MUST be HSL.
     --status-issue: 0 70% 55%;              /* Red for issues */
     --status-issue-foreground: 0 0% 100%;
 
-    --status-info: 201 100% 45%;
+    --status-info: 210 80% 55%;             /* Cooler blue for info */
     --status-info-foreground: 0 0% 100%;
+
+    --status-warning: 38 92% 50%;           /* Amber for warnings */
+    --status-warning-foreground: 0 0% 100%;
 
     --destructive: 0 70% 55%;
     --destructive-foreground: 0 0% 100%;
@@ -61,7 +81,13 @@ All colors MUST be HSL.
     --input: 0 0% 20%;
     --ring: 201 100% 45%;
 
-    --radius: 0.5rem;
+    /* Border radius scale */
+    --radius-xs: 2px;
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius: 0.5rem;                       /* 8px base */
+    --radius-lg: 12px;
+    --radius-xl: 16px;
 
     /* Navigation */
     --nav-height: 56px;
@@ -111,6 +137,25 @@ All colors MUST be HSL.
   /* Safe area helper classes */
   .safe-area-bottom {
     padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Component utility classes */
+@layer components {
+  .section-spacing {
+    @apply space-y-6;
+  }
+
+  .card-padding {
+    @apply p-4 md:p-6;
+  }
+
+  .form-gap {
+    @apply space-y-4;
+  }
+
+  .inline-gap {
+    @apply gap-2;
   }
 }
 
