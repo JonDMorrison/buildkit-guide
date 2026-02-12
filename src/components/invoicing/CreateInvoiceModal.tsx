@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Loader2, Plus, Trash2, UserPlus } from "lucide-react";
 import { DatePicker } from "@/components/ui/date-picker";
 import type { Invoice, InvoiceLineItem, Client } from "@/types/invoicing";
 import { format, addDays } from "date-fns";
@@ -27,38 +27,42 @@ interface Props {
   taxLabel: string;
   defaultPaymentTerms: string;
   onSubmit: (invoice: Partial<Invoice>, lineItems: Partial<InvoiceLineItem>[]) => Promise<any>;
+  onAddClient?: () => void;
   initialLineItems?: LineItemDraft[];
   initialProjectId?: string;
 }
 
+const defaultLine = (): LineItemDraft => ({ description: "", quantity: 1, unit_price: 0, category: "other" });
+
 export const CreateInvoiceModal = ({
   open, onOpenChange, clients, projects, taxRate, taxLabel,
-  defaultPaymentTerms, onSubmit, initialLineItems, initialProjectId,
+  defaultPaymentTerms, onSubmit, onAddClient, initialLineItems, initialProjectId,
 }: Props) => {
   const [loading, setLoading] = useState(false);
   const [clientId, setClientId] = useState("");
-  const [projectId, setProjectId] = useState(initialProjectId || "");
-  const [issueDate, setIssueDate] = useState(format(new Date(), "yyyy-MM-dd"));
-  const [dueDate, setDueDate] = useState(format(addDays(new Date(), 30), "yyyy-MM-dd"));
+  const [projectId, setProjectId] = useState("");
+  const [issueDate, setIssueDate] = useState("");
+  const [dueDate, setDueDate] = useState("");
   const [notes, setNotes] = useState("");
-  const [lineItems, setLineItems] = useState<LineItemDraft[]>(
-    initialLineItems || [{ description: "", quantity: 1, unit_price: 0, category: "other" }]
-  );
+  const [lineItems, setLineItems] = useState<LineItemDraft[]>([defaultLine()]);
 
+  // Reset form fully when modal opens
   useEffect(() => {
-    if (open && initialLineItems) {
-      setLineItems(initialLineItems);
+    if (open) {
+      setClientId("");
+      setProjectId(initialProjectId || "");
+      setIssueDate(format(new Date(), "yyyy-MM-dd"));
+      setDueDate(format(addDays(new Date(), 30), "yyyy-MM-dd"));
+      setNotes("");
+      setLineItems(initialLineItems && initialLineItems.length > 0 ? initialLineItems : [defaultLine()]);
     }
-    if (open && initialProjectId) {
-      setProjectId(initialProjectId);
-    }
-  }, [open]);
+  }, [open, initialLineItems, initialProjectId]);
 
   const subtotal = lineItems.reduce((s, li) => s + li.quantity * li.unit_price, 0);
   const taxAmount = Math.round(subtotal * (taxRate / 100) * 100) / 100;
   const total = Math.round((subtotal + taxAmount) * 100) / 100;
 
-  const addLine = () => setLineItems([...lineItems, { description: "", quantity: 1, unit_price: 0, category: "other" }]);
+  const addLine = () => setLineItems([...lineItems, defaultLine()]);
   const removeLine = (i: number) => setLineItems(lineItems.filter((_, idx) => idx !== i));
   const updateLine = (i: number, field: keyof LineItemDraft, value: any) => {
     const updated = [...lineItems];
@@ -102,16 +106,23 @@ export const CreateInvoiceModal = ({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Client</Label>
-              <Select value={clientId} onValueChange={setClientId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select client" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Select value={clientId} onValueChange={setClientId}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select client" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clients.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {onAddClient && (
+                  <Button type="button" variant="outline" size="icon" onClick={onAddClient} title="Add new client">
+                    <UserPlus className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Project</Label>
