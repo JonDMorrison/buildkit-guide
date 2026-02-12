@@ -1,151 +1,184 @@
 
 
-# Invoicing Module -- QA, UX/UI Audit and Improvement Plan
+# Color, Spacing, and Component Standardization -- Design System Overhaul
 
-## Executive Summary
-The invoicing module has solid foundational coverage (clients, invoices, payments, aging, recurring, PDF, email). However, compared to industry tools like FreshBooks, Wave, or QuickBooks, there are functional bugs, missing safeguards, UX friction points, and feature gaps that need addressing before this is production-ready.
-
----
-
-## CATEGORY 1: Bugs and Data Integrity Issues (Critical)
-
-### 1A. No confirmation before destructive actions
-- **Void**, **Delete Template**, **Credit Note**, and **Clone** actions execute immediately on click with no confirmation dialog. One mis-tap voids an invoice permanently.
-- **Fix**: Add AlertDialog confirmation for Void, Delete, and Credit Note actions.
-
-### 1B. Send button only appears on Draft invoices
-- Line 316: the Mail/Send button is gated to `inv.status === "draft"`, meaning you cannot re-send a "Sent" or "Overdue" invoice. Industry standard allows resending at any status.
-- **Fix**: Show the Send button for draft, sent, and overdue statuses.
-
-### 1C. No validation on overpayment
-- RecordPaymentModal allows entering an amount greater than the remaining balance, which could result in a negative balance with no warning.
-- **Fix**: Add a warning/cap when the amount exceeds the outstanding balance.
-
-### 1D. Recurring templates have no automation
-- The recurring_invoice_templates table stores `next_issue_date` and `frequency`, but there is no scheduled function or cron job that actually generates invoices from them. The feature is UI-only.
-- **Fix**: Create a backend function (cron or manual trigger) that generates invoices from active templates whose `next_issue_date` has passed.
-
-### 1E. Detail modal doesn't refresh after save
-- In InvoiceDetailModal, after saving line items and updating the invoice, the parent's `fetchInvoices()` is not called, and the detail modal still shows stale data (the `detailInvoice` object isn't refreshed).
-- **Fix**: After save, re-fetch the invoice and line items and update the modal state.
-
-### 1F. Logo not rendered in PDF
-- InvoicePDFExport.tsx never uses `settings.logo_url`. The logo upload exists in settings but the PDF generator completely ignores it.
-- **Fix**: Use jsPDF's `addImage()` to render the logo at the top of the PDF.
-
-### 1G. Invoice status never auto-transitions to "overdue"
-- There is no logic anywhere that moves a "sent" invoice to "overdue" when the due date passes. The status badge will always say "Sent" even months past due.
-- **Fix**: Either compute overdue status on-the-fly in the UI, or add a scheduled function to update statuses.
+## Overview
+This plan perfects the existing dark-theme design system by fixing WCAG contrast issues, establishing a formal spacing/radius scale, and standardizing all core UI components for visual consistency.
 
 ---
 
-## CATEGORY 2: UX Friction and Missing Workflows
+## PART 1: Color and Contrast Optimization
 
-### 2A. No search/filter on invoices
-- With dozens or hundreds of invoices, there's only a status filter dropdown. No search by invoice number, client name, or date range.
-- **Fix**: Add a search input and date range filters.
+### Current Issues Found
+- **Muted foreground** (`0 0% 60%`) on dark background (`0 0% 7%`) yields roughly 5.3:1 -- passes AA but is borderline for small text
+- **Status progress** and **status info** are identical to primary (`201 100% 45%`) -- no semantic differentiation
+- **Warning status** is missing entirely -- the badge has a "warning" variant mapped to progress/blue, which is semantically wrong (warnings should be amber/yellow)
+- **`brand-accent-cyan`** is referenced in Tailwind config but the CSS variable `--brand-accent-cyan` does not exist (only `--brand-accent-blue`)
+- **Accent** is identical to primary -- provides no visual distinction for hover/interactive states
+- No color scale (50-900) exists for extending brand usage across subtle backgrounds, borders, and hover states
 
-### 2B. No payment history visible in detail modal
-- InvoiceDetailModal shows total paid and balance, but there's no list of individual payments (dates, methods, references). The `useInvoicePayments` hook has `fetchPayments()` but it's never called in the detail view.
-- **Fix**: Add a "Payment History" section to the detail modal listing all recorded payments.
+### Changes
 
-### 2C. No delete invoice capability
-- There's no way to delete a draft invoice. RLS allows admins to delete, but the UI has no delete button.
-- **Fix**: Add a delete action for draft invoices (with confirmation).
+**`src/index.css`** -- Expand CSS custom properties:
+- Add a full primary color scale: `--primary-50` through `--primary-900` (blue 201 hue variants)
+- Add dedicated **warning** color: `--status-warning: 38 92% 50%` (amber) with foreground
+- Differentiate **accent** from primary: shift accent to `201 90% 55%` (lighter interactive blue)
+- Differentiate **status-info**: `210 80% 55%` (a cooler, distinguishable blue)
+- Fix `--brand-accent-cyan` to match what Tailwind references, or rename the Tailwind key to `accent-blue`
+- Add `--status-warning` and `--status-warning-foreground` variables
+- Add subtle surface variants: `--surface-raised: 0 0% 12%`, `--surface-overlay: 0 0% 14%`
 
-### 2D. Invoice email uses `onboarding@resend.dev` sender
-- The edge function hardcodes `from: onboarding@resend.dev`. Emails will likely land in spam and look unprofessional. Resend requires a verified domain for production use.
-- **Fix**: Document the requirement for users to configure a verified domain, and add a "From Email" setting in invoice_settings.
+**`tailwind.config.ts`** -- Register new tokens:
+- Add `primary` scale: `primary.50`, `primary.100`, ..., `primary.900`
+- Add `status.warning` and `status.warning-foreground`
+- Fix `brand.accent-cyan` to reference the correct CSS variable
+- Add `surface.raised` and `surface.overlay` utility colors
 
-### 2E. Settings not auto-saved / no dirty-state indicator
-- The settings form requires manually clicking "Save Settings" but provides no visual indication when there are unsaved changes. Easy to navigate away and lose work.
-- **Fix**: Add a dirty-state indicator (e.g., highlighted save button or "unsaved changes" warning).
-
-### 2F. Client list has no invoice count or total billed
-- The Clients tab shows basic contact info but no relationship to invoicing data (how many invoices, total billed, outstanding balance).
-- **Fix**: Add computed columns for invoice count and outstanding balance per client.
-
----
-
-## CATEGORY 3: UI Polish and Industry Parity
-
-### 3A. Invoice table not mobile-friendly
-- The 7-column invoice table breaks on small screens. No responsive adaptation.
-- **Fix**: Use a card-based layout on mobile with key info (number, client, total, status) and actions in a dropdown menu.
-
-### 3B. No invoice preview before sending
-- Users must download the PDF to see what the invoice looks like. There's no in-app preview.
-- **Fix**: Add an inline preview (rendered HTML) in the detail modal or a preview step in the Send flow.
-
-### 3C. Tab icons increase cognitive load on mobile
-- All five tab triggers have icons + text which crowds the TabsList on narrow screens.
-- **Fix**: Show icon-only tabs on mobile with tooltips.
-
-### 3D. Aging Report lacks export
-- The AR Aging report is view-only. Accountants need to export this data to CSV/PDF.
-- **Fix**: Add export buttons (CSV and PDF) to the Aging tab.
-
-### 3E. No currency configuration
-- Everything is hardcoded to USD (`$`). Canadian construction companies use CAD, and the system should support configurable currency symbols.
-- **Fix**: Add a currency field to invoice_settings and use it throughout.
+**`src/components/ui/badge.tsx`** -- Fix warning variant:
+- Change `warning` from blue (`bg-status-progress`) to amber (`bg-status-warning`)
 
 ---
 
-## CATEGORY 4: Security and Access Control
+## PART 2: Spacing and Layout Refinement
 
-### 4A. No role gating on invoicing page
-- The page imports `useProjectRole` and `isGlobalAdmin` but never uses them to restrict access. Any org member (including workers) can access invoicing, create invoices, and void them.
-- **Fix**: Gate the invoicing page to Admin and Project Manager roles only.
+### Current Issues
+- Spacing is ad-hoc across components (mix of `p-4`, `p-6`, `space-y-2`, `space-y-6`, `gap-2`, `gap-3`, `gap-4`)
+- Border radius uses 3 computed values (`--radius`, `--radius - 2px`, `--radius - 4px`) but components also use `rounded-xl`, `rounded-full` inconsistently
+- No formal spacing documentation -- developers pick arbitrary values
 
-### 4B. Projects query not org-scoped
-- Line 107: `supabase.from("projects").select("id, name")` fetches all non-deleted projects without filtering by organization, potentially leaking project names across orgs.
-- **Fix**: Add `.eq('organization_id', activeOrganizationId)` to the projects query.
+### Changes
 
----
+**`tailwind.config.ts`** -- Formalize spacing and radius:
+- Add named spacing tokens: `spacing.1` (4px), `spacing.2` (8px), `spacing.3` (12px), `spacing.4` (16px), `spacing.6` (24px), `spacing.8` (32px), `spacing.12` (48px), `spacing.16` (64px) -- these already exist in Tailwind defaults, so this is mostly documentation
+- Standardize border-radius scale:
+  - `--radius-xs: 2px`
+  - `--radius-sm: 4px` (calc already does this)
+  - `--radius-md: 6px`
+  - `--radius: 8px` (base, unchanged)
+  - `--radius-lg: 12px`
+  - `--radius-xl: 16px`
+- Register these in Tailwind's `borderRadius` extend
 
-## Implementation Priority and Sequencing
-
-**Phase 1 -- Critical Fixes (bugs and data integrity)**
-1. Confirmation dialogs for destructive actions (1A)
-2. Fix overdue auto-detection (1G)
-3. Fix Send button visibility for non-draft statuses (1B)
-4. Add overpayment validation (1C)
-5. Render logo in PDF (1F)
-6. Scope projects query to organization (4B)
-7. Role-gate the invoicing page (4A)
-
-**Phase 2 -- UX Completeness**
-8. Search and date-range filters on invoices (2A)
-9. Payment history in detail modal (2B)
-10. Delete draft invoices (2C)
-11. Dirty-state indicator on settings (2E)
-12. Detail modal refresh after save (1E)
-13. Client invoice summary columns (2F)
-
-**Phase 3 -- Industry Parity and Polish**
-14. Recurring invoice automation (backend function) (1D)
-15. Mobile-responsive invoice table (3A)
-16. Aging report CSV/PDF export (3D)
-17. Currency configuration (3E)
-18. Email sender domain configuration (2D)
-19. Invoice preview before send (3B)
-20. Mobile tab optimization (3C)
+**`src/index.css`** -- Add spacing/radius CSS variables and component utility classes:
+- Add `--radius-xs`, `--radius-lg`, `--radius-xl` variables
+- Add component-level spacing utility classes:
+  - `.section-spacing` -- consistent vertical section gaps (`space-y-6`)
+  - `.card-padding` -- standardized card internal padding (`p-4 md:p-6`)
+  - `.form-gap` -- consistent form field spacing (`space-y-4`)
+  - `.inline-gap` -- inline element spacing (`gap-2`)
 
 ---
 
-## Technical Details
+## PART 3: Component Standardization
 
-### Files to modify:
-- `src/pages/Invoicing.tsx` -- role gating, confirmations, search, filters, org-scoped projects, send button logic, delete action, overdue computation, dirty state
-- `src/components/invoicing/InvoiceDetailModal.tsx` -- payment history section, refresh after save, inline preview
-- `src/components/invoicing/InvoicePDFExport.tsx` -- logo rendering, currency symbol
-- `src/components/invoicing/RecordPaymentModal.tsx` -- overpayment validation
-- `src/components/invoicing/AgingReport.tsx` -- CSV/PDF export buttons
-- `src/components/invoicing/SendInvoiceModal.tsx` -- allow resending
-- `src/types/invoicing.ts` -- currency field on InvoiceSettings
-- `supabase/functions/send-invoice-email/index.ts` -- configurable from address
-- New migration -- add `currency` column to `invoice_settings`
-- New edge function or cron -- recurring invoice generation
+### 3A. Button Standardization
 
-### Estimated scope: ~3 implementation rounds matching the phases above.
+**Current state**: 4 sizes (`default: h-10`, `sm: h-9`, `lg: h-11`, `icon: h-10`). Global CSS forces `min-h-[44px]` on ALL buttons and anchors for field touch targets, which overrides `sm` and `default` sizes.
+
+**`src/components/ui/button.tsx`** changes:
+- Adjust sizes to respect the 44px minimum while being intentional:
+  - `sm`: `h-9` (unchanged -- global min-h overrides to 44px anyway, but keep for padding context)
+  - `default`: `h-11` (bump from h-10 to align with field-first 44px+)
+  - `lg`: `h-12` (bump from h-11 for clearer hierarchy)
+  - `icon`: `h-11 w-11` (from h-10 w-10)
+- Add `xs` size for compact inline contexts: `h-8 px-2 text-xs` (used inside tables/dense UIs where 44px is excessive)
+- Add consistent focus ring styling and active state scale
+- Standardize icon sizing within buttons: `[&_svg]:size-4` for sm/default, `[&_svg]:size-5` for lg
+
+### 3B. Form Input Standardization
+
+**`src/components/ui/input.tsx`** and **`src/components/ui/textarea.tsx`** changes:
+- Standardize height to `h-11` (44px) for field usability (from h-10)
+- Add consistent transition: `transition-colors duration-150`
+- Add subtle hover state: `hover:border-primary/50`
+- Ensure matching border radius (`rounded-lg` to match --radius)
+
+**`src/components/ui/select.tsx`** changes:
+- Match SelectTrigger height to `h-11`
+- Add hover border state matching inputs
+- Standardize focus ring to match Input component
+
+### 3C. Card Standardization
+
+**`src/components/ui/card.tsx`** changes:
+- Update base Card to use `rounded-xl` (12px) consistently matching widget-card
+- Add subtle `shadow-sm` by default (already present)
+- Standardize CardHeader padding to `p-4 md:p-6` for responsive consistency
+- Standardize CardContent padding to `px-4 pb-4 md:px-6 md:pb-6`
+
+### 3D. Icon Sizing Standards
+
+Document and enforce icon size tiers:
+- **16px** (`h-4 w-4`): Inside buttons, badges, inline text
+- **20px** (`h-5 w-5`): Navigation icons, section headers, medium prominence
+- **24px** (`h-6 w-6`): Primary action icons, empty states
+- **32px** (`h-8 w-8`): Dashboard metric icons, feature highlights
+
+No code change needed -- this is enforced via the existing `[&_svg]:size-4` in button and maintained as convention.
+
+### 3E. Loading, Empty, and Error State Consistency
+
+**`src/components/LoadingCard.tsx`** changes:
+- Add subtle pulse animation timing alignment
+- Standardize skeleton widths for visual rhythm
+
+**`src/components/EmptyState.tsx`** changes:
+- Standardize icon container to `w-14 h-14` with `rounded-xl` (from `w-16 h-16 rounded-full`)
+- Use `surface-raised` background for icon container
+- Tighten spacing: `mb-3` for icon, `mb-1.5` for title
+
+**`src/components/ui/alert.tsx`** changes:
+- Add `info` and `warning` variants using the new semantic status colors
+- Standardize padding to `p-4` with consistent icon positioning
+
+### 3F. Table Standardization
+
+**`src/components/ui/table.tsx`** changes:
+- Standardize TableHead height to `h-11` (from h-12) for compactness
+- Add `text-xs uppercase tracking-wider` to TableHead for clearer hierarchy
+- Standardize TableCell padding to `px-4 py-3` for tighter rows
+
+### 3G. Dialog/Modal Standardization
+
+**`src/components/ui/dialog.tsx`** changes:
+- Standardize DialogContent to use `rounded-xl` on all breakpoints (currently only sm:rounded-lg)
+- Add consistent max-height with scroll: `max-h-[85vh] overflow-y-auto`
+- Standardize internal gap to `gap-6` (from gap-4)
+
+---
+
+## PART 4: Style Guide Documentation
+
+Create **`src/STYLE_GUIDE.md`** documenting:
+- Color palette with HSL values, hex equivalents, and usage rules
+- Spacing scale with pixel values and Tailwind class mappings
+- Border radius scale
+- Component size chart (buttons, inputs, icons)
+- Status color semantic meanings
+- Typography scale (already using Inter with Tailwind defaults)
+
+---
+
+## Implementation Sequence
+
+1. CSS variables and Tailwind config (foundation layer)
+2. Core UI primitives (button, input, select, card, dialog, table, alert, badge)
+3. Composite components (EmptyState, LoadingCard, SectionHeader)
+4. Style guide documentation
+
+### Files Modified
+- `src/index.css` -- new CSS variables, utility classes, surface tokens
+- `tailwind.config.ts` -- color scale, radius scale, new tokens
+- `src/components/ui/button.tsx` -- size adjustments, xs variant
+- `src/components/ui/input.tsx` -- height, hover, transitions
+- `src/components/ui/textarea.tsx` -- matching input styles
+- `src/components/ui/select.tsx` -- trigger height and hover
+- `src/components/ui/card.tsx` -- rounded-xl, responsive padding
+- `src/components/ui/badge.tsx` -- fix warning variant
+- `src/components/ui/dialog.tsx` -- rounded-xl, max-height
+- `src/components/ui/table.tsx` -- compact headers, tighter cells
+- `src/components/ui/alert.tsx` -- info/warning variants
+- `src/components/EmptyState.tsx` -- spacing tightening
+- `src/components/LoadingCard.tsx` -- animation alignment
+- `src/STYLE_GUIDE.md` -- new file
 
