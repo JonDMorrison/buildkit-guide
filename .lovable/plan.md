@@ -1,184 +1,255 @@
 
 
-# Color, Spacing, and Component Standardization -- Design System Overhaul
+# Interaction Perfection -- Premium UX Overhaul
 
 ## Overview
-This plan perfects the existing dark-theme design system by fixing WCAG contrast issues, establishing a formal spacing/radius scale, and standardizing all core UI components for visual consistency.
+This plan upgrades the app from functional to premium by adding polished micro-interactions, improving navigation clarity, hardening error/loading states, and optimizing performance -- all while respecting the existing construction field-first design system.
 
 ---
 
-## PART 1: Color and Contrast Optimization
+## PART 1: Micro-Interactions and Animations
 
-### Current Issues Found
-- **Muted foreground** (`0 0% 60%`) on dark background (`0 0% 7%`) yields roughly 5.3:1 -- passes AA but is borderline for small text
-- **Status progress** and **status info** are identical to primary (`201 100% 45%`) -- no semantic differentiation
-- **Warning status** is missing entirely -- the badge has a "warning" variant mapped to progress/blue, which is semantically wrong (warnings should be amber/yellow)
-- **`brand-accent-cyan`** is referenced in Tailwind config but the CSS variable `--brand-accent-cyan` does not exist (only `--brand-accent-blue`)
-- **Accent** is identical to primary -- provides no visual distinction for hover/interactive states
-- No color scale (50-900) exists for extending brand usage across subtle backgrounds, borders, and hover states
+### 1A. Tailwind Animation Keyframes
 
-### Changes
+**`tailwind.config.ts`** -- Add missing animation keyframes:
+- `fade-in` (0.3s ease-out, translateY 10px to 0, opacity 0 to 1)
+- `fade-out` (reverse of fade-in)
+- `scale-in` (0.2s, scale 0.95 to 1)
+- `slide-in-right` / `slide-out-right` (0.3s ease-out)
+- `slide-up` (for bottom sheets and toasts)
+- `pulse-soft` (gentler pulse for skeleton loaders, 1.5s)
+- `success-pop` (scale 0 to 1.1 to 1 with opacity, for checkmarks)
+- `shake` (for error feedback on invalid form submissions)
+- Register all as named animations: `animate-fade-in`, `animate-scale-in`, `animate-success-pop`, `animate-shake`, etc.
 
-**`src/index.css`** -- Expand CSS custom properties:
-- Add a full primary color scale: `--primary-50` through `--primary-900` (blue 201 hue variants)
-- Add dedicated **warning** color: `--status-warning: 38 92% 50%` (amber) with foreground
-- Differentiate **accent** from primary: shift accent to `201 90% 55%` (lighter interactive blue)
-- Differentiate **status-info**: `210 80% 55%` (a cooler, distinguishable blue)
-- Fix `--brand-accent-cyan` to match what Tailwind references, or rename the Tailwind key to `accent-blue`
-- Add `--status-warning` and `--status-warning-foreground` variables
-- Add subtle surface variants: `--surface-raised: 0 0% 12%`, `--surface-overlay: 0 0% 14%`
+### 1B. Global Transition Defaults
 
-**`tailwind.config.ts`** -- Register new tokens:
-- Add `primary` scale: `primary.50`, `primary.100`, ..., `primary.900`
-- Add `status.warning` and `status.warning-foreground`
-- Fix `brand.accent-cyan` to reference the correct CSS variable
-- Add `surface.raised` and `surface.overlay` utility colors
+**`src/index.css`** -- Add interaction utility classes:
+- `.interactive` -- base class for all clickable elements: `transition-all duration-200 ease-out`
+- `.interactive:hover` -- subtle lift: `transform: translateY(-1px)`
+- `.interactive:active` -- press feedback: `transform: translateY(0px) scale(0.98)`
+- `.focus-ring` -- reusable focus-visible ring: `focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background`
+- `.card-hover` -- for cards: adds shadow transition + border-primary/30 on hover
+- `.stagger-in` children animation stagger (using CSS `animation-delay` with nth-child)
 
-**`src/components/ui/badge.tsx`** -- Fix warning variant:
-- Change `warning` from blue (`bg-status-progress`) to amber (`bg-status-warning`)
+### 1C. Button Press Effects
 
----
+**`src/components/ui/button.tsx`** -- Add active state:
+- Add `active:scale-[0.97]` transition (already partially exists globally, but make it explicit per-variant)
+- Add `transition-all duration-150` to base styles (currently `transition-colors duration-150`)
 
-## PART 2: Spacing and Layout Refinement
+### 1D. Toast/Sonner Enhancements
 
-### Current Issues
-- Spacing is ad-hoc across components (mix of `p-4`, `p-6`, `space-y-2`, `space-y-6`, `gap-2`, `gap-3`, `gap-4`)
-- Border radius uses 3 computed values (`--radius`, `--radius - 2px`, `--radius - 4px`) but components also use `rounded-xl`, `rounded-full` inconsistently
-- No formal spacing documentation -- developers pick arbitrary values
+**`src/components/ui/sonner.tsx`** -- Improve toast UX:
+- Add `position="bottom-center"` for mobile-first accessibility
+- Add `richColors` prop for semantic coloring (success=green, error=red)
+- Add `closeButton` for explicit dismissal
+- Increase `duration` to 4000ms for field users
 
-### Changes
+### 1E. Success Animation Component
 
-**`tailwind.config.ts`** -- Formalize spacing and radius:
-- Add named spacing tokens: `spacing.1` (4px), `spacing.2` (8px), `spacing.3` (12px), `spacing.4` (16px), `spacing.6` (24px), `spacing.8` (32px), `spacing.12` (48px), `spacing.16` (64px) -- these already exist in Tailwind defaults, so this is mostly documentation
-- Standardize border-radius scale:
-  - `--radius-xs: 2px`
-  - `--radius-sm: 4px` (calc already does this)
-  - `--radius-md: 6px`
-  - `--radius: 8px` (base, unchanged)
-  - `--radius-lg: 12px`
-  - `--radius-xl: 16px`
-- Register these in Tailwind's `borderRadius` extend
-
-**`src/index.css`** -- Add spacing/radius CSS variables and component utility classes:
-- Add `--radius-xs`, `--radius-lg`, `--radius-xl` variables
-- Add component-level spacing utility classes:
-  - `.section-spacing` -- consistent vertical section gaps (`space-y-6`)
-  - `.card-padding` -- standardized card internal padding (`p-4 md:p-6`)
-  - `.form-gap` -- consistent form field spacing (`space-y-4`)
-  - `.inline-gap` -- inline element spacing (`gap-2`)
+**New: `src/components/SuccessAnimation.tsx`**
+- Reusable animated checkmark component using CSS keyframes
+- Props: `message`, `onComplete`, `duration`
+- Used after form submissions, payment recording, invoice creation
+- Green circle with animated checkmark SVG path + fade-in message
 
 ---
 
-## PART 3: Component Standardization
+## PART 2: Navigation and User Flow
 
-### 3A. Button Standardization
+### 2A. Page Transition Wrapper
 
-**Current state**: 4 sizes (`default: h-10`, `sm: h-9`, `lg: h-11`, `icon: h-10`). Global CSS forces `min-h-[44px]` on ALL buttons and anchors for field touch targets, which overrides `sm` and `default` sizes.
+**New: `src/components/PageTransition.tsx`**
+- Wraps page content with fade-in animation on mount
+- Uses `animate-fade-in` class with 0.2s duration
+- Applied in `Layout.tsx` around `{children}`
 
-**`src/components/ui/button.tsx`** changes:
-- Adjust sizes to respect the 44px minimum while being intentional:
-  - `sm`: `h-9` (unchanged -- global min-h overrides to 44px anyway, but keep for padding context)
-  - `default`: `h-11` (bump from h-10 to align with field-first 44px+)
-  - `lg`: `h-12` (bump from h-11 for clearer hierarchy)
-  - `icon`: `h-11 w-11` (from h-10 w-10)
-- Add `xs` size for compact inline contexts: `h-8 px-2 text-xs` (used inside tables/dense UIs where 44px is excessive)
-- Add consistent focus ring styling and active state scale
-- Standardize icon sizing within buttons: `[&_svg]:size-4` for sm/default, `[&_svg]:size-5` for lg
+### 2B. Breadcrumb Navigation
 
-### 3B. Form Input Standardization
+**New: `src/components/Breadcrumbs.tsx`**
+- Auto-generates breadcrumbs from current route path
+- Route-to-label mapping: `/dashboard` = "Dashboard", `/tasks` = "Tasks", `/projects/:id` = project name, etc.
+- Uses existing `Breadcrumb` UI primitives from `breadcrumb.tsx`
+- Placed inside `Layout.tsx` below TopNav, above main content
+- Responsive: collapsed on mobile (shows only current + parent), full on desktop
+- Includes "back" arrow on mobile for quick navigation
 
-**`src/components/ui/input.tsx`** and **`src/components/ui/textarea.tsx`** changes:
-- Standardize height to `h-11` (44px) for field usability (from h-10)
-- Add consistent transition: `transition-colors duration-150`
-- Add subtle hover state: `hover:border-primary/50`
-- Ensure matching border radius (`rounded-lg` to match --radius)
+### 2C. Tab Bar Active Indicator Enhancement
 
-**`src/components/ui/select.tsx`** changes:
-- Match SelectTrigger height to `h-11`
-- Add hover border state matching inputs
-- Standardize focus ring to match Input component
+**`src/components/TabBar.tsx`** -- Improve active state:
+- Add animated underline/dot indicator on active tab (small 3px rounded pill below icon)
+- Add `transition-colors duration-200` on tab items
+- Active tab: icon scales slightly (`scale-110`) with color change
 
-### 3C. Card Standardization
+### 2D. Form Progress Indicator
 
-**`src/components/ui/card.tsx`** changes:
-- Update base Card to use `rounded-xl` (12px) consistently matching widget-card
-- Add subtle `shadow-sm` by default (already present)
-- Standardize CardHeader padding to `p-4 md:p-6` for responsive consistency
-- Standardize CardContent padding to `px-4 pb-4 md:px-6 md:pb-6`
+**New: `src/components/FormProgress.tsx`**
+- Horizontal step indicator for multi-step forms (wizard flows)
+- Props: `steps: string[]`, `currentStep: number`, `completedSteps: number[]`
+- Connected dots/circles with labels, completed = primary fill, current = ring, future = muted
+- Used in WelcomeWizard, SafetyFormModal, DailySafetyWizard
 
-### 3D. Icon Sizing Standards
+### 2E. Tooltip Delay Standardization
 
-Document and enforce icon size tiers:
-- **16px** (`h-4 w-4`): Inside buttons, badges, inline text
-- **20px** (`h-5 w-5`): Navigation icons, section headers, medium prominence
-- **24px** (`h-6 w-6`): Primary action icons, empty states
-- **32px** (`h-8 w-8`): Dashboard metric icons, feature highlights
-
-No code change needed -- this is enforced via the existing `[&_svg]:size-4` in button and maintained as convention.
-
-### 3E. Loading, Empty, and Error State Consistency
-
-**`src/components/LoadingCard.tsx`** changes:
-- Add subtle pulse animation timing alignment
-- Standardize skeleton widths for visual rhythm
-
-**`src/components/EmptyState.tsx`** changes:
-- Standardize icon container to `w-14 h-14` with `rounded-xl` (from `w-16 h-16 rounded-full`)
-- Use `surface-raised` background for icon container
-- Tighten spacing: `mb-3` for icon, `mb-1.5` for title
-
-**`src/components/ui/alert.tsx`** changes:
-- Add `info` and `warning` variants using the new semantic status colors
-- Standardize padding to `p-4` with consistent icon positioning
-
-### 3F. Table Standardization
-
-**`src/components/ui/table.tsx`** changes:
-- Standardize TableHead height to `h-11` (from h-12) for compactness
-- Add `text-xs uppercase tracking-wider` to TableHead for clearer hierarchy
-- Standardize TableCell padding to `px-4 py-3` for tighter rows
-
-### 3G. Dialog/Modal Standardization
-
-**`src/components/ui/dialog.tsx`** changes:
-- Standardize DialogContent to use `rounded-xl` on all breakpoints (currently only sm:rounded-lg)
-- Add consistent max-height with scroll: `max-h-[85vh] overflow-y-auto`
-- Standardize internal gap to `gap-6` (from gap-4)
+**`src/components/ui/tooltip.tsx`** -- Set consistent delay:
+- Add `delayDuration={300}` to TooltipProvider default
+- Ensures all tooltips appear after 0.3s hover consistently
 
 ---
 
-## PART 4: Style Guide Documentation
+## PART 3: Responsive and Accessibility
 
-Create **`src/STYLE_GUIDE.md`** documenting:
-- Color palette with HSL values, hex equivalents, and usage rules
-- Spacing scale with pixel values and Tailwind class mappings
-- Border radius scale
-- Component size chart (buttons, inputs, icons)
-- Status color semantic meanings
-- Typography scale (already using Inter with Tailwind defaults)
+### 3A. Skip Navigation Link
+
+**`src/components/Layout.tsx`** -- Add skip-to-content:
+- Add visually hidden "Skip to main content" link as first child
+- On focus: becomes visible, positioned at top
+- `main` element gets `id="main-content"` and `tabIndex={-1}`
+
+### 3B. ARIA Improvements Across Components
+
+**`src/components/EmptyState.tsx`**:
+- Add `role="status"` and `aria-label` to empty state container
+
+**`src/components/StatusBadge.tsx`**:
+- Add `aria-label` with full status text (e.g., "Status: In Progress")
+
+**`src/components/LoadingCard.tsx`**:
+- Add `role="status"` and `aria-label="Loading content"` with `aria-busy="true"`
+
+**`src/components/TabBar.tsx`**:
+- Add `aria-label="Main navigation"` to nav element
+- Add `aria-current="page"` to active tab link
+
+### 3C. Focus Management
+
+**`src/components/ui/card.tsx`** -- Add interactive card variant:
+- When a card has `onClick`, add `tabIndex={0}`, `role="button"`, `onKeyDown` (Enter/Space triggers click)
+- Add `.focus-ring` class for keyboard users
+
+### 3D. Touch Target Audit
+
+The global 44px minimum on buttons/anchors is already set. Additional fixes:
+- **`src/components/TabBar.tsx`**: Ensure each tab link has `min-w-[48px] min-h-[48px]` (bump from 64px width minimum, already okay)
+- **Checkbox/Switch**: Verify padding around these for 44px touch area
+
+---
+
+## PART 4: Error Handling and Edge Cases
+
+### 4A. Enhanced Error Boundary
+
+**`src/components/ErrorBoundary.tsx`** -- Improve UX:
+- Add `animate-fade-in` to error display
+- Add "Try Again" button that calls `handleReset` (renders children again without full reload)
+- Add auto-error-reporting placeholder (console.error is already there)
+- Improve copy: "This section encountered an issue" instead of "Something went wrong"
+
+### 4B. Inline Error Component
+
+**New: `src/components/InlineError.tsx`**
+- Compact error display for sections that fail within a page (not full-page crash)
+- Props: `message`, `onRetry`, `className`
+- Shows warning icon + message + "Retry" button
+- Used when individual data fetches fail (e.g., a widget on dashboard)
+
+### 4C. Form Validation Feedback
+
+**`src/components/FormField.tsx`** -- Enhance error display:
+- Add `animate-shake` to input wrapper when error appears
+- Add `aria-invalid="true"` and `aria-describedby` linking to error message
+- Error message gets `role="alert"` for screen readers
+- Add red left border on error state for visual indicator
+
+### 4D. Confirmation Dialog Standardization
+
+**New: `src/components/ConfirmDialog.tsx`**
+- Reusable confirmation dialog wrapping AlertDialog
+- Props: `open`, `onConfirm`, `onCancel`, `title`, `description`, `confirmLabel`, `variant` (default/destructive)
+- Destructive variant: red confirm button, warning icon
+- Default variant: primary confirm button
+- Replaces ad-hoc confirm patterns across the app
+
+### 4E. Connection Status Banner
+
+**New: `src/components/ConnectionStatus.tsx`**
+- Detects online/offline status using `navigator.onLine` and `online`/`offline` events
+- Shows a slim banner at top of screen when offline: "You're offline. Changes will sync when connected."
+- Auto-dismisses with fade-out when back online
+- Integrates with existing offline queue system
+
+---
+
+## PART 5: Performance Optimization
+
+### 5A. Image Lazy Loading
+
+**`src/index.css`** -- Add native lazy loading support:
+- Global rule: `img { content-visibility: auto; }` for off-screen images
+
+### 5B. Skeleton Screen Improvements
+
+**`src/components/LoadingCard.tsx`** -- Refine:
+- Standardize skeleton animation timing with `pulse-soft` (1.5s, gentler)
+- Add variant prop: `compact` (fewer skeleton lines) and `full` (current)
+- Add `aria-busy="true"` and `aria-label="Loading"`
+
+### 5C. Virtualized Long Lists
+
+Document recommendation (not implemented now -- future enhancement):
+- For task lists, deficiency lists, and receipt lists exceeding 50+ items
+- Recommend `react-window` or `@tanstack/react-virtual` in Style Guide
+
+### 5D. Preload Critical Routes
+
+**`src/App.tsx`** -- Add route preloading hints:
+- After Dashboard loads, preload Tasks and Safety pages in idle callback
+- Use `requestIdleCallback` to import lazy components proactively:
+  ```
+  requestIdleCallback(() => { import('./pages/Tasks'); import('./pages/Safety'); });
+  ```
+
+### 5E. Optimistic Loading Pattern
+
+**`src/components/ui/button.tsx`** -- Add loading state:
+- Add `loading` prop to Button component
+- When `loading=true`: shows spinner icon, disables button, maintains width
+- Prevents double-submissions on forms
 
 ---
 
 ## Implementation Sequence
 
-1. CSS variables and Tailwind config (foundation layer)
-2. Core UI primitives (button, input, select, card, dialog, table, alert, badge)
-3. Composite components (EmptyState, LoadingCard, SectionHeader)
-4. Style guide documentation
+1. **Foundation layer**: Tailwind keyframes, CSS utility classes, animation tokens
+2. **Core UI upgrades**: Button loading state, Toast config, Tooltip delay, Skeleton refinement
+3. **New components**: PageTransition, Breadcrumbs, SuccessAnimation, ConfirmDialog, InlineError, ConnectionStatus, FormProgress
+4. **Layout integration**: Apply PageTransition in Layout, add skip nav, add breadcrumbs, add connection status
+5. **Component polish**: TabBar active indicator, FormField error animation, EmptyState/LoadingCard ARIA, ErrorBoundary improvements
+6. **Performance**: Preload critical routes in App.tsx, image lazy loading
+
+### Files Created
+- `src/components/PageTransition.tsx`
+- `src/components/Breadcrumbs.tsx`
+- `src/components/SuccessAnimation.tsx`
+- `src/components/ConfirmDialog.tsx`
+- `src/components/InlineError.tsx`
+- `src/components/ConnectionStatus.tsx`
+- `src/components/FormProgress.tsx`
 
 ### Files Modified
-- `src/index.css` -- new CSS variables, utility classes, surface tokens
-- `tailwind.config.ts` -- color scale, radius scale, new tokens
-- `src/components/ui/button.tsx` -- size adjustments, xs variant
-- `src/components/ui/input.tsx` -- height, hover, transitions
-- `src/components/ui/textarea.tsx` -- matching input styles
-- `src/components/ui/select.tsx` -- trigger height and hover
-- `src/components/ui/card.tsx` -- rounded-xl, responsive padding
-- `src/components/ui/badge.tsx` -- fix warning variant
-- `src/components/ui/dialog.tsx` -- rounded-xl, max-height
-- `src/components/ui/table.tsx` -- compact headers, tighter cells
-- `src/components/ui/alert.tsx` -- info/warning variants
-- `src/components/EmptyState.tsx` -- spacing tightening
-- `src/components/LoadingCard.tsx` -- animation alignment
-- `src/STYLE_GUIDE.md` -- new file
+- `tailwind.config.ts` -- animation keyframes
+- `src/index.css` -- interaction utility classes
+- `src/components/ui/button.tsx` -- loading prop, active states
+- `src/components/ui/sonner.tsx` -- toast positioning and richColors
+- `src/components/ui/tooltip.tsx` -- default delay
+- `src/components/Layout.tsx` -- breadcrumbs, skip nav, page transition, connection status
+- `src/components/TabBar.tsx` -- active indicator animation, ARIA
+- `src/components/FormField.tsx` -- error animation, ARIA
+- `src/components/EmptyState.tsx` -- ARIA attributes
+- `src/components/LoadingCard.tsx` -- ARIA, animation refinement
+- `src/components/StatusBadge.tsx` -- ARIA label
+- `src/components/ErrorBoundary.tsx` -- improved UX and copy
+- `src/components/ui/alert-dialog.tsx` -- rounded-xl consistency
+- `src/App.tsx` -- route preloading
 
