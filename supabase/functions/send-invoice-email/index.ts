@@ -2,7 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 Deno.serve(async (req) => {
@@ -26,7 +26,6 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Verify user
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) {
@@ -39,7 +38,6 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Missing invoiceId or recipientEmail" }), { status: 400, headers: corsHeaders });
     }
 
-    // Fetch invoice details
     const { data: invoice, error: invError } = await supabase
       .from("invoices")
       .select("*, clients(name, email), projects(name)")
@@ -50,14 +48,12 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Invoice not found" }), { status: 404, headers: corsHeaders });
     }
 
-    // Fetch settings for branding
     const { data: settings } = await supabase
       .from("invoice_settings")
       .select("*")
       .eq("organization_id", invoice.organization_id)
       .single();
 
-    // Fetch line items
     const { data: lineItems } = await supabase
       .from("invoice_line_items")
       .select("*")
@@ -66,14 +62,14 @@ Deno.serve(async (req) => {
 
     const companyName = settings?.company_name || "Our Company";
     const items = lineItems || [];
+    const cs = settings?.currency === "EUR" ? "€" : settings?.currency === "GBP" ? "£" : "$";
 
-    // Build HTML email
     const lineItemsHtml = items.map((li: any) =>
       `<tr>
         <td style="padding:8px;border-bottom:1px solid #eee">${li.description}</td>
         <td style="padding:8px;border-bottom:1px solid #eee;text-align:right">${li.quantity}</td>
-        <td style="padding:8px;border-bottom:1px solid #eee;text-align:right">$${Number(li.unit_price).toFixed(2)}</td>
-        <td style="padding:8px;border-bottom:1px solid #eee;text-align:right">$${Number(li.amount).toFixed(2)}</td>
+        <td style="padding:8px;border-bottom:1px solid #eee;text-align:right">${cs}${Number(li.unit_price).toFixed(2)}</td>
+        <td style="padding:8px;border-bottom:1px solid #eee;text-align:right">${cs}${Number(li.amount).toFixed(2)}</td>
       </tr>`
     ).join("");
 
@@ -105,10 +101,10 @@ Deno.serve(async (req) => {
         </table>
         
         <div style="text-align:right;margin-top:16px">
-          <p>Subtotal: <strong>$${Number(invoice.subtotal).toFixed(2)}</strong></p>
-          ${Number(invoice.tax_amount) > 0 ? `<p>${settings?.tax_label || "Tax"}: <strong>$${Number(invoice.tax_amount).toFixed(2)}</strong></p>` : ""}
-          <p style="font-size:18px;font-weight:bold">Total: $${Number(invoice.total).toFixed(2)}</p>
-          ${Number(invoice.amount_paid) > 0 ? `<p>Paid: $${Number(invoice.amount_paid).toFixed(2)}</p><p style="font-size:16px;font-weight:bold">Balance Due: $${(Number(invoice.total) - Number(invoice.amount_paid)).toFixed(2)}</p>` : ""}
+          <p>Subtotal: <strong>${cs}${Number(invoice.subtotal).toFixed(2)}</strong></p>
+          ${Number(invoice.tax_amount) > 0 ? `<p>${settings?.tax_label || "Tax"}: <strong>${cs}${Number(invoice.tax_amount).toFixed(2)}</strong></p>` : ""}
+          <p style="font-size:18px;font-weight:bold">Total: ${cs}${Number(invoice.total).toFixed(2)}</p>
+          ${Number(invoice.amount_paid) > 0 ? `<p>Paid: ${cs}${Number(invoice.amount_paid).toFixed(2)}</p><p style="font-size:16px;font-weight:bold">Balance Due: ${cs}${(Number(invoice.total) - Number(invoice.amount_paid)).toFixed(2)}</p>` : ""}
         </div>
         
         ${settings?.default_payment_terms ? `<p style="margin-top:20px"><strong>Payment Terms:</strong> ${settings.default_payment_terms}</p>` : ""}
@@ -123,7 +119,11 @@ Deno.serve(async (req) => {
 
     const emailSubject = subject || `Invoice ${invoice.invoice_number} from ${companyName}`;
 
-    // Send via Resend
+    // Use configurable from_email if available (2D)
+    const fromEmail = settings?.from_email
+      ? `${companyName} <${settings.from_email}>`
+      : `${companyName} <onboarding@resend.dev>`;
+
     const resendRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: `${companyName} <onboarding@resend.dev>`,
+        from: fromEmail,
         to: [recipientEmail],
         subject: emailSubject,
         html: emailHtml,
@@ -144,7 +144,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Failed to send email", details: errBody }), { status: 500, headers: corsHeaders });
     }
 
-    // Update invoice status to sent
+    // Update invoice status to sent (only if draft)
     if (invoice.status === "draft") {
       await supabase
         .from("invoices")

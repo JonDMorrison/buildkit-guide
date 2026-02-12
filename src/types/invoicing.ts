@@ -27,6 +27,8 @@ export interface InvoiceSettings {
   tax_label: string;
   notes_template: string | null;
   payment_instructions: string | null;
+  currency: string;
+  from_email: string | null;
 }
 
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'void';

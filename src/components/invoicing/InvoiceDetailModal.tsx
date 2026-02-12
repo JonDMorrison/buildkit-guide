@@ -6,9 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Plus, Trash2, FileText, Pencil, Save, X, DollarSign, Mail } from "lucide-react";
+import { Loader2, Plus, Trash2, FileText, Pencil, Save, X } from "lucide-react";
 import { format } from "date-fns";
-import type { Invoice, InvoiceLineItem, InvoiceSettings, Client } from "@/types/invoicing";
+import { useInvoicePayments } from "@/hooks/useInvoicePayments";
+import type { Invoice, InvoiceLineItem, InvoiceSettings, Client, InvoicePayment } from "@/types/invoicing";
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   draft: { label: "Draft", variant: "secondary" },
@@ -28,22 +29,26 @@ interface Props {
   onSaveLineItems?: (invoiceId: string, items: Partial<InvoiceLineItem>[]) => Promise<void>;
   onUpdateInvoice?: (id: string, updates: Partial<Invoice>) => Promise<boolean>;
   onExportPDF?: (invoice: Invoice) => void;
+  onSaved?: () => Promise<void>;
+  currencySymbol?: string;
 }
 
 export const InvoiceDetailModal = ({
   open, onOpenChange, invoice, lineItems, settings, client,
-  onSaveLineItems, onUpdateInvoice, onExportPDF,
+  onSaveLineItems, onUpdateInvoice, onExportPDF, onSaved, currencySymbol = "$",
 }: Props) => {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editItems, setEditItems] = useState<Partial<InvoiceLineItem>[]>([]);
   const [editNotes, setEditNotes] = useState("");
+  const { payments, loading: paymentsLoading, fetchPayments } = useInvoicePayments();
 
   useEffect(() => {
     if (open && invoice) {
       setEditing(false);
       setEditItems(lineItems.map((li) => ({ ...li })));
       setEditNotes(invoice.notes || "");
+      fetchPayments(invoice.id);
     }
   }, [open, invoice, lineItems]);
 
@@ -57,6 +62,8 @@ export const InvoiceDetailModal = ({
   const taxAmount = Math.round(subtotal * ((settings?.tax_rate || 0) / 100) * 100) / 100;
   const total = Math.round((subtotal + taxAmount) * 100) / 100;
   const balance = Number(invoice.total) - Number(invoice.amount_paid || 0);
+
+  const fmt = (n: number) => `${currencySymbol}${n.toFixed(2)}`;
 
   const addLine = () => setEditItems([...editItems, { description: "", quantity: 1, unit_price: 0, category: "other" }]);
   const removeLine = (i: number) => setEditItems(editItems.filter((_, idx) => idx !== i));
@@ -73,6 +80,8 @@ export const InvoiceDetailModal = ({
     await onUpdateInvoice(invoice.id, { notes: editNotes || null, subtotal, tax_amount: taxAmount, total });
     setSaving(false);
     setEditing(false);
+    // Refresh parent data (1E fix)
+    onSaved?.();
   };
 
   return (
@@ -152,9 +161,9 @@ export const InvoiceDetailModal = ({
                       {editing ? <Input type="number" className="w-16 text-right" value={li.quantity} onChange={(e) => updateLine(i, "quantity", parseFloat(e.target.value) || 0)} /> : li.quantity}
                     </TableCell>
                     <TableCell className="text-right">
-                      {editing ? <Input type="number" className="w-24 text-right" value={li.unit_price} onChange={(e) => updateLine(i, "unit_price", parseFloat(e.target.value) || 0)} /> : `$${Number(li.unit_price).toFixed(2)}`}
+                      {editing ? <Input type="number" className="w-24 text-right" value={li.unit_price} onChange={(e) => updateLine(i, "unit_price", parseFloat(e.target.value) || 0)} /> : fmt(Number(li.unit_price))}
                     </TableCell>
-                    <TableCell className="text-right font-medium">${((Number(li.quantity) || 0) * (Number(li.unit_price) || 0)).toFixed(2)}</TableCell>
+                    <TableCell className="text-right font-medium">{fmt((Number(li.quantity) || 0) * (Number(li.unit_price) || 0))}</TableCell>
                     {editing && (
                       <TableCell>
                         <Button type="button" variant="ghost" size="icon" onClick={() => removeLine(i)}><Trash2 className="h-4 w-4" /></Button>
@@ -175,33 +184,54 @@ export const InvoiceDetailModal = ({
           <div className="flex flex-col items-end gap-1 text-sm">
             <div className="flex gap-8">
               <span className="text-muted-foreground">Subtotal</span>
-              <span className="font-medium">${(editing ? subtotal : Number(invoice.subtotal)).toFixed(2)}</span>
+              <span className="font-medium">{fmt(editing ? subtotal : Number(invoice.subtotal))}</span>
             </div>
             {Number(editing ? taxAmount : invoice.tax_amount) > 0 && (
               <div className="flex gap-8">
                 <span className="text-muted-foreground">{settings?.tax_label || "Tax"}</span>
-                <span className="font-medium">${(editing ? taxAmount : Number(invoice.tax_amount)).toFixed(2)}</span>
+                <span className="font-medium">{fmt(editing ? taxAmount : Number(invoice.tax_amount))}</span>
               </div>
             )}
             <div className="flex gap-8 text-base font-bold border-t pt-1 mt-1">
               <span>Total</span>
-              <span>${(editing ? total : Number(invoice.total)).toFixed(2)}</span>
+              <span>{fmt(editing ? total : Number(invoice.total))}</span>
             </div>
             {Number(invoice.amount_paid || 0) > 0 && !editing && (
               <>
                 <div className="flex gap-8 text-sm">
                   <span className="text-muted-foreground">Paid</span>
-                  <span className="text-primary font-medium">${Number(invoice.amount_paid).toFixed(2)}</span>
+                  <span className="text-primary font-medium">{fmt(Number(invoice.amount_paid))}</span>
                 </div>
                 <div className="flex gap-8 text-base font-bold">
                   <span>Balance Due</span>
-                  <span>${balance.toFixed(2)}</span>
+                  <span>{fmt(balance)}</span>
                 </div>
               </>
             )}
           </div>
 
-          {/* Payment Instructions (from settings) */}
+          {/* Payment History (2B) */}
+          {!editing && payments.length > 0 && (
+            <div>
+              <Label className="text-sm font-semibold">Payment History</Label>
+              <div className="mt-1 space-y-1">
+                {payments.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between text-sm bg-muted/50 rounded px-3 py-2">
+                    <div>
+                      <span className="font-medium">{fmt(Number(p.amount))}</span>
+                      <span className="text-muted-foreground ml-2">
+                        {p.payment_method && <span className="capitalize">{p.payment_method}</span>}
+                        {p.reference_number && <span> · #{p.reference_number}</span>}
+                      </span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">{format(new Date(p.payment_date), "MMM d, yyyy")}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Payment Instructions */}
           {settings?.payment_instructions && (
             <div>
               <Label className="text-sm font-semibold">Payment Instructions</Label>

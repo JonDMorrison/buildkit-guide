@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import type { Invoice, InvoicePayment } from "@/types/invoicing";
 
@@ -15,9 +15,10 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   invoice: Invoice | null;
   onSubmit: (invoiceId: string, payment: Partial<InvoicePayment>) => Promise<any>;
+  currencySymbol?: string;
 }
 
-export const RecordPaymentModal = ({ open, onOpenChange, invoice, onSubmit }: Props) => {
+export const RecordPaymentModal = ({ open, onOpenChange, invoice, onSubmit, currencySymbol = "$" }: Props) => {
   const [loading, setLoading] = useState(false);
   const [amount, setAmount] = useState("");
   const [paymentDate, setPaymentDate] = useState("");
@@ -39,12 +40,14 @@ export const RecordPaymentModal = ({ open, onOpenChange, invoice, onSubmit }: Pr
   if (!invoice) return null;
 
   const balance = Number(invoice.total) - Number(invoice.amount_paid || 0);
+  const parsedAmount = parseFloat(amount) || 0;
+  const isOverpayment = parsedAmount > balance && balance > 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     await onSubmit(invoice.id, {
-      amount: parseFloat(amount) || 0,
+      amount: parsedAmount,
       payment_date: paymentDate,
       payment_method: paymentMethod || null,
       reference_number: referenceNumber || null,
@@ -62,8 +65,8 @@ export const RecordPaymentModal = ({ open, onOpenChange, invoice, onSubmit }: Pr
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="text-sm text-muted-foreground">
-            Invoice total: <span className="font-medium text-foreground">${Number(invoice.total).toFixed(2)}</span>
-            {" · "}Balance: <span className="font-medium text-foreground">${balance.toFixed(2)}</span>
+            Invoice total: <span className="font-medium text-foreground">{currencySymbol}{Number(invoice.total).toFixed(2)}</span>
+            {" · "}Balance: <span className="font-medium text-foreground">{currencySymbol}{balance.toFixed(2)}</span>
           </div>
           <div className="space-y-2">
             <Label>Amount *</Label>
@@ -73,6 +76,12 @@ export const RecordPaymentModal = ({ open, onOpenChange, invoice, onSubmit }: Pr
               onChange={(e) => setAmount(e.target.value)}
               required
             />
+            {isOverpayment && (
+              <div className="flex items-center gap-1.5 text-amber-600 text-xs">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                <span>Amount exceeds outstanding balance of {currencySymbol}{balance.toFixed(2)}</span>
+              </div>
+            )}
           </div>
           <div className="space-y-2">
             <Label>Payment Date</Label>

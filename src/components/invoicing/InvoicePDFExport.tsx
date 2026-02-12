@@ -3,9 +3,9 @@ import type { Invoice, InvoiceLineItem, InvoiceSettings, Client } from "@/types/
 import { format } from "date-fns";
 
 /**
- * Generate and download an invoice PDF.
+ * Generate and download an invoice PDF. Includes logo if available.
  */
-export const generateInvoicePDF = (
+export const generateInvoicePDF = async (
   invoice: Invoice,
   lineItems: InvoiceLineItem[],
   settings: InvoiceSettings | null,
@@ -14,6 +14,28 @@ export const generateInvoicePDF = (
   const doc = new jsPDF();
   const m = 14;
   let y = 20;
+  const cs = (settings as any)?.currency === "EUR" ? "€" : (settings as any)?.currency === "GBP" ? "£" : "$";
+
+  // Logo rendering (1F fix)
+  if (settings?.logo_url) {
+    try {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject();
+        img.src = settings.logo_url!;
+      });
+      const maxW = 40, maxH = 20;
+      const ratio = Math.min(maxW / img.width, maxH / img.height);
+      const w = img.width * ratio;
+      const h = img.height * ratio;
+      doc.addImage(img, "PNG", m, y, w, h);
+      y += h + 4;
+    } catch {
+      // Logo failed to load, continue without
+    }
+  }
 
   // Company header
   doc.setFontSize(18);
@@ -85,46 +107,44 @@ export const generateInvoicePDF = (
     if (y > 265) { doc.addPage(); y = 20; }
     doc.text(li.description, m, y);
     doc.text(String(li.quantity), 110, y, { align: "right" });
-    doc.text(`$${Number(li.unit_price).toFixed(2)}`, 140, y, { align: "right" });
-    doc.text(`$${Number(li.amount).toFixed(2)}`, 180, y, { align: "right" });
+    doc.text(`${cs}${Number(li.unit_price).toFixed(2)}`, 140, y, { align: "right" });
+    doc.text(`${cs}${Number(li.amount).toFixed(2)}`, 180, y, { align: "right" });
     y += 5;
   }
 
   y += 3;
-  // Totals
   doc.text("Subtotal", 140, y, { align: "right" });
-  doc.text(`$${Number(invoice.subtotal).toFixed(2)}`, 180, y, { align: "right" });
+  doc.text(`${cs}${Number(invoice.subtotal).toFixed(2)}`, 180, y, { align: "right" });
   y += 5;
 
   if (Number(invoice.tax_amount) > 0) {
     doc.text(settings?.tax_label || "Tax", 140, y, { align: "right" });
-    doc.text(`$${Number(invoice.tax_amount).toFixed(2)}`, 180, y, { align: "right" });
+    doc.text(`${cs}${Number(invoice.tax_amount).toFixed(2)}`, 180, y, { align: "right" });
     y += 5;
   }
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.text("Total", 140, y, { align: "right" });
-  doc.text(`$${Number(invoice.total).toFixed(2)}`, 180, y, { align: "right" });
+  doc.text(`${cs}${Number(invoice.total).toFixed(2)}`, 180, y, { align: "right" });
   y += 6;
 
-  // Payments / balance
   const amountPaid = Number(invoice.amount_paid || 0);
   if (amountPaid > 0) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.text("Amount Paid", 140, y, { align: "right" });
-    doc.text(`$${amountPaid.toFixed(2)}`, 180, y, { align: "right" });
+    doc.text(`${cs}${amountPaid.toFixed(2)}`, 180, y, { align: "right" });
     y += 5;
     const balance = Number(invoice.total) - amountPaid;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.text("Balance Due", 140, y, { align: "right" });
-    doc.text(`$${balance.toFixed(2)}`, 180, y, { align: "right" });
+    doc.text(`${cs}${balance.toFixed(2)}`, 180, y, { align: "right" });
     y += 6;
   }
 
-  // Payment Instructions (from settings - appears on every invoice)
+  // Payment Instructions
   if (settings?.payment_instructions) {
     if (y > 245) { doc.addPage(); y = 20; }
     y += 3;
