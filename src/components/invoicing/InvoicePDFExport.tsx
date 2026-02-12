@@ -4,7 +4,6 @@ import { format } from "date-fns";
 
 /**
  * Generate and download an invoice PDF.
- * This is a utility function (not a component) to avoid duplicate PDF logic.
  */
 export const generateInvoicePDF = (
   invoice: Invoice,
@@ -26,6 +25,15 @@ export const generateInvoicePDF = (
     y += 5;
   }
   y += 5;
+
+  // Credit note indicator
+  if (invoice.credit_note_for) {
+    doc.setFontSize(12);
+    doc.setTextColor(220, 50, 50);
+    doc.text("CREDIT NOTE", m, y);
+    doc.setTextColor(0, 0, 0);
+    y += 7;
+  }
 
   // Invoice details
   doc.setFontSize(12);
@@ -98,14 +106,31 @@ export const generateInvoicePDF = (
   doc.setFontSize(11);
   doc.text("Total", 140, y, { align: "right" });
   doc.text(`$${Number(invoice.total).toFixed(2)}`, 180, y, { align: "right" });
-  y += 8;
+  y += 6;
+
+  // Payments / balance
+  const amountPaid = Number(invoice.amount_paid || 0);
+  if (amountPaid > 0) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.text("Amount Paid", 140, y, { align: "right" });
+    doc.text(`$${amountPaid.toFixed(2)}`, 180, y, { align: "right" });
+    y += 5;
+    const balance = Number(invoice.total) - amountPaid;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("Balance Due", 140, y, { align: "right" });
+    doc.text(`$${balance.toFixed(2)}`, 180, y, { align: "right" });
+    y += 6;
+  }
 
   // Notes
   if (invoice.notes) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.text("Notes:", m, y); y += 4;
-    doc.text(invoice.notes, m, y);
+    const noteLines = doc.splitTextToSize(invoice.notes, 170);
+    doc.text(noteLines, m, y);
   }
 
   doc.save(`${invoice.invoice_number}.pdf`);

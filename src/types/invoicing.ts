@@ -42,6 +42,8 @@ export interface Invoice {
   subtotal: number;
   tax_amount: number;
   total: number;
+  amount_paid: number;
+  credit_note_for: string | null;
   notes: string | null;
   created_by: string;
   created_at: string;
@@ -62,4 +64,34 @@ export interface InvoiceLineItem {
   amount: number;
   sort_order: number;
   category: string;
+}
+
+export interface InvoicePayment {
+  id: string;
+  invoice_id: string;
+  amount: number;
+  payment_date: string;
+  payment_method: string | null;
+  reference_number: string | null;
+  notes: string | null;
+  created_by: string;
+  created_at: string;
+}
+
+export interface RecurringInvoiceTemplate {
+  id: string;
+  organization_id: string;
+  client_id: string | null;
+  project_id: string | null;
+  frequency: string;
+  next_issue_date: string;
+  is_active: boolean;
+  line_items: any[];
+  notes: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  client?: Client | null;
+  project?: { name: string } | null;
 }
