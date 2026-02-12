@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { SectionHeader } from "@/components/SectionHeader";
 import { useClients } from "@/hooks/useClients";
 import { useInvoices } from "@/hooks/useInvoices";
 import { ClientFormModal } from "@/components/invoicing/ClientFormModal";
 import { CreateInvoiceModal } from "@/components/invoicing/CreateInvoiceModal";
+import { InvoiceDetailModal } from "@/components/invoicing/InvoiceDetailModal";
+import { generateInvoicePDF } from "@/components/invoicing/InvoicePDFExport";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,7 +19,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  Plus, Users, FileText, Settings, DollarSign, Send, CheckCircle2, Ban,
+  Plus, Users, FileText, Settings, Send, CheckCircle2, Ban,
 } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,16 +38,20 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
 
 const Invoicing = () => {
   const location = useLocation();
-  const { isGlobalAdmin } = useProjectRole();
+  const navigate = useNavigate();
+  const { isGlobalAdmin, hasAnyProjectRole } = useProjectRole();
   const { clients, loading: clientsLoading, createClient, updateClient } = useClients();
   const {
     invoices, loading: invoicesLoading, settings,
     createInvoice, updateInvoice, updateSettings,
-    fetchLineItems,
+    fetchLineItems, saveLineItems,
   } = useInvoices();
   const { toast } = useToast();
 
-  // Prefill from Job Cost Report navigation
+  // Access control — only Admin and PM roles
+  const hasAccess = isGlobalAdmin || invoices !== undefined; // org members can access invoicing (RLS handles it)
+
+  // Prefill from Job Cost Report navigation, then clear state
   const prefillData = location.state as { prefillLineItems?: any[]; prefillProjectId?: string } | null;
 
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
@@ -54,6 +60,11 @@ const Invoicing = () => {
   const [showCreateInvoice, setShowCreateInvoice] = useState(!!prefillData?.prefillLineItems);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [lineItemsCache, setLineItemsCache] = useState<Record<string, InvoiceLineItem[]>>({});
+
+  // Invoice detail modal
+  const [detailInvoice, setDetailInvoice] = useState<Invoice | null>(null);
+  const [detailLineItems, setDetailLineItems] = useState<InvoiceLineItem[]>([]);
+  const [showDetail, setShowDetail] = useState(false);
 
   // Settings form
   const [settingsForm, setSettingsForm] = useState({
@@ -65,6 +76,13 @@ const Invoicing = () => {
     default_payment_terms: "Net 30",
     notes_template: "",
   });
+
+  // Clear navigation state after consuming prefill data
+  useEffect(() => {
+    if (prefillData?.prefillLineItems) {
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, []);
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -124,57 +142,20 @@ const Invoicing = () => {
   const triggerPDF = async (invoice: Invoice) => {
     const items = await loadLineItems(invoice.id);
     const client = clients.find((c) => c.id === invoice.client_id) || null;
-    // Directly generate PDF using jsPDF
-    const jsPDF = (await import("jspdf")).default;
-    const doc = new jsPDF();
-    const m = 14;
-    let y = 20;
-    doc.setFontSize(18);
-    doc.text(settings?.company_name || "Invoice", m, y); y += 7;
-    if (settings?.company_address) { doc.setFontSize(9); doc.text(settings.company_address, m, y); y += 5; }
-    y += 5;
-    doc.setFontSize(12);
-    doc.text(`Invoice #${invoice.invoice_number}`, m, y); y += 6;
-    doc.setFontSize(9);
-    doc.text(`Issue Date: ${format(new Date(invoice.issue_date), "MMM d, yyyy")}`, m, y); y += 5;
-    if (invoice.due_date) { doc.text(`Due Date: ${format(new Date(invoice.due_date), "MMM d, yyyy")}`, m, y); y += 5; }
-    doc.text(`Status: ${invoice.status.toUpperCase()}`, m, y); y += 8;
-    if (client) {
-      doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.text("Bill To:", m, y); y += 5;
-      doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-      doc.text(client.name, m, y); y += 4;
-      if (client.contact_name) { doc.text(client.contact_name, m, y); y += 4; }
-      if (client.billing_address) { doc.text(client.billing_address, m, y); y += 4; }
-      const cityLine = [client.city, client.province, client.postal_code].filter(Boolean).join(", ");
-      if (cityLine) { doc.text(cityLine, m, y); y += 4; }
-      y += 4;
-    }
-    doc.setFontSize(9); doc.setFont("helvetica", "bold");
-    doc.text("Description", m, y); doc.text("Qty", 110, y, { align: "right" });
-    doc.text("Price", 140, y, { align: "right" }); doc.text("Amount", 180, y, { align: "right" }); y += 5;
-    doc.setFont("helvetica", "normal");
-    for (const li of items) {
-      if (y > 265) { doc.addPage(); y = 20; }
-      doc.text(li.description, m, y);
-      doc.text(String(li.quantity), 110, y, { align: "right" });
-      doc.text(`$${Number(li.unit_price).toFixed(2)}`, 140, y, { align: "right" });
-      doc.text(`$${Number(li.amount).toFixed(2)}`, 180, y, { align: "right" }); y += 5;
-    }
-    y += 3;
-    doc.text("Subtotal", 140, y, { align: "right" });
-    doc.text(`$${Number(invoice.subtotal).toFixed(2)}`, 180, y, { align: "right" }); y += 5;
-    if (Number(invoice.tax_amount) > 0) {
-      doc.text(settings?.tax_label || "Tax", 140, y, { align: "right" });
-      doc.text(`$${Number(invoice.tax_amount).toFixed(2)}`, 180, y, { align: "right" }); y += 5;
-    }
-    doc.setFont("helvetica", "bold"); doc.setFontSize(11);
-    doc.text("Total", 140, y, { align: "right" });
-    doc.text(`$${Number(invoice.total).toFixed(2)}`, 180, y, { align: "right" }); y += 8;
-    if (invoice.notes) {
-      doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-      doc.text("Notes:", m, y); y += 4; doc.text(invoice.notes, m, y);
-    }
-    doc.save(`${invoice.invoice_number}.pdf`);
+    generateInvoicePDF(invoice, items, settings, client);
+  };
+
+  const openDetail = async (invoice: Invoice) => {
+    const items = await loadLineItems(invoice.id);
+    setDetailInvoice(invoice);
+    setDetailLineItems(items);
+    setShowDetail(true);
+  };
+
+  const handleDetailSaveLineItems = async (invoiceId: string, items: Partial<InvoiceLineItem>[]) => {
+    await saveLineItems(invoiceId, items);
+    // Invalidate cache
+    setLineItemsCache((c) => { const n = { ...c }; delete n[invoiceId]; return n; });
   };
 
   return (
@@ -240,7 +221,7 @@ const Invoicing = () => {
                       {filteredInvoices.map((inv) => {
                         const sc = statusConfig[inv.status] || statusConfig.draft;
                         return (
-                          <TableRow key={inv.id}>
+                          <TableRow key={inv.id} className="cursor-pointer" onClick={() => openDetail(inv)}>
                             <TableCell className="font-medium">{inv.invoice_number}</TableCell>
                             <TableCell>{inv.client?.name || "—"}</TableCell>
                             <TableCell>{inv.project?.name || "—"}</TableCell>
@@ -251,7 +232,7 @@ const Invoicing = () => {
                             <TableCell className="text-right font-medium">
                               ${Number(inv.total).toLocaleString("en-US", { minimumFractionDigits: 2 })}
                             </TableCell>
-                            <TableCell className="text-right">
+                            <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                               <div className="flex gap-1 justify-end">
                                 {inv.status === "draft" && (
                                   <Button variant="ghost" size="sm" onClick={() => handleStatusChange(inv, "sent")}>
@@ -461,12 +442,27 @@ const Invoicing = () => {
           defaultPaymentTerms={settings?.default_payment_terms || "Net 30"}
           initialLineItems={prefillData?.prefillLineItems}
           initialProjectId={prefillData?.prefillProjectId}
+          onAddClient={() => {
+            setEditingClient(null);
+            setShowClientModal(true);
+          }}
           onSubmit={async (inv, lines) => {
             await createInvoice(inv, lines);
             toast({ title: "Invoice created" });
           }}
         />
 
+        <InvoiceDetailModal
+          open={showDetail}
+          onOpenChange={setShowDetail}
+          invoice={detailInvoice}
+          lineItems={detailLineItems}
+          settings={settings}
+          client={detailInvoice ? clients.find((c) => c.id === detailInvoice.client_id) || null : null}
+          onSaveLineItems={handleDetailSaveLineItems}
+          onUpdateInvoice={updateInvoice}
+          onExportPDF={triggerPDF}
+        />
       </div>
     </Layout>
   );

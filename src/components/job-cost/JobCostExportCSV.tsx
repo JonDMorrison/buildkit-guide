@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { JobCostReport } from "@/types/job-cost-report";
@@ -7,7 +8,7 @@ interface Props {
   projectName: string;
 }
 
-export const JobCostExportCSV = ({ report, projectName }: Props) => {
+export const JobCostExportCSV = forwardRef<HTMLButtonElement, Props>(({ report, projectName }, ref) => {
   const handleExport = () => {
     const lines: string[] = [];
     lines.push("Section,Worker/Vendor,Category,Hours,Rate,Amount");
@@ -37,9 +38,11 @@ export const JobCostExportCSV = ({ report, projectName }: Props) => {
   };
 
   return (
-    <Button variant="outline" size="sm" onClick={handleExport}>
+    <Button ref={ref} variant="outline" size="sm" onClick={handleExport}>
       <Download className="h-4 w-4 mr-2" />
       Export CSV
     </Button>
   );
-};
+});
+
+JobCostExportCSV.displayName = "JobCostExportCSV";

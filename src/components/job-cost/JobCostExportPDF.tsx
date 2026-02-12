@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { Button } from "@/components/ui/button";
 import { FileText } from "lucide-react";
 import { JobCostReport } from "@/types/job-cost-report";
@@ -10,7 +11,7 @@ interface Props {
   dateRange?: string;
 }
 
-export const JobCostExportPDF = ({ report, projectName, jobNumber, dateRange }: Props) => {
+export const JobCostExportPDF = forwardRef<HTMLButtonElement, Props>(({ report, projectName, jobNumber, dateRange }, ref) => {
   const handleExport = () => {
     const doc = new jsPDF();
     const margin = 14;
@@ -98,9 +99,11 @@ export const JobCostExportPDF = ({ report, projectName, jobNumber, dateRange }: 
   };
 
   return (
-    <Button variant="outline" size="sm" onClick={handleExport}>
+    <Button ref={ref} variant="outline" size="sm" onClick={handleExport}>
       <FileText className="h-4 w-4 mr-2" />
       Export PDF
     </Button>
   );
-};
+});
+
+JobCostExportPDF.displayName = "JobCostExportPDF";

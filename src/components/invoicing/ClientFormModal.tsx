@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,19 +14,38 @@ interface Props {
   initialData?: Client | null;
 }
 
+const emptyForm = {
+  name: "",
+  contact_name: "",
+  email: "",
+  phone: "",
+  billing_address: "",
+  city: "",
+  province: "",
+  postal_code: "",
+  notes: "",
+};
+
 export const ClientFormModal = ({ open, onOpenChange, onSubmit, initialData }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({
-    name: initialData?.name || "",
-    contact_name: initialData?.contact_name || "",
-    email: initialData?.email || "",
-    phone: initialData?.phone || "",
-    billing_address: initialData?.billing_address || "",
-    city: initialData?.city || "",
-    province: initialData?.province || "",
-    postal_code: initialData?.postal_code || "",
-    notes: initialData?.notes || "",
-  });
+  const [form, setForm] = useState(emptyForm);
+
+  // Reset form when modal opens or initialData changes
+  useEffect(() => {
+    if (open) {
+      setForm({
+        name: initialData?.name || "",
+        contact_name: initialData?.contact_name || "",
+        email: initialData?.email || "",
+        phone: initialData?.phone || "",
+        billing_address: initialData?.billing_address || "",
+        city: initialData?.city || "",
+        province: initialData?.province || "",
+        postal_code: initialData?.postal_code || "",
+        notes: initialData?.notes || "",
+      });
+    }
+  }, [open, initialData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
