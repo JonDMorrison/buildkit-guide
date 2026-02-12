@@ -1039,6 +1039,44 @@ export type Database = {
           },
         ]
       }
+      invoice_activity_log: {
+        Row: {
+          action: string
+          created_at: string
+          details: string | null
+          id: string
+          invoice_id: string
+          metadata: Json | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          invoice_id: string
+          metadata?: Json | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          invoice_id?: string
+          metadata?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_activity_log_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_line_items: {
         Row: {
           amount: number
@@ -1124,6 +1162,38 @@ export type Database = {
           },
         ]
       }
+      invoice_receipt_links: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          invoice_id: string
+          receipt_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          invoice_id: string
+          receipt_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          invoice_id?: string
+          receipt_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_receipt_links_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_settings: {
         Row: {
           company_address: string | null
@@ -1131,6 +1201,7 @@ export type Database = {
           created_at: string
           currency: string | null
           default_payment_terms: string | null
+          default_retainage_percent: number | null
           from_email: string | null
           invoice_prefix: string | null
           logo_url: string | null
@@ -1138,8 +1209,13 @@ export type Database = {
           notes_template: string | null
           organization_id: string
           payment_instructions: string | null
+          reminder_days: number[] | null
+          reminder_enabled: boolean | null
+          require_approval: boolean | null
           tax_label: string | null
           tax_rate: number | null
+          tax2_label: string | null
+          tax2_rate: number | null
           updated_at: string
         }
         Insert: {
@@ -1148,6 +1224,7 @@ export type Database = {
           created_at?: string
           currency?: string | null
           default_payment_terms?: string | null
+          default_retainage_percent?: number | null
           from_email?: string | null
           invoice_prefix?: string | null
           logo_url?: string | null
@@ -1155,8 +1232,13 @@ export type Database = {
           notes_template?: string | null
           organization_id: string
           payment_instructions?: string | null
+          reminder_days?: number[] | null
+          reminder_enabled?: boolean | null
+          require_approval?: boolean | null
           tax_label?: string | null
           tax_rate?: number | null
+          tax2_label?: string | null
+          tax2_rate?: number | null
           updated_at?: string
         }
         Update: {
@@ -1165,6 +1247,7 @@ export type Database = {
           created_at?: string
           currency?: string | null
           default_payment_terms?: string | null
+          default_retainage_percent?: number | null
           from_email?: string | null
           invoice_prefix?: string | null
           logo_url?: string | null
@@ -1172,8 +1255,13 @@ export type Database = {
           notes_template?: string | null
           organization_id?: string
           payment_instructions?: string | null
+          reminder_days?: number[] | null
+          reminder_enabled?: boolean | null
+          require_approval?: boolean | null
           tax_label?: string | null
           tax_rate?: number | null
+          tax2_label?: string | null
+          tax2_rate?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -1186,21 +1274,71 @@ export type Database = {
           },
         ]
       }
+      invoice_tax_lines: {
+        Row: {
+          id: string
+          invoice_id: string
+          sort_order: number
+          tax_amount: number
+          tax_name: string
+          tax_rate: number
+        }
+        Insert: {
+          id?: string
+          invoice_id: string
+          sort_order?: number
+          tax_amount?: number
+          tax_name?: string
+          tax_rate?: number
+        }
+        Update: {
+          id?: string
+          invoice_id?: string
+          sort_order?: number
+          tax_amount?: number
+          tax_name?: string
+          tax_rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_tax_lines_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           amount_paid: number
+          approval_status: string | null
+          approved_at: string | null
+          approved_by: string | null
           client_id: string | null
+          contract_total: number | null
           created_at: string
           created_by: string
           credit_note_for: string | null
+          deposit_applied_to: string | null
           due_date: string | null
           id: string
           invoice_number: string
+          invoice_type: string
           issue_date: string
+          last_reminder_sent_at: string | null
           notes: string | null
           organization_id: string
           paid_at: string | null
+          po_number: string | null
+          progress_percent: number | null
           project_id: string | null
+          rejection_reason: string | null
+          reminder_count: number | null
+          retainage_amount: number | null
+          retainage_percent: number | null
+          retainage_released: boolean | null
+          retainage_released_at: string | null
           sent_at: string | null
           status: Database["public"]["Enums"]["invoice_status"]
           subtotal: number
@@ -1210,18 +1348,33 @@ export type Database = {
         }
         Insert: {
           amount_paid?: number
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           client_id?: string | null
+          contract_total?: number | null
           created_at?: string
           created_by: string
           credit_note_for?: string | null
+          deposit_applied_to?: string | null
           due_date?: string | null
           id?: string
           invoice_number: string
+          invoice_type?: string
           issue_date?: string
+          last_reminder_sent_at?: string | null
           notes?: string | null
           organization_id: string
           paid_at?: string | null
+          po_number?: string | null
+          progress_percent?: number | null
           project_id?: string | null
+          rejection_reason?: string | null
+          reminder_count?: number | null
+          retainage_amount?: number | null
+          retainage_percent?: number | null
+          retainage_released?: boolean | null
+          retainage_released_at?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal?: number
@@ -1231,18 +1384,33 @@ export type Database = {
         }
         Update: {
           amount_paid?: number
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           client_id?: string | null
+          contract_total?: number | null
           created_at?: string
           created_by?: string
           credit_note_for?: string | null
+          deposit_applied_to?: string | null
           due_date?: string | null
           id?: string
           invoice_number?: string
+          invoice_type?: string
           issue_date?: string
+          last_reminder_sent_at?: string | null
           notes?: string | null
           organization_id?: string
           paid_at?: string | null
+          po_number?: string | null
+          progress_percent?: number | null
           project_id?: string | null
+          rejection_reason?: string | null
+          reminder_count?: number | null
+          retainage_amount?: number | null
+          retainage_percent?: number | null
+          retainage_released?: boolean | null
+          retainage_released_at?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal?: number
@@ -1261,6 +1429,13 @@ export type Database = {
           {
             foreignKeyName: "invoices_credit_note_for_fkey"
             columns: ["credit_note_for"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_deposit_applied_to_fkey"
+            columns: ["deposit_applied_to"]
             isOneToOne: false
             referencedRelation: "invoices"
             referencedColumns: ["id"]

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2, Plus, Trash2, UserPlus } from "lucide-react";
 import { DatePicker } from "@/components/ui/date-picker";
+import { ProgressBillingFields } from "@/components/invoicing/ProgressBillingFields";
 import type { Invoice, InvoiceLineItem, Client } from "@/types/invoicing";
 import { format, addDays } from "date-fns";
 
@@ -47,8 +48,13 @@ export const CreateInvoiceModal = ({
   const [dueDate, setDueDate] = useState("");
   const [notes, setNotes] = useState("");
   const [lineItems, setLineItems] = useState<LineItemDraft[]>([defaultLine()]);
+  const [invoiceType, setInvoiceType] = useState("standard");
+  const [poNumber, setPoNumber] = useState("");
+  // Progress billing fields
+  const [contractTotal, setContractTotal] = useState(0);
+  const [progressPercent, setProgressPercent] = useState(0);
+  const [retainagePercent, setRetainagePercent] = useState(0);
 
-  // Reset form fully when modal opens
   useEffect(() => {
     if (open) {
       setClientId("");
@@ -57,12 +63,22 @@ export const CreateInvoiceModal = ({
       setDueDate(format(addDays(new Date(), 30), "yyyy-MM-dd"));
       setNotes(notesTemplate || "");
       setLineItems(initialLineItems && initialLineItems.length > 0 ? initialLineItems : [defaultLine()]);
+      setInvoiceType("standard");
+      setPoNumber("");
+      setContractTotal(0);
+      setProgressPercent(0);
+      setRetainagePercent(0);
     }
   }, [open, initialLineItems, initialProjectId]);
 
-  const subtotal = lineItems.reduce((s, li) => s + li.quantity * li.unit_price, 0);
-  const taxAmount = Math.round(subtotal * (taxRate / 100) * 100) / 100;
-  const total = Math.round((subtotal + taxAmount) * 100) / 100;
+  const subtotal = invoiceType === "progress"
+    ? contractTotal * (progressPercent / 100)
+    : lineItems.reduce((s, li) => s + li.quantity * li.unit_price, 0);
+
+  const retainageAmount = invoiceType === "progress" ? subtotal * (retainagePercent / 100) : 0;
+  const taxableAmount = subtotal - retainageAmount;
+  const taxAmount = Math.round(taxableAmount * (taxRate / 100) * 100) / 100;
+  const total = Math.round((taxableAmount + taxAmount) * 100) / 100;
 
   const addLine = () => setLineItems([...lineItems, defaultLine()]);
   const removeLine = (i: number) => setLineItems(lineItems.filter((_, idx) => idx !== i));
@@ -75,25 +91,35 @@ export const CreateInvoiceModal = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    await onSubmit(
-      {
-        client_id: clientId || null,
-        project_id: projectId || null,
-        issue_date: issueDate,
-        due_date: dueDate || null,
-        subtotal,
-        tax_amount: taxAmount,
-        total,
-        notes: notes || null,
-      },
-      lineItems.filter((li) => li.description).map((li) => ({
-        description: li.description,
-        quantity: li.quantity,
-        unit_price: li.unit_price,
-        amount: li.quantity * li.unit_price,
-        category: li.category,
-      }))
-    );
+
+    const invoiceData: Partial<Invoice> = {
+      client_id: clientId || null,
+      project_id: projectId || null,
+      issue_date: issueDate,
+      due_date: dueDate || null,
+      subtotal: taxableAmount,
+      tax_amount: taxAmount,
+      total,
+      notes: notes || null,
+      invoice_type: invoiceType as any,
+      po_number: poNumber || null,
+      retainage_percent: retainagePercent,
+      retainage_amount: retainageAmount,
+      progress_percent: progressPercent,
+      contract_total: contractTotal,
+    };
+
+    const finalLineItems = invoiceType === "progress"
+      ? [{ description: `Progress billing - ${progressPercent}% complete`, quantity: 1, unit_price: taxableAmount, amount: taxableAmount, category: "labor" }]
+      : lineItems.filter((li) => li.description).map((li) => ({
+          description: li.description,
+          quantity: li.quantity,
+          unit_price: li.unit_price,
+          amount: li.quantity * li.unit_price,
+          category: li.category,
+        }));
+
+    await onSubmit(invoiceData, finalLineItems);
     setLoading(false);
     onOpenChange(false);
   };
@@ -107,16 +133,30 @@ export const CreateInvoiceModal = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
+              <Label>Invoice Type</Label>
+              <Select value={invoiceType} onValueChange={setInvoiceType}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="standard">Standard Invoice</SelectItem>
+                  <SelectItem value="progress">Progress Billing</SelectItem>
+                  <SelectItem value="deposit">Deposit Invoice</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>PO Number</Label>
+              <Input value={poNumber} onChange={(e) => setPoNumber(e.target.value)} placeholder="Optional PO #" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
               <Label>Client</Label>
               <div className="flex gap-2">
                 <Select value={clientId} onValueChange={setClientId}>
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Select client" />
-                  </SelectTrigger>
+                  <SelectTrigger className="flex-1"><SelectValue placeholder="Select client" /></SelectTrigger>
                   <SelectContent>
-                    {clients.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                    ))}
+                    {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
                 {onAddClient && (
@@ -129,13 +169,9 @@ export const CreateInvoiceModal = ({
             <div className="space-y-2">
               <Label>Project</Label>
               <Select value={projectId} onValueChange={setProjectId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select project" />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Select project" /></SelectTrigger>
                 <SelectContent>
-                  {projects.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                  ))}
+                  {projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -152,76 +188,70 @@ export const CreateInvoiceModal = ({
             </div>
           </div>
 
-          {/* Line items */}
-          <div className="space-y-2">
-            <Label>Line Items</Label>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[40%]">Description</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead className="text-right">Qty</TableHead>
-                  <TableHead className="text-right">Unit Price</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="w-10" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {lineItems.map((li, i) => (
-                  <TableRow key={i}>
-                    <TableCell>
-                      <Input
-                        value={li.description}
-                        onChange={(e) => updateLine(i, "description", e.target.value)}
-                        placeholder="Description"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Select value={li.category} onValueChange={(v) => updateLine(i, "category", v)}>
-                        <SelectTrigger className="w-24">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="labor">Labor</SelectItem>
-                          <SelectItem value="material">Material</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number" min={0} step="0.5"
-                        className="w-16 text-right"
-                        value={li.quantity}
-                        onChange={(e) => updateLine(i, "quantity", parseFloat(e.target.value) || 0)}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number" min={0} step="0.01"
-                        className="w-24 text-right"
-                        value={li.unit_price}
-                        onChange={(e) => updateLine(i, "unit_price", parseFloat(e.target.value) || 0)}
-                      />
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      ${(li.quantity * li.unit_price).toFixed(2)}
-                    </TableCell>
-                    <TableCell>
-                      {lineItems.length > 1 && (
-                        <Button type="button" variant="ghost" size="icon" onClick={() => removeLine(i)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </TableCell>
+          {/* Progress Billing Fields */}
+          {invoiceType === "progress" && (
+            <ProgressBillingFields
+              contractTotal={contractTotal}
+              progressPercent={progressPercent}
+              retainagePercent={retainagePercent}
+              onContractTotalChange={setContractTotal}
+              onProgressPercentChange={setProgressPercent}
+              onRetainagePercentChange={setRetainagePercent}
+            />
+          )}
+
+          {/* Line items (standard + deposit) */}
+          {invoiceType !== "progress" && (
+            <div className="space-y-2">
+              <Label>Line Items</Label>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[40%]">Description</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead className="text-right">Qty</TableHead>
+                    <TableHead className="text-right">Unit Price</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="w-10" />
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            <Button type="button" variant="outline" size="sm" onClick={addLine}>
-              <Plus className="h-4 w-4 mr-1" /> Add Line
-            </Button>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {lineItems.map((li, i) => (
+                    <TableRow key={i}>
+                      <TableCell>
+                        <Input value={li.description} onChange={(e) => updateLine(i, "description", e.target.value)} placeholder={invoiceType === "deposit" ? "Deposit for project" : "Description"} />
+                      </TableCell>
+                      <TableCell>
+                        <Select value={li.category} onValueChange={(v) => updateLine(i, "category", v)}>
+                          <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="labor">Labor</SelectItem>
+                            <SelectItem value="material">Material</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        <Input type="number" min={0} step="0.5" className="w-16 text-right" value={li.quantity} onChange={(e) => updateLine(i, "quantity", parseFloat(e.target.value) || 0)} />
+                      </TableCell>
+                      <TableCell>
+                        <Input type="number" min={0} step="0.01" className="w-24 text-right" value={li.unit_price} onChange={(e) => updateLine(i, "unit_price", parseFloat(e.target.value) || 0)} />
+                      </TableCell>
+                      <TableCell className="text-right font-medium">${(li.quantity * li.unit_price).toFixed(2)}</TableCell>
+                      <TableCell>
+                        {lineItems.length > 1 && (
+                          <Button type="button" variant="ghost" size="icon" onClick={() => removeLine(i)}><Trash2 className="h-4 w-4" /></Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <Button type="button" variant="outline" size="sm" onClick={addLine}>
+                <Plus className="h-4 w-4 mr-1" /> Add Line
+              </Button>
+            </div>
+          )}
 
           {/* Totals */}
           <div className="flex flex-col items-end gap-1 text-sm">
@@ -229,6 +259,12 @@ export const CreateInvoiceModal = ({
               <span className="text-muted-foreground">Subtotal</span>
               <span className="font-medium">${subtotal.toFixed(2)}</span>
             </div>
+            {retainageAmount > 0 && (
+              <div className="flex gap-8">
+                <span className="text-muted-foreground">Holdback ({retainagePercent}%)</span>
+                <span className="font-medium text-amber-600">-${retainageAmount.toFixed(2)}</span>
+              </div>
+            )}
             {taxRate > 0 && (
               <div className="flex gap-8">
                 <span className="text-muted-foreground">{taxLabel} ({taxRate}%)</span>
@@ -247,9 +283,7 @@ export const CreateInvoiceModal = ({
           </div>
 
           <div className="flex gap-3 pt-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1" disabled={loading}>
-              Cancel
-            </Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1" disabled={loading}>Cancel</Button>
             <Button type="submit" className="flex-1" disabled={loading}>
               {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating...</> : "Create Invoice"}
             </Button>

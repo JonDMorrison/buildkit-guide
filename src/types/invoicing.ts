@@ -29,9 +29,18 @@ export interface InvoiceSettings {
   payment_instructions: string | null;
   currency: string;
   from_email: string | null;
+  // Multi-tax & new settings
+  tax2_rate: number;
+  tax2_label: string;
+  default_retainage_percent: number;
+  require_approval: boolean;
+  reminder_enabled: boolean;
+  reminder_days: number[];
 }
 
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'void';
+export type InvoiceType = 'standard' | 'progress' | 'deposit' | 'retainage_release';
+export type ApprovalStatus = 'none' | 'pending' | 'approved' | 'rejected';
 
 export interface Invoice {
   id: string;
@@ -53,6 +62,22 @@ export interface Invoice {
   updated_at: string;
   sent_at: string | null;
   paid_at: string | null;
+  // New fields
+  invoice_type: InvoiceType;
+  retainage_percent: number;
+  retainage_amount: number;
+  retainage_released: boolean;
+  retainage_released_at: string | null;
+  progress_percent: number;
+  contract_total: number;
+  deposit_applied_to: string | null;
+  approval_status: ApprovalStatus;
+  approved_by: string | null;
+  approved_at: string | null;
+  rejection_reason: string | null;
+  po_number: string | null;
+  last_reminder_sent_at: string | null;
+  reminder_count: number;
   // Joined
   client?: Client | null;
   project?: { name: string; job_number: string | null } | null;
@@ -79,6 +104,33 @@ export interface InvoicePayment {
   notes: string | null;
   created_by: string;
   created_at: string;
+}
+
+export interface InvoiceTaxLine {
+  id: string;
+  invoice_id: string;
+  tax_name: string;
+  tax_rate: number;
+  tax_amount: number;
+  sort_order: number;
+}
+
+export interface InvoiceActivityLog {
+  id: string;
+  invoice_id: string;
+  user_id: string;
+  action: string;
+  details: string | null;
+  metadata: any;
+  created_at: string;
+}
+
+export interface InvoiceReceiptLink {
+  id: string;
+  invoice_id: string;
+  receipt_id: string;
+  created_at: string;
+  created_by: string;
 }
 
 export interface RecurringInvoiceTemplate {
