@@ -23,7 +23,7 @@ import { NoAccess } from "@/components/NoAccess";
 const JobCostReport = () => {
   const navigate = useNavigate();
   const { currentProjectId } = useCurrentProject();
-  const { isGlobalAdmin, hasAnyProjectRole } = useProjectRole();
+  const { isGlobalAdmin, hasAnyProjectRole, loading: roleLoading } = useProjectRole();
   const [selectedProject, setSelectedProject] = useState<string>(currentProjectId || "");
   const [projects, setProjects] = useState<{ id: string; name: string; job_number: string | null }[]>([]);
   const [startDateStr, setStartDateStr] = useState<string>("");
@@ -68,6 +68,16 @@ const JobCostReport = () => {
         : endDate
           ? `Until ${format(endDate, "MMM d, yyyy")}`
           : "All time";
+
+  if (roleLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
+        </div>
+      </Layout>
+    );
+  }
 
   if (!hasAccess) {
     return <Layout><NoAccess /></Layout>;
