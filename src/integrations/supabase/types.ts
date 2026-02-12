@@ -1135,6 +1135,7 @@ export type Database = {
           next_invoice_number: number
           notes_template: string | null
           organization_id: string
+          payment_instructions: string | null
           tax_label: string | null
           tax_rate: number | null
           updated_at: string
@@ -1149,6 +1150,7 @@ export type Database = {
           next_invoice_number?: number
           notes_template?: string | null
           organization_id: string
+          payment_instructions?: string | null
           tax_label?: string | null
           tax_rate?: number | null
           updated_at?: string
@@ -1163,6 +1165,7 @@ export type Database = {
           next_invoice_number?: number
           notes_template?: string | null
           organization_id?: string
+          payment_instructions?: string | null
           tax_label?: string | null
           tax_rate?: number | null
           updated_at?: string

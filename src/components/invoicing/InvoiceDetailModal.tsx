@@ -201,6 +201,16 @@ export const InvoiceDetailModal = ({
             )}
           </div>
 
+          {/* Payment Instructions (from settings) */}
+          {settings?.payment_instructions && (
+            <div>
+              <Label className="text-sm font-semibold">Payment Instructions</Label>
+              <div className="text-sm text-muted-foreground mt-1 whitespace-pre-line bg-muted/50 p-3 rounded-md">
+                {settings.payment_instructions}
+              </div>
+            </div>
+          )}
+
           {/* Notes */}
           <div>
             <Label className="text-sm font-semibold">Notes</Label>

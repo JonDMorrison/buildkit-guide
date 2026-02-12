@@ -25,6 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
   Plus, Users, FileText, Settings, Send, CheckCircle2, Ban,
@@ -90,6 +91,7 @@ const Invoicing = () => {
     company_name: "", company_address: "", invoice_prefix: "INV-",
     tax_rate: "0", tax_label: "Tax", default_payment_terms: "Net 30",
     notes_template: "", logo_url: "" as string | null,
+    payment_instructions: "",
   });
 
   // Clear navigation state
@@ -119,6 +121,7 @@ const Invoicing = () => {
         default_payment_terms: settings.default_payment_terms || "Net 30",
         notes_template: settings.notes_template || "",
         logo_url: settings.logo_url || null,
+        payment_instructions: settings.payment_instructions || "",
       });
     }
   }, [settings]);
@@ -145,6 +148,7 @@ const Invoicing = () => {
       default_payment_terms: settingsForm.default_payment_terms,
       notes_template: settingsForm.notes_template || null,
       logo_url: settingsForm.logo_url || null,
+      payment_instructions: settingsForm.payment_instructions || null,
     } as any);
     toast({ title: "Settings saved" });
   };
@@ -522,8 +526,18 @@ const Invoicing = () => {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Default Notes / Payment Instructions</Label>
-                  <Input value={settingsForm.notes_template} onChange={(e) => setSettingsForm((f) => ({ ...f, notes_template: e.target.value }))} placeholder="Please make cheques payable to..." />
+                  <Label>Default Invoice Notes</Label>
+                  <Textarea value={settingsForm.notes_template} onChange={(e) => setSettingsForm((f) => ({ ...f, notes_template: e.target.value }))} rows={2} placeholder="Thank you for your business!" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Payment Instructions</Label>
+                  <p className="text-xs text-muted-foreground">These instructions appear on every invoice. Include how to pay by cheque, e-transfer, wire, etc.</p>
+                  <Textarea
+                    value={settingsForm.payment_instructions}
+                    onChange={(e) => setSettingsForm((f) => ({ ...f, payment_instructions: e.target.value }))}
+                    rows={4}
+                    placeholder={"Payment Methods:\n• Cheque: Payable to [Company Name]\n• E-Transfer: payments@company.com\n• Wire: Bank Name, Account #, Transit #\n\nPlease include invoice number with payment."}
+                  />
                 </div>
                 <Button onClick={handleSaveSettings}>Save Settings</Button>
               </CardContent>
@@ -543,6 +557,8 @@ const Invoicing = () => {
           clients={clients} projects={projects}
           taxRate={settings?.tax_rate || 0} taxLabel={settings?.tax_label || "Tax"}
           defaultPaymentTerms={settings?.default_payment_terms || "Net 30"}
+          notesTemplate={settings?.notes_template || ""}
+          paymentInstructions={settings?.payment_instructions || ""}
           initialLineItems={prefillData?.prefillLineItems} initialProjectId={prefillData?.prefillProjectId}
           onAddClient={() => { setEditingClient(null); setShowClientModal(true); }}
           onSubmit={async (inv, lines) => { await createInvoice(inv, lines); toast({ title: "Invoice created" }); }}
