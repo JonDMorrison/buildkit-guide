@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { NavLink } from "./NavLink";
-import { Home, CheckSquare, Calendar, Users, AlertCircle, Shield, Receipt, Clock, Layers, BarChart3, DollarSign } from "lucide-react";
+import { Home, CheckSquare, Calendar, Users, AlertCircle, Shield, Receipt, Clock, Layers, BarChart3, DollarSign, FileText } from "lucide-react";
 import { useProjectRole } from "@/hooks/useProjectRole";
 import { useTimeTrackingEnabled } from "@/hooks/useTimeTrackingEnabled";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,6 +19,7 @@ const tabs: TabConfig[] = [
   { name: "Time", path: "/time", icon: Clock, workerAccess: true, requiresTimeTracking: true },
   { name: "Hours", path: "/hours-tracking", icon: BarChart3, workerAccess: false },
   { name: "Job Cost", path: "/job-cost-report", icon: DollarSign, workerAccess: false },
+  { name: "Invoicing", path: "/invoicing", icon: FileText, workerAccess: false },
   { name: "Lookahead", path: "/lookahead", icon: Calendar, workerAccess: false },
   { name: "Manpower", path: "/manpower", icon: Users, workerAccess: false },
   { name: "Drawings", path: "/drawings", icon: Layers, workerAccess: false },

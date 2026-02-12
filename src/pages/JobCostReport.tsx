@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { SectionHeader } from "@/components/SectionHeader";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
@@ -13,12 +14,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { DollarSign, Clock, Package, AlertTriangle } from "lucide-react";
+import { DollarSign, Clock, Package, AlertTriangle, FileText } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { format, parse } from "date-fns";
 import { useProjectRole } from "@/hooks/useProjectRole";
 import { NoAccess } from "@/components/NoAccess";
 
 const JobCostReport = () => {
+  const navigate = useNavigate();
   const { currentProjectId } = useCurrentProject();
   const { isGlobalAdmin, hasAnyProjectRole } = useProjectRole();
   const [selectedProject, setSelectedProject] = useState<string>(currentProjectId || "");
@@ -128,9 +131,32 @@ const JobCostReport = () => {
                   jobNumber={selectedProjectData?.job_number || undefined}
                   dateRange={dateRange}
                 />
+                <Button
+                  onClick={() => {
+                    // Build line items from report data for invoice pre-fill
+                    const lineItems = [
+                      ...report.labor.rows.map((r) => ({
+                        description: `Labor: ${r.userName} (${r.hoursWorked.toFixed(1)} hrs @ $${r.billRate?.toFixed(2) || "0.00"}/hr)`,
+                        quantity: r.hoursWorked,
+                        unit_price: r.billRate || 0,
+                        category: "labor",
+                      })),
+                      ...report.materials.rows.map((r) => ({
+                        description: `${r.category}: ${r.vendor || "Expense"}${r.notes ? ` - ${r.notes}` : ""}`,
+                        quantity: 1,
+                        unit_price: r.amount,
+                        category: "material",
+                      })),
+                    ];
+                    navigate("/invoicing", {
+                      state: { prefillLineItems: lineItems, prefillProjectId: selectedProject },
+                    });
+                  }}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Generate Invoice
+                </Button>
               </div>
-
-              {/* Summary cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
