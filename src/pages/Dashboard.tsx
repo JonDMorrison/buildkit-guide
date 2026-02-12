@@ -543,14 +543,25 @@ export default function Dashboard() {
               </div>
 
               <div className="flex items-center gap-2">
-                <DashboardCustomizer
-                  isEditMode={isEditMode}
-                  setIsEditMode={setIsEditMode}
-                  hiddenWidgets={hiddenWidgets}
-                  onToggleWidget={toggleWidget}
-                  onSave={handleSaveLayout}
-                  onReset={resetLayout}
-                />
+                {isEditMode && (
+                  <DashboardCustomizer
+                    isEditMode={isEditMode}
+                    setIsEditMode={setIsEditMode}
+                    hiddenWidgets={hiddenWidgets}
+                    onToggleWidget={toggleWidget}
+                    onSave={handleSaveLayout}
+                    onReset={resetLayout}
+                  />
+                )}
+                <Button 
+                  onClick={() => navigate(`/project-overview?projectId=${currentProjectId}`)} 
+                  size="sm" 
+                  variant="outline"
+                  className="border-primary text-primary hover:bg-primary/10 px-3 w-fit"
+                  disabled={!currentProjectId}
+                >
+                  <Building2 className="h-4 w-4 mr-1" /> Project
+                </Button>
                 <Button 
                   onClick={() => setQuickAddModalOpen(true)} 
                   size="sm" 
@@ -562,6 +573,20 @@ export default function Dashboard() {
                   <ArrowRight className="h-4 w-4 mr-1" /> Tasks
                 </Button>
               </div>
+
+              {/* Settings gear - fixed near top nav bar */}
+              {!isEditMode && (
+                <div className="fixed top-3 right-[120px] sm:right-[160px] z-40">
+                  <DashboardCustomizer
+                    isEditMode={isEditMode}
+                    setIsEditMode={setIsEditMode}
+                    hiddenWidgets={hiddenWidgets}
+                    onToggleWidget={toggleWidget}
+                    onSave={handleSaveLayout}
+                    onReset={resetLayout}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
