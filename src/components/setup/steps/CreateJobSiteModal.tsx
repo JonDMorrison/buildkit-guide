@@ -29,6 +29,7 @@ interface CreateJobSiteModalProps {
   onOpenChange: (open: boolean) => void;
   projectId?: string;
   onSuccess?: () => void;
+  onCreated?: (jobSiteId: string) => void;
 }
 
 interface Project {
@@ -41,6 +42,7 @@ export function CreateJobSiteModal({
   onOpenChange,
   projectId: initialProjectId,
   onSuccess,
+  onCreated,
 }: CreateJobSiteModalProps) {
   const { toast } = useToast();
   const { activeOrganizationId } = useOrganization();
@@ -158,7 +160,7 @@ export function CreateJobSiteModal({
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.from('job_sites').insert({
+      const { data, error } = await supabase.from('job_sites').insert({
         name: name.trim(),
         address: address.trim() || null,
         latitude: latitude ? parseFloat(latitude) : null,
@@ -167,7 +169,7 @@ export function CreateJobSiteModal({
         project_id: selectedProjectId,
         organization_id: activeOrganizationId,
         is_active: true,
-      });
+      }).select('id').single();
 
       if (error) throw error;
 
@@ -179,6 +181,7 @@ export function CreateJobSiteModal({
       queryClient.invalidateQueries({ queryKey: ['job-sites'] });
       queryClient.invalidateQueries({ queryKey: ['setup-progress'] });
       onSuccess?.();
+      if (data?.id) onCreated?.(data.id);
       onOpenChange(false);
     } catch (error: any) {
       console.error('Error creating job site:', error);
