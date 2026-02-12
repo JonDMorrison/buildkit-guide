@@ -113,7 +113,8 @@ Deno.serve(async (req) => {
         
         ${settings?.default_payment_terms ? `<p style="margin-top:20px"><strong>Payment Terms:</strong> ${settings.default_payment_terms}</p>` : ""}
         ${invoice.due_date ? `<p><strong>Due Date:</strong> ${new Date(invoice.due_date).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</p>` : ""}
-        ${invoice.notes ? `<div style="margin-top:20px;padding:12px;background:#f9f9f9;border-radius:4px"><strong>Notes:</strong><br/>${invoice.notes}</div>` : ""}
+        ${settings?.payment_instructions ? `<div style="margin-top:20px;padding:12px;background:#f0f7ff;border-left:4px solid #0066cc;border-radius:4px"><strong>Payment Instructions:</strong><br/><pre style="font-family:Arial,sans-serif;white-space:pre-wrap;margin:8px 0 0 0;font-size:13px">${settings.payment_instructions}</pre></div>` : ""}
+        ${invoice.notes ? `<div style="margin-top:16px;padding:12px;background:#f9f9f9;border-radius:4px"><strong>Notes:</strong><br/>${invoice.notes}</div>` : ""}
         
         <hr style="border:none;border-top:1px solid #ddd;margin:30px 0" />
         <p style="color:#999;font-size:12px">This invoice was sent from ${companyName}</p>

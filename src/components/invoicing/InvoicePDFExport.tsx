@@ -124,8 +124,23 @@ export const generateInvoicePDF = (
     y += 6;
   }
 
+  // Payment Instructions (from settings - appears on every invoice)
+  if (settings?.payment_instructions) {
+    if (y > 245) { doc.addPage(); y = 20; }
+    y += 3;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text("Payment Instructions", m, y); y += 5;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    const piLines = doc.splitTextToSize(settings.payment_instructions, 170);
+    doc.text(piLines, m, y);
+    y += piLines.length * 4 + 4;
+  }
+
   // Notes
   if (invoice.notes) {
+    if (y > 255) { doc.addPage(); y = 20; }
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.text("Notes:", m, y); y += 4;

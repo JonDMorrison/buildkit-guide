@@ -26,6 +26,8 @@ interface Props {
   taxRate: number;
   taxLabel: string;
   defaultPaymentTerms: string;
+  notesTemplate: string;
+  paymentInstructions: string;
   onSubmit: (invoice: Partial<Invoice>, lineItems: Partial<InvoiceLineItem>[]) => Promise<any>;
   onAddClient?: () => void;
   initialLineItems?: LineItemDraft[];
@@ -36,7 +38,7 @@ const defaultLine = (): LineItemDraft => ({ description: "", quantity: 1, unit_p
 
 export const CreateInvoiceModal = ({
   open, onOpenChange, clients, projects, taxRate, taxLabel,
-  defaultPaymentTerms, onSubmit, onAddClient, initialLineItems, initialProjectId,
+  defaultPaymentTerms, notesTemplate, paymentInstructions, onSubmit, onAddClient, initialLineItems, initialProjectId,
 }: Props) => {
   const [loading, setLoading] = useState(false);
   const [clientId, setClientId] = useState("");
@@ -53,7 +55,7 @@ export const CreateInvoiceModal = ({
       setProjectId(initialProjectId || "");
       setIssueDate(format(new Date(), "yyyy-MM-dd"));
       setDueDate(format(addDays(new Date(), 30), "yyyy-MM-dd"));
-      setNotes("");
+      setNotes(notesTemplate || "");
       setLineItems(initialLineItems && initialLineItems.length > 0 ? initialLineItems : [defaultLine()]);
     }
   }, [open, initialLineItems, initialProjectId]);
