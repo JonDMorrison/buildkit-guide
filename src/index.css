@@ -191,6 +191,13 @@ All colors MUST be HSL.
   .inline-gap {
     @apply gap-2;
   }
+
+  /* Gradient fade separator */
+  .separator-fade {
+    height: 1px;
+    width: 100%;
+    background: linear-gradient(90deg, transparent, hsl(var(--border)), transparent);
+  }
 }
 
 /* Performance: image lazy loading */
@@ -333,4 +340,29 @@ img {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+}
+
+/* Print stylesheet */
+@media print {
+  nav, [data-tab-bar], [data-ai-assist], .tab-bar-container,
+  button[aria-label="AI Assist"], .breadcrumb-nav {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    padding: 0 !important;
+  }
+
+  .widget-card, [class*="card"] {
+    border: none !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+
+  * {
+    color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
 }

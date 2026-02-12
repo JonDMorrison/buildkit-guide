@@ -2,6 +2,7 @@ import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
 import { Home, LayoutDashboard, ClipboardList, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import logo from "@/assets/project-path-logo.png";
 
 const NotFound = () => {
   const location = useLocation();
@@ -11,8 +12,9 @@ const NotFound = () => {
   }, [location.pathname]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted">
+    <div className="flex min-h-screen items-center justify-center bg-background animate-fade-in">
       <div className="text-center max-w-md px-4">
+        <img src={logo} alt="Project Path" className="h-10 mx-auto mb-6 opacity-80" />
         <h1 className="mb-4 text-6xl font-bold text-primary">404</h1>
         <p className="mb-2 text-xl font-semibold">Page not found</p>
         <p className="mb-6 text-muted-foreground">
