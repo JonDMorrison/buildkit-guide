@@ -74,7 +74,7 @@ const Invoicing = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { activeOrganizationId } = useOrganization();
-  const { role: orgRole } = useOrganizationRole();
+  const { role: orgRole, isLoading: orgRoleLoading } = useOrganizationRole();
   const { clients, loading: clientsLoading, createClient, updateClient } = useClients();
   const {
     invoices, loading: invoicesLoading, settings,
@@ -457,6 +457,16 @@ const Invoicing = () => {
     }
     return map;
   }, [invoices]);
+
+  if (orgRoleLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
+        </div>
+      </Layout>
+    );
+  }
 
   if (!canAccess) {
     return <Layout><NoAccess /></Layout>;

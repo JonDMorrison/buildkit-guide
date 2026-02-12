@@ -16,7 +16,7 @@ import { NoAccess } from '@/components/NoAccess';
 
 const Receipts = () => {
   const { currentProjectId } = useCurrentProject();
-  const { isAdmin, isPM, currentProjectRole } = useAuthRole(currentProjectId || undefined);
+  const { isAdmin, isPM, currentProjectRole, loading: roleLoading } = useAuthRole(currentProjectId || undefined);
   
   // Check permissions - project members can view, PM/Admin can export
   const canView = !!currentProjectRole || isAdmin;
@@ -49,6 +49,16 @@ const Receipts = () => {
           title="No Project Selected"
           description="Select a project to view and upload receipts."
         />
+      </Layout>
+    );
+  }
+
+  if (roleLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
+        </div>
       </Layout>
     );
   }
