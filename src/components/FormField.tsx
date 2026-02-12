@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useId } from "react";
 import { Label } from "./ui/label";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +19,8 @@ export const FormField = ({
   children,
   className,
 }: FormFieldProps) => {
+  const errorId = useId();
+
   return (
     <div className={cn("space-y-2", className)}>
       <Label className="text-base font-semibold">
@@ -26,7 +28,14 @@ export const FormField = ({
         {required && <span className="text-destructive ml-1">*</span>}
       </Label>
       
-      <div className="min-h-[52px]">
+      <div
+        className={cn(
+          "min-h-[52px]",
+          error && "animate-shake border-l-2 border-l-destructive pl-2"
+        )}
+        aria-invalid={!!error || undefined}
+        aria-describedby={error ? errorId : undefined}
+      >
         {children}
       </div>
       
@@ -35,7 +44,7 @@ export const FormField = ({
       )}
       
       {error && (
-        <p className="text-sm text-destructive font-medium">{error}</p>
+        <p id={errorId} role="alert" className="text-sm text-destructive font-medium">{error}</p>
       )}
     </div>
   );

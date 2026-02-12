@@ -40,7 +40,7 @@ export const StatusBadge = ({ status, label, dotOnly = false, className }: Statu
   }
 
   return (
-    <Badge className={cn(config.className, className)}>
+    <Badge className={cn(config.className, className)} aria-label={`Status: ${displayLabel}`}>
       {displayLabel}
     </Badge>
   );

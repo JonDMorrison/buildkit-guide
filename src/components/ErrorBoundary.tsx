@@ -56,7 +56,7 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="min-h-screen flex items-center justify-center bg-background p-4 animate-fade-in">
           <div className="max-w-md w-full text-center space-y-6">
             <div className="flex justify-center">
               <div className="rounded-full bg-destructive/10 p-4">
@@ -66,7 +66,7 @@ export class ErrorBoundary extends Component<Props, State> {
             
             <div className="space-y-2">
               <h1 className="text-2xl font-bold text-foreground">
-                Something went wrong
+                This section encountered an issue
               </h1>
               <p className="text-muted-foreground">
                 We encountered an unexpected error. Don't worry, your data is safe.
@@ -87,7 +87,11 @@ export class ErrorBoundary extends Component<Props, State> {
             )}
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button onClick={this.handleReload} variant="default" className="gap-2">
+              <Button onClick={this.handleReset} variant="default" className="gap-2">
+                <RefreshCw className="h-4 w-4" />
+                Try Again
+              </Button>
+              <Button onClick={this.handleReload} variant="outline" className="gap-2">
                 <RefreshCw className="h-4 w-4" />
                 Reload Page
               </Button>
