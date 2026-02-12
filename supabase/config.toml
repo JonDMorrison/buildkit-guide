@@ -110,3 +110,6 @@ verify_jwt = false
 
 [functions.send-invoice-email]
 verify_jwt = true
+
+[functions.generate-recurring-invoices]
+verify_jwt = false
