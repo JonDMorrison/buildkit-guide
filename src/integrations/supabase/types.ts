@@ -349,6 +349,65 @@ export type Database = {
           },
         ]
       }
+      clients: {
+        Row: {
+          billing_address: string | null
+          city: string | null
+          contact_name: string | null
+          created_at: string
+          email: string | null
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          organization_id: string
+          phone: string | null
+          postal_code: string | null
+          province: string | null
+          updated_at: string
+        }
+        Insert: {
+          billing_address?: string | null
+          city?: string | null
+          contact_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          organization_id: string
+          phone?: string | null
+          postal_code?: string | null
+          province?: string | null
+          updated_at?: string
+        }
+        Update: {
+          billing_address?: string | null
+          city?: string | null
+          contact_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          organization_id?: string
+          phone?: string | null
+          postal_code?: string | null
+          province?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comments: {
         Row: {
           content: string
@@ -973,6 +1032,189 @@ export type Database = {
           },
           {
             foreignKeyName: "invitations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_progress"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_line_items: {
+        Row: {
+          amount: number
+          category: string | null
+          description: string
+          id: string
+          invoice_id: string
+          quantity: number
+          sort_order: number
+          unit_price: number
+        }
+        Insert: {
+          amount?: number
+          category?: string | null
+          description: string
+          id?: string
+          invoice_id: string
+          quantity?: number
+          sort_order?: number
+          unit_price?: number
+        }
+        Update: {
+          amount?: number
+          category?: string | null
+          description?: string
+          id?: string
+          invoice_id?: string
+          quantity?: number
+          sort_order?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_line_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_settings: {
+        Row: {
+          company_address: string | null
+          company_name: string | null
+          created_at: string
+          default_payment_terms: string | null
+          invoice_prefix: string | null
+          logo_url: string | null
+          next_invoice_number: number
+          notes_template: string | null
+          organization_id: string
+          tax_label: string | null
+          tax_rate: number | null
+          updated_at: string
+        }
+        Insert: {
+          company_address?: string | null
+          company_name?: string | null
+          created_at?: string
+          default_payment_terms?: string | null
+          invoice_prefix?: string | null
+          logo_url?: string | null
+          next_invoice_number?: number
+          notes_template?: string | null
+          organization_id: string
+          tax_label?: string | null
+          tax_rate?: number | null
+          updated_at?: string
+        }
+        Update: {
+          company_address?: string | null
+          company_name?: string | null
+          created_at?: string
+          default_payment_terms?: string | null
+          invoice_prefix?: string | null
+          logo_url?: string | null
+          next_invoice_number?: number
+          notes_template?: string | null
+          organization_id?: string
+          tax_label?: string | null
+          tax_rate?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_settings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          created_by: string
+          due_date: string | null
+          id: string
+          invoice_number: string
+          issue_date: string
+          notes: string | null
+          organization_id: string
+          paid_at: string | null
+          project_id: string | null
+          sent_at: string | null
+          status: Database["public"]["Enums"]["invoice_status"]
+          subtotal: number
+          tax_amount: number
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          created_by: string
+          due_date?: string | null
+          id?: string
+          invoice_number: string
+          issue_date?: string
+          notes?: string | null
+          organization_id: string
+          paid_at?: string | null
+          project_id?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          subtotal?: number
+          tax_amount?: number
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          created_by?: string
+          due_date?: string | null
+          id?: string
+          invoice_number?: string
+          issue_date?: string
+          notes?: string | null
+          organization_id?: string
+          paid_at?: string | null
+          project_id?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          subtotal?: number
+          tax_amount?: number
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "v_project_progress"
@@ -3418,6 +3660,7 @@ export type Database = {
         Returns: boolean
       }
       cleanup_expired_idempotency_keys: { Args: never; Returns: number }
+      get_next_invoice_number: { Args: { org_id: string }; Returns: string }
       get_task_project_id: { Args: { _task_id: string }; Returns: string }
       get_time_cron_secret: { Args: never; Returns: string }
       get_user_organizations: { Args: { _user_id: string }; Returns: string[] }
@@ -3659,6 +3902,7 @@ export type Database = {
         | "external_trade"
         | "accounting"
       deficiency_status: "open" | "in_progress" | "fixed" | "verified"
+      invoice_status: "draft" | "sent" | "paid" | "overdue" | "void"
       notification_type:
         | "task_assigned"
         | "blocker_added"
@@ -3817,6 +4061,7 @@ export const Constants = {
         "accounting",
       ],
       deficiency_status: ["open", "in_progress", "fixed", "verified"],
+      invoice_status: ["draft", "sent", "paid", "overdue", "void"],
       notification_type: [
         "task_assigned",
         "blocker_added",
