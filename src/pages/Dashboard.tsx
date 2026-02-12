@@ -526,7 +526,7 @@ export default function Dashboard() {
                   onClick={() => navigate(`/projects/${currentProjectId}`)} 
                   size="sm" 
                   variant="outline"
-                  className="border-primary text-primary hover:bg-primary/10 px-3 w-fit"
+                  className="px-3 w-fit"
                   disabled={!currentProjectId}
                 >
                   <Building2 className="h-4 w-4 mr-1" /> Project
@@ -534,11 +534,12 @@ export default function Dashboard() {
                 <Button 
                   onClick={() => setQuickAddModalOpen(true)} 
                   size="sm" 
-                  className="bg-secondary hover:bg-secondary/90 text-secondary-foreground px-3 w-fit"
+                  variant="outline"
+                  className="px-3 w-fit"
                 >
                   <Plus className="h-4 w-4 mr-1" /> Add
                 </Button>
-                <Button onClick={() => navigate("/tasks")} size="sm" className="bg-primary hover:bg-primary/90 px-3 w-fit">
+                <Button onClick={() => navigate("/tasks")} size="sm" variant="outline" className="px-3 w-fit">
                   <ArrowRight className="h-4 w-4 mr-1" /> Tasks
                 </Button>
               </div>
