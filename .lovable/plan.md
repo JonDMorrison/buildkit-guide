@@ -1,121 +1,105 @@
 
 
-# Premium Finishing -- Safe Additive Improvements Only
+# Role-Based UX Audit -- Findings and Fixes
 
-## What's included (and why it's safe)
+## Audit Summary
 
-I filtered the prompt down to **CSS-only additions, new utility classes, and minor component tweaks** that layer on top of existing code without changing any behavior, layouts, or data flows. Nothing structural changes.
-
----
-
-## 1. Shadow Elevation System (CSS-only, additive)
-
-**`src/index.css`** -- Add shadow utility classes:
-- `.shadow-elevation-1` -- subtle card shadow (single layer, 0 1px 3px)
-- `.shadow-elevation-2` -- raised element (2 layers, adds spread)
-- `.shadow-elevation-3` -- modal/dropdown (3 layers, more offset)
-- These are opt-in classes; nothing existing changes.
-
-**`tailwind.config.ts`** -- Register as `boxShadow` extend:
-- `elevation-1`, `elevation-2`, `elevation-3` tokens
+After tracing every page, hook, and navigation path, I found **5 inconsistencies** where role enforcement is missing or misaligned with the TabBar tier system. The TabBar correctly hides tabs, but if a user navigates directly to a URL (bookmark, back button, shared link), several pages render full content without checking permissions.
 
 ---
 
-## 2. Glassmorphism on Dialog Overlay (minimal tweak)
+## Issues Found
 
-**`src/components/ui/dialog.tsx`** -- Change overlay from `bg-black/80` to `bg-black/60 backdrop-blur-sm`
-- Adds depth and premium feel to all modals
-- No layout or functional change -- purely visual overlay opacity + blur
+### Issue 1: HoursTracking -- No Access Control
+**File:** `src/pages/HoursTracking.tsx`
+**Problem:** Zero role checks. Any authenticated user can visit `/hours-tracking` and see all project hours data, even field workers and external trades.
+**Fix:** Add `useAuthRole` + loading guard + `NoAccess` fallback. Only Admin, PM, Foreman, and Office/Accounting roles should access this page.
 
----
+### Issue 2: Drawings -- No Access Guard
+**File:** `src/pages/Drawings.tsx`
+**Problem:** The upload button is gated by `can('upload_documents')`, but the page itself renders the full drawing list to anyone -- including external trades who shouldn't see project drawings at all.
+**Fix:** Add role check. Only Tier 1 (all) roles should see Drawings. Show `NoAccess` for field/minimal tier users.
 
-## 3. Gradient Fade Separator (new utility, additive)
+### Issue 3: Deficiencies -- No Access Guard
+**File:** `src/pages/Deficiencies.tsx`
+**Problem:** The create button is gated, but the full deficiency list renders for everyone. External trades and internal workers shouldn't see the deficiency management page.
+**Fix:** Add role check matching the TabBar tier -- only Tier 1 (all) roles. Show `NoAccess` for others.
 
-**`src/index.css`** -- Add `.separator-fade` class:
-- A horizontal rule that fades from transparent to border color to transparent
-- `background: linear-gradient(90deg, transparent, hsl(var(--border)), transparent)`
-- Opt-in only, doesn't change existing Separator component
+### Issue 4: Invoicing -- Global Admin Blind Spot
+**File:** `src/pages/Invoicing.tsx`
+**Problem:** Access check is `orgRole === "admin" || orgRole === "pm"`. A user who is a **global admin** (via `user_roles` table) but has no org membership would be blocked. This is inconsistent with every other page that checks `isGlobalAdmin`.
+**Fix:** Add `isGlobalAdmin` from `useProjectRole` or `useUserRole` to the `canAccess` check so global admins always pass.
 
----
-
-## 4. Print Stylesheet (purely additive)
-
-**`src/index.css`** -- Add `@media print` block:
-- Hide navigation, tab bar, AI assist button
-- Force white background, dark text for readability
-- Remove shadows and decorative borders
-- Make cards borderless for clean document output
-- Zero risk -- only applies when printing
-
----
-
-## 5. NotFound Page Brand Polish (visual-only)
-
-**`src/pages/NotFound.tsx`** -- Minor visual upgrade:
-- Change background from `bg-muted` to `bg-background` (match app theme)
-- Add `animate-fade-in` for smooth entrance
-- Add the brand logo above the 404 heading
-- No structural or routing change
+### Issue 5: Dashboard Direct URL Access
+**File:** `src/pages/Dashboard.tsx`
+**Problem:** Dashboard is only in `all` and `office` tiers in the TabBar, meaning field workers and external trades don't see the tab. But if they navigate to `/dashboard` directly (bookmark, shared link), they see the full dashboard with potentially sensitive project metrics.
+**Fix:** Add a lightweight role guard that redirects field/minimal tier users to `/tasks` if they hit `/dashboard` directly. This way the Dashboard remains the correct landing page for management and office roles, while field users land on their appropriate home.
 
 ---
 
-## 6. Number/Currency Formatting Utility (new file, additive)
+## No Issues Found (Already Correct)
 
-**New: `src/lib/formatters.ts`**
-- `formatCurrency(amount, currency?)` -- consistent `$1,234.56` formatting
-- `formatNumber(n)` -- locale-aware number formatting with commas
-- `formatPercent(n)` -- consistent `12.5%` display
-- `formatCompactNumber(n)` -- `1.2K`, `3.4M` for dashboard metrics
-- Pure utility, doesn't touch existing code. Available for future use.
-
----
-
-## 7. Skeleton Pulse Refinement (CSS-only)
-
-**`src/components/ui/skeleton.tsx`** -- Swap `animate-pulse` for `animate-pulse-soft`
-- Uses the already-defined gentler 1.5s pulse animation
-- Single class name change, no structural impact
+These pages already have proper guards:
+- **Safety.tsx** -- Checks `canViewSafety` with loading guard, allows workers for Right-to-Refuse
+- **Receipts.tsx** -- Checks `canView` with `roleLoading` guard
+- **JobCostReport.tsx** -- Checks `hasAccess` with `roleLoading` guard
+- **Lookahead.tsx** -- Checks `canViewLookahead` with loading guard
+- **Manpower.tsx** -- Checks `canRequestManpower` with `roleLoading` guard
+- **DailyLogs.tsx** -- Checks `canViewLogs` with loading guard
+- **AuditLog.tsx** -- Checks `isAdmin` with `roleLoading` guard
+- **TimesheetPeriods.tsx** -- Checks `canApproveTimesheets`
+- **TimeRequestsReview.tsx** -- Checks `canReviewRequests`
+- **TabBar.tsx** -- Tier system is correct and consistent
 
 ---
 
-## What was excluded (and why)
+## Implementation Plan
 
-| Prompt Item | Why Excluded |
-|---|---|
-| Glassmorphism on navigation | Risks readability in sunlight for field users |
-| Parallax scrolling | No hero sections in the app shell; adds JS complexity |
-| Noise/grain textures | Would hurt field readability and add asset weight |
-| Brand illustrations/icons | Requires design assets we don't have |
-| Custom splash screens | Not applicable to web PWA without manifest changes |
-| Email templates | Requires backend/email service changes |
-| Permissions/role UI | Already fully implemented |
-| Audit trails | Already implemented (InvoiceActivityTimeline) |
-| Onboarding flows | Already implemented (WelcomeWizard) |
-| Search/filtering | Already implemented (GlobalSearchModal) |
-| Import/export workflows | Already implemented per-module |
-| Admin interfaces | Already exists (UserManagement, Setup) |
-| Chart interactive hover | Already handled by Recharts defaults |
-| Gradient overlays on cards | Risk breaking the carefully tuned dark theme contrast |
+### Step 1: Fix HoursTracking.tsx
+- Import `useAuthRole`, `NoAccess`, and add loading spinner
+- Add access check: `isAdmin || isPM() || isForeman()` or accounting role
+- Show `NoAccess` for unauthorized users, with loading guard to prevent flash
 
----
+### Step 2: Fix Drawings.tsx
+- Import `NoAccess` and add `roleLoading` check from `useAuthRole`
+- Add access check: only Tier 1 roles (Admin, PM, Foreman)
+- Show `NoAccess` for field workers and external trades
 
-## Implementation Sequence
+### Step 3: Fix Deficiencies.tsx
+- Add access guard using existing `roleLoading` and `isAdmin`/`isPM`/`isForeman` checks
+- Show `NoAccess` for workers and external trades
 
-1. **CSS additions**: Shadow system, separator-fade, print stylesheet (index.css + tailwind.config.ts)
-2. **Dialog overlay**: One-line backdrop-blur change
-3. **Skeleton**: One class name swap
-4. **NotFound**: Visual polish with logo + animation
-5. **Formatters**: New utility file
-6. Total: ~5 files touched, 1 new file created
+### Step 4: Fix Invoicing.tsx
+- Import `useUserRole` or use existing `useProjectRole` to check `isGlobalAdmin`
+- Update `canAccess` from `orgRole === "admin" || orgRole === "pm"` to also include `isGlobalAdmin`
+
+### Step 5: Fix Dashboard.tsx
+- Add role tier check from `useAuthRole`
+- If user is field/minimal tier, redirect to `/tasks` using `Navigate`
+- Add loading guard to prevent flash during redirect
 
 ---
 
-## Files Modified
-- `src/index.css` -- shadow utilities, separator-fade, print styles
-- `tailwind.config.ts` -- elevation shadow tokens
-- `src/components/ui/dialog.tsx` -- overlay backdrop-blur
-- `src/components/ui/skeleton.tsx` -- pulse-soft animation
-- `src/pages/NotFound.tsx` -- brand polish
+## Technical Details
 
-## Files Created
-- `src/lib/formatters.ts` -- number/currency formatting utilities
+All fixes follow the **exact same pattern** already established in Safety.tsx, Receipts.tsx, and JobCostReport.tsx:
+
+```text
+1. Check roleLoading --> show spinner
+2. Check access --> show NoAccess if unauthorized
+3. Render page content if authorized
+```
+
+No database changes, no new hooks, no new components needed. Pure frontend guards using existing infrastructure.
+
+### Files Modified
+- `src/pages/HoursTracking.tsx` -- Add role guard
+- `src/pages/Drawings.tsx` -- Add role guard
+- `src/pages/Deficiencies.tsx` -- Add role guard
+- `src/pages/Invoicing.tsx` -- Fix global admin check
+- `src/pages/Dashboard.tsx` -- Add redirect for unauthorized tiers
+
+### Files Unchanged
+- `src/components/TabBar.tsx` -- Already correct
+- `src/components/NoAccess.tsx` -- Already correct
+- All hooks -- No changes needed
