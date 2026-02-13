@@ -7,8 +7,10 @@ import { useCurrentProject } from "@/hooks/useCurrentProject";
 import { useProjectRole } from "@/hooks/useProjectRole";
 import { useOrganizationRole } from "@/hooks/useOrganizationRole";
 import { useProjectSnapshots } from "@/hooks/useProjectSnapshots";
+import { useScopeAccuracy } from "@/hooks/useScopeAccuracy";
 import { VarianceCard } from "@/components/insights/VarianceCard";
 import { ScopeItemVarianceTable } from "@/components/insights/ScopeItemVarianceTable";
+import { ScopeAccuracyTable } from "@/components/insights/ScopeAccuracyTable";
 import { ActualVsPlannedChart } from "@/components/insights/charts/ActualVsPlannedChart";
 import { ProjectMarginChart } from "@/components/insights/charts/ProjectMarginChart";
 import { LaborVarianceChart } from "@/components/insights/charts/LaborVarianceChart";
@@ -38,6 +40,7 @@ const ProjectEstimateAccuracy = () => {
   const { isAdmin: isOrgAdmin } = useOrganizationRole();
   const { variance, hasBudget, loading, error } = useEstimateAccuracy(selectedProject || null);
   const { snapshots, loading: snapshotsLoading } = useProjectSnapshots(selectedProject || null);
+  const { rows: scopeAccuracyRows, loading: scopeLoading, error: scopeError } = useScopeAccuracy(selectedProject || null);
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -368,7 +371,12 @@ const ProjectEstimateAccuracy = () => {
               </div>
             )}
 
-            {/* Scope Item Variance */}
+            {/* Scope Accuracy (RPC-powered) */}
+            <div className="mt-6">
+              <ScopeAccuracyTable rows={scopeAccuracyRows} loading={scopeLoading} error={scopeError} />
+            </div>
+
+            {/* Scope Item Variance (coverage & assignment) */}
             <div className="mt-6">
               <ScopeItemVarianceTable
                 projectId={selectedProject}

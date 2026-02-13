@@ -4580,6 +4580,18 @@ export type Database = {
         Args: { p_org_id: string; p_user_id: string }
         Returns: string
       }
+      org_scope_accuracy: {
+        Args: { p_org_id: string; p_weeks?: number }
+        Returns: {
+          avg_delta_pct: number
+          normalized_name: string
+          project_count: number
+          total_actual_hours: number
+          total_planned_hours: number
+          worst_delta_pct: number
+          worst_project_name: string
+        }[]
+      }
       preview_tasks_from_scope: {
         Args: { p_mode: string; p_project_id: string }
         Returns: {
@@ -4658,6 +4670,24 @@ export type Database = {
           remainder_to_invoice: number
           status: string
           total_cost_delta: number
+        }[]
+      }
+      project_scope_accuracy: {
+        Args: {
+          p_end_date?: string
+          p_project_id: string
+          p_start_date?: string
+        }
+        Returns: {
+          actual_hours: number
+          delta_hours: number
+          delta_pct: number
+          item_type: string
+          planned_hours: number
+          scope_item_id: string
+          scope_item_name: string
+          task_count: number
+          trade_breakdown: Json
         }[]
       }
       project_task_actual_hours: {
