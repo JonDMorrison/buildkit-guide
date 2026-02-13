@@ -143,6 +143,14 @@ export const useAuthRole = (projectId?: string) => {
       case 'edit_lookahead':
         return isPM(targetProject) || isForeman(targetProject);
 
+      // Budget & scope permissions — admin/PM only
+      case 'edit_budget':
+        return isPM(targetProject);
+      case 'edit_scope':
+        return isPM(targetProject);
+      case 'generate_tasks_from_scope':
+        return isPM(targetProject);
+
       default:
         return false;
     }
