@@ -5,12 +5,18 @@ import { Layout } from '@/components/Layout';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
-import { Search, FileText, ChevronRight, ChevronDown, ArrowUp } from 'lucide-react';
+import { Search, FileText, ChevronRight, ChevronDown, ArrowUp, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useSearchParams } from 'react-router-dom';
 
 // Import the raw markdown content
 import qaGauntletContent from '../../docs/QA_GAUNTLET.md?raw';
+import specLockContent from '../../docs/SPEC_LOCK.md?raw';
+
+const DOCS = [
+  { key: 'qa-gauntlet', label: 'QA Gauntlet', icon: FileText, file: 'docs/QA_GAUNTLET.md', content: qaGauntletContent },
+  { key: 'spec-lock', label: 'Spec Lock', icon: ShieldCheck, file: 'docs/SPEC_LOCK.md', content: specLockContent },
+] as const;
 
 interface TocItem {
   level: number;
@@ -34,10 +40,14 @@ function extractToc(markdown: string): TocItem[] {
 }
 
 const DocsViewer = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeKey = searchParams.get('doc') || 'qa-gauntlet';
+  const activeDoc = DOCS.find(d => d.key === activeKey) || DOCS[0];
+
   const [search, setSearch] = useState('');
   const [tocOpen, setTocOpen] = useState(true);
   const [showScrollTop, setShowScrollTop] = useState(false);
-  const toc = extractToc(qaGauntletContent);
+  const toc = extractToc(activeDoc.content);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -67,21 +77,48 @@ const DocsViewer = () => {
     ? toc.filter(item => item.text.toLowerCase().includes(search.toLowerCase()))
     : toc;
 
+  const switchDoc = (key: string) => {
+    setSearchParams({ doc: key });
+    setSearch('');
+    const el = document.getElementById('docs-scroll-area');
+    el?.scrollTo({ top: 0 });
+  };
+
   return (
     <Layout>
       <div className="flex flex-col h-[calc(100vh-4rem)]">
         {/* Header */}
         <div className="flex items-center gap-3 px-4 md:px-6 py-3 border-b border-border bg-surface-raised/50">
-          <FileText className="h-5 w-5 text-primary" />
-          <h1 className="text-lg font-semibold text-foreground">QA Gauntlet</h1>
+          <activeDoc.icon className="h-5 w-5 text-primary" />
+          <h1 className="text-lg font-semibold text-foreground">{activeDoc.label}</h1>
           <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-            docs/QA_GAUNTLET.md
+            {activeDoc.file}
           </span>
         </div>
 
         <div className="flex flex-1 overflow-hidden">
-          {/* Sidebar TOC */}
+          {/* Sidebar */}
           <aside className="hidden md:flex flex-col w-72 border-r border-border bg-background">
+            {/* Doc switcher */}
+            <div className="p-2 border-b border-border space-y-1">
+              {DOCS.map(doc => (
+                <button
+                  key={doc.key}
+                  onClick={() => switchDoc(doc.key)}
+                  className={cn(
+                    'w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors',
+                    activeKey === doc.key
+                      ? 'bg-primary/10 text-primary font-medium'
+                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                  )}
+                >
+                  <doc.icon className="h-4 w-4" />
+                  {doc.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Search */}
             <div className="p-3 border-b border-border">
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -183,7 +220,7 @@ const DocsViewer = () => {
                       ),
                     }}
                   >
-                    {qaGauntletContent}
+                    {activeDoc.content}
                   </ReactMarkdown>
                 </div>
               </article>
