@@ -327,7 +327,10 @@ const ProjectEstimateAccuracy = () => {
 
             {/* Scope Item Variance */}
             <div className="mt-6">
-              <ScopeItemVarianceTable projectId={selectedProject} />
+              <ScopeItemVarianceTable
+                projectId={selectedProject}
+                canEdit={isGlobalAdmin || hasAnyProjectRole(selectedProject, ["project_manager"])}
+              />
             </div>
           </>
         )}
