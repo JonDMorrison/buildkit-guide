@@ -4453,8 +4453,24 @@ export type Database = {
         Returns: boolean
       }
       cleanup_expired_idempotency_keys: { Args: never; Returns: number }
+      generate_org_financial_snapshot: {
+        Args: { p_org_id: string; p_period?: string; p_snapshot_date: string }
+        Returns: string
+      }
+      generate_project_financial_snapshot: {
+        Args: {
+          p_period?: string
+          p_project_id: string
+          p_snapshot_date: string
+        }
+        Returns: string
+      }
       generate_tasks_from_scope: {
         Args: { p_mode: string; p_project_id: string }
+        Returns: Json
+      }
+      generate_weekly_snapshots_for_org: {
+        Args: { p_org_id: string; p_snapshot_date?: string }
         Returns: Json
       }
       get_next_invoice_number: { Args: { org_id: string }; Returns: string }
