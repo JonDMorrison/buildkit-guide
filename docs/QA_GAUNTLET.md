@@ -414,18 +414,96 @@ INSERT INTO notification_preferences (user_id, weekly_digest) VALUES
 | **Insert snapshot directly** | ❌ 🔒 | ❌ 🔒 | ❌ 🔒 | ❌ 🔒 | ❌ 🔒 | ❌ 🔒 |
 | **Weekly digest received** | ✅ (if opted in) | ✅ (if opted in) | ✅ (if opted in) | ❌ (role filter) | ❌ (role filter) | ❌ (role filter) |
 
-### Negative Tests (must confirm denial)
+### SECURITY DEFINER RPC Authorization Rules
 
-| # | Test | Expected Error |
-|---|------|---------------|
-| N-01 | Worker calls `generate_tasks_from_scope` via Postman | RPC error or empty result (RLS blocks) |
-| N-02 | Worker calls `assign_time_entry_task` | Permission error from RPC |
-| N-03 | Foreman attempts INSERT into `project_budgets` | RLS violation |
-| N-04 | Non-org user attempts SELECT on `project_financial_snapshots` | 0 rows returned |
-| N-05 | PM attempts INSERT into `project_financial_snapshots` | RLS violation |
-| N-06 | Worker navigates to `/data-health` | NoAccess component or redirect |
-| N-07 | Worker navigates to `/insights` | NoAccess component or redirect |
-| N-08 | Foreman calls `project_portfolio_report` for another org | 0 rows (org_id filter + RLS) |
+> **CANONICAL** — Every SECURITY DEFINER RPC must raise `RAISE EXCEPTION` on unauthorized access. Returning 0 rows is NOT acceptable for authorization failures — it hides attacks.
+
+| # | RPC Function | Auth Checks (in order) | Allowed Roles | Error Shape |
+|---|---|---|---|---|
+| R1 | `assign_time_entry_task(entry_id, task_id)` | 1. Entry exists 2. Org membership 3. Admin or PM (org-level or project-level) 4. Task exists 5. Same project | GA, OA, PM (on project) | RAISE EXCEPTION → SQLSTATE P0001 |
+| R2 | `generate_tasks_from_scope(project_id, mode)` | 1. Mode valid 2. Project exists 3. Org membership 4. Admin or PM (org-level or project-level) | GA, OA, PM (on project) | RAISE EXCEPTION → SQLSTATE P0001 |
+| R3 | `preview_tasks_from_scope(project_id, mode)` | Same as R2 | GA, OA, PM (on project) | RAISE EXCEPTION → SQLSTATE P0001 |
+| R4 | `rpc_approve_timesheet_period(period_id, actor_id)` | 1. Period exists 2. Org membership 3. Role in (admin, hr, pm, foreman) 4. PM/Foreman must share a project | GA, OA, HR, PM (shared project), FM (shared project) | RAISE EXCEPTION → SQLSTATE P0001 |
+| R5 | `rpc_lock_timesheet_period(period_id, actor_id)` | 1. Period exists 2. Org membership 3. Role in (admin, hr) | GA, OA, HR | RAISE EXCEPTION → SQLSTATE P0001 |
+| R6 | `rpc_review_time_adjustment_request(req_id, actor_id, decision, note)` | 1. Request exists 2. Request pending 3. Org membership 4. Role check (admin/hr/pm/foreman) 5. PM/Foreman must be project member | GA, OA, HR, PM (project member), FM (project member) | RAISE EXCEPTION → SQLSTATE P0001 |
+| R7 | `rpc_submit_timesheet_period(period_id, actor_id, text)` | 1. Period exists 2. Owner only 3. Status = open | Owner only | RAISE EXCEPTION → SQLSTATE P0001 |
+| R8 | `rpc_cancel_time_adjustment_request(req_id, actor_id)` | 1. Request exists 2. Requester only 3. Status = pending | Requester only | RAISE EXCEPTION → SQLSTATE P0001 |
+
+### Error Shape Contract
+
+All SECURITY DEFINER RPCs in this project use `RAISE EXCEPTION 'message'` which produces:
+
+| Layer | Error Shape | How to Assert |
+|---|---|---|
+| **SQL** (psql / service role) | `ERROR: <message>` with `SQLSTATE: P0001` | `DO $$ BEGIN PERFORM assign_time_entry_task(...); EXCEPTION WHEN raise_exception THEN RAISE NOTICE 'Caught: %', SQLERRM; END $$;` |
+| **Supabase JS SDK** | `{ error: { message: "<message>", code: "P0001" } }` | `expect(error).not.toBeNull(); expect(error.code).toBe('P0001'); expect(error.message).toContain('<substring>');` |
+| **PostgREST / HTTP** | `HTTP 400` with `{ "message": "<message>", "code": "P0001" }` | `expect(response.status).toBe(400); expect(body.message).toContain('<substring>');` |
+
+> **Key distinction**: RLS violations return HTTP 403 or 0 rows (depending on operation). SECURITY DEFINER RPCs return HTTP 400 with SQLSTATE P0001. Tests must assert the **correct** error type.
+
+### Negative Tests (must confirm denial with exact errors)
+
+| # | Test | Method | Expected Error (exact) | Assert |
+|---|------|--------|----------------------|--------|
+| N-01 | Worker calls `generate_tasks_from_scope` | Supabase JS RPC | `P0001`: message contains `"Insufficient permissions"` | `error.code === 'P0001' && error.message.includes('Insufficient permissions')` |
+| N-02 | Worker calls `assign_time_entry_task` | Supabase JS RPC | `P0001`: message contains `"Access denied: admin or project manager role required"` | `error.code === 'P0001' && error.message.includes('admin or project manager role required')` |
+| N-03 | Foreman attempts INSERT into `project_budgets` | Supabase JS `.insert()` | HTTP 403 (RLS `new row violates row-level security policy`) | `error.code === '42501'` |
+| N-04 | Non-org user attempts SELECT on `project_financial_snapshots` | Supabase JS `.select()` | 0 rows (RLS silently filters — this is correct for SELECT policies) | `data.length === 0` |
+| N-05 | PM attempts INSERT into `project_financial_snapshots` | Supabase JS `.insert()` | HTTP 403 (RLS violation) | `error.code === '42501'` |
+| N-06 | Worker navigates to `/data-health` | Browser | NoAccess component rendered (text: "You don't have permission") | UI assertion |
+| N-07 | Worker navigates to `/insights` | Browser | NoAccess component rendered | UI assertion |
+| N-08 | Foreman calls `project_portfolio_report` for another org | Supabase JS RPC | 0 rows returned (RLS on underlying tables filters data) | `data.length === 0` — NOTE: this is acceptable for SELECT-based RPCs that aggregate RLS-filtered tables |
+| N-09 | PM calls `assign_time_entry_task` for project PM is NOT a member of | Supabase JS RPC | `P0001`: message contains `"Access denied: admin or project manager role required"` | `error.code === 'P0001'` — **Privilege Escalation test** |
+| N-10 | Non-org user calls `generate_tasks_from_scope` | Supabase JS RPC | `P0001`: message contains `"Not a member of this organization"` | `error.code === 'P0001'` |
+| N-11 | PM calls `assign_time_entry_task` with task from different project | Supabase JS RPC | `P0001`: message contains `"Task and time entry must belong to the same project"` | `error.code === 'P0001'` |
+| N-12 | Worker calls `rpc_approve_timesheet_period` for own period | Supabase JS RPC | `P0001`: message contains `"Insufficient role to approve"` | `error.code === 'P0001'` |
+| N-13 | Worker calls `rpc_review_time_adjustment_request` | Supabase JS RPC | `P0001`: message contains `"Insufficient role to review"` | `error.code === 'P0001'` |
+| N-14 | PM calls `rpc_lock_timesheet_period` | Supabase JS RPC | `P0001`: message contains `"Only HR/Admin can lock"` | `error.code === 'P0001'` |
+| N-15 | Non-owner calls `rpc_submit_timesheet_period` | Supabase JS RPC | `P0001`: message contains `"Only the owner can submit"` | `error.code === 'P0001'` |
+
+### SQL Verification Queries for Negative Tests
+
+```sql
+-- N-01: Worker calling generate_tasks_from_scope
+-- Execute as worker_uid via Supabase JS:
+SELECT * FROM generate_tasks_from_scope(:proj1_id, 'create_missing');
+-- Expected: ERROR P0001 "Insufficient permissions. Admin or PM role required."
+
+-- N-02: Worker calling assign_time_entry_task
+SELECT * FROM assign_time_entry_task(:te1_id, :task1_id);
+-- Expected: ERROR P0001 "Access denied: admin or project manager role required"
+
+-- N-09: Privilege Escalation — PM on project A calling for project B entry
+-- Setup: PM is member of proj1 but NOT proj2
+SELECT * FROM assign_time_entry_task(:te_proj2_id, :task_proj2_id);
+-- Expected: ERROR P0001 "Access denied: admin or project manager role required"
+-- (PM has no project_members row for proj2, so project-level role check fails)
+
+-- N-10: Cross-org user calling generate_tasks_from_scope
+-- Execute as rival_uid:
+SELECT * FROM generate_tasks_from_scope(:proj1_id, 'create_missing');
+-- Expected: ERROR P0001 "Not a member of this organization"
+
+-- N-11: Cross-project assign
+SELECT * FROM assign_time_entry_task(:te1_id, :task_proj2_id);
+-- Expected: ERROR P0001 "Task and time entry must belong to the same project"
+
+-- N-12: Worker approving timesheet
+SELECT * FROM rpc_approve_timesheet_period(:period_id, :worker_uid);
+-- Expected: ERROR P0001 "Insufficient role to approve"
+
+-- N-13: Worker reviewing adjustment
+SELECT * FROM rpc_review_time_adjustment_request(:req_id, :worker_uid, 'approved', 'test');
+-- Expected: ERROR P0001 "Insufficient role to review request"
+
+-- N-14: PM locking timesheet
+SELECT * FROM rpc_lock_timesheet_period(:period_id, :pm_uid);
+-- Expected: ERROR P0001 "Only HR/Admin can lock"
+
+-- N-15: Non-owner submitting timesheet
+SELECT * FROM rpc_submit_timesheet_period(:period_id, :pm_uid, 'I attest');
+-- Expected: ERROR P0001 "Only the owner can submit this period"
+```
 
 ---
 
@@ -774,26 +852,65 @@ WHERE si.project_id = :pid AND si.is_archived = false;
 
 ### 7.1 Cross-Org Read Isolation
 
-| # | Test | Method | Expected |
-|---|------|--------|----------|
-| S-01 | Org2 admin queries `project_budgets` for Org1 project | Supabase JS client as Org2 user | 0 rows |
-| S-02 | Org2 admin queries `project_financial_snapshots` for Org1 | Supabase JS client | 0 rows |
-| S-03 | Org2 admin calls `project_portfolio_report(:org1_id)` | Supabase RPC | 0 rows (org membership checked) |
-| S-04 | Org2 admin calls `project_variance_summary` for Org1 project | Supabase RPC | 0 rows or empty (project membership checked via budget RLS) |
-| S-05 | Org2 admin queries `clients` for Org1 | Supabase JS | 0 rows |
-| S-06 | Org2 admin queries `invoices` for Org1 | Supabase JS | 0 rows |
-| S-07 | Org2 admin queries `ai_insights` for Org1 | Supabase JS | 0 rows |
-| S-08 | Unauthenticated request to `project_portfolio_report` | curl with no auth header | 401 or empty |
+> **Policy**: SELECT-based queries and non-SECURITY-DEFINER RPCs that aggregate RLS-protected tables return **0 rows** for unauthorized users (RLS silently filters). This is correct behavior for SELECT policies. SECURITY DEFINER RPCs must raise exceptions (see §7.2).
+
+| # | Test | Method | Expected | Error Type |
+|---|------|--------|----------|-----------|
+| S-01 | Org2 admin queries `project_budgets` for Org1 project | Supabase JS `.select()` | **0 rows** (RLS filters) | Silent filter — correct for SELECT |
+| S-02 | Org2 admin queries `project_financial_snapshots` for Org1 | Supabase JS `.select()` | **0 rows** (RLS filters) | Silent filter |
+| S-03 | Org2 admin calls `project_portfolio_report(:org1_id)` | Supabase JS RPC | **0 rows** — this RPC aggregates RLS-filtered tables, not SECURITY DEFINER auth checks | Silent filter (underlying tables have RLS) |
+| S-04 | Org2 admin calls `project_variance_summary` for Org1 project | Supabase JS RPC | **0 rows** — budget RLS returns nothing, so variance has no data to compute | Silent filter |
+| S-05 | Org2 admin queries `clients` for Org1 | Supabase JS `.select()` | **0 rows** | Silent filter |
+| S-06 | Org2 admin queries `invoices` for Org1 | Supabase JS `.select()` | **0 rows** | Silent filter |
+| S-07 | Org2 admin queries `ai_insights` for Org1 | Supabase JS `.select()` | **0 rows** | Silent filter |
+| S-08 | Unauthenticated request to `project_portfolio_report` | curl with no auth header | **HTTP 401** (PostgREST rejects missing JWT) | `401 Unauthorized` — NOT 0 rows |
+| S-09 | Org2 admin calls `generate_tasks_from_scope` for Org1 project | Supabase JS RPC | **RAISE EXCEPTION** `P0001`: `"Not a member of this organization"` | Explicit exception — SECURITY DEFINER |
+| S-10 | Org2 admin calls `assign_time_entry_task` for Org1 entry | Supabase JS RPC | **RAISE EXCEPTION** `P0001`: `"Access denied: not a member of this organization"` | Explicit exception — SECURITY DEFINER |
 
 ### 7.2 SECURITY DEFINER Function Tests
 
-| # | Function | Test | Expected |
-|---|----------|------|----------|
-| SD-01 | `assign_time_entry_task` | Worker calls it | Error / denied |
-| SD-02 | `assign_time_entry_task` | Cross-project entry+task | Error: project mismatch |
-| SD-03 | `generate_tasks_from_scope` | Non-member calls it | Empty result or error |
-| SD-04 | `rpc_approve_timesheet_period` | Worker tries to approve own period | Error: insufficient role |
-| SD-05 | `rpc_review_time_adjustment_request` | Worker tries to review | Error: insufficient role |
+> Cross-referenced with §3 RPC Authorization Rules table. Every test below asserts an **explicit exception**, never "0 rows or error".
+
+| # | Function | Test | Expected Error (exact) | SQLSTATE | Message Substring |
+|---|----------|------|----------------------|----------|-------------------|
+| SD-01 | `assign_time_entry_task` | Worker calls it | RAISE EXCEPTION | P0001 | `Access denied: admin or project manager role required` |
+| SD-02 | `assign_time_entry_task` | Cross-project entry+task | RAISE EXCEPTION | P0001 | `Task and time entry must belong to the same project` |
+| SD-03 | `generate_tasks_from_scope` | Non-org-member calls it | RAISE EXCEPTION | P0001 | `Not a member of this organization` |
+| SD-04 | `rpc_approve_timesheet_period` | Worker tries to approve own period | RAISE EXCEPTION | P0001 | `Insufficient role to approve` |
+| SD-05 | `rpc_review_time_adjustment_request` | Worker tries to review | RAISE EXCEPTION | P0001 | `Insufficient role to review` |
+| SD-06 | `assign_time_entry_task` | PM for project PM is NOT a member of (privilege escalation) | RAISE EXCEPTION | P0001 | `Access denied: admin or project manager role required` |
+| SD-07 | `generate_tasks_from_scope` | Foreman calls it (insufficient role) | RAISE EXCEPTION | P0001 | `Insufficient permissions` |
+| SD-08 | `assign_time_entry_task` | Entry ID does not exist | RAISE EXCEPTION | P0001 | `Time entry not found` |
+| SD-09 | `assign_time_entry_task` | Task ID does not exist | RAISE EXCEPTION | P0001 | `Task not found` |
+| SD-10 | `rpc_lock_timesheet_period` | PM tries to lock (not HR/Admin) | RAISE EXCEPTION | P0001 | `Only HR/Admin can lock` |
+| SD-11 | `rpc_submit_timesheet_period` | Non-owner tries to submit | RAISE EXCEPTION | P0001 | `Only the owner can submit` |
+| SD-12 | `rpc_cancel_time_adjustment_request` | Non-requester tries to cancel | RAISE EXCEPTION | P0001 | `Only requester can cancel` |
+
+### SQL Verification for SD Tests
+
+```sql
+-- SD-01: Worker → assign_time_entry_task
+-- Execute as worker_uid
+DO $$ BEGIN
+  PERFORM assign_time_entry_task(:te1_id, :task1_id);
+  RAISE EXCEPTION 'Should not reach here';
+EXCEPTION WHEN raise_exception THEN
+  IF SQLERRM NOT LIKE '%admin or project manager role required%' THEN
+    RAISE EXCEPTION 'Wrong error: %', SQLERRM;
+  END IF;
+END $$;
+
+-- SD-06: Privilege Escalation — PM not on project
+-- Execute as pm_uid (member of proj1 only)
+DO $$ BEGIN
+  PERFORM assign_time_entry_task(:te_proj2_id, :task_proj2_id);
+  RAISE EXCEPTION 'Should not reach here';
+EXCEPTION WHEN raise_exception THEN
+  IF SQLERRM NOT LIKE '%admin or project manager role required%' THEN
+    RAISE EXCEPTION 'Wrong error: %', SQLERRM;
+  END IF;
+END $$;
+```
 
 ### 7.3 Client Hierarchy Constraint Tests
 
