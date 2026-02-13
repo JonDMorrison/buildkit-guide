@@ -55,6 +55,7 @@ const Insights = lazy(() => import("./pages/Insights"));
 const ProjectEstimateAccuracy = lazy(() => import("./pages/ProjectEstimateAccuracy"));
 const DataHealth = lazy(() => import("./pages/DataHealth"));
 const Snapshots = lazy(() => import("./pages/Snapshots"));
+const DocsViewer = lazy(() => import("./pages/DocsViewer"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -410,6 +411,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <DataHealth />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/docs/qa-gauntlet"
+                  element={
+                    <ProtectedRoute>
+                      <DocsViewer />
                     </ProtectedRoute>
                   }
                 />
