@@ -20,6 +20,8 @@ import {
   FolderOpen,
   ExternalLink,
   RefreshCw,
+  Layers,
+  ShieldAlert,
 } from "lucide-react";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
 
@@ -55,6 +57,20 @@ interface MissingBudgetRow {
   status: string;
 }
 
+interface OverlapRow {
+  user_id: string;
+  full_name: string;
+  project_name: string;
+  overlap_date: string;
+  entry_count: number;
+}
+
+interface CrossProjectTaskRefRow {
+  entry_id: string;
+  entry_project_name: string;
+  task_project_name: string;
+}
+
 /* ------------------------------------------------------------------ */
 /* Component                                                           */
 /* ------------------------------------------------------------------ */
@@ -69,6 +85,8 @@ const DataHealth = () => {
   const [unmatchedTime, setUnmatchedTime] = useState<UnmatchedTimeRow[]>([]);
   const [unclassifiedReceipts, setUnclassifiedReceipts] = useState<UnclassifiedReceiptRow[]>([]);
   const [missingBudgets, setMissingBudgets] = useState<MissingBudgetRow[]>([]);
+  const [overlappingEntries, setOverlappingEntries] = useState<OverlapRow[]>([]);
+  const [crossProjectTaskRefs, setCrossProjectTaskRefs] = useState<CrossProjectTaskRefRow[]>([]);
 
   const canView = isAdmin || isPM();
 
@@ -95,6 +113,8 @@ const DataHealth = () => {
         setUnmatchedTime([]);
         setUnclassifiedReceipts([]);
         setMissingBudgets([]);
+        setOverlappingEntries([]);
+        setCrossProjectTaskRefs([]);
         setLoading(false);
         return;
       }
@@ -110,14 +130,12 @@ const DataHealth = () => {
 
       let costRateRows: MissingCostRateRow[] = [];
       if (zeroCostUserIds.length > 0) {
-        // Get names
         const { data: profiles } = await supabase
           .from("profiles")
           .select("id, full_name")
           .in("id", zeroCostUserIds as string[]);
         const nameMap = Object.fromEntries((profiles || []).map((p) => [p.id, p.full_name || "Unknown"]));
 
-        // Get hours last 30d for these users
         const { data: timeEntries } = await supabase
           .from("time_entries")
           .select("user_id, duration_hours")
@@ -131,7 +149,6 @@ const DataHealth = () => {
           userHours[te.user_id] = (userHours[te.user_id] || 0) + (te.duration_hours || 0);
         }
 
-        // Count affected projects per user
         const userProjects: Record<string, Set<string>> = {};
         for (const m of zeroCostMembers || []) {
           if (!userProjects[m.user_id]) userProjects[m.user_id] = new Set();
@@ -228,6 +245,101 @@ const DataHealth = () => {
             status: p.status,
           }))
       );
+
+      // --- 5) Overlapping time entries per worker per day ---
+      // Fetch recent closed entries with timestamps
+      const { data: allRecentEntries } = await supabase
+        .from("time_entries")
+        .select("id, user_id, project_id, check_in_at, check_out_at")
+        .in("project_id", projectIds as string[])
+        .eq("status", "closed")
+        .not("check_out_at", "is", null)
+        .gte("check_in_at", since)
+        .order("check_in_at", { ascending: true })
+        .limit(1000);
+
+      const overlapResults: OverlapRow[] = [];
+      if (allRecentEntries && allRecentEntries.length > 0) {
+        // Group by user
+        const byUser: Record<string, typeof allRecentEntries> = {};
+        for (const e of allRecentEntries) {
+          if (!byUser[e.user_id]) byUser[e.user_id] = [];
+          byUser[e.user_id].push(e);
+        }
+
+        // Get user names
+        const userIds = Object.keys(byUser);
+        const { data: userProfiles } = await supabase
+          .from("profiles")
+          .select("id, full_name")
+          .in("id", userIds as string[]);
+        const profileMap = Object.fromEntries((userProfiles || []).map((p) => [p.id, p.full_name || "Unknown"]));
+
+        for (const [userId, entries] of Object.entries(byUser)) {
+          // Check pairwise overlaps (already sorted by check_in_at)
+          const overlapDates = new Map<string, number>();
+          for (let i = 0; i < entries.length; i++) {
+            for (let j = i + 1; j < entries.length; j++) {
+              const a = entries[i];
+              const b = entries[j];
+              // If b starts after a ends, no overlap (and no further overlaps since sorted)
+              if (new Date(b.check_in_at) >= new Date(a.check_out_at!)) break;
+              // Overlap found
+              const date = new Date(a.check_in_at).toISOString().slice(0, 10);
+              overlapDates.set(date, (overlapDates.get(date) || 0) + 1);
+            }
+          }
+
+          for (const [date, count] of overlapDates) {
+            // Find the project for display (use first entry on that date)
+            const entryOnDate = entries.find((e) => e.check_in_at.startsWith(date));
+            overlapResults.push({
+              user_id: userId,
+              full_name: profileMap[userId] || userId.slice(0, 8),
+              project_name: projectMap[entryOnDate?.project_id || ""]?.name || "—",
+              overlap_date: date,
+              entry_count: count,
+            });
+          }
+        }
+      }
+      setOverlappingEntries(overlapResults);
+
+      // --- 6) Time entries with task_id referencing tasks from a different project (P0 invariant) ---
+      const { data: taskLinkedEntries } = await supabase
+        .from("time_entries")
+        .select("id, project_id, task_id")
+        .in("project_id", projectIds as string[])
+        .not("task_id", "is", null)
+        .gte("check_in_at", since)
+        .limit(500);
+
+      const crossRefs: CrossProjectTaskRefRow[] = [];
+      if (taskLinkedEntries && taskLinkedEntries.length > 0) {
+        const taskIds = [...new Set(taskLinkedEntries.map((e) => e.task_id!))];
+        // Fetch tasks to get their project_ids
+        const { data: tasks } = await supabase
+          .from("tasks")
+          .select("id, project_id")
+          .in("id", taskIds as string[]);
+        const taskProjectMap = Object.fromEntries((tasks || []).map((t) => [t.id, t.project_id]));
+
+        for (const entry of taskLinkedEntries) {
+          const taskProjectId = taskProjectMap[entry.task_id!];
+          if (taskProjectId && taskProjectId !== entry.project_id) {
+            crossRefs.push({
+              entry_id: entry.id,
+              entry_project_name: projectMap[entry.project_id]?.name || entry.project_id.slice(0, 8),
+              task_project_name: projectMap[taskProjectId]?.name || taskProjectId.slice(0, 8),
+            });
+          }
+        }
+      }
+      setCrossProjectTaskRefs(crossRefs);
+
+
+
+
     } catch (err) {
       console.error("DataHealth fetch error:", err);
     } finally {
@@ -241,8 +353,14 @@ const DataHealth = () => {
   }, [activeOrganizationId, canView]);
 
   const totalIssues = useMemo(
-    () => missingCostRates.length + unmatchedTime.length + unclassifiedReceipts.length + missingBudgets.length,
-    [missingCostRates, unmatchedTime, unclassifiedReceipts, missingBudgets]
+    () =>
+      missingCostRates.length +
+      unmatchedTime.length +
+      unclassifiedReceipts.length +
+      missingBudgets.length +
+      overlappingEntries.length +
+      crossProjectTaskRefs.length,
+    [missingCostRates, unmatchedTime, unclassifiedReceipts, missingBudgets, overlappingEntries, crossProjectTaskRefs]
   );
 
   /* ---------------------------------------------------------------- */
@@ -289,7 +407,7 @@ const DataHealth = () => {
 
         {loading ? (
           <div className="space-y-4">
-            {[...Array(4)].map((_, i) => (
+            {[...Array(7)].map((_, i) => (
               <Skeleton key={i} className="h-32" />
             ))}
           </div>
@@ -461,6 +579,76 @@ const DataHealth = () => {
                 </Table>
               )}
             </SectionCard>
+
+            {/* ──── 5) Overlapping Time Entries ──── */}
+            <SectionCard
+              icon={<Layers className="h-5 w-5" />}
+              title="Overlapping Time Entries"
+              description="Workers with multiple closed time entries whose time ranges overlap on the same day. Can inflate labor hours and costs."
+              count={overlappingEntries.length}
+              emptyText="No overlapping time entries found in the last 30 days."
+            >
+              {overlappingEntries.length > 0 && (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Worker</TableHead>
+                      <TableHead>Project</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Overlaps</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {overlappingEntries.slice(0, 20).map((r, i) => (
+                      <TableRow key={`${r.user_id}-${r.overlap_date}-${i}`}>
+                        <TableCell className="font-medium">{r.full_name}</TableCell>
+                        <TableCell>{r.project_name}</TableCell>
+                        <TableCell className="font-mono text-sm">{r.overlap_date}</TableCell>
+                        <TableCell className="text-right">{r.entry_count}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+              {overlappingEntries.length > 20 && (
+                <p className="text-xs text-muted-foreground mt-2 px-1">
+                  Showing 20 of {overlappingEntries.length} overlaps
+                </p>
+              )}
+            </SectionCard>
+
+            {/* ──── 6) Cross-Project Task References (P0 Invariant) ──── */}
+            <SectionCard
+              icon={<ShieldAlert className="h-5 w-5" />}
+              title="Cross-Project Task References"
+              description="Time entries linked to tasks from a different project. This should NEVER happen — indicates a data integrity violation."
+              count={crossProjectTaskRefs.length}
+              emptyText="All task-linked time entries reference tasks within the same project."
+            >
+              {crossProjectTaskRefs.length > 0 && (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Entry ID</TableHead>
+                      <TableHead>Entry Project</TableHead>
+                      <TableHead>Task Project</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {crossProjectTaskRefs.slice(0, 10).map((r) => (
+                      <TableRow key={r.entry_id}>
+                        <TableCell className="font-mono text-xs">{r.entry_id.slice(0, 8)}…</TableCell>
+                        <TableCell className="font-medium">{r.entry_project_name}</TableCell>
+                        <TableCell className="font-medium text-destructive">{r.task_project_name}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </SectionCard>
+
+
+
           </>
         )}
       </div>
