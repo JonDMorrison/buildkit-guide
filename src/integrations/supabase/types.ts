@@ -4237,6 +4237,10 @@ export type Database = {
       }
     }
     Functions: {
+      assign_time_entry_task: {
+        Args: { p_task_id: string; p_time_entry_id: string }
+        Returns: boolean
+      }
       can_manage_project: {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
@@ -4386,6 +4390,13 @@ export type Database = {
           remainder_to_invoice: number
           status: string
           total_cost_delta: number
+        }[]
+      }
+      project_task_actual_hours: {
+        Args: { p_project_id: string }
+        Returns: {
+          actual_hours: number
+          task_id: string
         }[]
       }
       project_variance_summary: {

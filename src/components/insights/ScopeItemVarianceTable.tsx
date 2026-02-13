@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { AlertTriangle, Clock, Eye, Info, LinkIcon } from 'lucide-react';
+import { AlertTriangle, Clock, Eye, Info } from 'lucide-react';
 import { formatNumber } from '@/lib/formatters';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -53,7 +53,10 @@ export function ScopeItemVarianceTable({ projectId, canEdit = false }: ScopeItem
   const { toast } = useToast();
   const [rows, setRows] = useState<ScopeItemRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [coverage, setCoverage] = useState<CoverageStats>({ totalProjectHours: 0, taskLinkedHours: 0, coveragePercent: 0, unassignedHours: 0, unassignedCount: 0 });
+  const [coverage, setCoverage] = useState<CoverageStats>({
+    totalProjectHours: 0, taskLinkedHours: 0, coveragePercent: 0,
+    unassignedHours: 0, unassignedCount: 0,
+  });
   const [showUnassigned, setShowUnassigned] = useState(false);
   const [unassignedEntries, setUnassignedEntries] = useState<UnassignedEntry[]>([]);
   const [loadingUnassigned, setLoadingUnassigned] = useState(false);
@@ -66,55 +69,58 @@ export function ScopeItemVarianceTable({ projectId, canEdit = false }: ScopeItem
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Fetch scope items with linked tasks
-        const { data: scopeItems } = await supabase
-          .from('project_scope_items')
-          .select('id, name, planned_hours')
-          .eq('project_id', projectId)
-          .eq('item_type', 'task')
-          .eq('is_archived', false)
-          .order('sort_order');
+        // Parallel: scope items, tasks, RPC actual hours, coverage totals
+        const [scopeRes, tasksRes, actualRes, totalRes, unassignedRes] = await Promise.all([
+          supabase
+            .from('project_scope_items')
+            .select('id, name, planned_hours')
+            .eq('project_id', projectId)
+            .eq('item_type', 'task')
+            .eq('is_archived', false)
+            .order('sort_order'),
+          supabase
+            .from('tasks')
+            .select('id, scope_item_id')
+            .eq('project_id', projectId)
+            .not('scope_item_id', 'is', null),
+          // RPC: server-side aggregation — no client-side IN() needed
+          supabase.rpc('project_task_actual_hours' as any, { p_project_id: projectId }),
+          // Total project hours (all closed entries)
+          supabase
+            .from('time_entries')
+            .select('duration_hours, task_id')
+            .eq('project_id', projectId)
+            .eq('status', 'closed')
+            .not('duration_hours', 'is', null),
+          // Unassigned count
+          supabase
+            .from('time_entries')
+            .select('id', { count: 'exact', head: true })
+            .eq('project_id', projectId)
+            .eq('status', 'closed')
+            .not('duration_hours', 'is', null)
+            .is('task_id', null),
+        ]);
 
-        // Fetch tasks linked to scope items
-        const { data: tasks } = await supabase
-          .from('tasks')
-          .select('id, scope_item_id')
-          .eq('project_id', projectId)
-          .not('scope_item_id', 'is', null);
-
+        // Build task→scope mapping
         const tasksByScope = new Map<string, string[]>();
-        for (const t of tasks || []) {
+        for (const t of tasksRes.data || []) {
           if (!t.scope_item_id) continue;
           const arr = tasksByScope.get(t.scope_item_id) || [];
           arr.push(t.id);
           tasksByScope.set(t.scope_item_id, arr);
         }
 
-        // Fetch time entries WITH task_id for this project
-        const allTaskIds = Array.from(tasksByScope.values()).flat();
-        let timeByTask = new Map<string, number>();
-
-        if (allTaskIds.length > 0) {
-          for (let i = 0; i < allTaskIds.length; i += 100) {
-            const batch = allTaskIds.slice(i, i + 100);
-            const { data: entries } = await supabase
-              .from('time_entries')
-              .select('task_id, duration_hours')
-              .eq('project_id', projectId)
-              .eq('status', 'closed')
-              .in('task_id', batch);
-
-            for (const e of entries || []) {
-              if (!e.task_id) continue;
-              timeByTask.set(e.task_id, (timeByTask.get(e.task_id) || 0) + (Number(e.duration_hours) || 0));
-            }
-          }
+        // Build task→hours from RPC result
+        const hoursByTask = new Map<string, number>();
+        for (const row of (actualRes.data || []) as { task_id: string; actual_hours: number }[]) {
+          hoursByTask.set(row.task_id, Number(row.actual_hours) || 0);
         }
 
-        // Build rows
-        const result: ScopeItemRow[] = (scopeItems || []).map((si) => {
+        // Build scope item rows
+        const result: ScopeItemRow[] = (scopeRes.data || []).map((si) => {
           const linkedTasks = tasksByScope.get(si.id) || [];
-          const actualHours = linkedTasks.reduce((sum, tid) => sum + (timeByTask.get(tid) || 0), 0);
+          const actualHours = linkedTasks.reduce((sum, tid) => sum + (hoursByTask.get(tid) || 0), 0);
           const planned = Number(si.planned_hours) || 0;
           return {
             id: si.id,
@@ -125,27 +131,15 @@ export function ScopeItemVarianceTable({ projectId, canEdit = false }: ScopeItem
             task_count: linkedTasks.length,
           };
         });
-
         setRows(result);
 
-        // Coverage stats: total project hours vs task-linked hours
-        const { data: allEntries } = await supabase
-          .from('time_entries')
-          .select('duration_hours, task_id')
-          .eq('project_id', projectId)
-          .eq('status', 'closed');
-
+        // Coverage stats from totals query
         let totalH = 0;
         let linkedH = 0;
-        let unassignedC = 0;
-        for (const e of allEntries || []) {
+        for (const e of totalRes.data || []) {
           const h = Number(e.duration_hours) || 0;
           totalH += h;
-          if (e.task_id) {
-            linkedH += h;
-          } else {
-            unassignedC++;
-          }
+          if (e.task_id) linkedH += h;
         }
         const unassignedH = totalH - linkedH;
         const pct = totalH > 0 ? (linkedH / totalH) * 100 : 0;
@@ -155,7 +149,7 @@ export function ScopeItemVarianceTable({ projectId, canEdit = false }: ScopeItem
           taskLinkedHours: linkedH,
           coveragePercent: pct,
           unassignedHours: unassignedH,
-          unassignedCount: unassignedC,
+          unassignedCount: unassignedRes.count || 0,
         });
       } catch (err) {
         console.error('ScopeItemVariance fetch error:', err);
@@ -177,6 +171,7 @@ export function ScopeItemVarianceTable({ projectId, canEdit = false }: ScopeItem
           .select('id, user_id, check_in_at, duration_hours, notes')
           .eq('project_id', projectId)
           .eq('status', 'closed')
+          .not('duration_hours', 'is', null)
           .is('task_id', null)
           .order('check_in_at', { ascending: false })
           .limit(100),
@@ -188,7 +183,6 @@ export function ScopeItemVarianceTable({ projectId, canEdit = false }: ScopeItem
           .order('title'),
       ]);
 
-      // Get user names
       const userIds = [...new Set((entriesRes.data || []).map(e => e.user_id))];
       const { data: profiles } = userIds.length > 0
         ? await supabase.from('profiles').select('id, full_name').in('id', userIds)
@@ -215,16 +209,17 @@ export function ScopeItemVarianceTable({ projectId, canEdit = false }: ScopeItem
   const handleAssignTask = async (entryId: string, taskId: string) => {
     setAssigningId(entryId);
     try {
-      const { error } = await supabase
-        .from('time_entries')
-        .update({ task_id: taskId })
-        .eq('id', entryId);
+      const { data, error } = await supabase.rpc('assign_time_entry_task' as any, {
+        p_time_entry_id: entryId,
+        p_task_id: taskId,
+      });
       if (error) throw error;
-      // Remove from list
+
+      // Update local state
+      const entry = unassignedEntries.find(e => e.id === entryId);
+      const h = entry?.duration_hours || 0;
       setUnassignedEntries(prev => prev.filter(e => e.id !== entryId));
       setCoverage(prev => {
-        const entry = unassignedEntries.find(e => e.id === entryId);
-        const h = entry?.duration_hours || 0;
         const newLinked = prev.taskLinkedHours + h;
         return {
           ...prev,
@@ -235,9 +230,9 @@ export function ScopeItemVarianceTable({ projectId, canEdit = false }: ScopeItem
         };
       });
       toast({ title: 'Task assigned', description: 'Time entry linked to task.' });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Assign task error:', err);
-      toast({ title: 'Failed to assign', variant: 'destructive' });
+      toast({ title: 'Failed to assign', description: err.message || 'An error occurred', variant: 'destructive' });
     } finally {
       setAssigningId(null);
     }
@@ -251,7 +246,10 @@ export function ScopeItemVarianceTable({ projectId, canEdit = false }: ScopeItem
     return null;
   }
 
-  const coverageColor = coverage.coveragePercent >= 80 ? 'text-status-complete' : coverage.coveragePercent >= 50 ? 'text-amber-600' : 'text-destructive';
+  const coverageColor =
+    coverage.coveragePercent >= 80 ? 'text-status-complete'
+    : coverage.coveragePercent >= 50 ? 'text-status-issue'
+    : 'text-destructive';
 
   return (
     <>
@@ -272,8 +270,8 @@ export function ScopeItemVarianceTable({ projectId, canEdit = false }: ScopeItem
               </div>
               {coverage.unassignedHours > 0 && (
                 <div className="flex items-center gap-1.5">
-                  <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
-                  <span className="text-amber-600 font-medium">
+                  <AlertTriangle className="h-3.5 w-3.5 text-status-issue" />
+                  <span className="text-status-issue font-medium">
                     Unassigned: {formatNumber(coverage.unassignedHours)}h
                   </span>
                   <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={handleViewUnassigned}>
@@ -287,7 +285,7 @@ export function ScopeItemVarianceTable({ projectId, canEdit = false }: ScopeItem
         </Card>
       )}
 
-      {/* Unassigned hours alert (when there are scope items but unassigned time) */}
+      {/* Unassigned hours alert */}
       {coverage.unassignedCount > 0 && rows.length > 0 && (
         <Alert className="mb-4">
           <Clock className="h-4 w-4" />
