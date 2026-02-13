@@ -12,10 +12,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { DollarSign, TrendingUp, AlertTriangle, BarChart3, Clock, Activity } from "lucide-react";
+import { DollarSign, TrendingUp, AlertTriangle, BarChart3, Clock, Activity, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
+import { getDataQualityFlags } from "@/lib/dataQualityFlags";
 
 const statusOptions = [
   { value: "all", label: "All Statuses" },
@@ -26,21 +28,50 @@ const statusOptions = [
   { value: "didnt_get", label: "Didn't Get" },
 ];
 
+const dataQualityFilterOptions = [
+  { key: "no_budget", label: "Missing budget" },
+  { key: "missing_rates", label: "Missing cost rates" },
+  { key: "unclassified", label: "Unclassified receipts" },
+] as const;
+
 const Insights = () => {
   const navigate = useNavigate();
   const { isGlobalAdmin, loading: roleLoading } = useProjectRole();
   const [statusFilter, setStatusFilter] = useState("all");
+  const [qualityFilters, setQualityFilters] = useState<Set<string>>(new Set());
   const { rows, loading, error } = usePortfolioInsights(
     statusFilter === "all" ? null : statusFilter
   );
 
+  // Apply data quality filters
+  const filteredRows = useMemo(() => {
+    if (qualityFilters.size === 0) return rows;
+    return rows.filter((r) => {
+      const flags = getDataQualityFlags(r);
+      const flagKeys = new Set(flags.map((f) => f.key));
+      for (const filter of qualityFilters) {
+        if (flagKeys.has(filter)) return true;
+      }
+      return false;
+    });
+  }, [rows, qualityFilters]);
+
   // Split rows by budget status
-  const withBudget = useMemo(() => rows.filter((r) => r.has_budget), [rows]);
-  const withoutBudget = useMemo(() => rows.filter((r) => !r.has_budget), [rows]);
+  const withBudget = useMemo(() => filteredRows.filter((r) => r.has_budget), [filteredRows]);
+  const withoutBudget = useMemo(() => filteredRows.filter((r) => !r.has_budget), [filteredRows]);
+
+  const toggleQualityFilter = (key: string) => {
+    setQualityFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   // Aggregate KPIs — only from projects WITH budgets
   const kpis = useMemo(() => {
-    if (!rows.length) return null;
+    if (!filteredRows.length) return null;
     const budgeted = withBudget;
     const totalContract = budgeted.reduce((s, r) => s + r.contract_value, 0);
     const totalActual = budgeted.reduce((s, r) => s + r.actual_total_cost, 0);
@@ -54,19 +85,19 @@ const Insights = () => {
       totalContract, totalActual, totalPlanned, overBudget, weightedMargin,
       includedCount: budgeted.length,
       excludedCount: withoutBudget.length,
-      totalCount: rows.length,
+      totalCount: filteredRows.length,
     };
-  }, [rows, withBudget, withoutBudget]);
+  }, [filteredRows, withBudget, withoutBudget]);
 
   // Sort by worst variance (most negative delta = biggest overrun)
   const sorted = useMemo(
-    () => [...rows].sort((a, b) => {
+    () => [...filteredRows].sort((a, b) => {
       // Projects with budgets first, then sort by delta
       if (a.has_budget && !b.has_budget) return -1;
       if (!a.has_budget && b.has_budget) return 1;
       return a.total_cost_delta - b.total_cost_delta;
     }),
-    [rows]
+    [filteredRows]
   );
 
   if (roleLoading) {
@@ -116,6 +147,26 @@ const Insights = () => {
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
+
+          {/* Data Quality Filters */}
+          <div className="space-y-1.5">
+            <Label className="flex items-center gap-1">
+              <ShieldAlert className="h-3.5 w-3.5" />
+              Data Quality
+            </Label>
+            <div className="flex gap-3">
+              {dataQualityFilterOptions.map((opt) => (
+                <label key={opt.key} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                  <Checkbox
+                    checked={qualityFilters.has(opt.key)}
+                    onCheckedChange={() => toggleQualityFilter(opt.key)}
+                  />
+                  {opt.label}
+                </label>
+              ))}
+            </div>
+          </div>
+
           <div className="ml-auto flex items-center gap-2">
             <Button
               variant="outline"
@@ -125,7 +176,7 @@ const Insights = () => {
               <Activity className="h-4 w-4 mr-1.5" />
               Data Health
             </Button>
-            {rows.length > 0 && <PortfolioExportCSV rows={rows} />}
+            {filteredRows.length > 0 && <PortfolioExportCSV rows={filteredRows} />}
           </div>
         </div>
 
@@ -235,6 +286,7 @@ const Insights = () => {
                       <TableHead>Project</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Budget</TableHead>
+                      <TableHead>Data Quality</TableHead>
                       <TableHead className="text-right">Planned</TableHead>
                       <TableHead className="text-right">Actual</TableHead>
                       <TableHead className="text-right">Delta ($)</TableHead>
@@ -250,6 +302,7 @@ const Insights = () => {
                           ? (r.total_cost_delta / r.planned_total_cost) * 100
                           : 0;
                       const isOver = r.total_cost_delta < 0;
+                      const qualityFlags = getDataQualityFlags(r);
                       return (
                         <TableRow
                           key={r.project_id}
@@ -274,6 +327,26 @@ const Insights = () => {
                               <Badge variant="outline" className="text-xs text-status-issue border-status-issue/30">
                                 Missing
                               </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {qualityFlags.length === 0 ? (
+                              <Badge variant="secondary" className="text-xs">Clean</Badge>
+                            ) : (
+                              <div className="flex flex-wrap gap-1">
+                                {qualityFlags.filter(f => f.key !== "no_budget").map((f) => (
+                                  <Badge
+                                    key={f.key}
+                                    variant="outline"
+                                    className={`text-xs ${f.severity === "error" ? "text-destructive border-destructive/30" : "text-status-issue border-status-issue/30"}`}
+                                  >
+                                    {f.label}
+                                  </Badge>
+                                ))}
+                                {qualityFlags.every(f => f.key === "no_budget") && (
+                                  <span className="text-xs text-muted-foreground">—</span>
+                                )}
+                              </div>
                             )}
                           </TableCell>
                           <TableCell className="text-right">

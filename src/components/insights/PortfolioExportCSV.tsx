@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { PortfolioRow } from "@/hooks/usePortfolioInsights";
+import { getDataQualityFlags } from "@/lib/dataQualityFlags";
 
 interface Props {
   rows: PortfolioRow[];
@@ -10,11 +11,13 @@ export const PortfolioExportCSV = ({ rows }: Props) => {
   const handleExport = () => {
     const lines: string[] = [];
     lines.push(
-      "Job #,Project,Customer,Status,Budget Status,Contract Value,Planned Cost,Actual Cost,Delta ($),Delta (%),Planned Margin %,Actual Margin %"
+      "Job #,Project,Customer,Status,Budget Status,Data Quality Issues,Contract Value,Planned Cost,Actual Cost,Delta ($),Delta (%),Planned Margin %,Actual Margin %,Missing Cost Rate Hours,Unmatched Worker Hours,Unclassified Receipt $"
     );
 
     for (const r of rows) {
       const budgetStatus = r.has_budget ? "Set" : "Missing";
+      const flags = getDataQualityFlags(r);
+      const qualityIssues = flags.map(f => f.label).join("; ") || "None";
       lines.push(
         [
           `"${r.job_number || ""}"`,
@@ -22,6 +25,7 @@ export const PortfolioExportCSV = ({ rows }: Props) => {
           `"${r.customer_name || ""}"`,
           r.status,
           budgetStatus,
+          `"${qualityIssues}"`,
           r.has_budget ? r.contract_value.toFixed(2) : "",
           r.has_budget ? r.planned_total_cost.toFixed(2) : "",
           r.actual_total_cost.toFixed(2),
@@ -31,6 +35,9 @@ export const PortfolioExportCSV = ({ rows }: Props) => {
             : "",
           r.has_budget ? r.planned_margin_percent.toFixed(1) : "",
           r.has_budget ? r.actual_margin_percent.toFixed(1) : "",
+          r.labor_hours_missing_cost_rate.toFixed(1),
+          r.labor_hours_missing_membership.toFixed(1),
+          r.actual_unclassified_cost.toFixed(2),
         ].join(",")
       );
     }
