@@ -5,6 +5,7 @@ import { SectionHeader } from "@/components/SectionHeader";
 import { useEstimateAccuracy } from "@/hooks/useEstimateAccuracy";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
 import { useProjectRole } from "@/hooks/useProjectRole";
+import { useOrganizationRole } from "@/hooks/useOrganizationRole";
 import { VarianceCard } from "@/components/insights/VarianceCard";
 import { ScopeItemVarianceTable } from "@/components/insights/ScopeItemVarianceTable";
 import { NoAccess } from "@/components/NoAccess";
@@ -27,6 +28,7 @@ const ProjectEstimateAccuracy = () => {
   const [selectedProject, setSelectedProject] = useState(paramProjectId || currentProjectId || "");
   const [projects, setProjects] = useState<{ id: string; name: string; job_number: string | null }[]>([]);
   const { isGlobalAdmin, hasAnyProjectRole, loading: roleLoading } = useProjectRole();
+  const { isAdmin: isOrgAdmin } = useOrganizationRole();
   const { variance, hasBudget, loading, error } = useEstimateAccuracy(selectedProject || null);
 
   useEffect(() => {
@@ -329,7 +331,7 @@ const ProjectEstimateAccuracy = () => {
             <div className="mt-6">
               <ScopeItemVarianceTable
                 projectId={selectedProject}
-                canEdit={isGlobalAdmin || hasAnyProjectRole(selectedProject, ["project_manager"])}
+                canEdit={isGlobalAdmin || isOrgAdmin || hasAnyProjectRole(selectedProject, ["project_manager"])}
               />
             </div>
           </>
