@@ -14,6 +14,61 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_insights: {
+        Row: {
+          content: Json
+          created_at: string
+          id: string
+          input_hash: string
+          insight_type: string
+          organization_id: string
+          project_id: string | null
+          snapshot_date: string
+        }
+        Insert: {
+          content: Json
+          created_at?: string
+          id?: string
+          input_hash: string
+          insight_type?: string
+          organization_id: string
+          project_id?: string | null
+          snapshot_date: string
+        }
+        Update: {
+          content?: Json
+          created_at?: string
+          id?: string
+          input_hash?: string
+          insight_type?: string
+          organization_id?: string
+          project_id?: string | null
+          snapshot_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_insights_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_insights_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_insights_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_progress"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_queries: {
         Row: {
           context_data: Json | null

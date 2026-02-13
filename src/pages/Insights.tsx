@@ -12,6 +12,7 @@ import { CostTrendChart } from "@/components/insights/charts/CostTrendChart";
 import { OverBudgetTrendChart } from "@/components/insights/charts/OverBudgetTrendChart";
 import { RecommendationsPanel } from "@/components/insights/RecommendationsPanel";
 import { OrgScopeLearningPanel } from "@/components/insights/OrgScopeLearningPanel";
+import { WeeklyInsightCard } from "@/components/insights/WeeklyInsightCard";
 import { getPortfolioRecommendations } from "@/lib/recommendations/rules";
 import { NoAccess } from "@/components/NoAccess";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -358,6 +359,11 @@ const Insights = () => {
                   </p>
                 </CardContent>
               </Card>
+            </div>
+
+            {/* Weekly AI Ops Summary */}
+            <div className="mb-6">
+              <WeeklyInsightCard title="Weekly Ops Summary" />
             </div>
 
             {/* Recommendations */}
