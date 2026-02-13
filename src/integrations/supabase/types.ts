@@ -3169,6 +3169,47 @@ export type Database = {
           },
         ]
       }
+      snapshots_run_log: {
+        Row: {
+          created_at: string
+          error: string | null
+          id: string
+          organization_id: string
+          projects_count: number
+          run_at: string
+          snapshot_date: string
+          success: boolean
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          organization_id: string
+          projects_count?: number
+          run_at?: string
+          snapshot_date: string
+          success?: boolean
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          organization_id?: string
+          projects_count?: number
+          run_at?: string
+          snapshot_date?: string
+          success?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "snapshots_run_log_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       support_issues: {
         Row: {
           browser_info: Json | null
