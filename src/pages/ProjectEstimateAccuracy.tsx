@@ -15,6 +15,7 @@ import { ActualVsPlannedChart } from "@/components/insights/charts/ActualVsPlann
 import { ProjectMarginChart } from "@/components/insights/charts/ProjectMarginChart";
 import { LaborVarianceChart } from "@/components/insights/charts/LaborVarianceChart";
 import { RecommendationsPanel } from "@/components/insights/RecommendationsPanel";
+import { WeeklyInsightCard } from "@/components/insights/WeeklyInsightCard";
 import { getProjectRecommendations } from "@/lib/recommendations/rules";
 import { NoAccess } from "@/components/NoAccess";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -226,6 +227,11 @@ const ProjectEstimateAccuracy = () => {
                 </AlertDescription>
               </Alert>
             )}
+
+            {/* Weekly AI Insight */}
+            <div className="mb-6">
+              <WeeklyInsightCard projectId={selectedProject} />
+            </div>
 
             {/* Recommendations */}
             <RecommendationsPanel recommendations={recommendations} />
