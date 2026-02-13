@@ -4,10 +4,26 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Send } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2, Send, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { Invoice, InvoiceSettings, Client } from "@/types/invoicing";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const parseEmails = (raw: string): string[] =>
+  raw.split(/[,;\s]+/).map(e => e.trim()).filter(Boolean);
+
+const validateEmails = (raw: string): { valid: string[]; invalid: string[] } => {
+  const all = parseEmails(raw);
+  const valid: string[] = [];
+  const invalid: string[] = [];
+  for (const e of all) {
+    (EMAIL_RE.test(e) ? valid : invalid).push(e);
+  }
+  return { valid, invalid };
+};
 
 interface Props {
   open: boolean;
@@ -28,8 +44,10 @@ export const SendInvoiceModal = ({ open, onOpenChange, invoice, settings, client
 
   useEffect(() => {
     if (open && invoice) {
-      // Prefer A/P email for invoice sending, fall back to primary email
-      setEmail(client?.ap_email || client?.email || "");
+      // Prefer snapshot send_to_emails, fall back to client A/P email
+      const snapshotEmails = invoice.send_to_emails;
+      const fallbackEmail = client?.ap_email || client?.email || "";
+      setEmail(snapshotEmails || fallbackEmail);
       setRecipientName(client?.ap_contact_name || client?.contact_name || client?.name || "");
       setSubject(`Invoice ${invoice.invoice_number} from ${settings?.company_name || "us"}`);
       setMessage(`Please find attached Invoice ${invoice.invoice_number} for $${Number(invoice.total).toFixed(2)}.`);
@@ -38,24 +56,39 @@ export const SendInvoiceModal = ({ open, onOpenChange, invoice, settings, client
 
   if (!invoice) return null;
 
+  const { valid: validEmails, invalid: invalidEmails } = validateEmails(email);
+
   const handleSend = async () => {
-    if (!email) {
-      toast({ title: "Email address is required", variant: "destructive" });
+    if (!validEmails.length) {
+      toast({ title: "At least one valid email address is required", variant: "destructive" });
+      return;
+    }
+    if (invalidEmails.length) {
+      toast({ title: "Fix invalid email addresses before sending", description: invalidEmails.join(", "), variant: "destructive" });
       return;
     }
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      // Send to each valid email
+      const primaryEmail = validEmails[0];
       const res = await supabase.functions.invoke("send-invoice-email", {
         body: {
           invoiceId: invoice.id,
-          recipientEmail: email,
+          recipientEmail: primaryEmail,
           recipientName,
           subject,
           message,
+          ccEmails: validEmails.slice(1),
         },
       });
       if (res.error) throw res.error;
+
+      // Persist the send_to_emails back to the invoice for future sends
+      await supabase
+        .from('invoices')
+        .update({ send_to_emails: validEmails.join(", ") } as any)
+        .eq('id', invoice.id);
+
       toast({ title: "Invoice sent successfully!" });
       onSent?.();
       onOpenChange(false);
@@ -73,8 +106,24 @@ export const SendInvoiceModal = ({ open, onOpenChange, invoice, settings, client
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>Recipient Email *</Label>
-            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="client@example.com" required />
+            <Label>Recipient Email(s) *</Label>
+            <Input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="ap@client.com, billing@client.com"
+              required
+            />
+            <p className="text-xs text-muted-foreground">
+              Separate multiple emails with commas
+            </p>
+            {invalidEmails.length > 0 && (
+              <Alert variant="destructive" className="py-2">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                <AlertDescription className="text-xs">
+                  Invalid: {invalidEmails.join(", ")}
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
           <div className="space-y-2">
             <Label>Recipient Name</Label>
@@ -90,7 +139,7 @@ export const SendInvoiceModal = ({ open, onOpenChange, invoice, settings, client
           </div>
           <div className="flex gap-3 pt-2">
             <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1" disabled={loading}>Cancel</Button>
-            <Button onClick={handleSend} className="flex-1" disabled={loading || !email}>
+            <Button onClick={handleSend} className="flex-1" disabled={loading || !validEmails.length}>
               {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending...</> : <><Send className="mr-2 h-4 w-4" />Send Invoice</>}
             </Button>
           </div>

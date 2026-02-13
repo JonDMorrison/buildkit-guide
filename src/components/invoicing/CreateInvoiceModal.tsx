@@ -146,6 +146,12 @@ export const CreateInvoiceModal = ({
       retainage_amount: retainageAmount,
       progress_percent: progressPercent,
       contract_total: contractTotal,
+      // Snapshot fields
+      bill_to_client_id: clientId || null,
+      bill_to_name: billingInfo?.billTo || null,
+      bill_to_address: billingInfo?.billAddress || null,
+      ship_to_address: billingInfo?.shipTo || null,
+      send_to_emails: billingInfo?.apEmail || null,
     };
 
     const finalLineItems = invoiceType === "progress"
