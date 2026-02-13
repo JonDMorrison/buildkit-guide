@@ -17,6 +17,7 @@ export interface OrgSnapshot {
   projects_with_budget_count: number;
   projects_missing_budget_count: number;
   projects_over_budget_count: number;
+  captured_at: string | null;
   created_at: string;
 }
 

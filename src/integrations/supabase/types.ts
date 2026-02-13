@@ -1899,6 +1899,7 @@ export type Database = {
       }
       org_financial_snapshots: {
         Row: {
+          captured_at: string | null
           created_at: string
           id: string
           organization_id: string
@@ -1916,6 +1917,7 @@ export type Database = {
           weighted_margin_pct_actual: number
         }
         Insert: {
+          captured_at?: string | null
           created_at?: string
           id?: string
           organization_id: string
@@ -1933,6 +1935,7 @@ export type Database = {
           weighted_margin_pct_actual?: number
         }
         Update: {
+          captured_at?: string | null
           created_at?: string
           id?: string
           organization_id?: string
@@ -2262,6 +2265,7 @@ export type Database = {
           actual_unclassified_cost: number
           billed_percentage_relaxed: number
           billed_percentage_strict: number
+          captured_at: string | null
           contract_value: number
           created_at: string
           created_by: string | null
@@ -2302,6 +2306,7 @@ export type Database = {
           actual_unclassified_cost?: number
           billed_percentage_relaxed?: number
           billed_percentage_strict?: number
+          captured_at?: string | null
           contract_value?: number
           created_at?: string
           created_by?: string | null
@@ -2342,6 +2347,7 @@ export type Database = {
           actual_unclassified_cost?: number
           billed_percentage_relaxed?: number
           billed_percentage_strict?: number
+          captured_at?: string | null
           contract_value?: number
           created_at?: string
           created_by?: string | null
@@ -3231,31 +3237,37 @@ export type Database = {
         Row: {
           created_at: string
           error: string | null
+          finished_at: string | null
           id: string
           organization_id: string
           projects_count: number
           run_at: string
           snapshot_date: string
+          started_at: string | null
           success: boolean
         }
         Insert: {
           created_at?: string
           error?: string | null
+          finished_at?: string | null
           id?: string
           organization_id: string
           projects_count?: number
           run_at?: string
           snapshot_date: string
+          started_at?: string | null
           success?: boolean
         }
         Update: {
           created_at?: string
           error?: string | null
+          finished_at?: string | null
           id?: string
           organization_id?: string
           projects_count?: number
           run_at?: string
           snapshot_date?: string
+          started_at?: string | null
           success?: boolean
         }
         Relationships: [

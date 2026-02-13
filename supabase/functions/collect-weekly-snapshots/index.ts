@@ -37,7 +37,8 @@ Deno.serve(async (req) => {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  const snapshotDate = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+  const runStartedAt = new Date().toISOString();
+  const snapshotDate = runStartedAt.split("T")[0]; // YYYY-MM-DD
   const results: Array<{ org_id: string; org_name: string; success: boolean; projects_count: number; error?: string }> = [];
 
   try {
@@ -87,6 +88,8 @@ Deno.serve(async (req) => {
             projects_count: 0,
             success: false,
             error: error.message,
+            started_at: runStartedAt,
+            finished_at: new Date().toISOString(),
           });
 
           results.push({ org_id: orgId, org_name: orgName, success: false, projects_count: 0, error: error.message });
@@ -101,6 +104,8 @@ Deno.serve(async (req) => {
             projects_count: projectsCount,
             success: true,
             error: null,
+            started_at: runStartedAt,
+            finished_at: new Date().toISOString(),
           });
 
           results.push({ org_id: orgId, org_name: orgName, success: true, projects_count: projectsCount });
@@ -115,6 +120,8 @@ Deno.serve(async (req) => {
           projects_count: 0,
           success: false,
           error: errorMsg,
+          started_at: runStartedAt,
+          finished_at: new Date().toISOString(),
         });
 
         results.push({ org_id: orgId, org_name: orgName, success: false, projects_count: 0, error: errorMsg });

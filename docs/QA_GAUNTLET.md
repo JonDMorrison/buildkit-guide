@@ -554,17 +554,68 @@ HAVING COUNT(*) > 1;
 
 **Detection**: `SELECT status, task_id FROM time_entries WHERE id = :te_id` — status='closed', task_id=:task_id.
 
-### Race 4: Snapshot Generation During Invoice Creation
+### Race 4: Snapshot Generation During Invoice Creation — Time Boundary Contract
+
+> **CANONICAL**: A snapshot represents the state of data **as-of `captured_at`** (set to `now()` at the start of the RPC call). Any data created after `captured_at` MUST NOT appear in that snapshot. It MUST appear in the next snapshot run.
+
+**Schema fields enforcing this contract**:
+
+| Table | Column | Purpose |
+|-------|--------|---------|
+| `project_financial_snapshots` | `captured_at` (timestamptz) | Exact instant data was read — all queries are point-in-time relative to this |
+| `org_financial_snapshots` | `captured_at` (timestamptz) | Same, for org-level aggregation |
+| `snapshots_run_log` | `started_at` (timestamptz) | When the cron/backfill began |
+| `snapshots_run_log` | `finished_at` (timestamptz) | When it completed |
 
 **Setup**: Snapshot cron fires while PM is creating a new invoice.
 
 **Steps**:
-1. Cron calls `generate_weekly_snapshots_for_org` at T=0
-2. PM creates invoice worth $5000 at T=0+200ms
+1. Record `T0 = captured_at` from the snapshot RPC (set at function entry via `v_captured_at := now()`)
+2. PM creates invoice worth $5000 at `T0 + 200ms` (after `captured_at`)
 
-**Expected**: Snapshot captures data as of T=0 (without new invoice). Next week's snapshot includes it. No crash.
+**Expected**: Snapshot's `invoiced_amount_strict` does NOT include the $5000. Next week's snapshot DOES include it.
 
-**Detection**: Snapshot's invoiced_amount should not include the new $5000 invoice (timing-dependent; acceptable either way as long as no crash/corruption).
+**Detection**:
+```sql
+-- Verify the invoice was created AFTER captured_at
+SELECT s.captured_at, i.created_at, s.invoiced_amount_strict
+FROM project_financial_snapshots s
+JOIN invoices i ON i.project_id = s.project_id
+WHERE s.project_id = :pid
+  AND s.snapshot_date = :date
+  AND i.total = 5000;
+-- Assert: i.created_at > s.captured_at → invoice NOT in invoiced_amount_strict
+```
+
+**Idempotency rule**: Re-running `generate_weekly_snapshots_for_org` for the same `(org_id, snapshot_date, period)` performs an UPSERT. `captured_at` IS updated on re-run (reflects the latest data read). This is correct — a re-run should capture the latest state.
+
+### Race 4 Tests
+
+| # | Test | Steps | Expected | SQL Verification | Sev |
+|---|------|-------|----------|-----------------|-----|
+| R4-01 | Invoice created AFTER captured_at excluded | 1. Run snapshot for today 2. Note `captured_at` from result 3. Create invoice ($5000, status=sent) with `created_at` > `captured_at` 4. Query snapshot | `invoiced_amount_strict` does NOT include $5000 | `SELECT invoiced_amount_strict FROM project_financial_snapshots WHERE project_id=:pid AND snapshot_date=:date` — compare to sum of invoices WHERE `created_at < captured_at` | P0 |
+| R4-02 | Invoice created BEFORE captured_at included | 1. Create invoice ($3000, status=sent) 2. Wait 1s 3. Run snapshot | `invoiced_amount_strict` includes $3000 | Same query — $3000 present | P0 |
+| R4-03 | Re-run snapshot is idempotent (no duplicates) | 1. Run snapshot 2. Run snapshot again for same date | Only 1 row per `(project_id, snapshot_date, period)`. `captured_at` updates to latest run. | `SELECT COUNT(*) FROM project_financial_snapshots WHERE project_id=:pid AND snapshot_date=:date AND snapshot_period='weekly'` = 1 | P0 |
+| R4-04 | Re-run captures updated data | 1. Run snapshot 2. Create new receipt ($500) 3. Re-run snapshot for same date | `actual_material_cost` increases by $500; `captured_at` is newer than first run | Compare two `captured_at` values — second > first | P0 |
+| R4-05 | `captured_at` is NOT NULL on new snapshots | Run snapshot | `captured_at IS NOT NULL` for both project and org snapshots | `SELECT COUNT(*) FROM project_financial_snapshots WHERE captured_at IS NULL AND snapshot_date=:date` = 0 | P0 |
+| R4-06 | `started_at` and `finished_at` populated in run log | Run snapshot via edge function | `started_at` ≤ `finished_at`, both NOT NULL | `SELECT started_at, finished_at FROM snapshots_run_log ORDER BY run_at DESC LIMIT 1` — both non-null, `finished_at >= started_at` | P1 |
+
+### Chart-to-Snapshot Column Spot Checks
+
+> Every data point rendered in trend charts MUST map 1:1 to a snapshot column. Below are 10 mandatory spot-check cases.
+
+| # | Chart Component | Chart Field | Snapshot Table | Snapshot Column | SQL Verification |
+|---|----------------|-------------|---------------|----------------|-----------------|
+| SC-01 | `CostTrendChart` | `actual` (Y-axis) | `org_financial_snapshots` | `total_actual_cost` | `SELECT snapshot_date, total_actual_cost FROM org_financial_snapshots WHERE organization_id=:oid ORDER BY snapshot_date` — each row must match chart point |
+| SC-02 | `CostTrendChart` | `planned` (Y-axis) | `org_financial_snapshots` | `total_planned_cost` | Same query with `total_planned_cost` |
+| SC-03 | `MarginTrendChart` | margin % | `org_financial_snapshots` | `weighted_margin_pct_actual` | `SELECT snapshot_date, weighted_margin_pct_actual FROM org_financial_snapshots WHERE organization_id=:oid` |
+| SC-04 | `OverBudgetTrendChart` | count | `org_financial_snapshots` | `projects_over_budget_count` | Same table, `projects_over_budget_count` column |
+| SC-05 | `ProjectMarginChart` | actual margin | `project_financial_snapshots` | `actual_margin_pct` | `SELECT snapshot_date, actual_margin_pct FROM project_financial_snapshots WHERE project_id=:pid` |
+| SC-06 | `ActualVsPlannedChart` | actual cost | `project_financial_snapshots` | `actual_total_cost` | Same table |
+| SC-07 | `ActualVsPlannedChart` | planned cost | `project_financial_snapshots` | `planned_total_cost` | Same table |
+| SC-08 | `LaborVarianceChart` | actual hours | `project_financial_snapshots` | `actual_labor_hours` | Same table |
+| SC-09 | `LaborVarianceChart` | planned hours | `project_financial_snapshots` | `planned_labor_hours` | Same table |
+| SC-10 | Portfolio KPI strip | projects count | `org_financial_snapshots` | `projects_count` | `SELECT projects_count FROM org_financial_snapshots WHERE organization_id=:oid ORDER BY snapshot_date DESC LIMIT 1` |
 
 ---
 
