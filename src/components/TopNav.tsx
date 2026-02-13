@@ -3,7 +3,7 @@ import { Search } from "lucide-react";
 import { Button } from "./ui/button";
 import { UserMenu } from "./UserMenu";
 import { NotificationsDropdown } from "./notifications/NotificationsDropdown";
-
+import { SidebarTrigger } from "./ui/sidebar";
 import { GlobalSearchModal } from "./GlobalSearchModal";
 import projectPathLogo from "@/assets/project-path-logo.png";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -29,6 +29,7 @@ export const TopNav = () => {
     <>
       <nav className="sticky top-0 z-50 flex items-center justify-between h-nav px-2 sm:px-4 bg-card border-b border-border">
         <div className="flex items-center gap-2 sm:gap-4">
+          {!isMobile && <SidebarTrigger className="h-9 w-9" />}
           <img src={projectPathLogo} alt="Project Path" className={isMobile ? "h-20 w-auto" : "h-24 w-auto"} />
         </div>
         
