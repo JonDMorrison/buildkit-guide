@@ -51,6 +51,8 @@ const HoursTracking = lazy(() => import("./pages/HoursTracking"));
 const Setup = lazy(() => import("./pages/Setup"));
 const JobCostReport = lazy(() => import("./pages/JobCostReport"));
 const Invoicing = lazy(() => import("./pages/Invoicing"));
+const Insights = lazy(() => import("./pages/Insights"));
+const ProjectEstimateAccuracy = lazy(() => import("./pages/ProjectEstimateAccuracy"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -374,6 +376,22 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <Invoicing />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/insights"
+                  element={
+                    <ProtectedRoute>
+                      <Insights />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/insights/project"
+                  element={
+                    <ProtectedRoute>
+                      <ProjectEstimateAccuracy />
                     </ProtectedRoute>
                   }
                 />
