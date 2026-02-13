@@ -5,11 +5,13 @@ import { SectionHeader } from "@/components/SectionHeader";
 import { usePortfolioInsights, PortfolioRow } from "@/hooks/usePortfolioInsights";
 import { useProjectRole } from "@/hooks/useProjectRole";
 import { useOrgSnapshots } from "@/hooks/useOrgSnapshots";
+import { useOrgScopeAccuracy } from "@/hooks/useOrgScopeAccuracy";
 import { PortfolioExportCSV } from "@/components/insights/PortfolioExportCSV";
 import { MarginTrendChart } from "@/components/insights/charts/MarginTrendChart";
 import { CostTrendChart } from "@/components/insights/charts/CostTrendChart";
 import { OverBudgetTrendChart } from "@/components/insights/charts/OverBudgetTrendChart";
 import { RecommendationsPanel } from "@/components/insights/RecommendationsPanel";
+import { OrgScopeLearningPanel } from "@/components/insights/OrgScopeLearningPanel";
 import { getPortfolioRecommendations } from "@/lib/recommendations/rules";
 import { NoAccess } from "@/components/NoAccess";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -66,6 +68,7 @@ const Insights = () => {
   const dateToStr = dateTo ? format(dateTo, "yyyy-MM-dd") : undefined;
 
   const { snapshots, loading: snapshotsLoading } = useOrgSnapshots(dateFromStr, dateToStr);
+  const { rows: orgScopeRows, loading: orgScopeLoading } = useOrgScopeAccuracy(12);
 
   // "active" is a UI-only composite filter — pass null to the hook (fetch all) and filter client-side
   const rpcStatusFilter = statusFilter === "all" || statusFilter === "active" ? null : statusFilter;
@@ -382,6 +385,11 @@ const Insights = () => {
                 </CardContent>
               </Card>
             )}
+
+            {/* Scope Estimation Learning */}
+            <div className="mb-6">
+              <OrgScopeLearningPanel rows={orgScopeRows} loading={orgScopeLoading} />
+            </div>
 
             {/* Variance Leaderboard */}
             <Card className="mb-6">
