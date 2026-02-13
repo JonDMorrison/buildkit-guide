@@ -12,6 +12,8 @@ import { ScopeItemVarianceTable } from "@/components/insights/ScopeItemVarianceT
 import { ActualVsPlannedChart } from "@/components/insights/charts/ActualVsPlannedChart";
 import { ProjectMarginChart } from "@/components/insights/charts/ProjectMarginChart";
 import { LaborVarianceChart } from "@/components/insights/charts/LaborVarianceChart";
+import { RecommendationsPanel } from "@/components/insights/RecommendationsPanel";
+import { getProjectRecommendations } from "@/lib/recommendations/rules";
 import { NoAccess } from "@/components/NoAccess";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -55,6 +57,12 @@ const ProjectEstimateAccuracy = () => {
   }, [paramProjectId, currentProjectId]);
 
   const hasAccess = isGlobalAdmin || (selectedProject ? hasAnyProjectRole(selectedProject, ["project_manager", "foreman"]) : true);
+
+  // Recommendations
+  const recommendations = useMemo(
+    () => getProjectRecommendations(snapshots, variance, hasBudget, selectedProject),
+    [snapshots, variance, hasBudget, selectedProject]
+  );
 
   // Variance breakdown rows
   const breakdownRows = useMemo(() => {
@@ -215,6 +223,9 @@ const ProjectEstimateAccuracy = () => {
                 </AlertDescription>
               </Alert>
             )}
+
+            {/* Recommendations */}
+            <RecommendationsPanel recommendations={recommendations} />
 
             {/* KPI Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
