@@ -1,89 +1,118 @@
 
+# Task Automation from Scope Items
 
-# Budget-to-Execution Intelligence: Database Functions
+## Summary
 
-## Overview
+Build an RPC function `generate_tasks_from_scope` and a new "Scope" tab on the Project Overview page. PMs can define scope items, then generate or sync tasks idempotently. The Tasks list view gets a "Generated" badge linking back to scope.
 
-Create 4 Postgres functions that provide single-source-of-truth reporting for planned vs actual costs, invoicing progress, variance analysis, and portfolio-level reporting. All functions use SECURITY DEFINER with explicit org membership checks inside.
+## Database Migration
 
-## What Gets Created
+### RPC Function: `generate_tasks_from_scope(p_project_id uuid, p_mode text)`
 
-### 1. `project_actual_costs(p_project_id uuid)` -- Returns TABLE
-Aggregates real spend from `time_entries` and `receipts`:
-- **Labor**: joins `time_entries` (closed, with `duration_hours`) to `project_members` to get `cost_rate` and `bill_rate` per user. Handles missing `cost_rate` (defaults to 0) and missing membership (excludes those entries from cost calc but still counts hours).
-- **Materials/Machine/Other**: sums `receipts.amount` grouped by `cost_type`, filtered to the project.
-- Returns: `actual_labor_hours`, `actual_labor_cost`, `actual_labor_billable`, `actual_material_cost`, `actual_machine_cost`, `actual_other_cost`, `actual_total_cost` -- all rounded to 2 decimals.
+- `SECURITY DEFINER`, validates org membership + admin/PM role inside
+- Two modes:
+  - `create_missing`: INSERT INTO tasks SELECT from `project_scope_items` WHERE `item_type = 'task'` AND no existing task with matching `scope_item_id` for that project. Uses `ON CONFLICT (project_id, scope_item_id) WHERE scope_item_id IS NOT NULL DO NOTHING` for safety.
+  - `sync_existing`: UPDATE tasks SET `title`, `description`, `planned_hours` FROM scope items WHERE `tasks.is_generated = true` AND `tasks.scope_item_id` matches. Only overwrites `title`/`description`/`planned_hours` (never status, dates, assignments).
+- Maps: `tasks.title = scope_item.name`, `tasks.description = scope_item.description`, `tasks.planned_hours = scope_item.planned_hours`, `tasks.estimated_hours = scope_item.planned_hours` (keep both in sync), `tasks.is_generated = true`, `tasks.scope_item_id = scope_item.id`
+- Sets `tasks.location` from `projects.location`, `tasks.created_by` from `auth.uid()`, `tasks.status = 'not_started'`
+- Returns JSON: `{ created: number, updated: number, skipped: number }`
 
-### 2. `project_invoicing_summary(p_project_id uuid)` -- Returns TABLE
-Pulls `contract_value` from `project_budgets` (COALESCE 0 if no budget row exists), sums `invoices.total` excluding `status = 'void'`:
-- `contract_value`, `invoiced_amount`, `remainder_to_invoice`
-- `billed_percentage`, `current_percent_to_bill` -- uses `NULLIF(contract_value, 0)` to avoid divide-by-zero, returns 0 when no contract value.
+### Dry-Run Function: `preview_tasks_from_scope(p_project_id uuid, p_mode text)`
 
-### 3. `project_variance_summary(p_project_id uuid)` -- Returns TABLE
-Combines budget data from `project_budgets` with actuals from `project_actual_costs()`:
-- Planned vs actual for labor hours, material, machine, other -- with delta columns.
-- `planned_total_cost` = sum of all planned costs from budget.
-- Profit = `contract_value - total_cost` (both planned and actual).
-- Margin % = `profit / contract_value * 100` (guarded against zero).
+- Same logic but SELECT only (no mutations)
+- Returns TABLE of `(scope_item_id, scope_item_name, action text)` where action is `'create'`, `'update'`, or `'skip'`
+- Used by the preview modal before confirming
 
-### 4. `project_portfolio_report(p_org_id uuid, p_status_filter text DEFAULT NULL)` -- Returns SETOF rows
-One row per project in the org:
-- `job_number`, `customer_name`, `project_name`, `status`
-- Status category mapping: `awarded/potential/completed/didnt_get/in_progress/not_started` etc.
-- All variance + invoicing fields per project via lateral joins to the 3 functions above.
-- Filters by `p_status_filter` if provided, excludes `is_deleted = true`.
+## Frontend Components
 
-## Technical Details
+### 1. New "Scope" Tab in ProjectOverview
 
-### Security Model
-All 4 functions use `SECURITY DEFINER` with `SET search_path = public`. Each function:
-- Accepts a project_id or org_id parameter
-- Internally verifies `is_org_member(auth.uid(), organization_id)` by looking up the project's org
-- Raises exception if the caller is not an org member
-- The portfolio function checks org membership directly
+Add a 10th tab "Scope" to the `TabsList` in `ProjectOverview.tsx` (change grid-cols-9 to grid-cols-10).
 
-### Performance Strategy
-- Use CTEs for labor and receipt aggregation (single pass each)
-- The portfolio function uses `LATERAL` joins to call per-project functions, which is clean but acceptable since the number of projects per org is bounded (tens to low hundreds)
-- Existing indexes already cover the hot paths: `idx_time_entries_project_checkin`, `idx_receipts_project_id`, `idx_receipts_cost_type`
-- One new index: `invoices(project_id)` for the invoicing summary aggregation (currently missing)
+**Component: `ProjectScopeTab`** (`src/components/scope/ProjectScopeTab.tsx`)
+- Fetches `project_scope_items` filtered by `project_id`, ordered by `sort_order`
+- Displays a table/card list with columns: Name, Type (task/service/product), Planned Hours, Planned Total, Sort Order
+- Inline editing: click a row to edit name, description, planned_hours, sort_order directly
+- "Add Scope Item" button to add new rows (defaults: `item_type='task'`, `source_type='manual'`)
+- Delete button per row (with confirmation)
+- Permission-gated: only admin/PM can edit; foreman can view
 
-### Edge Cases Handled
-- **No budget row**: All planned values default to 0; variance = 0 - actual
-- **No time entries**: Labor hours/cost = 0
-- **No receipts**: Material/machine/other = 0
-- **cost_rate = 0**: Treated as zero cost (common for new members not yet configured)
-- **contract_value = 0**: All percentage calculations return 0 (no divide-by-zero)
-- **Void invoices**: Excluded from all calculations
-- **Draft invoices**: Included in invoiced_amount (they represent committed work); can be excluded if needed by adding status filter
+**Action Buttons (admin/PM only):**
+- "Generate Tasks" -- calls preview first, then executes `create_missing`
+- "Sync Tasks" -- calls preview first, then executes `sync_existing`
 
-### SQL Artifacts
-1. `project_actual_costs` function
-2. `project_invoicing_summary` function  
-3. `project_variance_summary` function
-4. `project_portfolio_report` function
-5. Index: `idx_invoices_project_id ON invoices(project_id)`
-6. Index: `idx_invoices_status ON invoices(status)` (for void exclusion)
+### 2. Preview Modal (`src/components/scope/ScopeTaskPreviewModal.tsx`)
 
-### Verification Queries (post-migration)
-```sql
--- Test actual costs for a project
-SELECT * FROM project_actual_costs('some-project-uuid');
+- Before executing, calls `preview_tasks_from_scope` RPC
+- Shows a list: scope item name, action (Create / Update / Skip), with color coding
+- Summary counts at top: "X to create, Y to update, Z already up-to-date"
+- Warning banner if project has manual tasks (tasks without `scope_item_id`) -- informational only
+- "Confirm" and "Cancel" buttons
+- On confirm, calls `generate_tasks_from_scope` RPC, shows success toast with counts
 
--- Test invoicing summary
-SELECT * FROM project_invoicing_summary('some-project-uuid');
+### 3. Task List View Update
 
--- Test variance
-SELECT * FROM project_variance_summary('some-project-uuid');
+In `TaskListView.tsx` / `SortableTaskItem`:
+- If `task.is_generated === true`, show a small `<Badge variant="outline">Generated</Badge>` next to the title
+- Badge is clickable -- navigates to `/projects/{project_id}?tab=scope` (or opens scope tab)
 
--- Test portfolio report (all statuses)
-SELECT * FROM project_portfolio_report('some-org-uuid');
+### 4. TypeScript Client Helper
 
--- Test portfolio report (awarded only)
-SELECT * FROM project_portfolio_report('some-org-uuid', 'awarded');
+**File: `src/lib/scopeTaskGeneration.ts`**
+
+```typescript
+export async function previewScopeTaskGeneration(projectId: string, mode: 'create_missing' | 'sync_existing') {
+  const { data, error } = await supabase.rpc('preview_tasks_from_scope', {
+    p_project_id: projectId,
+    p_mode: mode,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function generateTasksFromScope(projectId: string, mode: 'create_missing' | 'sync_existing') {
+  const { data, error } = await supabase.rpc('generate_tasks_from_scope', {
+    p_project_id: projectId,
+    p_mode: mode,
+  });
+  if (error) throw error;
+  return data;
+}
 ```
 
-## Files Changed
-- **Database migration only** -- no application code changes in this step
-- Single SQL migration with all 4 functions + 2 indexes
+## File Changes Summary
 
+| File | Change |
+|------|--------|
+| `supabase/migrations/...` | New migration: 2 RPC functions + index |
+| `src/pages/ProjectOverview.tsx` | Add "Scope" tab (grid-cols-10), import `ProjectScopeTab` |
+| `src/components/scope/ProjectScopeTab.tsx` | New -- scope item list with inline edit, generate/sync buttons |
+| `src/components/scope/ScopeTaskPreviewModal.tsx` | New -- dry-run preview dialog |
+| `src/components/scope/ScopeItemRow.tsx` | New -- inline-editable row component |
+| `src/lib/scopeTaskGeneration.ts` | New -- RPC client helpers |
+| `src/components/tasks/TaskListView.tsx` | Add "Generated" badge when `is_generated === true` |
+
+## Permissions
+
+- **View scope tab**: all project members
+- **Edit scope items / generate tasks**: admin, PM only (checked server-side in RPC + client-side via `useAuthRole`)
+- **Foreman**: read-only view of scope items
+
+## Edge Cases
+
+- Re-running "Generate Tasks" is safe: `ON CONFLICT DO NOTHING` ensures no duplicates
+- Sync only touches `is_generated = true` tasks -- manually created tasks are never modified
+- If a scope item is deleted, the linked task keeps `scope_item_id = NULL` (ON DELETE SET NULL) and `is_generated` stays true as a historical marker
+- Zero scope items: buttons disabled with tooltip "Add scope items first"
+
+## Test Checklist
+
+1. Create 5 scope items (3 as `task` type, 2 as `service` type) on a project
+2. Click "Generate Tasks" -- preview shows 3 tasks to create, 0 to update
+3. Confirm -- 3 tasks appear in Tasks tab with "Generated" badge
+4. Re-click "Generate Tasks" -- preview shows 0 to create, 3 skipped
+5. Edit a scope item name and planned_hours
+6. Click "Sync Tasks" -- preview shows 1 to update
+7. Confirm -- task title and planned_hours updated, status/dates unchanged
+8. Verify the 2 `service` type scope items never generated tasks
+9. Check foreman user cannot see generate/sync buttons
