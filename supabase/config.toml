@@ -116,3 +116,6 @@ verify_jwt = false
 
 [functions.send-invoice-reminders]
 verify_jwt = false
+
+[functions.collect-weekly-snapshots]
+verify_jwt = false
