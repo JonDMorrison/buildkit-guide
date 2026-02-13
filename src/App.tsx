@@ -53,6 +53,7 @@ const JobCostReport = lazy(() => import("./pages/JobCostReport"));
 const Invoicing = lazy(() => import("./pages/Invoicing"));
 const Insights = lazy(() => import("./pages/Insights"));
 const ProjectEstimateAccuracy = lazy(() => import("./pages/ProjectEstimateAccuracy"));
+const DataHealth = lazy(() => import("./pages/DataHealth"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -392,6 +393,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <ProjectEstimateAccuracy />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/data-health"
+                  element={
+                    <ProtectedRoute>
+                      <DataHealth />
                     </ProtectedRoute>
                   }
                 />
