@@ -1,118 +1,132 @@
 
-# Task Automation from Scope Items
+# Estimate Accuracy Learning Engine
 
-## Summary
+## Overview
 
-Build an RPC function `generate_tasks_from_scope` and a new "Scope" tab on the Project Overview page. PMs can define scope items, then generate or sync tasks idempotently. The Tasks list view gets a "Generated" badge linking back to scope.
+Two new pages -- **Project Estimate Accuracy** (per-project deep dive) and **Portfolio Insights** (cross-project analysis) -- powered entirely by the existing RPC functions (`project_variance_summary`, `project_actual_costs`, `project_invoicing_summary`, `project_portfolio_report`). No new tables or migrations required.
 
-## Database Migration
+## Navigation
 
-### RPC Function: `generate_tasks_from_scope(p_project_id uuid, p_mode text)`
+Add a new "Insights" tab to the bottom navigation bar in `useNavigationTabs.tsx`, visible to `all` and `office` tiers (Admin, PM, Foreman, Accounting/HR). Route: `/insights`. Icon: `TrendingUp` from lucide-react.
 
-- `SECURITY DEFINER`, validates org membership + admin/PM role inside
-- Two modes:
-  - `create_missing`: INSERT INTO tasks SELECT from `project_scope_items` WHERE `item_type = 'task'` AND no existing task with matching `scope_item_id` for that project. Uses `ON CONFLICT (project_id, scope_item_id) WHERE scope_item_id IS NOT NULL DO NOTHING` for safety.
-  - `sync_existing`: UPDATE tasks SET `title`, `description`, `planned_hours` FROM scope items WHERE `tasks.is_generated = true` AND `tasks.scope_item_id` matches. Only overwrites `title`/`description`/`planned_hours` (never status, dates, assignments).
-- Maps: `tasks.title = scope_item.name`, `tasks.description = scope_item.description`, `tasks.planned_hours = scope_item.planned_hours`, `tasks.estimated_hours = scope_item.planned_hours` (keep both in sync), `tasks.is_generated = true`, `tasks.scope_item_id = scope_item.id`
-- Sets `tasks.location` from `projects.location`, `tasks.created_by` from `auth.uid()`, `tasks.status = 'not_started'`
-- Returns JSON: `{ created: number, updated: number, skipped: number }`
+A project-level "Estimate Accuracy" view will be accessible from a secondary route `/insights/project` (with `?projectId=...` param), or navigated to from the portfolio table.
 
-### Dry-Run Function: `preview_tasks_from_scope(p_project_id uuid, p_mode text)`
+## New Files
 
-- Same logic but SELECT only (no mutations)
-- Returns TABLE of `(scope_item_id, scope_item_name, action text)` where action is `'create'`, `'update'`, or `'skip'`
-- Used by the preview modal before confirming
+### 1. `src/hooks/useEstimateAccuracy.ts`
 
-## Frontend Components
+Custom hook that calls the RPC functions:
+- `project_variance_summary(p_project_id)` -- returns planned vs actual for all cost types
+- `project_actual_costs(p_project_id)` -- for detailed actuals
+- `project_invoicing_summary(p_project_id)` -- for contract/invoicing progress
 
-### 1. New "Scope" Tab in ProjectOverview
+Returns typed data with loading/error states. Uses `useEffect` + `useState` pattern matching `useJobCostReport`.
 
-Add a 10th tab "Scope" to the `TabsList` in `ProjectOverview.tsx` (change grid-cols-9 to grid-cols-10).
+### 2. `src/hooks/usePortfolioInsights.ts`
 
-**Component: `ProjectScopeTab`** (`src/components/scope/ProjectScopeTab.tsx`)
-- Fetches `project_scope_items` filtered by `project_id`, ordered by `sort_order`
-- Displays a table/card list with columns: Name, Type (task/service/product), Planned Hours, Planned Total, Sort Order
-- Inline editing: click a row to edit name, description, planned_hours, sort_order directly
-- "Add Scope Item" button to add new rows (defaults: `item_type='task'`, `source_type='manual'`)
-- Delete button per row (with confirmation)
-- Permission-gated: only admin/PM can edit; foreman can view
+Calls `project_portfolio_report(p_org_id, p_status_filter)` using the user's current organization ID (from `useOrganization` hook). Supports optional status filter. Returns array of project rows.
 
-**Action Buttons (admin/PM only):**
-- "Generate Tasks" -- calls preview first, then executes `create_missing`
-- "Sync Tasks" -- calls preview first, then executes `sync_existing`
+### 3. `src/pages/Insights.tsx` (Portfolio Insights -- default route)
 
-### 2. Preview Modal (`src/components/scope/ScopeTaskPreviewModal.tsx`)
+**Layout**: Follows existing page patterns (`Layout` wrapper, `SectionHeader`, project selector, loading skeletons, empty states).
 
-- Before executing, calls `preview_tasks_from_scope` RPC
-- Shows a list: scope item name, action (Create / Update / Skip), with color coding
-- Summary counts at top: "X to create, Y to update, Z already up-to-date"
-- Warning banner if project has manual tasks (tasks without `scope_item_id`) -- informational only
-- "Confirm" and "Cancel" buttons
-- On confirm, calls `generate_tasks_from_scope` RPC, shows success toast with counts
+**Sections**:
 
-### 3. Task List View Update
+a) **Filters bar**: Organization is automatic. Status filter dropdown (all / awarded / in_progress / completed / potential / didnt_get). Date range filters are visual-only for future snapshot-based filtering (disabled with tooltip "Coming soon with weekly snapshots").
 
-In `TaskListView.tsx` / `SortableTaskItem`:
-- If `task.is_generated === true`, show a small `<Badge variant="outline">Generated</Badge>` next to the title
-- Badge is clickable -- navigates to `/projects/{project_id}?tab=scope` (or opens scope tab)
+b) **Portfolio KPI cards** (computed from portfolio report data):
+   - Total Contract Value (sum across projects)
+   - Total Actual Cost (sum)  
+   - Average Margin % (weighted average)
+   - Projects Over Budget (count where actual > planned)
 
-### 4. TypeScript Client Helper
+c) **Worst Variance Leaderboard**: Table sorted by `total_cost_delta` descending (biggest overruns first). Columns: Job #, Project Name, Status, Planned Cost, Actual Cost, Delta ($), Delta (%), Margin %. Color-coded: red for negative margin, green for positive.
 
-**File: `src/lib/scopeTaskGeneration.ts`**
+d) **Most Inaccurate Cost Category**: A simple summary showing which cost type (labor/material/machine) has the largest aggregate variance across the portfolio. Computed client-side from the portfolio data.
 
+e) **Trend Chart placeholder**: A card with message "Weekly variance trends will be available once snapshot collection is enabled." This is where `project_financial_snapshots` will plug in later.
+
+f) **Export CSV button**: Exports the full portfolio table as CSV (same pattern as `JobCostExportCSV`).
+
+### 4. `src/pages/ProjectEstimateAccuracy.tsx` (Per-Project Deep Dive)
+
+**Layout**: Same `Layout` + `SectionHeader` pattern. Project selector at top (same as JobCostReport).
+
+**Sections**:
+
+a) **KPI Cards Row** (6 cards, 3-col grid on desktop):
+   - Planned Cost vs Actual Cost (with delta badge showing over/under)
+   - Planned Labor Hours vs Actual Hours
+   - Planned Materials vs Actual Materials
+   - Planned Machine vs Actual Machine
+   - Contract Value and Profit (planned vs actual)
+   - Margin % (planned vs actual)
+
+   Each card shows: planned value, actual value, delta (colored green if under budget, red/amber if over). If contract_value is 0, profit/margin cards show "No contract value set".
+
+b) **Variance Breakdown Table by Cost Type**:
+   | Category | Planned | Actual | Delta ($) | Delta (%) |
+   Rows: Labor Hours, Labor Cost, Material, Machine, Other, Total.
+   Delta % = `(actual - planned) / planned * 100`, guarded against zero.
+
+c) **Missing Cost Rate Warning**: If `actual_labor_hours > 0` but `actual_labor_cost === 0`, show an alert: "Some workers may not have cost rates configured. Labor cost may be understated."
+
+d) **Scope Item Variance Table** (if scope items exist):
+   Fetches `project_scope_items` with their `planned_hours` and `planned_total`, then for each scope item that has a linked task (`scope_item_id`), fetches actual hours from `time_entries` via the task assignments. Columns: Scope Item, Planned Hours, Actual Hours, Delta, Planned Cost, Status.
+
+   This is computed client-side by:
+   1. Fetching scope items for the project
+   2. Fetching tasks with `scope_item_id IS NOT NULL` and their time entries
+   3. Joining them client-side
+
+e) **Export CSV button** for the variance breakdown.
+
+### 5. `src/components/insights/VarianceCard.tsx`
+
+Reusable KPI card component:
+```
+Props: label, planned, actual, unit ('$' | 'h' | '%'), unavailableMessage?
+```
+Shows planned/actual values with a colored delta badge. Uses `formatCurrency` / `formatNumber` from `src/lib/formatters.ts`.
+
+### 6. `src/components/insights/PortfolioExportCSV.tsx`
+
+CSV export for the portfolio report table. Same pattern as `JobCostExportCSV`.
+
+## Modified Files
+
+### `src/hooks/useNavigationTabs.tsx`
+Add after "Invoicing" entry:
 ```typescript
-export async function previewScopeTaskGeneration(projectId: string, mode: 'create_missing' | 'sync_existing') {
-  const { data, error } = await supabase.rpc('preview_tasks_from_scope', {
-    p_project_id: projectId,
-    p_mode: mode,
-  });
-  if (error) throw error;
-  return data;
-}
-
-export async function generateTasksFromScope(projectId: string, mode: 'create_missing' | 'sync_existing') {
-  const { data, error } = await supabase.rpc('generate_tasks_from_scope', {
-    p_project_id: projectId,
-    p_mode: mode,
-  });
-  if (error) throw error;
-  return data;
-}
+{ name: "Insights", path: "/insights", icon: TrendingUp, tiers: ['all', 'office'] },
 ```
 
-## File Changes Summary
+### `src/App.tsx`
+Add two new lazy-loaded routes:
+```typescript
+const Insights = lazy(() => import("./pages/Insights"));
+const ProjectEstimateAccuracy = lazy(() => import("./pages/ProjectEstimateAccuracy"));
+```
+With `<ProtectedRoute>` wrappers at `/insights` and `/insights/project`.
 
-| File | Change |
-|------|--------|
-| `supabase/migrations/...` | New migration: 2 RPC functions + index |
-| `src/pages/ProjectOverview.tsx` | Add "Scope" tab (grid-cols-10), import `ProjectScopeTab` |
-| `src/components/scope/ProjectScopeTab.tsx` | New -- scope item list with inline edit, generate/sync buttons |
-| `src/components/scope/ScopeTaskPreviewModal.tsx` | New -- dry-run preview dialog |
-| `src/components/scope/ScopeItemRow.tsx` | New -- inline-editable row component |
-| `src/lib/scopeTaskGeneration.ts` | New -- RPC client helpers |
-| `src/components/tasks/TaskListView.tsx` | Add "Generated" badge when `is_generated === true` |
+## Access Control
 
-## Permissions
+- Visible to: Admin, PM, Foreman, Accounting/HR (tiers `all` + `office`)
+- Uses `useAuthRole` + `useOrganizationRole` for access checks (same pattern as HoursTracking page)
+- RPC functions already enforce org membership server-side via `SECURITY DEFINER`
 
-- **View scope tab**: all project members
-- **Edit scope items / generate tasks**: admin, PM only (checked server-side in RPC + client-side via `useAuthRole`)
-- **Foreman**: read-only view of scope items
+## Edge Cases Handled
 
-## Edge Cases
+- **No budget row**: All planned values show as 0; variance = "0 - actual" (shows actual as the overrun)
+- **contract_value = 0**: Profit and margin cards display "No contract value" instead of misleading zeros
+- **Missing cost_rate**: Warning alert shown; labor cost shown as potentially understated
+- **No projects**: Empty state with message
+- **No time entries / receipts**: Zero values shown cleanly
+- **Division by zero**: All percentage calculations guarded with `|| 0` fallback
 
-- Re-running "Generate Tasks" is safe: `ON CONFLICT DO NOTHING` ensures no duplicates
-- Sync only touches `is_generated = true` tasks -- manually created tasks are never modified
-- If a scope item is deleted, the linked task keeps `scope_item_id = NULL` (ON DELETE SET NULL) and `is_generated` stays true as a historical marker
-- Zero scope items: buttons disabled with tooltip "Add scope items first"
+## Technical Notes
 
-## Test Checklist
-
-1. Create 5 scope items (3 as `task` type, 2 as `service` type) on a project
-2. Click "Generate Tasks" -- preview shows 3 tasks to create, 0 to update
-3. Confirm -- 3 tasks appear in Tasks tab with "Generated" badge
-4. Re-click "Generate Tasks" -- preview shows 0 to create, 3 skipped
-5. Edit a scope item name and planned_hours
-6. Click "Sync Tasks" -- preview shows 1 to update
-7. Confirm -- task title and planned_hours updated, status/dates unchanged
-8. Verify the 2 `service` type scope items never generated tasks
-9. Check foreman user cannot see generate/sync buttons
+- No new database tables or migrations needed -- everything computed from existing RPC functions
+- The scope-item-level variance view does require a client-side join (scope items + tasks + time_entries), but this is bounded by the number of scope items per project (typically tens, not hundreds)
+- Portfolio report may be slow for orgs with 100+ projects; acceptable for now, mitigated later with the snapshot table
+- Recharts is already installed and can be used for the trend chart when snapshots are added
