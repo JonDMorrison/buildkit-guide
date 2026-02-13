@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from '@/hooks/useOrganization';
 
@@ -38,14 +38,17 @@ export const usePortfolioInsights = (statusFilter: string | null) => {
   const [rows, setRows] = useState<PortfolioRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Keep previous data visible during refetch
+  const prevRowsRef = useRef<PortfolioRow[]>([]);
 
   useEffect(() => {
     if (!activeOrganizationId) {
       setRows([]);
+      prevRowsRef.current = [];
       return;
     }
 
-    const fetch = async () => {
+    const fetchData = async () => {
       setLoading(true);
       setError(null);
       try {
@@ -97,6 +100,7 @@ export const usePortfolioInsights = (statusFilter: string | null) => {
         }));
 
         setRows(mapped);
+        prevRowsRef.current = mapped;
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -104,8 +108,11 @@ export const usePortfolioInsights = (statusFilter: string | null) => {
       }
     };
 
-    fetch();
+    fetchData();
   }, [activeOrganizationId, statusFilter]);
 
-  return { rows, loading, error };
+  // Return previous rows while loading to avoid flicker
+  const displayRows = loading && prevRowsRef.current.length > 0 ? prevRowsRef.current : rows;
+
+  return { rows: displayRows, loading, error };
 };
