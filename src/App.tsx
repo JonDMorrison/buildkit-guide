@@ -54,6 +54,7 @@ const Invoicing = lazy(() => import("./pages/Invoicing"));
 const Insights = lazy(() => import("./pages/Insights"));
 const ProjectEstimateAccuracy = lazy(() => import("./pages/ProjectEstimateAccuracy"));
 const DataHealth = lazy(() => import("./pages/DataHealth"));
+const Snapshots = lazy(() => import("./pages/Snapshots"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -393,6 +394,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <ProjectEstimateAccuracy />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/insights/snapshots"
+                  element={
+                    <ProtectedRoute>
+                      <Snapshots />
                     </ProtectedRoute>
                   }
                 />

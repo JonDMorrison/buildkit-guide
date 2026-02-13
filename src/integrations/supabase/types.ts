@@ -4489,6 +4489,10 @@ export type Database = {
         Args: { p_task_id: string; p_time_entry_id: string }
         Returns: boolean
       }
+      backfill_weekly_snapshots: {
+        Args: { p_org_id: string; p_weeks?: number }
+        Returns: Json
+      }
       can_manage_project: {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
