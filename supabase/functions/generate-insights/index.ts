@@ -200,12 +200,17 @@ RULES (strictly follow):
 6. Use currency formatting for dollar amounts and percentage for margins.
 7. Do NOT use bullet points or markdown headers. Write flowing prose paragraphs.
 8. Total response must be under 200 words.
+9. CRITICAL: You MUST include an "evidence" object that maps every number you cite to its source snapshot field. Every numeric value in "what_changed", "what_it_means", and "what_to_do" MUST appear as a value in "evidence". Keys should be the snapshot field name (e.g., "actual_cost", "margin_pct"). Values must be the exact numbers from the input data — do NOT round or alter them.
 
 Respond in valid JSON format:
 {
   "what_changed": "...",
   "what_it_means": "...",
-  "what_to_do": "..."
+  "what_to_do": "...",
+  "evidence": {
+    "field_name_from_snapshot": <exact_value_from_input>,
+    ...
+  }
 }`;
 
     const userPrompt = `Here are the last ${metricsForPrompt.length} weekly snapshots for ${contextLabel}:
@@ -249,7 +254,7 @@ Generate the executive insight.`;
     console.log('AI raw response:', rawContent.substring(0, 300));
 
     // Parse JSON from response
-    let content: { what_changed: string; what_it_means: string; what_to_do: string };
+    let content: { what_changed: string; what_it_means: string; what_to_do: string; evidence?: Record<string, number> };
     try {
       const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -259,6 +264,7 @@ Generate the executive insight.`;
           what_changed: rawContent.slice(0, 200),
           what_it_means: '',
           what_to_do: '',
+          evidence: {},
         };
       }
     } catch {
@@ -266,7 +272,34 @@ Generate the executive insight.`;
         what_changed: rawContent.slice(0, 200),
         what_it_means: '',
         what_to_do: '',
+        evidence: {},
       };
+    }
+
+    // Validate EVIDENCE block: every value must exist in the input snapshot data
+    if (content.evidence && Object.keys(content.evidence).length > 0) {
+      const allSnapshotValues = new Set<number>();
+      for (const snap of metricsForPrompt) {
+        for (const val of Object.values(snap)) {
+          if (typeof val === 'number') allSnapshotValues.add(val);
+        }
+      }
+
+      const invalidKeys: string[] = [];
+      for (const [key, val] of Object.entries(content.evidence)) {
+        if (typeof val === 'number' && !allSnapshotValues.has(val)) {
+          invalidKeys.push(key);
+        }
+      }
+
+      if (invalidKeys.length > 0) {
+        console.warn(`EVIDENCE validation failed: keys with unmatched values: ${invalidKeys.join(', ')}`);
+        // Tag the content with a verification warning
+        (content as any).evidence_warnings = invalidKeys;
+      }
+    } else {
+      console.warn('AI response missing EVIDENCE block');
+      (content as any).evidence_warnings = ['__missing_evidence_block'];
     }
 
     // Store in ai_insights (upsert based on unique constraint)
