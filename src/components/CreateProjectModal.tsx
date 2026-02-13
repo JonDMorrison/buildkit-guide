@@ -16,6 +16,8 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Switch } from './ui/switch';
+import { Label } from './ui/label';
 import { FormField } from './FormField';
 import { DatePicker } from './ui/date-picker';
 import { Loader2 } from 'lucide-react';
@@ -45,7 +47,8 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
-  const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
+  const [includeArchived, setIncludeArchived] = useState(false);
+  const [allClients, setAllClients] = useState<{ id: string; name: string; is_active: boolean }[]>([]);
   const [form, setForm] = useState<ProjectForm>({
     name: '',
     jobNumber: '',
@@ -62,13 +65,14 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
     if (open && activeOrganizationId) {
       supabase
         .from('clients')
-        .select('id, name')
+        .select('id, name, is_active')
         .eq('organization_id', activeOrganizationId)
-        .eq('is_active', true)
         .order('name')
-        .then(({ data }) => setClients(data || []));
+        .then(({ data }) => setAllClients((data as any[]) || []));
     }
   }, [open, activeOrganizationId]);
+
+  const clients = includeArchived ? allClients : allClients.filter(c => c.is_active);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -229,11 +233,17 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
               <SelectContent>
                 <SelectItem value="none">None</SelectItem>
                 {clients.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}{!c.is_active ? " (archived)" : ""}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </FormField>
+          <div className="flex items-center gap-2">
+            <Switch id="include-archived-create" checked={includeArchived} onCheckedChange={setIncludeArchived} />
+            <Label htmlFor="include-archived-create" className="text-sm text-muted-foreground cursor-pointer">Include archived clients</Label>
+          </div>
 
           <FormField
             label="Job Site Address"

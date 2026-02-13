@@ -14,10 +14,13 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Switch } from './ui/switch';
+import { Label } from './ui/label';
+import { Alert, AlertDescription } from './ui/alert';
 import { FormField } from './FormField';
 import { DatePicker } from './ui/date-picker';
 import { Card, CardContent } from './ui/card';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertTriangle } from 'lucide-react';
 
 const projectSchema = z.object({
   name: z.string().trim().min(3, 'Project name must be at least 3 characters'),
@@ -68,7 +71,8 @@ export const EditProjectModal = ({ open, onOpenChange, project, onSuccess }: Edi
   const { toast } = useToast();
   const { activeOrganizationId } = useOrganization();
   const [loading, setLoading] = useState(false);
-  const [clients, setClients] = useState<{ id: string; name: string; parent_client_id: string | null; billing_address: string | null }[]>([]);
+  const [includeArchived, setIncludeArchived] = useState(false);
+  const [allClients, setAllClients] = useState<{ id: string; name: string; parent_client_id: string | null; billing_address: string | null; is_active: boolean }[]>([]);
   const [form, setForm] = useState<ProjectForm>({
     name: '',
     jobNumber: '',
@@ -102,21 +106,28 @@ export const EditProjectModal = ({ open, onOpenChange, project, onSuccess }: Edi
     if (open && activeOrganizationId) {
       supabase
         .from('clients')
-        .select('id, name, parent_client_id, billing_address')
+        .select('id, name, parent_client_id, billing_address, is_active')
         .eq('organization_id', activeOrganizationId)
-        .eq('is_active', true)
         .order('name')
-        .then(({ data }) => setClients((data as any[]) || []));
+        .then(({ data }) => setAllClients((data as any[]) || []));
     }
   }, [open, activeOrganizationId]);
 
+  const clients = includeArchived ? allClients : allClients.filter(c => c.is_active);
+  // If current client is archived, always show it
+  const displayClients = form.clientId && !clients.find(c => c.id === form.clientId)
+    ? [...clients, ...allClients.filter(c => c.id === form.clientId)]
+    : clients;
+
   // Derive billing/shipping display
-  const selectedClient = clients.find(c => c.id === form.clientId);
+  const selectedClient = allClients.find(c => c.id === form.clientId);
   const parentClient = selectedClient?.parent_client_id
-    ? clients.find(c => c.id === selectedClient.parent_client_id)
+    ? allClients.find(c => c.id === selectedClient.parent_client_id)
     : null;
-  const billingCustomerName = parentClient?.name || selectedClient?.name || null;
-  const billingAddress = parentClient?.billing_address || selectedClient?.billing_address || null;
+  const billingCustomer = parentClient || selectedClient;
+  const billingCustomerName = billingCustomer?.name || null;
+  const billingAddress = billingCustomer?.billing_address || null;
+  const billingCustomerArchived = billingCustomer && !billingCustomer.is_active;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -208,33 +219,50 @@ export const EditProjectModal = ({ open, onOpenChange, project, onSuccess }: Edi
               <SelectTrigger className="min-h-[52px]"><SelectValue placeholder="None" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">None</SelectItem>
-                {clients.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                {displayClients.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}{!c.is_active ? " (archived)" : ""}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </FormField>
 
+          <div className="flex items-center gap-2">
+            <Switch id="include-archived" checked={includeArchived} onCheckedChange={setIncludeArchived} />
+            <Label htmlFor="include-archived" className="text-sm text-muted-foreground cursor-pointer">Include archived clients</Label>
+          </div>
+
           {/* Billing / Shipping derived display */}
           {form.clientId && (
-            <Card>
-              <CardContent className="py-3 space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Billing Customer</span>
-                  <span className="font-medium">{billingCustomerName || "—"}</span>
-                </div>
-                {billingAddress && (
+            <>
+              {billingCustomerArchived && (
+                <Alert variant="destructive" className="py-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    Billing customer "{billingCustomerName}" is archived. Consider selecting a different client or reactivating.
+                  </AlertDescription>
+                </Alert>
+              )}
+              <Card>
+                <CardContent className="py-3 space-y-1 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Billing Address</span>
-                    <span>{billingAddress}</span>
+                    <span className="text-muted-foreground">Billing Customer</span>
+                    <span className={`font-medium ${billingCustomerArchived ? "text-destructive line-through" : ""}`}>{billingCustomerName || "—"}</span>
                   </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Job Site</span>
-                  <span>{form.location || "—"}</span>
-                </div>
-              </CardContent>
-            </Card>
+                  {billingAddress && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Billing Address</span>
+                      <span>{billingAddress}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Job Site</span>
+                    <span>{form.location || "—"}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
           )}
 
           <FormField label="Job Site Address" required error={errors.location}>

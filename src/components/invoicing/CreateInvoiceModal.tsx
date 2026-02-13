@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Plus, Trash2, UserPlus, Info } from "lucide-react";
+import { Loader2, Plus, Trash2, UserPlus, Info, AlertTriangle } from "lucide-react";
 import { DatePicker } from "@/components/ui/date-picker";
 import { ProgressBillingFields } from "@/components/invoicing/ProgressBillingFields";
 import type { Invoice, InvoiceLineItem, Client } from "@/types/invoicing";
@@ -107,6 +107,7 @@ export const CreateInvoiceModal = ({
       billAddress: [selectedClient.billing_address, selectedClient.city, selectedClient.province, selectedClient.postal_code].filter(Boolean).join(", "),
       shipTo: proj?.location || null,
       apEmail,
+      isArchived: !selectedClient.is_active,
     };
   }, [clientId, projectId, clients, projects]);
 
@@ -255,6 +256,16 @@ export const CreateInvoiceModal = ({
                 )}
               </CardContent>
             </Card>
+          )}
+
+          {/* Archived billing customer warning */}
+          {billingInfo?.isArchived && (
+            <Alert variant="destructive" className="py-2">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                The billing customer "{billingInfo.billTo}" is archived. Creating this invoice will reference an inactive client.
+              </AlertDescription>
+            </Alert>
           )}
 
           <div className="grid grid-cols-2 gap-4">
