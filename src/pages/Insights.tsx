@@ -13,7 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { DollarSign, TrendingUp, AlertTriangle, BarChart3, Clock } from "lucide-react";
+import { DollarSign, TrendingUp, AlertTriangle, BarChart3, Clock, Activity } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
 
 const statusOptions = [
@@ -107,7 +108,15 @@ const Insights = () => {
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/data-health")}
+            >
+              <Activity className="h-4 w-4 mr-1.5" />
+              Data Health
+            </Button>
             {rows.length > 0 && <PortfolioExportCSV rows={rows} />}
           </div>
         </div>

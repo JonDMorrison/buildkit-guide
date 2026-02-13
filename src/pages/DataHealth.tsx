@@ -1,156 +1,253 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { SectionHeader } from "@/components/SectionHeader";
 import { NoAccess } from "@/components/NoAccess";
 import { useAuthRole } from "@/hooks/useAuthRole";
 import { useOrganization } from "@/hooks/useOrganization";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertTriangle, CheckCircle2, Users, FileText, Receipt, DollarSign, Layers } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Users,
+  Clock,
+  Receipt,
+  FolderOpen,
+  ExternalLink,
+  RefreshCw,
+} from "lucide-react";
+import { formatCurrency, formatNumber } from "@/lib/formatters";
 
-interface HealthCheck {
-  label: string;
-  icon: React.ReactNode;
-  count: number;
-  severity: "error" | "warning" | "ok";
-  details: any[];
+/* ------------------------------------------------------------------ */
+/* Types                                                               */
+/* ------------------------------------------------------------------ */
+
+interface MissingCostRateRow {
+  user_id: string;
+  full_name: string;
+  affected_projects: number;
+  hours_last_30d: number;
 }
 
+interface UnmatchedTimeRow {
+  project_id: string;
+  project_name: string;
+  entry_count: number;
+  sample_user_ids: string[];
+}
+
+interface UnclassifiedReceiptRow {
+  project_id: string;
+  project_name: string;
+  receipt_count: number;
+  total_amount: number;
+}
+
+interface MissingBudgetRow {
+  project_id: string;
+  project_name: string;
+  job_number: string | null;
+  status: string;
+}
+
+/* ------------------------------------------------------------------ */
+/* Component                                                           */
+/* ------------------------------------------------------------------ */
+
 const DataHealth = () => {
-  const { isAdmin, loading: roleLoading } = useAuthRole();
+  const { isAdmin, isPM, loading: roleLoading } = useAuthRole();
   const { activeOrganizationId } = useOrganization();
-  const [checks, setChecks] = useState<HealthCheck[]>([]);
+  const navigate = useNavigate();
+
   const [loading, setLoading] = useState(true);
+  const [missingCostRates, setMissingCostRates] = useState<MissingCostRateRow[]>([]);
+  const [unmatchedTime, setUnmatchedTime] = useState<UnmatchedTimeRow[]>([]);
+  const [unclassifiedReceipts, setUnclassifiedReceipts] = useState<UnclassifiedReceiptRow[]>([]);
+  const [missingBudgets, setMissingBudgets] = useState<MissingBudgetRow[]>([]);
 
-  useEffect(() => {
-    if (!activeOrganizationId || !isAdmin) return;
+  const canView = isAdmin || isPM();
 
-    const run = async () => {
-      setLoading(true);
-      const results: HealthCheck[] = [];
+  const fetchData = async () => {
+    if (!activeOrganizationId || !canView) return;
+    setLoading(true);
 
-      // 1. Workers missing cost_rate (cost_rate = 0)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const since = thirtyDaysAgo.toISOString();
+
+    try {
+      // --- Fetch active projects for org ---
+      const { data: orgProjects } = await supabase
+        .from("projects")
+        .select("id, name, job_number, status")
+        .eq("organization_id", activeOrganizationId)
+        .eq("is_deleted", false);
+      const projectIds = (orgProjects || []).map((p) => p.id);
+      const projectMap = Object.fromEntries((orgProjects || []).map((p) => [p.id, p]));
+
+      if (projectIds.length === 0) {
+        setMissingCostRates([]);
+        setUnmatchedTime([]);
+        setUnclassifiedReceipts([]);
+        setMissingBudgets([]);
+        setLoading(false);
+        return;
+      }
+
+      // --- 1) Missing cost rates ---
       const { data: zeroCostMembers } = await supabase
         .from("project_members")
-        .select("user_id, project_id, cost_rate, role")
-        .eq("cost_rate", 0)
-        .limit(100);
+        .select("user_id, project_id")
+        .in("project_id", projectIds as string[])
+        .eq("cost_rate", 0);
 
-      // Resolve names for zero-cost members
-      const userIds = [...new Set((zeroCostMembers || []).map(m => m.user_id))];
-      let userNames: Record<string, string> = {};
-      if (userIds.length > 0) {
+      const zeroCostUserIds = [...new Set((zeroCostMembers || []).map((m) => m.user_id))];
+
+      let costRateRows: MissingCostRateRow[] = [];
+      if (zeroCostUserIds.length > 0) {
+        // Get names
         const { data: profiles } = await supabase
           .from("profiles")
           .select("id, full_name")
-          .in("id", userIds);
-        for (const p of profiles || []) {
-          userNames[p.id] = p.full_name || "Unknown";
+          .in("id", zeroCostUserIds as string[]);
+        const nameMap = Object.fromEntries((profiles || []).map((p) => [p.id, p.full_name || "Unknown"]));
+
+        // Get hours last 30d for these users
+        const { data: timeEntries } = await supabase
+          .from("time_entries")
+          .select("user_id, duration_hours")
+        .in("project_id", projectIds as string[])
+        .in("user_id", zeroCostUserIds as string[])
+        .eq("status", "closed")
+          .gte("check_in_time", since);
+
+        const userHours: Record<string, number> = {};
+        for (const te of timeEntries || []) {
+          userHours[te.user_id] = (userHours[te.user_id] || 0) + (te.duration_hours || 0);
+        }
+
+        // Count affected projects per user
+        const userProjects: Record<string, Set<string>> = {};
+        for (const m of zeroCostMembers || []) {
+          if (!userProjects[m.user_id]) userProjects[m.user_id] = new Set();
+          userProjects[m.user_id].add(m.project_id);
+        }
+
+        costRateRows = zeroCostUserIds.map((uid) => ({
+          user_id: uid,
+          full_name: nameMap[uid] || uid.slice(0, 8),
+          affected_projects: userProjects[uid]?.size || 0,
+          hours_last_30d: userHours[uid] || 0,
+        }));
+        costRateRows.sort((a, b) => b.hours_last_30d - a.hours_last_30d);
+      }
+      setMissingCostRates(costRateRows);
+
+      // --- 2) Time entries with no project membership ---
+      const { data: recentTime } = await supabase
+        .from("time_entries")
+        .select("id, user_id, project_id")
+        .in("project_id", projectIds as string[])
+        .eq("status", "closed")
+        .gte("check_in_time", since);
+
+      const { data: allMembers } = await supabase
+        .from("project_members")
+        .select("user_id, project_id")
+        .in("project_id", projectIds as string[]);
+
+      const memberSet = new Set((allMembers || []).map((m) => `${m.project_id}::${m.user_id}`));
+      const unmatched: Record<string, { count: number; users: Set<string> }> = {};
+      for (const te of recentTime || []) {
+        const key = `${te.project_id}::${te.user_id}`;
+        if (!memberSet.has(key)) {
+          if (!unmatched[te.project_id]) unmatched[te.project_id] = { count: 0, users: new Set() };
+          unmatched[te.project_id].count++;
+          unmatched[te.project_id].users.add(te.user_id);
         }
       }
+      setUnmatchedTime(
+        Object.entries(unmatched)
+          .map(([pid, data]) => ({
+            project_id: pid,
+            project_name: projectMap[pid]?.name || pid.slice(0, 8),
+            entry_count: data.count,
+            sample_user_ids: [...data.users].slice(0, 3),
+          }))
+          .sort((a, b) => b.entry_count - a.entry_count)
+      );
 
-      results.push({
-        label: "Workers with $0 cost rate",
-        icon: <Users className="h-4 w-4" />,
-        count: zeroCostMembers?.length || 0,
-        severity: (zeroCostMembers?.length || 0) > 0 ? "warning" : "ok",
-        details: (zeroCostMembers || []).map(m => ({
-          user: userNames[m.user_id] || m.user_id,
-          role: m.role,
-          project_id: m.project_id,
-        })),
-      });
+      // --- 3) Unclassified receipts ---
+      const { data: receipts } = await supabase
+        .from("receipts" as any)
+        .select("project_id, amount, cost_type")
+        .in("project_id", projectIds as string[])
+        .neq("status", "rejected") as { data: { project_id: string; amount: number; cost_type: string | null }[] | null };
 
-      // 2. Projects missing budgets
-      const { data: allProjects } = await supabase
-        .from("projects")
-        .select("id, name, job_number")
-        .eq("organization_id", activeOrganizationId)
-        .eq("is_deleted", false);
+      const allowed = new Set(["material", "machine", "other"]);
+      const receiptAgg: Record<string, { count: number; total: number }> = {};
+      for (const r of receipts || []) {
+        if (!r.cost_type || !allowed.has(r.cost_type)) {
+          if (!r.project_id) continue;
+          if (!receiptAgg[r.project_id]) receiptAgg[r.project_id] = { count: 0, total: 0 };
+          receiptAgg[r.project_id].count++;
+          receiptAgg[r.project_id].total += r.amount || 0;
+        }
+      }
+      setUnclassifiedReceipts(
+        Object.entries(receiptAgg)
+          .map(([pid, data]) => ({
+            project_id: pid,
+            project_name: projectMap[pid]?.name || pid.slice(0, 8),
+            receipt_count: data.count,
+            total_amount: data.total,
+          }))
+          .sort((a, b) => b.total_amount - a.total_amount)
+      );
 
-      const { data: allBudgets } = await supabase
+      // --- 4) Projects missing budgets ---
+      const { data: budgets } = await supabase
         .from("project_budgets")
         .select("project_id")
         .eq("organization_id", activeOrganizationId);
 
-      const budgetProjectIds = new Set((allBudgets || []).map(b => b.project_id));
-      const noBudget = (allProjects || []).filter(p => !budgetProjectIds.has(p.id));
-
-      results.push({
-        label: "Projects missing budgets",
-        icon: <FileText className="h-4 w-4" />,
-        count: noBudget.length,
-        severity: noBudget.length > 0 ? "warning" : "ok",
-        details: noBudget.map(p => ({ name: p.name, job_number: p.job_number })),
-      });
-
-      // 3. Receipts missing cost_type
-      const { count: missingCostType } = await supabase
-        .from("receipts")
-        .select("id", { count: "exact", head: true })
-        .is("cost_type", null);
-
-      results.push({
-        label: "Receipts missing cost_type",
-        icon: <Receipt className="h-4 w-4" />,
-        count: missingCostType || 0,
-        severity: (missingCostType || 0) > 0 ? "warning" : "ok",
-        details: [],
-      });
-
-      // 4. Projects with contract_value=0 but invoices exist
-      const { data: zeroBudgets } = await supabase
-        .from("project_budgets")
-        .select("project_id")
-        .eq("organization_id", activeOrganizationId)
-        .eq("contract_value", 0);
-
-      const zeroContractIds = (zeroBudgets || []).map(b => b.project_id);
-      let invoiceConflicts: any[] = [];
-      if (zeroContractIds.length > 0) {
-        const { data: conflicting } = await supabase
-          .from("invoices")
-          .select("project_id, invoice_number")
-          .in("project_id", zeroContractIds)
-          .neq("status", "void")
-          .limit(50);
-        invoiceConflicts = conflicting || [];
-      }
-      const uniqueConflictProjects = [...new Set(invoiceConflicts.map(i => i.project_id))];
-
-      results.push({
-        label: "Projects with $0 contract but invoices",
-        icon: <DollarSign className="h-4 w-4" />,
-        count: uniqueConflictProjects.length,
-        severity: uniqueConflictProjects.length > 0 ? "error" : "ok",
-        details: invoiceConflicts.slice(0, 10),
-      });
-
-      // 5. Tasks with is_generated=true but scope_item_id null
-      const { count: orphanGenerated } = await supabase
-        .from("tasks")
-        .select("id", { count: "exact", head: true })
-        .eq("is_generated", true)
-        .is("scope_item_id", null)
-        .eq("is_deleted", false);
-
-      results.push({
-        label: "Generated tasks missing scope_item_id",
-        icon: <Layers className="h-4 w-4" />,
-        count: orphanGenerated || 0,
-        severity: (orphanGenerated || 0) > 0 ? "error" : "ok",
-        details: [],
-      });
-
-      setChecks(results);
+      const budgetSet = new Set((budgets || []).map((b) => b.project_id));
+      const activeStatuses = new Set(["awarded", "in_progress", "potential"]);
+      setMissingBudgets(
+        (orgProjects || [])
+          .filter((p) => !budgetSet.has(p.id) && activeStatuses.has(p.status))
+          .map((p) => ({
+            project_id: p.id,
+            project_name: p.name,
+            job_number: p.job_number,
+            status: p.status,
+          }))
+      );
+    } catch (err) {
+      console.error("DataHealth fetch error:", err);
+    } finally {
       setLoading(false);
-    };
+    }
+  };
 
-    run();
-  }, [activeOrganizationId, isAdmin]);
+  useEffect(() => {
+    fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeOrganizationId, canView]);
+
+  const totalIssues = useMemo(
+    () => missingCostRates.length + unmatchedTime.length + unclassifiedReceipts.length + missingBudgets.length,
+    [missingCostRates, unmatchedTime, unclassifiedReceipts, missingBudgets]
+  );
+
+  /* ---------------------------------------------------------------- */
+  /* Loading / Access gates                                            */
+  /* ---------------------------------------------------------------- */
 
   if (roleLoading) {
     return (
@@ -162,88 +259,255 @@ const DataHealth = () => {
     );
   }
 
-  if (!isAdmin) {
-    return <Layout><NoAccess /></Layout>;
+  if (!canView) {
+    return (
+      <Layout>
+        <NoAccess />
+      </Layout>
+    );
   }
 
-  const totalIssues = checks.reduce((s, c) => s + (c.severity !== "ok" ? c.count : 0), 0);
+  /* ---------------------------------------------------------------- */
+  /* Render                                                            */
+  /* ---------------------------------------------------------------- */
 
   return (
     <Layout>
-      <div className="container max-w-4xl mx-auto px-4 py-6">
-        <SectionHeader title="Data Health" />
+      <div className="container max-w-5xl mx-auto px-4 py-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <SectionHeader title="Data Health" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchData}
+            disabled={loading}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        </div>
 
         {loading ? (
           <div className="space-y-4">
-            {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-20" />)}
+            {[...Array(4)].map((_, i) => (
+              <Skeleton key={i} className="h-32" />
+            ))}
           </div>
         ) : (
           <>
-            {/* Summary */}
-            <Card className="mb-6">
+            {/* Summary banner */}
+            <Card>
               <CardContent className="py-4 flex items-center gap-3">
                 {totalIssues === 0 ? (
                   <>
                     <CheckCircle2 className="h-6 w-6 text-status-complete" />
-                    <span className="text-lg font-medium">All checks passed — no data issues found.</span>
+                    <span className="text-lg font-medium">
+                      All checks passed — budget-to-execution data is complete.
+                    </span>
                   </>
                 ) : (
                   <>
                     <AlertTriangle className="h-6 w-6 text-status-issue" />
-                    <span className="text-lg font-medium">{totalIssues} issue{totalIssues !== 1 ? "s" : ""} found across {checks.filter(c => c.severity !== "ok").length} checks.</span>
+                    <span className="text-lg font-medium">
+                      {totalIssues} data issue{totalIssues !== 1 ? "s" : ""} may affect reporting accuracy.
+                    </span>
                   </>
                 )}
               </CardContent>
             </Card>
 
-            {/* Individual checks */}
-            <div className="space-y-4">
-              {checks.map((check, i) => (
-                <Card key={i}>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        {check.icon}
-                        <CardTitle className="text-sm font-medium">{check.label}</CardTitle>
-                      </div>
-                      <Badge
-                        variant={check.severity === "ok" ? "secondary" : check.severity === "error" ? "destructive" : "outline"}
-                      >
-                        {check.severity === "ok" ? "OK" : `${check.count} found`}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  {check.details.length > 0 && check.severity !== "ok" && (
-                    <CardContent className="pt-0">
-                      <Table>
-                        <TableBody>
-                          {check.details.slice(0, 10).map((d, j) => (
-                            <TableRow key={j}>
-                              {Object.entries(d).map(([k, v]) => (
-                                <TableCell key={k} className="text-sm py-1">
-                                  <span className="text-muted-foreground mr-1">{k}:</span>
-                                  {String(v)}
-                                </TableCell>
-                              ))}
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                      {check.details.length > 10 && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Showing 10 of {check.details.length} items
-                        </p>
-                      )}
-                    </CardContent>
-                  )}
-                </Card>
-              ))}
-            </div>
+            {/* ──── 1) Missing Cost Rates ──── */}
+            <SectionCard
+              icon={<Users className="h-5 w-5" />}
+              title="Missing Cost Rates"
+              description="Workers with $0/hr cost rate on active projects. Labor cost calculations are affected."
+              count={missingCostRates.length}
+              emptyText="All project members have cost rates configured."
+            >
+              {missingCostRates.length > 0 && (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Worker</TableHead>
+                      <TableHead className="text-right">Projects</TableHead>
+                      <TableHead className="text-right">Hours (30d)</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {missingCostRates.slice(0, 20).map((r) => (
+                      <TableRow key={r.user_id}>
+                        <TableCell className="font-medium">{r.full_name}</TableCell>
+                        <TableCell className="text-right">{r.affected_projects}</TableCell>
+                        <TableCell className="text-right">
+                          {r.hours_last_30d > 0 ? formatNumber(r.hours_last_30d) : "—"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+              {missingCostRates.length > 20 && (
+                <p className="text-xs text-muted-foreground mt-2 px-1">
+                  Showing 20 of {missingCostRates.length} workers
+                </p>
+              )}
+            </SectionCard>
+
+            {/* ──── 2) Unmatched Time Entries ──── */}
+            <SectionCard
+              icon={<Clock className="h-5 w-5" />}
+              title="Time Entries Without Project Membership"
+              description="Closed time entries from the last 30 days where the worker has no project_members row. These hours have $0 labor cost."
+              count={unmatchedTime.reduce((s, r) => s + r.entry_count, 0)}
+              emptyText="All recent time entries have matching project memberships."
+            >
+              {unmatchedTime.length > 0 && (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Project</TableHead>
+                      <TableHead className="text-right">Entries</TableHead>
+                      <TableHead className="text-right">Unique Workers</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {unmatchedTime.slice(0, 15).map((r) => (
+                      <TableRow key={r.project_id}>
+                        <TableCell className="font-medium">{r.project_name}</TableCell>
+                        <TableCell className="text-right">{formatNumber(r.entry_count)}</TableCell>
+                        <TableCell className="text-right">{r.sample_user_ids.length}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </SectionCard>
+
+            {/* ──── 3) Unclassified Receipts ──── */}
+            <SectionCard
+              icon={<Receipt className="h-5 w-5" />}
+              title="Unclassified Receipts"
+              description="Receipts without a valid cost_type (material, machine, or other). These amounts won't appear in category breakdowns."
+              count={unclassifiedReceipts.reduce((s, r) => s + r.receipt_count, 0)}
+              emptyText="All receipts have a valid cost type classification."
+            >
+              {unclassifiedReceipts.length > 0 && (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Project</TableHead>
+                      <TableHead className="text-right">Receipts</TableHead>
+                      <TableHead className="text-right">Total Amount</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {unclassifiedReceipts.slice(0, 15).map((r) => (
+                      <TableRow key={r.project_id}>
+                        <TableCell className="font-medium">{r.project_name}</TableCell>
+                        <TableCell className="text-right">{r.receipt_count}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(r.total_amount)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </SectionCard>
+
+            {/* ──── 4) Projects Missing Budgets ──── */}
+            <SectionCard
+              icon={<FolderOpen className="h-5 w-5" />}
+              title="Active Projects Missing Budgets"
+              description="Active projects (awarded, in progress, potential) without a budget record. Variance and margin calculations require a budget."
+              count={missingBudgets.length}
+              emptyText="All active projects have budgets configured."
+            >
+              {missingBudgets.length > 0 && (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Job #</TableHead>
+                      <TableHead>Project</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {missingBudgets.map((r) => (
+                      <TableRow key={r.project_id}>
+                        <TableCell className="font-mono text-sm">
+                          {r.job_number || "—"}
+                        </TableCell>
+                        <TableCell className="font-medium">{r.project_name}</TableCell>
+                        <TableCell>
+                          <Badge variant="secondary" className="capitalize text-xs">
+                            {r.status.replace(/_/g, " ")}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              navigate(`/insights/project?projectId=${r.project_id}`)
+                            }
+                          >
+                            <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                            Create Budget
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </SectionCard>
           </>
         )}
       </div>
     </Layout>
   );
 };
+
+/* ------------------------------------------------------------------ */
+/* Reusable section card                                               */
+/* ------------------------------------------------------------------ */
+
+interface SectionCardProps {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  count: number;
+  emptyText: string;
+  children: React.ReactNode;
+}
+
+const SectionCard = ({ icon, title, description, count, emptyText, children }: SectionCardProps) => (
+  <Card>
+    <CardHeader className="pb-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          {icon}
+          <div>
+            <CardTitle className="text-sm font-semibold">{title}</CardTitle>
+            <CardDescription className="text-xs mt-0.5">{description}</CardDescription>
+          </div>
+        </div>
+        <Badge variant={count > 0 ? "destructive" : "secondary"}>
+          {count > 0 ? `${count} found` : "OK"}
+        </Badge>
+      </div>
+    </CardHeader>
+    <CardContent className="pt-0">
+      {count === 0 ? (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground py-3">
+          <CheckCircle2 className="h-4 w-4 text-status-complete" />
+          {emptyText}
+        </div>
+      ) : (
+        children
+      )}
+    </CardContent>
+  </Card>
+);
 
 export default DataHealth;
