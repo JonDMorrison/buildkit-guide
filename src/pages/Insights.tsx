@@ -34,30 +34,38 @@ const Insights = () => {
     statusFilter === "all" ? null : statusFilter
   );
 
-  // Aggregate KPIs
+  // Split rows by budget status
+  const withBudget = useMemo(() => rows.filter((r) => r.has_budget), [rows]);
+  const withoutBudget = useMemo(() => rows.filter((r) => !r.has_budget), [rows]);
+
+  // Aggregate KPIs — only from projects WITH budgets
   const kpis = useMemo(() => {
     if (!rows.length) return null;
-    const totalContract = rows.reduce((s, r) => s + r.contract_value, 0);
-    const totalActual = rows.reduce((s, r) => s + r.actual_total_cost, 0);
-    const totalPlanned = rows.reduce((s, r) => s + r.planned_total_cost, 0);
-    const overBudget = rows.filter((r) => r.total_cost_delta < 0).length;
+    const budgeted = withBudget;
+    const totalContract = budgeted.reduce((s, r) => s + r.contract_value, 0);
+    const totalActual = budgeted.reduce((s, r) => s + r.actual_total_cost, 0);
+    const totalPlanned = budgeted.reduce((s, r) => s + r.planned_total_cost, 0);
+    const overBudget = budgeted.filter((r) => r.total_cost_delta < 0).length;
     const weightedMargin =
       totalContract > 0
         ? ((totalContract - totalActual) / totalContract) * 100
         : 0;
-    return { totalContract, totalActual, totalPlanned, overBudget, weightedMargin };
-  }, [rows]);
-
-  // Most inaccurate cost category (aggregate across portfolio using variance data)
-  const worstCategory = useMemo(() => {
-    if (!rows.length) return null;
-    // We only have total_cost_delta in portfolio; for category breakdown we note this limitation
-    return null; // Category breakdown requires per-project variance calls — shown as placeholder
-  }, [rows]);
+    return {
+      totalContract, totalActual, totalPlanned, overBudget, weightedMargin,
+      includedCount: budgeted.length,
+      excludedCount: withoutBudget.length,
+      totalCount: rows.length,
+    };
+  }, [rows, withBudget, withoutBudget]);
 
   // Sort by worst variance (most negative delta = biggest overrun)
   const sorted = useMemo(
-    () => [...rows].sort((a, b) => a.total_cost_delta - b.total_cost_delta),
+    () => [...rows].sort((a, b) => {
+      // Projects with budgets first, then sort by delta
+      if (a.has_budget && !b.has_budget) return -1;
+      if (!a.has_budget && b.has_budget) return 1;
+      return a.total_cost_delta - b.total_cost_delta;
+    }),
     [rows]
   );
 
@@ -163,7 +171,12 @@ const Insights = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{formatCurrency(kpis.totalContract)}</div>
-                  <p className="text-xs text-muted-foreground">{rows.length} projects</p>
+                  <p className="text-xs text-muted-foreground">
+                    {kpis.includedCount} of {kpis.totalCount} projects
+                    {kpis.excludedCount > 0 && (
+                      <span className="text-status-issue"> · {kpis.excludedCount} missing budget</span>
+                    )}
+                  </p>
                 </CardContent>
               </Card>
               <Card>
@@ -189,7 +202,10 @@ const Insights = () => {
                       ? `${kpis.weightedMargin.toFixed(1)}%`
                       : "N/A"}
                   </div>
-                  <p className="text-xs text-muted-foreground">Weighted by contract value</p>
+                  <p className="text-xs text-muted-foreground">
+                    Weighted by contract value
+                    {kpis.excludedCount > 0 && " · budgeted only"}
+                  </p>
                 </CardContent>
               </Card>
               <Card>
@@ -200,7 +216,7 @@ const Insights = () => {
                 <CardContent>
                   <div className="text-2xl font-bold">{kpis.overBudget}</div>
                   <p className="text-xs text-muted-foreground">
-                    of {rows.length} projects
+                    of {kpis.includedCount} budgeted projects
                   </p>
                 </CardContent>
               </Card>
@@ -218,11 +234,13 @@ const Insights = () => {
                       <TableHead>Job #</TableHead>
                       <TableHead>Project</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Budget</TableHead>
                       <TableHead className="text-right">Planned</TableHead>
                       <TableHead className="text-right">Actual</TableHead>
                       <TableHead className="text-right">Delta ($)</TableHead>
                       <TableHead className="text-right">Delta (%)</TableHead>
                       <TableHead className="text-right">Margin %</TableHead>
+                      <TableHead></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -249,29 +267,64 @@ const Insights = () => {
                               {r.status?.replace(/_/g, " ") || "—"}
                             </Badge>
                           </TableCell>
+                          <TableCell>
+                            {r.has_budget ? (
+                              <Badge variant="secondary" className="text-xs">Set</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-xs text-status-issue border-status-issue/30">
+                                Missing
+                              </Badge>
+                            )}
+                          </TableCell>
                           <TableCell className="text-right">
-                            {formatCurrency(r.planned_total_cost)}
+                            {r.has_budget ? formatCurrency(r.planned_total_cost) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
                           </TableCell>
                           <TableCell className="text-right">
                             {formatCurrency(r.actual_total_cost)}
                           </TableCell>
-                          <TableCell
-                            className={`text-right font-medium ${isOver ? "text-destructive" : "text-green-600"}`}
-                          >
-                            {isOver ? "-" : "+"}
-                            {formatCurrency(Math.abs(r.total_cost_delta))}
+                          <TableCell className="text-right">
+                            {r.has_budget ? (
+                              <span className={`font-medium ${isOver ? "text-destructive" : "text-status-complete"}`}>
+                                {isOver ? "-" : "+"}
+                                {formatCurrency(Math.abs(r.total_cost_delta))}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
                           </TableCell>
-                          <TableCell
-                            className={`text-right ${isOver ? "text-destructive" : "text-green-600"}`}
-                          >
-                            {deltaPct.toFixed(1)}%
+                          <TableCell className="text-right">
+                            {r.has_budget ? (
+                              <span className={isOver ? "text-destructive" : "text-status-complete"}>
+                                {deltaPct.toFixed(1)}%
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
                           </TableCell>
-                          <TableCell
-                            className={`text-right font-medium ${r.actual_margin_percent < 0 ? "text-destructive" : "text-green-600"}`}
-                          >
-                            {r.contract_value > 0
-                              ? `${r.actual_margin_percent.toFixed(1)}%`
-                              : "—"}
+                          <TableCell className="text-right">
+                            {r.has_budget && r.contract_value > 0 ? (
+                              <span className={`font-medium ${r.actual_margin_percent < 0 ? "text-destructive" : "text-status-complete"}`}>
+                                {r.actual_margin_percent.toFixed(1)}%
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {!r.has_budget && (
+                              <Button
+                                variant="outline"
+                                size="xs"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/project-overview?projectId=${r.project_id}&tab=budget`);
+                                }}
+                              >
+                                Set budget
+                              </Button>
+                            )}
                           </TableCell>
                         </TableRow>
                       );

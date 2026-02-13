@@ -33,12 +33,14 @@ export interface VarianceData {
 
 export const useEstimateAccuracy = (projectId: string | null) => {
   const [variance, setVariance] = useState<VarianceData | null>(null);
+  const [hasBudget, setHasBudget] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!projectId) {
       setVariance(null);
+      setHasBudget(false);
       return;
     }
 
@@ -46,12 +48,17 @@ export const useEstimateAccuracy = (projectId: string | null) => {
       setLoading(true);
       setError(null);
       try {
-        const { data, error: rpcError } = await supabase.rpc(
-          'project_variance_summary' as any,
-          { p_project_id: projectId }
-        );
-        if (rpcError) throw rpcError;
-        const row = Array.isArray(data) ? data[0] : data;
+        // Check if budget row exists in parallel with variance data
+        const [varianceRes, budgetRes] = await Promise.all([
+          supabase.rpc('project_variance_summary' as any, { p_project_id: projectId }),
+          supabase.from('project_budgets').select('id').eq('project_id', projectId).maybeSingle(),
+        ]);
+
+        if (varianceRes.error) throw varianceRes.error;
+
+        setHasBudget(!!budgetRes.data);
+
+        const row = Array.isArray(varianceRes.data) ? varianceRes.data[0] : varianceRes.data;
         if (row) {
           setVariance({
             contract_value: Number(row.contract_value) || 0,
@@ -94,5 +101,5 @@ export const useEstimateAccuracy = (projectId: string | null) => {
     fetch();
   }, [projectId]);
 
-  return { variance, loading, error };
+  return { variance, hasBudget, loading, error };
 };

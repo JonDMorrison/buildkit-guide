@@ -10,25 +10,27 @@ export const PortfolioExportCSV = ({ rows }: Props) => {
   const handleExport = () => {
     const lines: string[] = [];
     lines.push(
-      "Job #,Project,Customer,Status,Contract Value,Planned Cost,Actual Cost,Delta ($),Delta (%),Planned Margin %,Actual Margin %"
+      "Job #,Project,Customer,Status,Budget Status,Contract Value,Planned Cost,Actual Cost,Delta ($),Delta (%),Planned Margin %,Actual Margin %"
     );
 
     for (const r of rows) {
+      const budgetStatus = r.has_budget ? "Set" : "Missing";
       lines.push(
         [
           `"${r.job_number || ""}"`,
           `"${r.project_name}"`,
           `"${r.customer_name || ""}"`,
           r.status,
-          r.contract_value.toFixed(2),
-          r.planned_total_cost.toFixed(2),
+          budgetStatus,
+          r.has_budget ? r.contract_value.toFixed(2) : "",
+          r.has_budget ? r.planned_total_cost.toFixed(2) : "",
           r.actual_total_cost.toFixed(2),
-          r.total_cost_delta.toFixed(2),
-          r.planned_total_cost
+          r.has_budget ? r.total_cost_delta.toFixed(2) : "",
+          r.has_budget && r.planned_total_cost
             ? ((r.total_cost_delta / r.planned_total_cost) * 100).toFixed(1)
-            : "0",
-          r.planned_margin_percent.toFixed(1),
-          r.actual_margin_percent.toFixed(1),
+            : "",
+          r.has_budget ? r.planned_margin_percent.toFixed(1) : "",
+          r.has_budget ? r.actual_margin_percent.toFixed(1) : "",
         ].join(",")
       );
     }
