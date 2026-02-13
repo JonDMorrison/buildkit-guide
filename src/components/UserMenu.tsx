@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { User, LogOut, Shield, Settings, Users, FileText, Receipt, Rocket, Bug } from 'lucide-react';
+import { User, LogOut, Shield, Settings, Users, FileText, Receipt, Rocket, Bug, Sun, Moon, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useProjectRole } from '@/hooks/useProjectRole';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useTheme } from 'next-themes';
 import { Button } from './ui/button';
 import {
   DropdownMenu,
@@ -22,6 +23,8 @@ export const UserMenu = () => {
   const { roles, isAdmin } = useUserRole();
   const { isGlobalAdmin, projectRoles } = useProjectRole();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { theme, setTheme } = useTheme();
   const [reportIssueOpen, setReportIssueOpen] = useState(false);
 
   if (!user) return null;
@@ -107,6 +110,10 @@ export const UserMenu = () => {
         <DropdownMenuItem onClick={() => navigate('/settings/notifications')}>
           <Settings className="mr-2 h-4 w-4" />
           <span>Notification Settings</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+          {theme === 'dark' ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
+          <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setReportIssueOpen(true)}>
           <Bug className="mr-2 h-4 w-4" />
