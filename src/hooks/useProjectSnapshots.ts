@@ -31,6 +31,7 @@ export interface ProjectSnapshot {
   planned_margin_pct: number;
   labor_hours_missing_cost_rate: number;
   labor_hours_missing_membership: number;
+  captured_at: string | null;
   created_at: string;
 }
 
