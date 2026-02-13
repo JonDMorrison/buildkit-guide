@@ -44,8 +44,10 @@ import {
   Plus, Users, FileText, Settings, Send, CheckCircle2, Ban,
   Copy, DollarSign, BarChart3, RefreshCw, CreditCard, Mail,
   Trash2, Pencil, Search, Download, ShieldCheck, Activity,
-  CheckSquare, XCircle,
+  CheckSquare, XCircle, AlertTriangle, ChevronDown, ChevronRight, ArrowRightLeft,
 } from "lucide-react";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { format, isPast, parseISO } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -727,7 +729,7 @@ const Invoicing = () => {
             </div>
             {clientsLoading ? (
               <div className="space-y-2"><Skeleton className="h-12" /><Skeleton className="h-12" /></div>
-            ) : clients.length === 0 ? (
+            ) : clients.filter(c => c.is_active).length === 0 ? (
               <Card>
                 <CardContent className="py-12 text-center text-muted-foreground">
                   <Users className="h-12 w-12 mx-auto mb-3 opacity-50" />
@@ -753,25 +755,52 @@ const Invoicing = () => {
                       {clients.filter(c => c.is_active).map((c) => {
                         const summary = clientSummaries.get(c.id);
                         const parent = c.parent_client_id ? clients.find(p => p.id === c.parent_client_id) : null;
-                        const childProjects = projects.filter(p => {
-                          // Show projects linked to this client (future: when project has client_id)
-                          return false; // placeholder — projects don't have client_id wired yet in this query
-                        });
+                        const parentArchived = parent && !parent.is_active;
                         return (
                           <TableRow key={c.id}>
                             <TableCell className="font-medium">
-                              {c.name}
-                              {c.parent_client_id && (
-                                <Badge variant="outline" className="ml-2 text-xs">Child</Badge>
-                              )}
+                              <div className="flex items-center gap-2">
+                                {c.name}
+                                {c.parent_client_id && (
+                                  <Badge variant="outline" className="text-xs">Child</Badge>
+                                )}
+                                {parentArchived && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger>
+                                        <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                                      </TooltipTrigger>
+                                      <TooltipContent>Billing customer "{parent?.name}" is archived</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                              </div>
                             </TableCell>
-                            <TableCell className="hidden md:table-cell">{parent?.name || "—"}</TableCell>
+                            <TableCell className="hidden md:table-cell">
+                              {parent ? (
+                                <span className={parentArchived ? "text-amber-500 line-through" : ""}>
+                                  {parent.name}
+                                </span>
+                              ) : "—"}
+                            </TableCell>
                             <TableCell className="hidden md:table-cell">{c.ap_email || c.email || "—"}</TableCell>
                             <TableCell className="hidden md:table-cell">{c.gst_number || "—"}</TableCell>
                             <TableCell className="text-right">{summary?.count || 0}</TableCell>
                             <TableCell className="text-right hidden sm:table-cell">{summary?.outstanding ? fmt(summary.outstanding) : "—"}</TableCell>
                             <TableCell className="text-right">
                               <div className="flex gap-1 justify-end">
+                                {parentArchived && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button variant="ghost" size="sm" onClick={() => { setEditingClient(c); setShowClientModal(true); }}>
+                                          <ArrowRightLeft className="h-3.5 w-3.5 text-amber-500" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Reassign parent</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
                                 <Button variant="ghost" size="sm" onClick={() => { setEditingClient(c); setShowClientModal(true); }}>
                                   <Pencil className="h-3.5 w-3.5" />
                                 </Button>
@@ -792,30 +821,51 @@ const Invoicing = () => {
               </Card>
             )}
 
-            {/* Archived clients */}
+            {/* Archived clients - collapsible */}
             {clients.some(c => !c.is_active) && (
-              <Card>
-                <CardHeader><CardTitle className="text-sm">Archived Clients</CardTitle></CardHeader>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableBody>
-                      {clients.filter(c => !c.is_active).map((c) => (
-                        <TableRow key={c.id}>
-                          <TableCell className="text-muted-foreground">{c.name}</TableCell>
-                          <TableCell className="text-right">
-                            <Button variant="ghost" size="sm" onClick={async () => {
-                              await updateClient(c.id, { is_active: true } as any);
-                              toast({ title: "Client reactivated" });
-                            }}>
-                              Reactivate
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
+              <Collapsible>
+                <Card>
+                  <CollapsibleTrigger className="w-full">
+                    <CardHeader className="cursor-pointer flex flex-row items-center gap-2 py-3">
+                      <ChevronRight className="h-4 w-4 transition-transform [[data-state=open]>&]:rotate-90" />
+                      <CardTitle className="text-sm">Archived Clients ({clients.filter(c => !c.is_active).length})</CardTitle>
+                    </CardHeader>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <CardContent className="p-0">
+                      <Table>
+                        <TableBody>
+                          {clients.filter(c => !c.is_active).map((c) => {
+                            const hasActiveChildren = clients.some(ch => ch.parent_client_id === c.id && ch.is_active);
+                            return (
+                              <TableRow key={c.id}>
+                                <TableCell className="text-muted-foreground">
+                                  <div className="flex items-center gap-2">
+                                    {c.name}
+                                    {hasActiveChildren && (
+                                      <Badge variant="outline" className="text-xs text-amber-500 border-amber-500">
+                                        Has active children
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <Button variant="ghost" size="sm" onClick={async () => {
+                                    await updateClient(c.id, { is_active: true } as any);
+                                    toast({ title: "Client reactivated" });
+                                  }}>
+                                    Reactivate
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
             )}
           </TabsContent>
 
