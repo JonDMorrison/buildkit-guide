@@ -9,6 +9,8 @@ import { PortfolioExportCSV } from "@/components/insights/PortfolioExportCSV";
 import { MarginTrendChart } from "@/components/insights/charts/MarginTrendChart";
 import { CostTrendChart } from "@/components/insights/charts/CostTrendChart";
 import { OverBudgetTrendChart } from "@/components/insights/charts/OverBudgetTrendChart";
+import { RecommendationsPanel } from "@/components/insights/RecommendationsPanel";
+import { getPortfolioRecommendations } from "@/lib/recommendations/rules";
 import { NoAccess } from "@/components/NoAccess";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -123,6 +125,12 @@ const Insights = () => {
       totalCount: filteredRows.length,
     };
   }, [filteredRows, withBudget, withoutBudget]);
+
+  // Portfolio recommendations
+  const portfolioRecs = useMemo(
+    () => getPortfolioRecommendations(filteredRows, 5),
+    [filteredRows]
+  );
 
   // Sort by worst variance (most negative delta = biggest overrun)
   const sorted = useMemo(
@@ -348,6 +356,9 @@ const Insights = () => {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Recommendations */}
+            <RecommendationsPanel recommendations={portfolioRecs} title="Top Recommendations" />
 
             {/* Trend Charts from Snapshots */}
             {snapshots.length > 0 && (
