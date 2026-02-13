@@ -3,28 +3,21 @@ import { TableRow, TableCell } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, Check, X, Pencil } from 'lucide-react';
+import { Archive, ArchiveRestore, Trash2, Check, X, Pencil } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-
-interface ScopeItem {
-  id: string;
-  name: string;
-  description: string | null;
-  item_type: string;
-  planned_hours: number;
-  planned_total: number;
-  sort_order: number;
-}
+import type { ScopeItem } from './ProjectScopeTab';
 
 interface ScopeItemRowProps {
   item: ScopeItem;
   canEdit: boolean;
   onUpdate: () => void;
+  onArchive: (id: string) => void;
+  onUnarchive: (id: string) => void;
   onDelete: (id: string) => void;
 }
 
-export const ScopeItemRow = ({ item, canEdit, onUpdate, onDelete }: ScopeItemRowProps) => {
+export const ScopeItemRow = ({ item, canEdit, onUpdate, onArchive, onUnarchive, onDelete }: ScopeItemRowProps) => {
   const { toast } = useToast();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(item.name);
@@ -119,8 +112,17 @@ export const ScopeItemRow = ({ item, canEdit, onUpdate, onDelete }: ScopeItemRow
   }
 
   return (
-    <TableRow>
-      <TableCell className="font-medium">{item.name}</TableCell>
+    <TableRow className={item.is_archived ? 'opacity-60' : ''}>
+      <TableCell className="font-medium">
+        <div className="flex items-center gap-2">
+          {item.name}
+          {item.is_archived && (
+            <Badge variant="outline" className="text-xs">
+              Archived
+            </Badge>
+          )}
+        </div>
+      </TableCell>
       <TableCell>
         <Badge variant={typeVariant(item.item_type)} className="capitalize">
           {item.item_type}
@@ -132,17 +134,44 @@ export const ScopeItemRow = ({ item, canEdit, onUpdate, onDelete }: ScopeItemRow
       <TableCell>
         {canEdit && (
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" onClick={() => setEditing(true)} className="h-8 w-8">
-              <Pencil className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onDelete(item.id)}
-              className="h-8 w-8 text-destructive hover:text-destructive"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+            {!item.is_archived && (
+              <>
+                <Button variant="ghost" size="icon" onClick={() => setEditing(true)} className="h-8 w-8">
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onArchive(item.id)}
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  title="Archive"
+                >
+                  <Archive className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+            {item.is_archived && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onUnarchive(item.id)}
+                  className="h-8 w-8"
+                  title="Restore"
+                >
+                  <ArchiveRestore className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onDelete(item.id)}
+                  className="h-8 w-8 text-destructive hover:text-destructive"
+                  title="Delete permanently"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </>
+            )}
           </div>
         )}
       </TableCell>
