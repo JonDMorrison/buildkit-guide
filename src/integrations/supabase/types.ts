@@ -4276,6 +4276,81 @@ export type Database = {
         Args: { p_org_id: string; p_user_id: string }
         Returns: string
       }
+      project_actual_costs: {
+        Args: { p_project_id: string }
+        Returns: {
+          actual_labor_billable: number
+          actual_labor_cost: number
+          actual_labor_hours: number
+          actual_machine_cost: number
+          actual_material_cost: number
+          actual_other_cost: number
+          actual_total_cost: number
+        }[]
+      }
+      project_invoicing_summary: {
+        Args: { p_project_id: string }
+        Returns: {
+          billed_percentage: number
+          contract_value: number
+          current_percent_to_bill: number
+          invoiced_amount: number
+          remainder_to_invoice: number
+        }[]
+      }
+      project_portfolio_report: {
+        Args: { p_org_id: string; p_status_filter?: string }
+        Returns: {
+          actual_labor_hours: number
+          actual_margin_percent: number
+          actual_profit: number
+          actual_total_cost: number
+          billed_percentage: number
+          contract_value: number
+          current_percent_to_bill: number
+          customer_name: string
+          invoiced_amount: number
+          job_number: string
+          labor_hours_delta: number
+          planned_labor_hours: number
+          planned_margin_percent: number
+          planned_profit: number
+          planned_total_cost: number
+          project_id: string
+          project_name: string
+          remainder_to_invoice: number
+          status: string
+          total_cost_delta: number
+        }[]
+      }
+      project_variance_summary: {
+        Args: { p_project_id: string }
+        Returns: {
+          actual_labor_cost: number
+          actual_labor_hours: number
+          actual_machine_cost: number
+          actual_margin_percent: number
+          actual_material_cost: number
+          actual_other_cost: number
+          actual_profit: number
+          actual_total_cost: number
+          contract_value: number
+          labor_cost_delta: number
+          labor_hours_delta: number
+          machine_cost_delta: number
+          material_cost_delta: number
+          other_cost_delta: number
+          planned_labor_cost: number
+          planned_labor_hours: number
+          planned_machine_cost: number
+          planned_margin_percent: number
+          planned_material_cost: number
+          planned_other_cost: number
+          planned_profit: number
+          planned_total_cost: number
+          total_cost_delta: number
+        }[]
+      }
       rpc_approve_timesheet_period: {
         Args: { p_actor_id: string; p_period_id: string }
         Returns: {
