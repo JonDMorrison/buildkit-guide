@@ -4291,39 +4291,64 @@ export type Database = {
       project_actual_costs: {
         Args: { p_project_id: string }
         Returns: {
-          actual_labor_billable: number
           actual_labor_cost: number
           actual_labor_hours: number
           actual_machine_cost: number
           actual_material_cost: number
           actual_other_cost: number
           actual_total_cost: number
+          actual_unclassified_cost: number
+          labor_entry_count_missing_cost_rate: number
+          labor_entry_count_missing_membership: number
+          labor_hours_missing_cost_rate: number
+          labor_hours_missing_membership: number
+          unclassified_receipt_count: number
         }[]
       }
       project_invoicing_summary: {
-        Args: { p_project_id: string }
+        Args: {
+          p_include_drafts?: boolean
+          p_include_scheduled?: boolean
+          p_project_id: string
+        }
         Returns: {
-          billed_percentage: number
+          billed_pct_relaxed: number
+          billed_pct_strict: number
           contract_value: number
-          current_percent_to_bill: number
-          invoiced_amount: number
-          remainder_to_invoice: number
+          invoice_count_relaxed: number
+          invoice_count_strict: number
+          invoiced_amount_relaxed: number
+          invoiced_amount_strict: number
+          remainder_relaxed: number
+          remainder_strict: number
         }[]
       }
       project_portfolio_report: {
-        Args: { p_org_id: string; p_status_filter?: string }
+        Args: {
+          p_end_date?: string
+          p_limit?: number
+          p_offset?: number
+          p_org_id: string
+          p_start_date?: string
+          p_status_filter?: string
+        }
         Returns: {
           actual_labor_hours: number
           actual_margin_percent: number
           actual_profit: number
           actual_total_cost: number
+          actual_unclassified_cost: number
           billed_percentage: number
           contract_value: number
           current_percent_to_bill: number
           customer_name: string
           invoiced_amount: number
+          invoiced_amount_relaxed: number
+          invoiced_amount_strict: number
           job_number: string
           labor_hours_delta: number
+          labor_hours_missing_cost_rate: number
+          labor_hours_missing_membership: number
           planned_labor_hours: number
           planned_margin_percent: number
           planned_profit: number
@@ -4346,9 +4371,12 @@ export type Database = {
           actual_other_cost: number
           actual_profit: number
           actual_total_cost: number
+          actual_unclassified_cost: number
           contract_value: number
           labor_cost_delta: number
           labor_hours_delta: number
+          labor_hours_missing_cost_rate: number
+          labor_hours_missing_membership: number
           machine_cost_delta: number
           material_cost_delta: number
           other_cost_delta: number

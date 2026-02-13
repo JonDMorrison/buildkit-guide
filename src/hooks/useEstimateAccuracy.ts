@@ -25,6 +25,10 @@ export interface VarianceData {
   actual_profit: number;
   planned_margin_percent: number;
   actual_margin_percent: number;
+  // Diagnostics
+  labor_hours_missing_cost_rate: number;
+  labor_hours_missing_membership: number;
+  actual_unclassified_cost: number;
 }
 
 export const useEstimateAccuracy = (projectId: string | null) => {
@@ -73,6 +77,9 @@ export const useEstimateAccuracy = (projectId: string | null) => {
             actual_profit: Number(row.actual_profit) || 0,
             planned_margin_percent: Number(row.planned_margin_percent) || 0,
             actual_margin_percent: Number(row.actual_margin_percent) || 0,
+            labor_hours_missing_cost_rate: Number(row.labor_hours_missing_cost_rate) || 0,
+            labor_hours_missing_membership: Number(row.labor_hours_missing_membership) || 0,
+            actual_unclassified_cost: Number(row.actual_unclassified_cost) || 0,
           });
         } else {
           setVariance(null);
