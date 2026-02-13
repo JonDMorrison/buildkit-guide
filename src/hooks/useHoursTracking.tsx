@@ -57,6 +57,7 @@ export function useHoursTracking(projectId?: string) {
           title,
           status,
           budgeted_hours,
+          planned_hours,
           estimated_hours,
           assigned_trade_id,
           trades(id, name)
@@ -102,8 +103,9 @@ export function useHoursTracking(projectId?: string) {
       const { data: scopeItems } = await scopeQuery;
 
       // Calculate totals
+      // planned_hours is canonical budget truth; fall back to budgeted_hours then estimated_hours
       const totalBudgetedFromTasks = (tasks || []).reduce(
-        (sum, t) => sum + (Number(t.budgeted_hours) || Number(t.estimated_hours) || 0), 0
+        (sum, t) => sum + (Number(t.planned_hours) || Number(t.budgeted_hours) || Number(t.estimated_hours) || 0), 0
       );
       const totalBudgetedFromScope = (scopeItems || []).reduce(
         (sum, s) => sum + Number(s.budgeted_hours), 0
@@ -131,7 +133,7 @@ export function useHoursTracking(projectId?: string) {
             variance: 0,
             percentComplete: 0,
           };
-          existing.budgeted += Number(task.budgeted_hours) || Number(task.estimated_hours) || 0;
+          existing.budgeted += Number(task.planned_hours) || Number(task.budgeted_hours) || Number(task.estimated_hours) || 0;
           tradeMap.set(task.assigned_trade_id, existing);
         }
       });
@@ -154,9 +156,9 @@ export function useHoursTracking(projectId?: string) {
       });
 
       const byTask: TaskHours[] = (tasks || [])
-        .filter(t => t.budgeted_hours || t.estimated_hours)
+        .filter(t => t.planned_hours || t.budgeted_hours || t.estimated_hours)
         .map(task => {
-          const budgeted = Number(task.budgeted_hours) || Number(task.estimated_hours) || 0;
+          const budgeted = Number(task.planned_hours) || Number(task.budgeted_hours) || Number(task.estimated_hours) || 0;
           const actual = taskActuals.get(task.id) || 0;
           return {
             taskId: task.id,

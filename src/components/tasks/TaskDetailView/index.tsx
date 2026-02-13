@@ -34,6 +34,7 @@ export interface TaskDetailData {
   end_date: string | null;
   due_date: string | null;
   estimated_hours: number | null;
+  planned_hours: number | null;
   project_id: string;
   assigned_trade_id: string | null;
   review_requested_at: string | null;
