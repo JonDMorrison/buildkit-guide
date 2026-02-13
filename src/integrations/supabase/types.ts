@@ -1839,6 +1839,68 @@ export type Database = {
           },
         ]
       }
+      org_financial_snapshots: {
+        Row: {
+          created_at: string
+          id: string
+          organization_id: string
+          projects_count: number
+          projects_missing_budget_count: number
+          projects_over_budget_count: number
+          projects_with_budget_count: number
+          snapshot_date: string
+          snapshot_period: string
+          total_actual_cost: number
+          total_contract_value: number
+          total_invoiced_strict: number
+          total_planned_cost: number
+          total_profit_actual: number
+          weighted_margin_pct_actual: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          organization_id: string
+          projects_count?: number
+          projects_missing_budget_count?: number
+          projects_over_budget_count?: number
+          projects_with_budget_count?: number
+          snapshot_date: string
+          snapshot_period?: string
+          total_actual_cost?: number
+          total_contract_value?: number
+          total_invoiced_strict?: number
+          total_planned_cost?: number
+          total_profit_actual?: number
+          weighted_margin_pct_actual?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          organization_id?: string
+          projects_count?: number
+          projects_missing_budget_count?: number
+          projects_over_budget_count?: number
+          projects_with_budget_count?: number
+          snapshot_date?: string
+          snapshot_period?: string
+          total_actual_cost?: number
+          total_contract_value?: number
+          total_invoiced_strict?: number
+          total_planned_cost?: number
+          total_profit_actual?: number
+          weighted_margin_pct_actual?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_financial_snapshots_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_memberships: {
         Row: {
           created_at: string
@@ -2124,6 +2186,151 @@ export type Database = {
             foreignKeyName: "project_budgets_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: true
+            referencedRelation: "v_project_progress"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_financial_snapshots: {
+        Row: {
+          actual_labor_cost: number
+          actual_labor_hours: number
+          actual_machine_cost: number
+          actual_margin_pct: number
+          actual_material_cost: number
+          actual_other_cost: number
+          actual_profit: number
+          actual_total_cost: number
+          actual_unclassified_cost: number
+          billed_percentage_relaxed: number
+          billed_percentage_strict: number
+          contract_value: number
+          created_at: string
+          created_by: string | null
+          has_budget: boolean
+          id: string
+          invoiced_amount_relaxed: number
+          invoiced_amount_strict: number
+          labor_entry_count_missing_cost_rate: number
+          labor_entry_count_missing_membership: number
+          labor_hours_missing_cost_rate: number
+          labor_hours_missing_membership: number
+          organization_id: string
+          planned_labor_cost: number
+          planned_labor_hours: number
+          planned_machine_cost: number
+          planned_margin_pct: number
+          planned_material_cost: number
+          planned_other_cost: number
+          planned_profit: number
+          planned_total_cost: number
+          project_id: string
+          remainder_to_invoice_relaxed: number
+          remainder_to_invoice_strict: number
+          snapshot_date: string
+          snapshot_period: string
+          status: string | null
+          unclassified_receipt_count: number
+        }
+        Insert: {
+          actual_labor_cost?: number
+          actual_labor_hours?: number
+          actual_machine_cost?: number
+          actual_margin_pct?: number
+          actual_material_cost?: number
+          actual_other_cost?: number
+          actual_profit?: number
+          actual_total_cost?: number
+          actual_unclassified_cost?: number
+          billed_percentage_relaxed?: number
+          billed_percentage_strict?: number
+          contract_value?: number
+          created_at?: string
+          created_by?: string | null
+          has_budget?: boolean
+          id?: string
+          invoiced_amount_relaxed?: number
+          invoiced_amount_strict?: number
+          labor_entry_count_missing_cost_rate?: number
+          labor_entry_count_missing_membership?: number
+          labor_hours_missing_cost_rate?: number
+          labor_hours_missing_membership?: number
+          organization_id: string
+          planned_labor_cost?: number
+          planned_labor_hours?: number
+          planned_machine_cost?: number
+          planned_margin_pct?: number
+          planned_material_cost?: number
+          planned_other_cost?: number
+          planned_profit?: number
+          planned_total_cost?: number
+          project_id: string
+          remainder_to_invoice_relaxed?: number
+          remainder_to_invoice_strict?: number
+          snapshot_date: string
+          snapshot_period?: string
+          status?: string | null
+          unclassified_receipt_count?: number
+        }
+        Update: {
+          actual_labor_cost?: number
+          actual_labor_hours?: number
+          actual_machine_cost?: number
+          actual_margin_pct?: number
+          actual_material_cost?: number
+          actual_other_cost?: number
+          actual_profit?: number
+          actual_total_cost?: number
+          actual_unclassified_cost?: number
+          billed_percentage_relaxed?: number
+          billed_percentage_strict?: number
+          contract_value?: number
+          created_at?: string
+          created_by?: string | null
+          has_budget?: boolean
+          id?: string
+          invoiced_amount_relaxed?: number
+          invoiced_amount_strict?: number
+          labor_entry_count_missing_cost_rate?: number
+          labor_entry_count_missing_membership?: number
+          labor_hours_missing_cost_rate?: number
+          labor_hours_missing_membership?: number
+          organization_id?: string
+          planned_labor_cost?: number
+          planned_labor_hours?: number
+          planned_machine_cost?: number
+          planned_margin_pct?: number
+          planned_material_cost?: number
+          planned_other_cost?: number
+          planned_profit?: number
+          planned_total_cost?: number
+          project_id?: string
+          remainder_to_invoice_relaxed?: number
+          remainder_to_invoice_strict?: number
+          snapshot_date?: string
+          snapshot_period?: string
+          status?: string | null
+          unclassified_receipt_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_financial_snapshots_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_financial_snapshots_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_financial_snapshots_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "v_project_progress"
             referencedColumns: ["id"]
           },
