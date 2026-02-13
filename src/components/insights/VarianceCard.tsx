@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, AlertTriangle } from "lucide-react";
 
 interface VarianceCardProps {
   label: string;
@@ -10,6 +10,8 @@ interface VarianceCardProps {
   unit: "$" | "h" | "%";
   icon?: React.ReactNode;
   unavailableMessage?: string;
+  /** When true, planned is treated as "not set" — shows "Not set" instead of 0 */
+  budgetMissing?: boolean;
 }
 
 const fmt = (value: number, unit: "$" | "h" | "%") => {
@@ -25,6 +27,7 @@ export const VarianceCard = ({
   unit,
   icon,
   unavailableMessage,
+  budgetMissing,
 }: VarianceCardProps) => {
   if (unavailableMessage) {
     return (
@@ -35,6 +38,28 @@ export const VarianceCard = ({
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">{unavailableMessage}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Budget not set — show actual but flag planned as missing
+  if (budgetMissing) {
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-sm font-medium">{label}</CardTitle>
+          {icon}
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{fmt(actual, unit)}</div>
+          <p className="text-xs text-muted-foreground mb-2">
+            Planned: <span className="italic">Not set</span>
+          </p>
+          <Badge variant="secondary" className="text-xs">
+            <AlertTriangle className="h-3 w-3 mr-1" />
+            Budget required
+          </Badge>
         </CardContent>
       </Card>
     );

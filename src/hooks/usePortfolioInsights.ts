@@ -29,6 +29,8 @@ export interface PortfolioRow {
   labor_hours_missing_cost_rate: number;
   labor_hours_missing_membership: number;
   actual_unclassified_cost: number;
+  // Budget detection (UI-only flag)
+  has_budget: boolean;
 }
 
 export const usePortfolioInsights = (statusFilter: string | null) => {
@@ -50,13 +52,22 @@ export const usePortfolioInsights = (statusFilter: string | null) => {
         const params: any = { p_org_id: activeOrganizationId };
         if (statusFilter) params.p_status_filter = statusFilter;
 
-        const { data, error: rpcError } = await supabase.rpc(
-          'project_portfolio_report' as any,
-          params
-        );
-        if (rpcError) throw rpcError;
+        // Fetch portfolio data and budget existence in parallel
+        const [rpcRes, budgetsRes] = await Promise.all([
+          supabase.rpc('project_portfolio_report' as any, params),
+          supabase
+            .from('project_budgets')
+            .select('project_id')
+            .eq('organization_id', activeOrganizationId),
+        ]);
 
-        const mapped: PortfolioRow[] = (data || []).map((r: any) => ({
+        if (rpcRes.error) throw rpcRes.error;
+
+        const budgetProjectIds = new Set(
+          (budgetsRes.data || []).map((b: any) => b.project_id)
+        );
+
+        const mapped: PortfolioRow[] = (rpcRes.data || []).map((r: any) => ({
           project_id: r.project_id,
           job_number: r.job_number,
           customer_name: r.customer_name,
@@ -82,6 +93,7 @@ export const usePortfolioInsights = (statusFilter: string | null) => {
           labor_hours_missing_cost_rate: Number(r.labor_hours_missing_cost_rate) || 0,
           labor_hours_missing_membership: Number(r.labor_hours_missing_membership) || 0,
           actual_unclassified_cost: Number(r.actual_unclassified_cost) || 0,
+          has_budget: budgetProjectIds.has(r.project_id),
         }));
 
         setRows(mapped);

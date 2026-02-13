@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { SectionHeader } from "@/components/SectionHeader";
 import { useEstimateAccuracy } from "@/hooks/useEstimateAccuracy";
@@ -19,13 +19,14 @@ import { DollarSign, Clock, Package, Wrench, TrendingUp, AlertTriangle, Download
 import { formatCurrency, formatNumber } from "@/lib/formatters";
 
 const ProjectEstimateAccuracy = () => {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { currentProjectId } = useCurrentProject();
   const paramProjectId = searchParams.get("projectId");
   const [selectedProject, setSelectedProject] = useState(paramProjectId || currentProjectId || "");
   const [projects, setProjects] = useState<{ id: string; name: string; job_number: string | null }[]>([]);
   const { isGlobalAdmin, hasAnyProjectRole, loading: roleLoading } = useProjectRole();
-  const { variance, loading, error } = useEstimateAccuracy(selectedProject || null);
+  const { variance, hasBudget, loading, error } = useEstimateAccuracy(selectedProject || null);
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -63,10 +64,15 @@ const ProjectEstimateAccuracy = () => {
     if (!breakdownRows.length) return;
     const lines = ["Category,Planned,Actual,Delta ($),Delta (%)"];
     for (const r of breakdownRows) {
-      const pct = r.planned !== 0 ? ((r.delta / r.planned) * 100).toFixed(1) : "0";
-      const val = r.unit === "$" ? r.planned.toFixed(2) : r.planned.toFixed(1);
-      const actVal = r.unit === "$" ? r.actual.toFixed(2) : r.actual.toFixed(1);
-      lines.push(`${r.category},${val},${actVal},${r.delta.toFixed(2)},${pct}`);
+      if (!hasBudget) {
+        const actVal = r.unit === "$" ? r.actual.toFixed(2) : r.actual.toFixed(1);
+        lines.push(`${r.category},,${actVal},,`);
+      } else {
+        const pct = r.planned !== 0 ? ((r.delta / r.planned) * 100).toFixed(1) : "0";
+        const val = r.unit === "$" ? r.planned.toFixed(2) : r.planned.toFixed(1);
+        const actVal = r.unit === "$" ? r.actual.toFixed(2) : r.actual.toFixed(1);
+        lines.push(`${r.category},${val},${actVal},${r.delta.toFixed(2)},${pct}`);
+      }
     }
     const blob = new Blob([lines.join("\n")], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -153,6 +159,25 @@ const ProjectEstimateAccuracy = () => {
 
         {selectedProject && !loading && variance && (
           <>
+            {/* Missing budget warning */}
+            {!hasBudget && (
+              <Alert className="mb-6 border-status-issue/30 bg-status-issue/5">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>No Budget Defined</AlertTitle>
+                <AlertDescription className="flex items-center justify-between">
+                  <span>This project has no budget. Planned values show as "Not set" and variance cannot be calculated.</span>
+                  <Button
+                    size="sm"
+                    className="ml-4 shrink-0"
+                    onClick={() => navigate(`/project-overview?projectId=${selectedProject}&tab=budget`)}
+                  >
+                    <DollarSign className="h-4 w-4 mr-1" />
+                    Create Budget
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
+
             {/* Diagnostic warnings */}
             {variance.labor_hours_missing_cost_rate > 0 && (
               <Alert variant="destructive" className="mb-4">
@@ -190,6 +215,7 @@ const ProjectEstimateAccuracy = () => {
                 actual={variance.actual_total_cost}
                 unit="$"
                 icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
+                budgetMissing={!hasBudget}
               />
               <VarianceCard
                 label="Labor Hours"
@@ -197,6 +223,7 @@ const ProjectEstimateAccuracy = () => {
                 actual={variance.actual_labor_hours}
                 unit="h"
                 icon={<Clock className="h-4 w-4 text-muted-foreground" />}
+                budgetMissing={!hasBudget}
               />
               <VarianceCard
                 label="Materials"
@@ -204,6 +231,7 @@ const ProjectEstimateAccuracy = () => {
                 actual={variance.actual_material_cost}
                 unit="$"
                 icon={<Package className="h-4 w-4 text-muted-foreground" />}
+                budgetMissing={!hasBudget}
               />
               <VarianceCard
                 label="Machine"
@@ -211,6 +239,7 @@ const ProjectEstimateAccuracy = () => {
                 actual={variance.actual_machine_cost}
                 unit="$"
                 icon={<Wrench className="h-4 w-4 text-muted-foreground" />}
+                budgetMissing={!hasBudget}
               />
               <VarianceCard
                 label="Profit"
@@ -218,7 +247,7 @@ const ProjectEstimateAccuracy = () => {
                 actual={variance.actual_profit}
                 unit="$"
                 icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />}
-                unavailableMessage={variance.contract_value === 0 ? "No contract value set" : undefined}
+                unavailableMessage={!hasBudget ? "Budget required" : variance.contract_value === 0 ? "No contract value set" : undefined}
               />
               <VarianceCard
                 label="Margin"
@@ -226,7 +255,7 @@ const ProjectEstimateAccuracy = () => {
                 actual={variance.actual_margin_percent}
                 unit="%"
                 icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />}
-                unavailableMessage={variance.contract_value === 0 ? "No contract value set" : undefined}
+                unavailableMessage={!hasBudget ? "Budget required" : variance.contract_value === 0 ? "No contract value set" : undefined}
               />
             </div>
 
@@ -259,21 +288,33 @@ const ProjectEstimateAccuracy = () => {
                         >
                           <TableCell>{r.category}</TableCell>
                           <TableCell className="text-right">
-                            {fmtVal(r.planned, r.unit)}
+                            {!hasBudget ? (
+                              <span className="text-muted-foreground italic">Not set</span>
+                            ) : (
+                              fmtVal(r.planned, r.unit)
+                            )}
                           </TableCell>
                           <TableCell className="text-right">
                             {fmtVal(r.actual, r.unit)}
                           </TableCell>
-                          <TableCell
-                            className={`text-right ${isOver ? "text-destructive" : r.delta > 0 ? "text-green-600" : ""}`}
-                          >
-                            {isOver ? "-" : r.delta > 0 ? "+" : ""}
-                            {fmtVal(Math.abs(r.delta), r.unit)}
+                          <TableCell className="text-right">
+                            {!hasBudget ? (
+                              <span className="text-muted-foreground">—</span>
+                            ) : (
+                              <span className={isOver ? "text-destructive" : r.delta > 0 ? "text-status-complete" : ""}>
+                                {isOver ? "-" : r.delta > 0 ? "+" : ""}
+                                {fmtVal(Math.abs(r.delta), r.unit)}
+                              </span>
+                            )}
                           </TableCell>
-                          <TableCell
-                            className={`text-right ${isOver ? "text-destructive" : r.delta > 0 ? "text-green-600" : ""}`}
-                          >
-                            {pct.toFixed(1)}%
+                          <TableCell className="text-right">
+                            {!hasBudget ? (
+                              <span className="text-muted-foreground">—</span>
+                            ) : (
+                              <span className={isOver ? "text-destructive" : r.delta > 0 ? "text-status-complete" : ""}>
+                                {pct.toFixed(1)}%
+                              </span>
+                            )}
                           </TableCell>
                         </TableRow>
                       );
