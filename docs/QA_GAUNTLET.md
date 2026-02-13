@@ -1,6 +1,6 @@
 # QA Gauntlet — Full-Stack Test Plan
 
-> **Version**: 1.1 · **Date**: 2026-02-13 · **Scope**: Budget-to-Execution Intelligence, Estimate Accuracy, Task Automation, Client Hierarchy, Invoice Snapshots, Task-Level Time Tracking, Data Health, Snapshots/Trends/Recommendations/AI, Time Entry Inclusion Contract
+> **Version**: 1.2 · **Date**: 2026-02-13 · **Scope**: Budget-to-Execution Intelligence, Estimate Accuracy, Task Automation, Client Hierarchy, Invoice Snapshots, Invoice Accounting Rules, Task-Level Time Tracking, Data Health, Snapshots/Trends/Recommendations/AI, Time Entry Inclusion Contract
 
 ---
 
@@ -778,7 +778,62 @@ ALTER TABLE time_entries
 
 ## 6. Reporting Trust Tests ("Numbers Must Match")
 
-### 5.1 planned_total_cost Composition
+### 6.0 Invoice Accounting Rules
+
+> **CANONICAL** — All invoice RPCs, snapshot writers, and UI components MUST follow these rules. Deviations are P0 bugs.
+
+#### Status Inclusion Matrix
+
+| Status | `invoiced_amount_strict` | `invoiced_amount_relaxed` (drafts=true) | `invoiced_amount_relaxed` (drafts=false) | Rationale |
+|--------|------------------------|-----------------------------------------|------------------------------------------|-----------|
+| `draft` | ❌ Excluded | ✅ Included | ❌ Excluded | Drafts are speculative; strict = committed only |
+| `sent` | ✅ Included | ✅ Included | ✅ Included | Sent = committed to client |
+| `paid` | ✅ Included | ✅ Included | ✅ Included | Paid = revenue received |
+| `overdue` | ✅ Included | ✅ Included | ✅ Included | Overdue = sent but late; still committed |
+| `void` | ❌ **Excluded from ALL** | ❌ **Excluded from ALL** | ❌ **Excluded from ALL** | Voided = cancelled; never affects financials |
+
+**RPC enforcement**: `project_invoicing_summary` — strict filter: `status IN ('sent', 'paid', 'overdue')`; relaxed filter: `status != 'void'` (+ optional draft exclusion).
+
+#### Void Handling Rules
+
+1. Voided invoices are **permanently excluded** from all financial calculations (strict, relaxed, billed_pct, snapshots)
+2. Voided invoices remain in the database for audit trail but are filtered out of every aggregate
+3. Void is a **terminal status** — once voided, an invoice cannot be un-voided (enforce in UI + consider DB trigger)
+4. Existing `amount_paid` on a voided invoice is **ignored** — void overrides payment status
+
+#### Tax Treatment: Tax-Inclusive Totals
+
+**Decision**: `invoices.total` is **tax-inclusive** (subtotal + tax_amount). All RPCs and snapshots use `total` (not `subtotal`).
+
+**Enforcement**: 
+- `invoices.total = subtotal + tax_amount` (computed on insert/update in application layer)
+- All snapshot columns (`invoiced_amount_strict`, etc.) use `SUM(i.total)` — tax-inclusive
+- `billed_pct = invoiced_amount / contract_value * 100` — both sides must be tax-inclusive for consistency
+- `contract_value` in `project_budgets` is assumed tax-inclusive (or tax-exempt; the user sets it)
+
+**Rounding rule**: All monetary values rounded to 2 decimal places. Tax rounding tolerance: ±$0.01 per line item. Totals must match within `ABS(computed - stored) <= $0.01 * line_item_count`.
+
+#### Credit Memo / Negative Invoice Behavior
+
+**Current support**: The `invoice_type` column supports `'credit_note'`. Credit notes have **negative `total`**.
+
+**Inclusion rules**:
+- Credit notes with status `sent`/`paid`/`overdue` ARE included in strict totals (they reduce `invoiced_amount_strict`)
+- Credit notes with status `void` are excluded (same as regular invoices)
+- `billed_pct` can go negative if credit notes exceed invoiced amount — this is correct (over-credited)
+- `billed_pct` can exceed 100% if invoiced exceeds contract — this is correct (change orders / extras)
+
+#### Partial Payment Behavior
+
+**Current support**: Partial payments ARE supported via `invoice_payments` table. `invoices.amount_paid` is auto-updated by trigger `update_invoice_amount_paid`.
+
+**Rules**:
+- `amount_paid` does NOT affect `invoiced_amount_strict` or `invoiced_amount_relaxed` — those use `total`
+- `amount_paid` only determines payment status (paid vs partially paid)
+- `billed_pct` uses `total`, NOT `amount_paid` — billing % reflects commitments, not cash received
+- Partial payments must NOT silently alter totals in any RPC or snapshot
+
+### 6.1 planned_total_cost Composition
 
 ```sql
 -- From project_budgets
@@ -790,7 +845,7 @@ FROM project_budgets WHERE project_id = :pid;
 -- computed_total = rpc_total (within $0.01)
 ```
 
-### 5.2 actual_total_cost Composition
+### 6.2 actual_total_cost Composition
 
 ```sql
 -- Manual computation
@@ -816,7 +871,7 @@ FROM labor, receipts_by_type;
 -- manual_total = rpc_total (within $0.01)
 ```
 
-### 5.3 Profit & Margin
+### 6.3 Profit & Margin
 
 ```sql
 SELECT
@@ -832,26 +887,30 @@ CROSS JOIN project_budgets WHERE project_budgets.project_id = :pid;
 -- computed_margin = rpc_margin (±0.1%)
 ```
 
-### 5.4 Strict vs Relaxed Invoicing
+### 6.4 Strict vs Relaxed Invoicing (updated with tax-inclusive rule)
 
 ```sql
 WITH inv AS (
   SELECT
-    SUM(CASE WHEN status IN ('sent','paid') THEN total ELSE 0 END) AS strict_total,
-    SUM(CASE WHEN status IN ('sent','paid','draft') THEN total ELSE 0 END) AS relaxed_total
+    SUM(CASE WHEN status IN ('sent','paid','overdue') THEN total ELSE 0 END) AS strict_total,
+    SUM(CASE WHEN status != 'void' THEN total ELSE 0 END) AS relaxed_total,
+    SUM(CASE WHEN status = 'void' THEN total ELSE 0 END) AS void_total
   FROM invoices
-  WHERE project_id = :pid AND status != 'void'
+  WHERE project_id = :pid
 )
 SELECT
   inv.strict_total,
   inv.relaxed_total,
+  inv.void_total,
   (SELECT invoiced_amount_strict FROM project_invoicing_summary(:pid)) AS rpc_strict,
   (SELECT invoiced_amount_relaxed FROM project_invoicing_summary(:pid, true, false)) AS rpc_relaxed
 FROM inv;
--- strict_total = rpc_strict; relaxed_total = rpc_relaxed
+-- strict_total = rpc_strict
+-- relaxed_total = rpc_relaxed
+-- void_total is NEVER added to either
 ```
 
-### 5.5 billed_percentage
+### 6.5 billed_percentage (tax-inclusive)
 
 ```sql
 SELECT
@@ -862,7 +921,25 @@ SELECT
 FROM project_invoicing_summary(:pid)
 CROSS JOIN project_budgets WHERE project_budgets.project_id = :pid;
 -- Must match within 0.1%
+-- NOTE: contract_value and invoiced_amount are both tax-inclusive
 ```
+
+### 6.6 Invoice Edge Case Tests
+
+| # | Test | Preconditions | Steps | Expected | SQL Verification | Sev |
+|---|------|---------------|-------|----------|-----------------|-----|
+| INV-01 | Void excluded from strict AND relaxed | Invoice ($5000, status=void) | Call `project_invoicing_summary(:pid)` | `invoiced_amount_strict` = 0, `invoiced_amount_relaxed` = 0 | `SELECT SUM(total) FROM invoices WHERE project_id=:pid AND status='void'` = 5000 but NOT in RPC output | P0 |
+| INV-02 | Void excluded from snapshot | Voided invoice + run snapshot | Check `project_financial_snapshots` | `invoiced_amount_strict` excludes void total | Compare snapshot column to RPC output — must match | P0 |
+| INV-03 | Void excluded from portfolio report | Voided invoice | Call `project_portfolio_report(:oid)` | Project row's invoiced amount excludes void | Compare to manual sum of non-void invoices | P0 |
+| INV-04 | Credit note (negative total) included in strict | Credit note ($-2000, status=sent) + regular invoice ($10000, status=sent) | Call `project_invoicing_summary(:pid)` | `invoiced_amount_strict` = $8000 | `SELECT SUM(total) FROM invoices WHERE project_id=:pid AND status IN ('sent','paid','overdue')` = 8000 | P1 |
+| INV-05 | Credit note — billed_pct can be negative | Credit note ($-15000, status=sent), contract=$10000 | Call RPC | `billed_pct_strict` = -50% (negative is correct) | Verify no division error, no clamp to 0 | P1 |
+| INV-06 | Credit note voided — not counted | Credit note ($-2000, status=void) | Call RPC | Neither strict nor relaxed affected | Void filter catches it | P1 |
+| INV-07 | Partial payment does NOT affect invoiced totals | Invoice ($10000, status=sent, amount_paid=$3000) | Call `project_invoicing_summary(:pid)` | `invoiced_amount_strict` = $10000 (uses `total`, not `amount_paid`) | `SELECT total, amount_paid FROM invoices WHERE id=:inv_id` — RPC uses `total` | P2 |
+| INV-08 | Partial payment does NOT affect snapshot totals | Same invoice + run snapshot | Check snapshot | `invoiced_amount_strict` = $10000 | Snapshot matches RPC | P2 |
+| INV-09 | Tax rounding — single line item | Invoice: subtotal=$99.99, tax_rate=13%, tax_amount=$13.00 (rounded), total=$112.99 | Verify stored total | `total = subtotal + tax_amount` within $0.01 | `SELECT ABS(total - (subtotal + tax_amount)) FROM invoices WHERE id=:inv_id` ≤ 0.01 | P1 |
+| INV-10 | Tax rounding — multi-line accumulation | Invoice: 5 line items, each $33.33, tax=13% | Verify total | `tax_amount = ROUND(SUM(line_amounts) * rate, 2)`. `total = subtotal + tax_amount`. Tolerance: ±$0.05 (5 items × $0.01) | `SELECT ABS(total - subtotal - tax_amount) FROM invoices WHERE id=:inv_id` ≤ 0.05 | P1 |
+| INV-11 | billed_pct > 100% is valid | Invoice total ($15000) > contract_value ($10000) | Call RPC | `billed_pct_strict` = 150% — no clamp | Verify value > 100 returned correctly | P1 |
+| INV-12 | Invoice with $0 total | Invoice: all line items zeroed out, status=sent | Call RPC | Counted in strict count but adds $0 to total; no division errors | `SELECT COUNT(*), SUM(total) ... WHERE total = 0` | P2 |
 
 ### 5.6 Scope Variance Reconciliation
 
@@ -1046,9 +1123,13 @@ END $$;
 - [ ] IV2: Sent invoice snapshot immutable after client change
 - [ ] IV3: Paid invoice snapshot immutable
 - [ ] IV4: Draft invoice "Update from Customer" works
-- [ ] IV5: Void invoice excluded from strict and relaxed totals
-- [ ] IV6: `strict` totals = sent + paid only
-- [ ] IV7: `relaxed` totals = sent + paid + draft
+- [ ] IV5: Void invoice excluded from strict AND relaxed totals AND snapshots AND portfolio report
+- [ ] IV6: `strict` totals = sent + paid + overdue only (tax-inclusive `total` column)
+- [ ] IV7: `relaxed` totals = everything except void (+ optional draft exclusion)
+- [ ] IV8: Credit note (negative total) correctly reduces strict totals
+- [ ] IV9: Partial payments do NOT affect `invoiced_amount_strict/relaxed`
+- [ ] IV10: Tax rounding within ±$0.01 per line item
+- [ ] IV11: `billed_pct` > 100% and < 0% render correctly (no clamp)
 - [ ] IV8: Send modal defaults to `send_to_emails`
 - [ ] IV9: Invalid email blocked in send modal
 - [ ] IV10: Send persists final email list back to invoice
