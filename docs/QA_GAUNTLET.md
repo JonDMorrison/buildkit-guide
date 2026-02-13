@@ -1,6 +1,6 @@
 # QA Gauntlet — Full-Stack Test Plan
 
-> **Version**: 1.0 · **Date**: 2026-02-13 · **Scope**: Budget-to-Execution Intelligence, Estimate Accuracy, Task Automation, Client Hierarchy, Invoice Snapshots, Task-Level Time Tracking, Data Health, Snapshots/Trends/Recommendations/AI
+> **Version**: 1.1 · **Date**: 2026-02-13 · **Scope**: Budget-to-Execution Intelligence, Estimate Accuracy, Task Automation, Client Hierarchy, Invoice Snapshots, Task-Level Time Tracking, Data Health, Snapshots/Trends/Recommendations/AI, Time Entry Inclusion Contract
 
 ---
 
@@ -10,10 +10,11 @@
 2. [Seed Data Recipes](#2-seed-data-recipes)
 3. [Role & Permission Gauntlet](#3-role--permission-gauntlet)
 4. [Concurrency & Race Tests](#4-concurrency--race-tests)
-5. [Reporting Trust Tests](#5-reporting-trust-tests)
-6. [Security & Data Isolation Tests](#6-security--data-isolation-tests)
-7. [Regression Checklist](#7-regression-checklist)
-8. [Acceptance Gate](#8-acceptance-gate)
+5. [Time Entry Inclusion Contract](#5-time-entry-inclusion-contract)
+6. [Reporting Trust Tests](#6-reporting-trust-tests)
+7. [Security & Data Isolation Tests](#7-security--data-isolation-tests)
+8. [Regression Checklist](#8-regression-checklist)
+9. [Acceptance Gate](#9-acceptance-gate)
 
 ---
 
@@ -489,7 +490,164 @@ HAVING COUNT(*) > 1;
 
 ---
 
-## 5. Reporting Trust Tests ("Numbers Must Match")
+## 5. Time Entry Inclusion Contract
+
+> **CANONICAL** — Every RPC/query that counts time MUST use this contract. Deviations are P0 bugs.
+
+### 5A. Required Filters (the "Countable Entry" predicate)
+
+A time entry is **countable** (included in actuals) if and only if ALL conditions hold:
+
+| # | Condition | SQL Fragment | Rationale |
+|---|-----------|-------------|-----------|
+| 1 | Entry is closed | `status = 'closed'` | Open entries are in-progress; duration is not final |
+| 2 | Duration is positive and non-NULL | `duration_hours IS NOT NULL AND duration_hours > 0` | NULL/zero/negative durations indicate corrupt or meaningless data |
+| 3 | Check-out exists | `check_out_at IS NOT NULL` | Without check-out, duration is unreliable even if status='closed' |
+| 4 | Entry is not soft-deleted | (no `is_deleted` column today — if added: `is_deleted = false`) | Future-proofing |
+
+**Canonical WHERE clause** (copy-paste into every RPC):
+
+```sql
+WHERE te.project_id = :pid
+  AND te.status = 'closed'
+  AND te.check_out_at IS NOT NULL
+  AND te.duration_hours IS NOT NULL
+  AND te.duration_hours > 0
+```
+
+**Consumers that MUST use this contract:**
+
+| Consumer | Current Filter | Gap |
+|----------|---------------|-----|
+| `project_actual_costs` RPC | `status='closed'` | Missing NULL/zero/negative duration guard |
+| `project_variance_summary` RPC | Delegates to `project_actual_costs` | Inherits gap |
+| `project_task_actual_hours` RPC | `status='closed'` | Missing NULL/zero duration guard |
+| Scope variance coverage UI | `status='closed'` | Missing NULL/zero duration guard |
+| `generate_project_financial_snapshot` | Delegates to `project_actual_costs` | Inherits gap |
+| `useJobCostReport` hook | `status='closed'` + `NOT NULL duration_hours` | Missing zero/negative guard |
+| Data Health "missing cost rates" | `created_at > now()-30d` | Uses `created_at` not `check_out_at`; no status filter |
+
+### 5B. Timestamp for "Last N Days" Windows
+
+**Rule**: Use `check_out_at` (not `created_at`, not `check_in_at`) for rolling-window filters.
+
+**Rationale**: 
+- `check_in_at` can be far in the past for long-running or forgotten entries
+- `created_at` reflects row insertion, not when work was completed
+- `check_out_at` represents when the work period ended — the most meaningful business timestamp
+
+**Canonical fragment for "last 30 days":**
+
+```sql
+AND te.check_out_at >= (now() AT TIME ZONE 'America/Vancouver' - interval '30 days')
+```
+
+**Why timezone matters**: A cutoff at UTC midnight excludes entries that finished during Vancouver evening. All rolling windows must be evaluated in the organization's `default_timezone`.
+
+### 5C. Edge Case Handling Matrix
+
+| Scenario | `duration_hours` | `check_out_at` | `status` | Countable? | Action |
+|----------|-----------------|----------------|----------|------------|--------|
+| Normal closed entry | 8.0 | set | closed | ✅ Yes | Include |
+| Open entry (in progress) | NULL | NULL | open | ❌ No | Excluded by `status='closed'` |
+| Closed but NULL duration | NULL | set | closed | ❌ No | **Excluded** — data integrity issue; flag in Data Health |
+| Closed but duration = 0 | 0.0 | set (same as check_in) | closed | ❌ No | **Excluded** — zero-second shift is meaningless |
+| Closed but duration < 0 | -2.5 | before check_in | closed | ❌ No | **Blocked at DB** (see constraint below); if exists, exclude + flag |
+| Closed, duration > 24h | 26.0 | set | closed | ✅ Yes* | Include but **flag** `long_shift` (existing flag); Data Health shows it |
+| Closed but no check_out | 8.0 | NULL | closed | ❌ No | **Excluded** — inconsistent state; flag in Data Health |
+| Auto-closed entry | 18.0 | set | closed | ✅ Yes | Include (flagged `auto_closed` already) |
+
+\* Entries >24h are unusual but valid (multi-day shifts happen in construction). They are included but flagged for review.
+
+---
+
+### 5D. Tests — Time Entry Inclusion Contract
+
+| Test ID | Scenario | Sev | Preconditions | Steps | Expected Result | SQL Verification |
+|---------|----------|-----|---------------|-------|----------------|-----------------|
+| TE-001 | Closed entry with `duration_hours = NULL` excluded from `project_actual_costs` | P0 | Insert closed entry with `check_out_at` set but `duration_hours = NULL` | Call `project_actual_costs(:pid)` | Entry's hours NOT counted in `actual_labor_hours` | `SELECT SUM(duration_hours) FROM time_entries WHERE project_id=:pid AND status='closed' AND duration_hours IS NOT NULL AND duration_hours > 0` matches RPC output |
+| TE-002 | Closed entry with `duration_hours = NULL` excluded from `project_task_actual_hours` | P0 | Same entry linked to a task | Call `project_task_actual_hours(:pid)` | Task shows 0 actual hours from this entry | `SELECT task_id, SUM(duration_hours) FROM time_entries WHERE project_id=:pid AND status='closed' AND duration_hours IS NOT NULL AND duration_hours > 0 GROUP BY task_id` |
+| TE-003 | Closed entry with `duration_hours = NULL` excluded from scope variance | P0 | Same entry; task linked to scope item | View ScopeItemVarianceTable | Scope item actual_hours does NOT include this entry | Cross-check with TE-002 query |
+| TE-004 | Closed entry with `duration_hours = NULL` excluded from snapshots | P0 | Same entry | Call `generate_project_financial_snapshot` | Snapshot `actual_labor_hours` excludes this entry | Compare snapshot field to TE-001 query |
+| TE-005 | Negative `duration_hours` blocked by DB constraint | P0 | — | `UPDATE time_entries SET duration_hours = -2.5 WHERE id = :te_id` | DB error: CHECK constraint violation | `-- Expected: ERROR new row violates check constraint "chk_time_entries_duration_non_negative"` |
+| TE-006 | Negative `duration_hours` blocked via API | P0 | Worker with open entry | Call `time-check-out` edge function with `check_out_at` before `check_in_at` | Edge function rejects or computes 0 | Check response status = 400 or duration computed as 0 |
+| TE-007 | `duration_hours = 0` excluded from actuals | P0 | Insert closed entry with `duration_hours = 0`, `check_out_at = check_in_at` | Call `project_actual_costs(:pid)` | Entry NOT counted | Same as TE-001 query with `> 0` guard |
+| TE-008 | Open entries never counted — `project_actual_costs` | P0 | Open entry exists | Call RPC | Not counted | `SELECT COUNT(*) FROM time_entries WHERE project_id=:pid AND status='open'` > 0 but RPC excludes them |
+| TE-009 | Open entries never counted — `project_task_actual_hours` | P0 | Open entry with task_id | Call RPC | Not counted | Same pattern |
+| TE-010 | Open entries never counted — scope variance | P0 | Open entry with task linked to scope | View variance table | Not counted | Same pattern |
+| TE-011 | Open entries never counted — snapshots | P0 | Open entry | Generate snapshot | Not counted | Snapshot matches closed-only sum |
+| TE-012 | Overlapping entries flagged in Data Health | P1 | Two closed entries for same user with overlapping `[check_in_at, check_out_at)` ranges | View `/data-health` | "Overlapping Time Entries" diagnostic section lists both entries | `SELECT a.id, b.id FROM time_entries a JOIN time_entries b ON a.user_id = b.user_id AND a.organization_id = b.organization_id AND a.id < b.id AND tstzrange(a.check_in_at, a.check_out_at, '[)') && tstzrange(b.check_in_at, b.check_out_at, '[)') WHERE a.status='closed' AND b.status='closed'` |
+| TE-013 | Overlapping entries — both counted in actuals (current policy) | P1 | Same overlapping entries | Call `project_actual_costs` | Both entries counted (sum = total hours). Overlap does NOT silently deduplicate | Verify sum matches raw SUM. Document: overlap is a Data Health flag, not a filter |
+| TE-014 | Timezone boundary — entry closing at 11:59 PM PST Dec 31 | P1 | Entry with `check_out_at = '2026-01-01T07:59:00Z'` (= Dec 31 11:59 PM PST) | Query "last 30 days" with cutoff at Jan 1 PST | Entry IS included (it's still Dec 31 in Vancouver) | `SELECT COUNT(*) FROM time_entries WHERE check_out_at >= '2025-12-02T08:00:00Z' AND check_out_at < '2026-01-01T08:00:00Z' AND status='closed'` -- PST = UTC-8 |
+| TE-015 | Timezone boundary — entry closing at 12:01 AM PST Jan 1 | P1 | Entry with `check_out_at = '2026-01-01T08:01:00Z'` (= Jan 1 00:01 AM PST) | Same query | Entry NOT included (it's Jan 1 in Vancouver, outside Dec window) | Same query returns 0 for this entry |
+| TE-016 | Closed entry with NULL `check_out_at` (inconsistent state) | P0 | Insert entry: `status='closed', check_out_at=NULL, duration_hours=8` | Call `project_actual_costs` | Entry excluded (inconsistent state) | `SELECT COUNT(*) FROM time_entries WHERE status='closed' AND check_out_at IS NULL` — these are data quality issues |
+| TE-017 | Data Health flags NULL-duration closed entries | P1 | Closed entry with NULL duration | View `/data-health` | "Closed Entries Missing Duration" diagnostic appears | `SELECT id, user_id, check_in_at FROM time_entries WHERE status='closed' AND (duration_hours IS NULL OR duration_hours <= 0)` |
+
+### 5E. Seed Data — Edge Case Entries
+
+```sql
+-- Closed but NULL duration (TE-001 through TE-004)
+INSERT INTO time_entries (id, organization_id, user_id, project_id, task_id,
+  check_in_at, check_out_at, duration_hours, duration_minutes, status, source) VALUES
+  (:te_null_dur_id, :org1_id, :worker_uid, :proj1_id, :task1_id,
+   now()-interval '5h', now()-interval '1h', NULL, NULL, 'closed', 'manual_adjustment');
+
+-- Zero duration (TE-007)
+INSERT INTO time_entries (id, organization_id, user_id, project_id,
+  check_in_at, check_out_at, duration_hours, duration_minutes, status, source) VALUES
+  (:te_zero_dur_id, :org1_id, :worker_uid, :proj1_id,
+   now()-interval '3h', now()-interval '3h', 0.0, 0, 'closed', 'self');
+
+-- Closed but no checkout (TE-016, inconsistent state)
+INSERT INTO time_entries (id, organization_id, user_id, project_id,
+  check_in_at, check_out_at, duration_hours, duration_minutes, status, source) VALUES
+  (:te_no_checkout_id, :org1_id, :worker_uid, :proj1_id,
+   now()-interval '6h', NULL, 8.0, 480, 'closed', 'manual_adjustment');
+
+-- Overlapping entries for same user (TE-012, TE-013)
+INSERT INTO time_entries (id, organization_id, user_id, project_id,
+  check_in_at, check_out_at, duration_hours, duration_minutes, status, source) VALUES
+  (:te_overlap_a_id, :org1_id, :worker_uid, :proj1_id,
+   '2026-02-10 08:00:00-08', '2026-02-10 16:00:00-08', 8.0, 480, 'closed', 'self'),
+  (:te_overlap_b_id, :org1_id, :worker_uid, :proj1_id,
+   '2026-02-10 14:00:00-08', '2026-02-10 20:00:00-08', 6.0, 360, 'closed', 'self');
+
+-- Timezone boundary entries (TE-014, TE-015)
+INSERT INTO time_entries (id, organization_id, user_id, project_id,
+  check_in_at, check_out_at, duration_hours, duration_minutes, status, source) VALUES
+  (:te_tz_before_id, :org1_id, :worker_uid, :proj1_id,
+   '2025-12-31 15:00:00-08', '2025-12-31 23:59:00-08', 8.98, 539, 'closed', 'self'),
+  (:te_tz_after_id, :org1_id, :worker_uid, :proj1_id,
+   '2025-12-31 16:00:00-08', '2026-01-01 00:01:00-08', 8.02, 481, 'closed', 'self');
+```
+
+### 5F. Recommended DB Constraint
+
+```sql
+-- Block negative durations at the database level
+ALTER TABLE time_entries
+  ADD CONSTRAINT chk_time_entries_duration_non_negative
+  CHECK (duration_hours IS NULL OR duration_hours >= 0);
+
+ALTER TABLE time_entries
+  ADD CONSTRAINT chk_time_entries_duration_minutes_non_negative
+  CHECK (duration_minutes IS NULL OR duration_minutes >= 0);
+```
+
+### 5G. Overlap Policy Decision
+
+**Current Policy**: Overlapping entries are **allowed and both counted**. They are NOT deduplicated or silently excluded. Instead, overlaps are surfaced as a **Data Health diagnostic** for Admin/PM review.
+
+**Rationale**: In construction, workers may legitimately clock overlapping entries across different projects or job sites (e.g., split shifts). Automatic deduplication would silently lose hours. Instead, overlaps are flagged for human review.
+
+**Enforcement**:
+- **Check-in edge function**: Prevents new check-in while an entry is open (same org) — so real-time overlaps don't happen
+- **Adjustment requests**: The `rpc_review_time_adjustment_request` RPC checks for overlaps and auto-denies if detected
+- **Historical/imported data**: May contain overlaps — flagged in Data Health, not rejected
+
+---
+
+## 6. Reporting Trust Tests ("Numbers Must Match")
 
 ### 5.1 planned_total_cost Composition
 
@@ -612,9 +770,9 @@ WHERE si.project_id = :pid AND si.is_archived = false;
 
 ---
 
-## 6. Security & Data Isolation Tests
+## 7. Security & Data Isolation Tests
 
-### 6.1 Cross-Org Read Isolation
+### 7.1 Cross-Org Read Isolation
 
 | # | Test | Method | Expected |
 |---|------|--------|----------|
@@ -627,7 +785,7 @@ WHERE si.project_id = :pid AND si.is_archived = false;
 | S-07 | Org2 admin queries `ai_insights` for Org1 | Supabase JS | 0 rows |
 | S-08 | Unauthenticated request to `project_portfolio_report` | curl with no auth header | 401 or empty |
 
-### 6.2 SECURITY DEFINER Function Tests
+### 7.2 SECURITY DEFINER Function Tests
 
 | # | Function | Test | Expected |
 |---|----------|------|----------|
@@ -637,7 +795,7 @@ WHERE si.project_id = :pid AND si.is_archived = false;
 | SD-04 | `rpc_approve_timesheet_period` | Worker tries to approve own period | Error: insufficient role |
 | SD-05 | `rpc_review_time_adjustment_request` | Worker tries to review | Error: insufficient role |
 
-### 6.3 Client Hierarchy Constraint Tests
+### 7.3 Client Hierarchy Constraint Tests
 
 | # | Test | Expected Error |
 |---|------|---------------|
@@ -646,7 +804,7 @@ WHERE si.project_id = :pid AND si.is_archived = false;
 | CH-03 | Create cycle: A→B→C→A | Trigger error (if implemented) or application-level prevention |
 | CH-04 | Set `parent_client_id` to non-existent UUID | Foreign key violation |
 
-### 6.4 Snapshot Write Protection
+### 7.4 Snapshot Write Protection
 
 | # | Test | Expected |
 |---|------|----------|
@@ -657,7 +815,7 @@ WHERE si.project_id = :pid AND si.is_archived = false;
 
 ---
 
-## 7. Regression Checklist
+## 8. Regression Checklist
 
 50+ must-pass checks organized by area.
 
@@ -695,6 +853,17 @@ WHERE si.project_id = :pid AND si.is_archived = false;
 - [ ] TT6: `assign_time_entry_task` succeeds for Admin/PM
 - [ ] TT7: `assign_time_entry_task` denied for Worker
 - [ ] TT8: Cross-project assignment blocked
+
+### Time Entry Inclusion Contract (TC1–TC8)
+
+- [ ] TC1: Closed entry with NULL `duration_hours` excluded from ALL actuals RPCs
+- [ ] TC2: Negative `duration_hours` rejected by DB constraint
+- [ ] TC3: Zero `duration_hours` excluded from actuals
+- [ ] TC4: Open entries excluded from every consumer (actuals, task hours, scope, snapshots)
+- [ ] TC5: Closed entry with NULL `check_out_at` excluded from actuals
+- [ ] TC6: Overlapping entries flagged in Data Health
+- [ ] TC7: Timezone boundary (PST) correctly filters "last 30 days"
+- [ ] TC8: Data Health shows closed entries with NULL/zero duration
 
 ### Receipts (R1–R4)
 
@@ -763,7 +932,7 @@ WHERE si.project_id = :pid AND si.is_archived = false;
 
 ---
 
-## 8. Acceptance Gate
+## 9. Acceptance Gate
 
 ### Pass Criteria
 
