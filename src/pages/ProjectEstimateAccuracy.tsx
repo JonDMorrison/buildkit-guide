@@ -153,13 +153,31 @@ const ProjectEstimateAccuracy = () => {
 
         {selectedProject && !loading && variance && (
           <>
-            {/* Missing cost rate warning */}
-            {variance.actual_labor_hours > 0 && variance.actual_labor_cost === 0 && (
-              <Alert variant="destructive" className="mb-6">
+            {/* Diagnostic warnings */}
+            {variance.labor_hours_missing_cost_rate > 0 && (
+              <Alert variant="destructive" className="mb-4">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle>Missing Cost Rates</AlertTitle>
                 <AlertDescription>
-                  Some workers may not have cost rates configured. Labor cost may be understated.
+                  {formatNumber(variance.labor_hours_missing_cost_rate)} labor hours have $0 cost rate. Labor cost is understated.
+                </AlertDescription>
+              </Alert>
+            )}
+            {variance.labor_hours_missing_membership > 0 && (
+              <Alert className="mb-4">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Unmatched Workers</AlertTitle>
+                <AlertDescription>
+                  {formatNumber(variance.labor_hours_missing_membership)} labor hours from workers not in the project member list. These hours have $0 cost.
+                </AlertDescription>
+              </Alert>
+            )}
+            {variance.actual_unclassified_cost > 0 && (
+              <Alert className="mb-6">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Unclassified Receipts</AlertTitle>
+                <AlertDescription>
+                  {formatCurrency(variance.actual_unclassified_cost)} in receipts without a cost category (material/machine/other). These are included in total but not categorized.
                 </AlertDescription>
               </Alert>
             )}

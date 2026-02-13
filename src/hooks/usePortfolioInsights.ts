@@ -10,6 +10,8 @@ export interface PortfolioRow {
   status: string;
   contract_value: number;
   invoiced_amount: number;
+  invoiced_amount_strict: number;
+  invoiced_amount_relaxed: number;
   remainder_to_invoice: number;
   billed_percentage: number;
   current_percent_to_bill: number;
@@ -23,6 +25,10 @@ export interface PortfolioRow {
   actual_profit: number;
   planned_margin_percent: number;
   actual_margin_percent: number;
+  // Diagnostics
+  labor_hours_missing_cost_rate: number;
+  labor_hours_missing_membership: number;
+  actual_unclassified_cost: number;
 }
 
 export const usePortfolioInsights = (statusFilter: string | null) => {
@@ -58,6 +64,8 @@ export const usePortfolioInsights = (statusFilter: string | null) => {
           status: r.status,
           contract_value: Number(r.contract_value) || 0,
           invoiced_amount: Number(r.invoiced_amount) || 0,
+          invoiced_amount_strict: Number(r.invoiced_amount_strict) || 0,
+          invoiced_amount_relaxed: Number(r.invoiced_amount_relaxed) || 0,
           remainder_to_invoice: Number(r.remainder_to_invoice) || 0,
           billed_percentage: Number(r.billed_percentage) || 0,
           current_percent_to_bill: Number(r.current_percent_to_bill) || 0,
@@ -71,6 +79,9 @@ export const usePortfolioInsights = (statusFilter: string | null) => {
           actual_profit: Number(r.actual_profit) || 0,
           planned_margin_percent: Number(r.planned_margin_percent) || 0,
           actual_margin_percent: Number(r.actual_margin_percent) || 0,
+          labor_hours_missing_cost_rate: Number(r.labor_hours_missing_cost_rate) || 0,
+          labor_hours_missing_membership: Number(r.labor_hours_missing_membership) || 0,
+          actual_unclassified_cost: Number(r.actual_unclassified_cost) || 0,
         }));
 
         setRows(mapped);
