@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
@@ -15,6 +15,7 @@ import {
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { FormField } from './FormField';
 import { DatePicker } from './ui/date-picker';
 import { Loader2 } from 'lucide-react';
@@ -27,6 +28,7 @@ const projectSchema = z.object({
   description: z.string().trim().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
+  clientId: z.string().optional(),
 });
 
 type ProjectForm = z.infer<typeof projectSchema>;
@@ -43,6 +45,7 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
+  const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
   const [form, setForm] = useState<ProjectForm>({
     name: '',
     jobNumber: '',
@@ -51,8 +54,21 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
     description: '',
     startDate: '',
     endDate: '',
+    clientId: '',
   });
   const [errors, setErrors] = useState<Partial<Record<keyof ProjectForm, string>>>({});
+
+  useEffect(() => {
+    if (open && activeOrganizationId) {
+      supabase
+        .from('clients')
+        .select('id, name')
+        .eq('organization_id', activeOrganizationId)
+        .eq('is_active', true)
+        .order('name')
+        .then(({ data }) => setClients(data || []));
+    }
+  }, [open, activeOrganizationId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,6 +114,7 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
           status: 'planning',
           created_by: user?.id,
           organization_id: orgId,
+          client_id: validatedData.clientId || null,
         })
         .select()
         .single();
@@ -133,6 +150,7 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
         description: '',
         startDate: '',
         endDate: '',
+        clientId: '',
       });
 
       onOpenChange(false);
@@ -204,6 +222,18 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
               />
             </FormField>
           </div>
+
+          <FormField label="Client" error={errors.clientId}>
+            <Select value={form.clientId || ""} onValueChange={(v) => setForm({ ...form, clientId: v === "none" ? "" : v })}>
+              <SelectTrigger className="min-h-[52px]"><SelectValue placeholder="None" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                {clients.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
 
           <FormField
             label="Job Site Address"

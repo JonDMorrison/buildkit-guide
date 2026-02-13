@@ -13,6 +13,20 @@ export interface Client {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  // Parent/child model
+  parent_client_id: string | null;
+  // Extended contact fields
+  gst_number: string | null;
+  ap_contact_name: string | null;
+  ap_email: string | null;
+  ap_phone: string | null;
+  pm_contact_name: string | null;
+  pm_email: string | null;
+  pm_phone: string | null;
+  site_contact_name: string | null;
+  site_contact_email: string | null;
+  site_contact_phone: string | null;
+  zones: number;
 }
 
 export interface InvoiceSettings {

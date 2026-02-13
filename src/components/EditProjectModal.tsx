@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
+import { useOrganization } from '@/hooks/useOrganization';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -12,8 +13,10 @@ import {
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { FormField } from './FormField';
 import { DatePicker } from './ui/date-picker';
+import { Card, CardContent } from './ui/card';
 import { Loader2 } from 'lucide-react';
 
 const projectSchema = z.object({
@@ -25,6 +28,7 @@ const projectSchema = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   status: z.string(),
+  clientId: z.string().optional(),
 });
 
 type ProjectForm = z.infer<typeof projectSchema>;
@@ -39,6 +43,8 @@ interface Project {
   start_date: string | null;
   end_date: string | null;
   status: string;
+  client_id?: string | null;
+  organization_id?: string;
 }
 
 interface EditProjectModalProps {
@@ -48,9 +54,21 @@ interface EditProjectModalProps {
   onSuccess: () => void;
 }
 
+const statusOptions = [
+  { value: "planning", label: "Planning" },
+  { value: "awarded", label: "Awarded" },
+  { value: "in_progress", label: "In Progress" },
+  { value: "on_hold", label: "On Hold" },
+  { value: "completed", label: "Completed" },
+  { value: "potential", label: "Potential" },
+  { value: "didnt_get", label: "Didn't Get" },
+];
+
 export const EditProjectModal = ({ open, onOpenChange, project, onSuccess }: EditProjectModalProps) => {
   const { toast } = useToast();
+  const { activeOrganizationId } = useOrganization();
   const [loading, setLoading] = useState(false);
+  const [clients, setClients] = useState<{ id: string; name: string; parent_client_id: string | null; billing_address: string | null }[]>([]);
   const [form, setForm] = useState<ProjectForm>({
     name: '',
     jobNumber: '',
@@ -60,6 +78,7 @@ export const EditProjectModal = ({ open, onOpenChange, project, onSuccess }: Edi
     startDate: '',
     endDate: '',
     status: 'planning',
+    clientId: '',
   });
   const [errors, setErrors] = useState<Partial<Record<keyof ProjectForm, string>>>({});
 
@@ -74,9 +93,30 @@ export const EditProjectModal = ({ open, onOpenChange, project, onSuccess }: Edi
         startDate: project.start_date || '',
         endDate: project.end_date || '',
         status: project.status || 'planning',
+        clientId: (project as any).client_id || '',
       });
     }
   }, [project]);
+
+  useEffect(() => {
+    if (open && activeOrganizationId) {
+      supabase
+        .from('clients')
+        .select('id, name, parent_client_id, billing_address')
+        .eq('organization_id', activeOrganizationId)
+        .eq('is_active', true)
+        .order('name')
+        .then(({ data }) => setClients((data as any[]) || []));
+    }
+  }, [open, activeOrganizationId]);
+
+  // Derive billing/shipping display
+  const selectedClient = clients.find(c => c.id === form.clientId);
+  const parentClient = selectedClient?.parent_client_id
+    ? clients.find(c => c.id === selectedClient.parent_client_id)
+    : null;
+  const billingCustomerName = parentClient?.name || selectedClient?.name || null;
+  const billingAddress = parentClient?.billing_address || selectedClient?.billing_address || null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,6 +139,7 @@ export const EditProjectModal = ({ open, onOpenChange, project, onSuccess }: Edi
           start_date: validatedData.startDate || null,
           end_date: validatedData.endDate || null,
           status: validatedData.status,
+          client_id: validatedData.clientId || null,
         })
         .eq('id', project.id);
 
@@ -134,7 +175,7 @@ export const EditProjectModal = ({ open, onOpenChange, project, onSuccess }: Edi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Project</DialogTitle>
           <DialogDescription>
@@ -144,11 +185,7 @@ export const EditProjectModal = ({ open, onOpenChange, project, onSuccess }: Edi
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <FormField
-              label="Project Name"
-              required
-              error={errors.name}
-            >
+            <FormField label="Project Name" required error={errors.name}>
               <Input
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -156,11 +193,7 @@ export const EditProjectModal = ({ open, onOpenChange, project, onSuccess }: Edi
                 className="min-h-[52px]"
               />
             </FormField>
-
-            <FormField
-              label="Job #"
-              error={errors.jobNumber}
-            >
+            <FormField label="Job #" error={errors.jobNumber}>
               <Input
                 value={form.jobNumber}
                 onChange={(e) => setForm({ ...form, jobNumber: e.target.value })}
@@ -170,11 +203,41 @@ export const EditProjectModal = ({ open, onOpenChange, project, onSuccess }: Edi
             </FormField>
           </div>
 
-          <FormField
-            label="Job Site Address"
-            required
-            error={errors.location}
-          >
+          <FormField label="Client" error={errors.clientId}>
+            <Select value={form.clientId || "none"} onValueChange={(v) => setForm({ ...form, clientId: v === "none" ? "" : v })}>
+              <SelectTrigger className="min-h-[52px]"><SelectValue placeholder="None" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                {clients.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+
+          {/* Billing / Shipping derived display */}
+          {form.clientId && (
+            <Card>
+              <CardContent className="py-3 space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Billing Customer</span>
+                  <span className="font-medium">{billingCustomerName || "—"}</span>
+                </div>
+                {billingAddress && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Billing Address</span>
+                    <span>{billingAddress}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Job Site</span>
+                  <span>{form.location || "—"}</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          <FormField label="Job Site Address" required error={errors.location}>
             <Input
               value={form.location}
               onChange={(e) => setForm({ ...form, location: e.target.value })}
@@ -183,10 +246,7 @@ export const EditProjectModal = ({ open, onOpenChange, project, onSuccess }: Edi
             />
           </FormField>
 
-          <FormField
-            label="Billing Address"
-            error={errors.billingAddress}
-          >
+          <FormField label="Billing Address" error={errors.billingAddress}>
             <Input
               value={form.billingAddress}
               onChange={(e) => setForm({ ...form, billingAddress: e.target.value })}
@@ -195,10 +255,7 @@ export const EditProjectModal = ({ open, onOpenChange, project, onSuccess }: Edi
             />
           </FormField>
 
-          <FormField
-            label="Description"
-            error={errors.description}
-          >
+          <FormField label="Description" error={errors.description}>
             <Textarea
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -208,21 +265,14 @@ export const EditProjectModal = ({ open, onOpenChange, project, onSuccess }: Edi
           </FormField>
 
           <div className="grid grid-cols-2 gap-4">
-            <FormField
-              label="Start Date"
-              error={errors.startDate}
-            >
+            <FormField label="Start Date" error={errors.startDate}>
               <DatePicker
                 value={form.startDate}
                 onChange={(v) => setForm({ ...form, startDate: v })}
                 placeholder="Select start date"
               />
             </FormField>
-
-            <FormField
-              label="End Date"
-              error={errors.endDate}
-            >
+            <FormField label="End Date" error={errors.endDate}>
               <DatePicker
                 value={form.endDate}
                 onChange={(v) => setForm({ ...form, endDate: v })}
@@ -232,20 +282,15 @@ export const EditProjectModal = ({ open, onOpenChange, project, onSuccess }: Edi
             </FormField>
           </div>
 
-          <FormField
-            label="Status"
-            error={errors.status}
-          >
-            <select
-              value={form.status}
-              onChange={(e) => setForm({ ...form, status: e.target.value })}
-              className="flex h-[52px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            >
-              <option value="planning">Planning</option>
-              <option value="in_progress">In Progress</option>
-              <option value="on_hold">On Hold</option>
-              <option value="completed">Completed</option>
-            </select>
+          <FormField label="Status" error={errors.status}>
+            <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+              <SelectTrigger className="min-h-[52px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {statusOptions.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </FormField>
 
           <div className="flex gap-3 pt-4">

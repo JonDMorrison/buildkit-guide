@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Plus, Trash2, UserPlus } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2, Plus, Trash2, UserPlus, Info } from "lucide-react";
 import { DatePicker } from "@/components/ui/date-picker";
 import { ProgressBillingFields } from "@/components/invoicing/ProgressBillingFields";
 import type { Invoice, InvoiceLineItem, Client } from "@/types/invoicing";
@@ -19,11 +21,18 @@ interface LineItemDraft {
   category: string;
 }
 
+interface ProjectWithClient {
+  id: string;
+  name: string;
+  client_id?: string | null;
+  location?: string | null;
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   clients: Client[];
-  projects: { id: string; name: string }[];
+  projects: ProjectWithClient[];
   taxRate: number;
   taxLabel: string;
   defaultPaymentTerms: string;
@@ -50,7 +59,6 @@ export const CreateInvoiceModal = ({
   const [lineItems, setLineItems] = useState<LineItemDraft[]>([defaultLine()]);
   const [invoiceType, setInvoiceType] = useState("standard");
   const [poNumber, setPoNumber] = useState("");
-  // Progress billing fields
   const [contractTotal, setContractTotal] = useState(0);
   const [progressPercent, setProgressPercent] = useState(0);
   const [retainagePercent, setRetainagePercent] = useState(0);
@@ -70,6 +78,37 @@ export const CreateInvoiceModal = ({
       setRetainagePercent(0);
     }
   }, [open, initialLineItems, initialProjectId]);
+
+  // Auto-populate client when project is selected
+  useEffect(() => {
+    if (projectId) {
+      const proj = projects.find(p => p.id === projectId) as ProjectWithClient | undefined;
+      if (proj?.client_id) {
+        const directClient = clients.find(c => c.id === proj.client_id);
+        if (directClient) {
+          // Use parent (billing customer) if exists, else direct client
+          const billingClientId = directClient.parent_client_id || directClient.id;
+          setClientId(billingClientId);
+        }
+      }
+    }
+  }, [projectId, projects, clients]);
+
+  // Derive billing/shipping info
+  const billingInfo = useMemo(() => {
+    const selectedClient = clients.find(c => c.id === clientId);
+    if (!selectedClient) return null;
+
+    const proj = projects.find(p => p.id === projectId) as ProjectWithClient | undefined;
+    const apEmail = selectedClient.ap_email || selectedClient.email;
+
+    return {
+      billTo: selectedClient.name,
+      billAddress: [selectedClient.billing_address, selectedClient.city, selectedClient.province, selectedClient.postal_code].filter(Boolean).join(", "),
+      shipTo: proj?.location || null,
+      apEmail,
+    };
+  }, [clientId, projectId, clients, projects]);
 
   const subtotal = invoiceType === "progress"
     ? contractTotal * (progressPercent / 100)
@@ -151,12 +190,26 @@ export const CreateInvoiceModal = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Client</Label>
+              <Label>Project</Label>
+              <Select value={projectId} onValueChange={setProjectId}>
+                <SelectTrigger><SelectValue placeholder="Select project" /></SelectTrigger>
+                <SelectContent>
+                  {projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Bill-To Client</Label>
               <div className="flex gap-2">
                 <Select value={clientId} onValueChange={setClientId}>
-                  <SelectTrigger className="flex-1"><SelectValue placeholder="Select client" /></SelectTrigger>
+                  <SelectTrigger className="flex-1"><SelectValue placeholder="Select client (auto from project)" /></SelectTrigger>
                   <SelectContent>
-                    {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    {clients.filter(c => c.is_active).map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                        {c.parent_client_id ? " (child)" : ""}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 {onAddClient && (
@@ -166,16 +219,37 @@ export const CreateInvoiceModal = ({
                 )}
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>Project</Label>
-              <Select value={projectId} onValueChange={setProjectId}>
-                <SelectTrigger><SelectValue placeholder="Select project" /></SelectTrigger>
-                <SelectContent>
-                  {projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
           </div>
+
+          {/* Billing/Shipping info card */}
+          {billingInfo && (
+            <Card>
+              <CardContent className="py-3 space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Bill To</span>
+                  <span className="font-medium">{billingInfo.billTo}</span>
+                </div>
+                {billingInfo.billAddress && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Billing Address</span>
+                    <span>{billingInfo.billAddress}</span>
+                  </div>
+                )}
+                {billingInfo.shipTo && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Ship To / Job Site</span>
+                    <span>{billingInfo.shipTo}</span>
+                  </div>
+                )}
+                {billingInfo.apEmail && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">A/P Email (default send-to)</span>
+                    <span>{billingInfo.apEmail}</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -188,7 +262,6 @@ export const CreateInvoiceModal = ({
             </div>
           </div>
 
-          {/* Progress Billing Fields */}
           {invoiceType === "progress" && (
             <ProgressBillingFields
               contractTotal={contractTotal}
@@ -200,7 +273,6 @@ export const CreateInvoiceModal = ({
             />
           )}
 
-          {/* Line items (standard + deposit) */}
           {invoiceType !== "progress" && (
             <div className="space-y-2">
               <Label>Line Items</Label>
