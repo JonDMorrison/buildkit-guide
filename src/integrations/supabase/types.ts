@@ -1799,6 +1799,7 @@ export type Database = {
           task_assigned: boolean
           updated_at: string
           user_id: string
+          weekly_digest: boolean
         }
         Insert: {
           blocker_added?: boolean
@@ -1816,6 +1817,7 @@ export type Database = {
           task_assigned?: boolean
           updated_at?: string
           user_id: string
+          weekly_digest?: boolean
         }
         Update: {
           blocker_added?: boolean
@@ -1833,6 +1835,7 @@ export type Database = {
           task_assigned?: boolean
           updated_at?: string
           user_id?: string
+          weekly_digest?: boolean
         }
         Relationships: []
       }

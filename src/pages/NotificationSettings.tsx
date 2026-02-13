@@ -22,6 +22,7 @@ interface NotificationPreferences {
   document_uploaded: boolean;
   incident_report: boolean;
   general: boolean;
+  weekly_digest: boolean;
 }
 
 const NotificationSettings = () => {
@@ -41,6 +42,7 @@ const NotificationSettings = () => {
     document_uploaded: true,
     incident_report: true,
     general: true,
+    weekly_digest: false,
   });
 
   useEffect(() => {
@@ -74,6 +76,7 @@ const NotificationSettings = () => {
           document_uploaded: data.document_uploaded,
           incident_report: data.incident_report,
           general: data.general,
+          weekly_digest: (data as any).weekly_digest ?? false,
         });
       }
     } catch (error: any) {
@@ -174,6 +177,11 @@ const NotificationSettings = () => {
       key: 'general' as const,
       label: 'General Notifications',
       description: 'Get notified about general project updates',
+    },
+    {
+      key: 'weekly_digest' as const,
+      label: 'Weekly Digest Email',
+      description: 'Receive a Monday morning summary email with top recommendations, variance changes, and data quality warnings (Admin/PM only)',
     },
   ];
 
