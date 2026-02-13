@@ -42,7 +42,7 @@ serve(async (req) => {
 
     // 2. Parse input
     const body = await req.json();
-    const { project_id, job_site_id, notes } = body;
+    const { project_id, job_site_id, notes, task_id } = body;
     
     // Get idempotency key and offline replay flag
     const idempotencyKey = getIdempotencyKey(req);
@@ -197,6 +197,7 @@ serve(async (req) => {
         user_id: userId,
         project_id: project_id,
         job_site_id: resolvedJobSiteId,
+        task_id: task_id || null,
         project_timezone: projectTimezone,
         check_in_at: now,
         check_in_latitude: location.latitude,

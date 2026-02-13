@@ -196,7 +196,7 @@ export default function TimeTracking() {
     toast({ title: 'Queued', description: 'Check-out will sync when online.' });
   };
 
-  const handleJobSiteSelect = async (jobSiteId: string | null, notes?: string) => {
+  const handleJobSiteSelect = async (jobSiteId: string | null, notes?: string, taskId?: string | null) => {
     if (!currentProjectId) return;
     setShowJobSiteModal(false);
     setIsProcessing(true);
@@ -216,6 +216,7 @@ export default function TimeTracking() {
         body: { 
           project_id: currentProjectId, 
           job_site_id: jobSiteId, 
+          task_id: taskId || undefined,
           latitude: pendingLocation?.lat, 
           longitude: pendingLocation?.lng,
           accuracy_meters: pendingLocation?.accuracy,

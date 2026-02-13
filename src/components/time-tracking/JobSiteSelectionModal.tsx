@@ -11,18 +11,21 @@ import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { JobSite } from '@/hooks/useJobSites';
 import { LocationPreviewMap } from './LocationPreviewMap';
 import { VoiceNotesInput } from './VoiceNotesInput';
 import { SmartJobSiteSuggestion } from './SmartJobSiteSuggestion';
 import { CreateJobSiteModal } from '@/components/setup/steps/CreateJobSiteModal';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
 interface JobSiteSelectionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   jobSites: JobSite[];
   isLoading: boolean;
-  onSelect: (jobSiteId: string | null, notes?: string) => void;
+  onSelect: (jobSiteId: string | null, notes?: string, taskId?: string | null) => void;
   locationUnavailable?: boolean;
   userLocation?: { lat: number; lng: number; accuracy: number } | null;
   autoSelectSingle?: boolean;
@@ -44,7 +47,25 @@ export function JobSiteSelectionModal({
 }: JobSiteSelectionModalProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [showCreateJobSite, setShowCreateJobSite] = useState(false);
+
+  // Fetch tasks for the active project
+  const { data: projectTasks = [] } = useQuery({
+    queryKey: ['project-tasks-for-time', projectId],
+    queryFn: async () => {
+      if (!projectId) return [];
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('id, title, status')
+        .eq('project_id', projectId)
+        .in('status', ['not_started', 'in_progress'])
+        .order('title');
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!projectId && open,
+  });
 
   // Auto-select if only one job site and autoSelectSingle is true
   useEffect(() => {
@@ -58,11 +79,12 @@ export function JobSiteSelectionModal({
     if (open) {
       setSelectedId(jobSites.length === 1 ? jobSites[0].id : null);
       setNotes('');
+      setSelectedTaskId(null);
     }
   }, [open, jobSites.length]);
 
   const handleConfirm = () => {
-    onSelect(selectedId, notes || undefined);
+    onSelect(selectedId, notes || undefined, selectedTaskId);
   };
 
   // Get selected job site location for map
@@ -207,6 +229,32 @@ export function JobSiteSelectionModal({
                 </>
               )}
             </>
+          )}
+
+          {/* Task selector (optional) */}
+          {projectTasks.length > 0 && (
+            <div className="space-y-1.5">
+              <Label className="text-sm">Task (optional)</Label>
+              <Select
+                value={selectedTaskId || 'none'}
+                onValueChange={(v) => setSelectedTaskId(v === 'none' ? null : v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="No task selected" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No task</SelectItem>
+                  {projectTasks.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Link this time entry to a specific task for accurate scope tracking.
+              </p>
+            </div>
           )}
 
           {/* Voice notes input */}

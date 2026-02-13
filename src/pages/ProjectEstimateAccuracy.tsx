@@ -6,6 +6,7 @@ import { useEstimateAccuracy } from "@/hooks/useEstimateAccuracy";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
 import { useProjectRole } from "@/hooks/useProjectRole";
 import { VarianceCard } from "@/components/insights/VarianceCard";
+import { ScopeItemVarianceTable } from "@/components/insights/ScopeItemVarianceTable";
 import { NoAccess } from "@/components/NoAccess";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -323,6 +324,11 @@ const ProjectEstimateAccuracy = () => {
                 </Table>
               </CardContent>
             </Card>
+
+            {/* Scope Item Variance */}
+            <div className="mt-6">
+              <ScopeItemVarianceTable projectId={selectedProject} />
+            </div>
           </>
         )}
       </div>
