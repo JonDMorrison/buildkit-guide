@@ -4214,6 +4214,10 @@ export type Database = {
         Returns: boolean
       }
       cleanup_expired_idempotency_keys: { Args: never; Returns: number }
+      generate_tasks_from_scope: {
+        Args: { p_mode: string; p_project_id: string }
+        Returns: Json
+      }
       get_next_invoice_number: { Args: { org_id: string }; Returns: string }
       get_task_project_id: { Args: { _task_id: string }; Returns: string }
       get_time_cron_secret: { Args: never; Returns: string }
@@ -4275,6 +4279,14 @@ export type Database = {
       org_role_for_user: {
         Args: { p_org_id: string; p_user_id: string }
         Returns: string
+      }
+      preview_tasks_from_scope: {
+        Args: { p_mode: string; p_project_id: string }
+        Returns: {
+          action: string
+          scope_item_id: string
+          scope_item_name: string
+        }[]
       }
       project_actual_costs: {
         Args: { p_project_id: string }

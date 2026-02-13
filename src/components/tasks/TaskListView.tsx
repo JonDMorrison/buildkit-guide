@@ -19,12 +19,14 @@ import { CSS } from '@dnd-kit/utilities';
 import { ListItem } from '../ListItem';
 import { StatusBadge } from '../StatusBadge';
 import { TradeBadge } from '../TradeBadge';
+import { Badge } from '../ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { GripVertical } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '../ui/checkbox';
+import { useNavigate } from 'react-router-dom';
 
 interface AssignedWorker {
   id: string;
@@ -45,6 +47,9 @@ interface Task {
   due_date: string | null;
   priority: number;
   sort_order?: number;
+  is_generated?: boolean;
+  scope_item_id?: string | null;
+  project_id?: string;
   trades?: {
     name: string;
     trade_type: string;
@@ -118,6 +123,7 @@ const AssignedWorkersAvatars = ({ assignments }: { assignments?: AssignedWorker[
 
 const SortableTaskItem = ({ task, onTaskClick, canReorder }: SortableTaskItemProps) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const {
     attributes,
     listeners,
@@ -219,6 +225,20 @@ const SortableTaskItem = ({ task, onTaskClick, canReorder }: SortableTaskItemPro
           leading={<StatusBadge status={getStatusBadgeType(task.status)} label={getStatusLabel(task.status)} />}
           trailing={
             <div className="flex items-center gap-2">
+              {task.is_generated && (
+                <Badge
+                  variant="outline"
+                  className="text-xs cursor-pointer hover:bg-accent"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (task.project_id) {
+                      navigate(`/projects/${task.project_id}?tab=scope`);
+                    }
+                  }}
+                >
+                  Generated
+                </Badge>
+              )}
               <AssignedWorkersAvatars assignments={task.task_assignments} />
               {task.trades && <TradeBadge trade={task.trades.trade_type as any} />}
             </div>

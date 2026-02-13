@@ -33,6 +33,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { ArrowLeft, AlertTriangle, Shield, CheckCircle2, FileText, Users, Calendar, Plus, MoreVertical, Archive, Receipt, Pencil, FileImage, Trash2 } from 'lucide-react';
+import { ProjectScopeTab } from '@/components/scope/ProjectScopeTab';
 
 interface Project {
   id: string;
@@ -301,9 +302,10 @@ const ProjectOverview = () => {
 
         {/* Tabbed Content */}
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-9">
+          <TabsList className="grid w-full grid-cols-10">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="tasks">Tasks</TabsTrigger>
+            <TabsTrigger value="scope">Scope</TabsTrigger>
             <TabsTrigger value="drawings">Drawings</TabsTrigger>
             <TabsTrigger value="lookahead">Lookahead</TabsTrigger>
             <TabsTrigger value="trades">Trades</TabsTrigger>
@@ -319,6 +321,10 @@ const ProjectOverview = () => {
 
           <TabsContent value="tasks" className="mt-4">
             <ProjectTasks projectId={projectId!} />
+          </TabsContent>
+
+          <TabsContent value="scope" className="mt-4">
+            <ProjectScopeTab projectId={projectId!} />
           </TabsContent>
 
           <TabsContent value="drawings" className="mt-4">
