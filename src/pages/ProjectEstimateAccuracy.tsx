@@ -6,8 +6,12 @@ import { useEstimateAccuracy } from "@/hooks/useEstimateAccuracy";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
 import { useProjectRole } from "@/hooks/useProjectRole";
 import { useOrganizationRole } from "@/hooks/useOrganizationRole";
+import { useProjectSnapshots } from "@/hooks/useProjectSnapshots";
 import { VarianceCard } from "@/components/insights/VarianceCard";
 import { ScopeItemVarianceTable } from "@/components/insights/ScopeItemVarianceTable";
+import { ActualVsPlannedChart } from "@/components/insights/charts/ActualVsPlannedChart";
+import { ProjectMarginChart } from "@/components/insights/charts/ProjectMarginChart";
+import { LaborVarianceChart } from "@/components/insights/charts/LaborVarianceChart";
 import { NoAccess } from "@/components/NoAccess";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,8 +20,9 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
-import { DollarSign, Clock, Package, Wrench, TrendingUp, AlertTriangle, Download } from "lucide-react";
+import { DollarSign, Clock, Package, Wrench, TrendingUp, AlertTriangle, Download, Info } from "lucide-react";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
 
 const ProjectEstimateAccuracy = () => {
@@ -30,6 +35,7 @@ const ProjectEstimateAccuracy = () => {
   const { isGlobalAdmin, hasAnyProjectRole, loading: roleLoading } = useProjectRole();
   const { isAdmin: isOrgAdmin } = useOrganizationRole();
   const { variance, hasBudget, loading, error } = useEstimateAccuracy(selectedProject || null);
+  const { snapshots, loading: snapshotsLoading } = useProjectSnapshots(selectedProject || null);
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -326,6 +332,30 @@ const ProjectEstimateAccuracy = () => {
                 </Table>
               </CardContent>
             </Card>
+
+            {/* Weekly Trend Charts */}
+            {(snapshots.length > 0 || snapshotsLoading) && (
+              <div className="mt-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <h3 className="text-base font-semibold">Weekly Trends</h3>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Info className="h-4 w-4 text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Snapshots are collected weekly. Use Insights → Snapshots to backfill history.
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  <ActualVsPlannedChart snapshots={snapshots} loading={snapshotsLoading} />
+                  <ProjectMarginChart snapshots={snapshots} loading={snapshotsLoading} />
+                  <LaborVarianceChart snapshots={snapshots} loading={snapshotsLoading} />
+                </div>
+              </div>
+            )}
 
             {/* Scope Item Variance */}
             <div className="mt-6">

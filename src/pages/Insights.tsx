@@ -4,7 +4,11 @@ import { Layout } from "@/components/Layout";
 import { SectionHeader } from "@/components/SectionHeader";
 import { usePortfolioInsights, PortfolioRow } from "@/hooks/usePortfolioInsights";
 import { useProjectRole } from "@/hooks/useProjectRole";
+import { useOrgSnapshots } from "@/hooks/useOrgSnapshots";
 import { PortfolioExportCSV } from "@/components/insights/PortfolioExportCSV";
+import { MarginTrendChart } from "@/components/insights/charts/MarginTrendChart";
+import { CostTrendChart } from "@/components/insights/charts/CostTrendChart";
+import { OverBudgetTrendChart } from "@/components/insights/charts/OverBudgetTrendChart";
 import { NoAccess } from "@/components/NoAccess";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,10 +18,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { DollarSign, TrendingUp, AlertTriangle, BarChart3, Clock, Activity, ShieldAlert, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DollarSign, TrendingUp, AlertTriangle, BarChart3, Clock, Activity, ShieldAlert, ChevronLeft, ChevronRight, CalendarIcon, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
 import { getDataQualityFlags } from "@/lib/dataQualityFlags";
+import { format, subWeeks } from "date-fns";
+import { cn } from "@/lib/utils";
 
 const statusOptions = [
   { value: "active", label: "Active (Default)" },
@@ -47,6 +55,15 @@ const Insights = () => {
   const [qualityFilters, setQualityFilters] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState<number>(25);
+
+  // Date range for snapshot charts
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(subWeeks(new Date(), 12));
+  const [dateTo, setDateTo] = useState<Date | undefined>(new Date());
+
+  const dateFromStr = dateFrom ? format(dateFrom, "yyyy-MM-dd") : undefined;
+  const dateToStr = dateTo ? format(dateTo, "yyyy-MM-dd") : undefined;
+
+  const { snapshots, loading: snapshotsLoading } = useOrgSnapshots(dateFromStr, dateToStr);
 
   // "active" is a UI-only composite filter — pass null to the hook (fetch all) and filter client-side
   const rpcStatusFilter = statusFilter === "all" || statusFilter === "active" ? null : statusFilter;
@@ -167,21 +184,34 @@ const Insights = () => {
               </SelectContent>
             </Select>
           </div>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="space-y-1.5 opacity-50 cursor-not-allowed">
-                  <Label>Date Range</Label>
-                  <div className="h-11 px-3 flex items-center border rounded-md text-sm text-muted-foreground">
-                    Coming soon
-                  </div>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                Coming soon with weekly snapshots
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <div className="space-y-1.5">
+            <Label>From</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("w-[140px] justify-start text-left font-normal", !dateFrom && "text-muted-foreground")}>
+                  <CalendarIcon className="h-4 w-4 mr-1.5" />
+                  {dateFrom ? format(dateFrom, "MMM d, yy") : "Start"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} initialFocus className={cn("p-3 pointer-events-auto")} />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <div className="space-y-1.5">
+            <Label>To</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("w-[140px] justify-start text-left font-normal", !dateTo && "text-muted-foreground")}>
+                  <CalendarIcon className="h-4 w-4 mr-1.5" />
+                  {dateTo ? format(dateTo, "MMM d, yy") : "End"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={dateTo} onSelect={setDateTo} initialFocus className={cn("p-3 pointer-events-auto")} />
+              </PopoverContent>
+            </Popover>
+          </div>
 
           {/* Data Quality Filters */}
           <div className="space-y-1.5">
@@ -203,6 +233,14 @@ const Insights = () => {
           </div>
 
           <div className="ml-auto flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/insights/snapshots")}
+            >
+              <Camera className="h-4 w-4 mr-1.5" />
+              Snapshots
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -310,6 +348,29 @@ const Insights = () => {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Trend Charts from Snapshots */}
+            {snapshots.length > 0 && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+                <MarginTrendChart snapshots={snapshots} loading={snapshotsLoading} />
+                <CostTrendChart snapshots={snapshots} loading={snapshotsLoading} />
+                <OverBudgetTrendChart snapshots={snapshots} loading={snapshotsLoading} />
+              </div>
+            )}
+            {!snapshotsLoading && snapshots.length === 0 && (
+              <Card className="mb-6">
+                <CardContent className="py-6 text-center">
+                  <Camera className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    No weekly snapshots yet.{" "}
+                    <button className="underline text-primary" onClick={() => navigate("/insights/snapshots")}>
+                      Generate snapshots
+                    </button>{" "}
+                    to see trend charts.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Variance Leaderboard */}
             <Card className="mb-6">
