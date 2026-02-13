@@ -1,6 +1,6 @@
 # QA Gauntlet — Full-Stack Test Plan
 
-> **Version**: 1.2 · **Date**: 2026-02-13 · **Scope**: Budget-to-Execution Intelligence, Estimate Accuracy, Task Automation, Client Hierarchy, Invoice Snapshots, Invoice Accounting Rules, Task-Level Time Tracking, Data Health, Snapshots/Trends/Recommendations/AI, Time Entry Inclusion Contract
+> **Version**: 1.3 · **Date**: 2026-02-13 · **Scope**: Budget-to-Execution Intelligence, Estimate Accuracy, Task Automation, Client Hierarchy, Invoice Snapshots, Invoice Accounting Rules, AI Insight EVIDENCE Verifier, Task-Level Time Tracking, Data Health, Snapshots/Trends/Recommendations/AI, Time Entry Inclusion Contract
 
 ---
 
@@ -161,11 +161,57 @@
 | H-017 | Recommendation links to correct fix path | PM | Recommendation with link to budget tab | 1. Click "Fix" | Navigates to correct URL with projectId | Broken link; wrong tab | URL check | P1 |
 | H-018 | Portfolio recommendations — top 5 limit | Admin | 12 total recommendations across org | 1. View org recommendations panel | Shows exactly 5, sorted by severity (critical first) | Shows all 12; wrong sort | Count visible cards | P1 |
 | H-019 | AI insight — idempotency via input_hash | Admin | Insight exists for same hash | 1. Regenerate insight with same data | Existing row updated, not duplicated | Duplicate rows | `SELECT COUNT(*) FROM ai_insights WHERE organization_id=:org_id AND input_hash=:hash` = 1 | P0 |
-| H-020 | AI insight — no invented numbers | Admin | Snapshots with specific metrics | 1. Generate insight 2. Parse response | Every number in narrative exists in the input metrics JSON | AI hallucinated numbers | Manual audit of narrative vs input | P0 |
+| H-020 | AI insight — no invented numbers (EVIDENCE verifier) | Admin | Snapshots with specific metrics | 1. Generate insight via `generate-insights` edge function 2. Parse response JSON 3. Extract `evidence` object 4. For each key in `evidence`, verify key exists as a field name in the input snapshot payload 5. For each numeric value in `evidence`, verify it matches a value in the input snapshot within ±0.01 tolerance | Every evidence key maps to a real snapshot field; every evidence value matches input data; `evidence_warnings` array is empty or absent | AI hallucinated numbers appear in evidence with no match; evidence block missing entirely; key names don't correspond to snapshot fields | **Automated**: parse `content.evidence`, cross-reference against `metricsForPrompt`. `SELECT content->'evidence_warnings' FROM ai_insights WHERE id=:id` — must be NULL or empty array | P0 |
 | H-021 | AI insight — regenerate button (Admin/PM only) | Worker | Insight exists | 1. View insight card | Regenerate button NOT shown for Worker | Worker can regenerate | Visual check | P1 |
 | H-022 | Weekly digest email — opt-in preference | Admin | weekly_digest=true in notification_preferences | 1. Wait for Monday cron (or trigger manually) | Email received with top 5 recs + variance table | No email; wrong content | Check Resend delivery logs | P1 |
 | H-023 | Weekly digest — non-admin excluded | Worker | weekly_digest=true but role=worker | 1. Cron fires | Worker does NOT receive email | Worker gets admin-level digest | Check sent count | P0 |
 | H-024 | Weekly digest — opted-out admin | Admin | weekly_digest=false | 1. Cron fires | No email sent to this admin | Email sent despite opt-out | Check sent list | P1 |
+
+### H-EV — AI Insight EVIDENCE Verifier (Deterministic Anti-Hallucination)
+
+> **Contract**: Every AI-generated insight MUST include a structured `evidence` JSON object. Every number cited in the narrative MUST appear in `evidence`. Every value in `evidence` MUST trace to an input snapshot field.
+
+#### EVIDENCE Schema
+
+```json
+{
+  "what_changed": "Actual costs rose to $142,500, up from $128,000 last week...",
+  "what_it_means": "Margin dropped to 18.2% from 22.1%...",
+  "what_to_do": "Review the 3 over-budget projects...",
+  "evidence": {
+    "actual_cost": 142500,
+    "actual_cost_previous": 128000,
+    "margin_pct": 18.2,
+    "margin_pct_previous": 22.1,
+    "over_budget_count": 3
+  }
+}
+```
+
+#### Verification Algorithm (implemented in edge function)
+
+```
+1. Parse content.evidence from AI response
+2. Collect all numeric values from input metricsForPrompt[] into Set<number>
+3. For each (key, value) in evidence:
+   a. Assert typeof value === 'number'
+   b. Assert value exists in the snapshot values set (tolerance ±0.01)
+4. If any assertion fails → tag content.evidence_warnings with failed keys
+5. Log warning for missing evidence block
+```
+
+#### EVIDENCE Verifier Tests
+
+| # | Test | Preconditions | Steps | Expected | SQL Verification | Sev |
+|---|------|---------------|-------|----------|-----------------|-----|
+| HEV-01 | Evidence block present | Generate insight with 4+ snapshots | Parse response JSON | `content.evidence` is non-null object with ≥1 key | `SELECT content->'evidence' FROM ai_insights WHERE id=:id` is not null | P0 |
+| HEV-02 | All evidence values trace to input | Generate insight; collect input snapshot numeric values | For each value in `evidence`, check membership in input values set | All match within ±0.01 | `content->'evidence_warnings'` is null or `'[]'` | P0 |
+| HEV-03 | Evidence key names are valid snapshot fields | Generate insight | For each key in `evidence`, check it exists as a field in any input snapshot | All keys correspond to known fields (or `_previous` suffixed versions) | Manual key audit against snapshot schema | P1 |
+| HEV-04 | Mutated snapshot produces new hash + new evidence | Snapshot exists; modify `total_actual_cost` by +$10,000 | Regenerate insight | `input_hash` differs from original; `evidence.actual_cost` matches new value | `SELECT input_hash, content->'evidence'->'actual_cost' FROM ai_insights ORDER BY created_at DESC LIMIT 2` — hashes differ, values differ | P0 |
+| HEV-05 | Intentionally hallucinated number caught | (Test harness) Inject fake evidence value not in input | Run evidence validator | `evidence_warnings` contains the bad key | `content->'evidence_warnings'` includes injected key name | P0 |
+| HEV-06 | Missing evidence block flagged | AI returns JSON without `evidence` key | Check response | `evidence_warnings` = `['__missing_evidence_block']` | `content->'evidence_warnings'` = `'["__missing_evidence_block"]'` | P0 |
+| HEV-07 | Cached response retains evidence | Same input hash, second call | Response has `cached: true` | `content.evidence` still present and valid from original generation | Same evidence block returned | P1 |
+| HEV-08 | Idempotent re-run does not shift evidence | Same data, regenerate | Compare evidence blocks | Identical evidence keys and values (AI determinism at temp=0.3 may vary — tolerance: same keys, values within ±0.01) | Compare two rows' `content->'evidence'` | P1 |
 
 ### I — Cross-Cutting & Edge Cases
 
@@ -1203,7 +1249,8 @@ END $$;
 - [ ] Concurrency tests: no data corruption detected
 - [ ] CSV export validation: headers + sample values verified
 - [ ] Weekly digest: confirmed delivery + correct content for opted-in Admin/PM
-- [ ] AI insights: no hallucinated numbers in narratives
+- [ ] AI insights: EVIDENCE block present and validated (no `evidence_warnings`)
+- [ ] AI insights: mutated snapshot produces new evidence matching new data
 - [ ] Cross-org isolation: confirmed for all 4 test orgs
 - [ ] Empty state handling: no crashes on orgs/projects with zero data
 
