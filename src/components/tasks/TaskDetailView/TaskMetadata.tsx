@@ -72,10 +72,11 @@ export const TaskMetadata = ({ task, trade }: TaskMetadataProps) => {
     return format(new Date(task.start_date), 'MMM d');
   };
 
-  // Format estimated hours
+  // Format budget hours — planned_hours is canonical, estimated_hours is legacy fallback
   const formatEstimate = () => {
-    if (!task.estimated_hours) return 'Not set';
-    return `${task.estimated_hours}h`;
+    const hours = task.planned_hours ?? task.estimated_hours;
+    if (!hours) return 'Not set';
+    return `${hours}h`;
   };
 
   const dueDateInfo = formatDueDate();
@@ -114,7 +115,7 @@ export const TaskMetadata = ({ task, trade }: TaskMetadataProps) => {
       {/* Estimate */}
       <MetadataCard
         icon={Clock}
-        label="Estimate"
+        label="Budget"
         value={formatEstimate()}
         subValue={task.start_date ? `Start: ${formatStartDate()}` : undefined}
       />
