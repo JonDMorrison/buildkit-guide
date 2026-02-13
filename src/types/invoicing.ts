@@ -92,6 +92,12 @@ export interface Invoice {
   po_number: string | null;
   last_reminder_sent_at: string | null;
   reminder_count: number;
+  // Snapshot fields for historical stability
+  bill_to_client_id: string | null;
+  bill_to_name: string | null;
+  bill_to_address: string | null;
+  ship_to_address: string | null;
+  send_to_emails: string | null;
   // Joined
   client?: Client | null;
   project?: { name: string; job_number: string | null } | null;

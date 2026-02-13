@@ -1358,6 +1358,9 @@ export type Database = {
           approval_status: string | null
           approved_at: string | null
           approved_by: string | null
+          bill_to_address: string | null
+          bill_to_client_id: string | null
+          bill_to_name: string | null
           client_id: string | null
           contract_total: number | null
           created_at: string
@@ -1382,7 +1385,9 @@ export type Database = {
           retainage_percent: number | null
           retainage_released: boolean | null
           retainage_released_at: string | null
+          send_to_emails: string | null
           sent_at: string | null
+          ship_to_address: string | null
           status: Database["public"]["Enums"]["invoice_status"]
           subtotal: number
           tax_amount: number
@@ -1394,6 +1399,9 @@ export type Database = {
           approval_status?: string | null
           approved_at?: string | null
           approved_by?: string | null
+          bill_to_address?: string | null
+          bill_to_client_id?: string | null
+          bill_to_name?: string | null
           client_id?: string | null
           contract_total?: number | null
           created_at?: string
@@ -1418,7 +1426,9 @@ export type Database = {
           retainage_percent?: number | null
           retainage_released?: boolean | null
           retainage_released_at?: string | null
+          send_to_emails?: string | null
           sent_at?: string | null
+          ship_to_address?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal?: number
           tax_amount?: number
@@ -1430,6 +1440,9 @@ export type Database = {
           approval_status?: string | null
           approved_at?: string | null
           approved_by?: string | null
+          bill_to_address?: string | null
+          bill_to_client_id?: string | null
+          bill_to_name?: string | null
           client_id?: string | null
           contract_total?: number | null
           created_at?: string
@@ -1454,7 +1467,9 @@ export type Database = {
           retainage_percent?: number | null
           retainage_released?: boolean | null
           retainage_released_at?: string | null
+          send_to_emails?: string | null
           sent_at?: string | null
+          ship_to_address?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal?: number
           tax_amount?: number
@@ -1462,6 +1477,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "invoices_bill_to_client_id_fkey"
+            columns: ["bill_to_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "invoices_client_id_fkey"
             columns: ["client_id"]

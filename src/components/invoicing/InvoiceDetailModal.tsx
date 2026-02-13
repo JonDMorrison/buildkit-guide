@@ -1,13 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Plus, Trash2, FileText, Pencil, Save, X, Clock } from "lucide-react";
+import { Loader2, Plus, Trash2, FileText, Pencil, Save, X, Clock, RefreshCw, MapPin, Mail } from "lucide-react";
 import { format } from "date-fns";
 import { useInvoicePayments } from "@/hooks/useInvoicePayments";
 import { InvoiceActivityTimeline } from "@/components/invoicing/InvoiceActivityTimeline";
@@ -29,6 +30,13 @@ const invoiceTypeLabels: Record<string, string> = {
   retainage_release: "Holdback Release",
 };
 
+interface ProjectWithClient {
+  id: string;
+  name: string;
+  client_id?: string | null;
+  location?: string | null;
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -36,6 +44,8 @@ interface Props {
   lineItems: InvoiceLineItem[];
   settings: InvoiceSettings | null;
   client: Client | null;
+  clients?: Client[];
+  projects?: ProjectWithClient[];
   onSaveLineItems?: (invoiceId: string, items: Partial<InvoiceLineItem>[]) => Promise<void>;
   onUpdateInvoice?: (id: string, updates: Partial<Invoice>) => Promise<boolean>;
   onExportPDF?: (invoice: Invoice) => void;
@@ -44,7 +54,7 @@ interface Props {
 }
 
 export const InvoiceDetailModal = ({
-  open, onOpenChange, invoice, lineItems, settings, client,
+  open, onOpenChange, invoice, lineItems, settings, client, clients, projects,
   onSaveLineItems, onUpdateInvoice, onExportPDF, onSaved, currencySymbol = "$",
 }: Props) => {
   const [editing, setEditing] = useState(false);
@@ -92,6 +102,34 @@ export const InvoiceDetailModal = ({
     setSaving(false);
     setEditing(false);
     onSaved?.();
+  };
+
+  // Resolve current billing info from client/project for snapshot refresh
+  const resolveCurrentSnapshot = () => {
+    if (!onUpdateInvoice || !invoice) return;
+    const billingClient = (() => {
+      if (!invoice.project_id || !projects || !clients) return client;
+      const proj = projects.find(p => p.id === invoice.project_id);
+      if (!proj?.client_id) return client;
+      const directClient = clients.find(c => c.id === proj.client_id);
+      if (!directClient) return client;
+      const parentId = directClient.parent_client_id;
+      return parentId ? clients.find(c => c.id === parentId) || directClient : directClient;
+    })();
+
+    const proj = projects?.find(p => p.id === invoice.project_id);
+    const billAddress = billingClient
+      ? [billingClient.billing_address, billingClient.city, billingClient.province, billingClient.postal_code].filter(Boolean).join(", ")
+      : null;
+
+    const updates: Partial<Invoice> = {
+      bill_to_client_id: billingClient?.id || null,
+      bill_to_name: billingClient?.name || null,
+      bill_to_address: billAddress || null,
+      ship_to_address: proj?.location || null,
+      send_to_emails: billingClient?.ap_email || billingClient?.email || null,
+    };
+    onUpdateInvoice(invoice.id, updates).then(() => onSaved?.());
   };
 
   return (
@@ -152,7 +190,60 @@ export const InvoiceDetailModal = ({
               )}
             </div>
 
-            {/* Progress billing info */}
+            {/* Billing/Shipping Snapshot */}
+            {(invoice.bill_to_name || invoice.bill_to_address || invoice.ship_to_address || invoice.send_to_emails) && (
+              <div className="bg-muted/50 rounded-xl p-4 text-sm space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-semibold">Billing & Shipping Snapshot</Label>
+                  {canEdit && onUpdateInvoice && (
+                    <Button type="button" variant="outline" size="sm" onClick={resolveCurrentSnapshot}>
+                      <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                      Update from Customer/Project
+                    </Button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {invoice.bill_to_name && (
+                    <div>
+                      <p className="text-muted-foreground text-xs">Bill To</p>
+                      <p className="font-medium">{invoice.bill_to_name}</p>
+                    </div>
+                  )}
+                  {invoice.bill_to_address && (
+                    <div>
+                      <p className="text-muted-foreground text-xs flex items-center gap-1"><MapPin className="h-3 w-3" />Billing Address</p>
+                      <p>{invoice.bill_to_address}</p>
+                    </div>
+                  )}
+                  {invoice.ship_to_address && (
+                    <div>
+                      <p className="text-muted-foreground text-xs flex items-center gap-1"><MapPin className="h-3 w-3" />Ship To / Job Site</p>
+                      <p>{invoice.ship_to_address}</p>
+                    </div>
+                  )}
+                  {invoice.send_to_emails && (
+                    <div>
+                      <p className="text-muted-foreground text-xs flex items-center gap-1"><Mail className="h-3 w-3" />Send To</p>
+                      <p>{invoice.send_to_emails}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* No snapshot warning for older invoices */}
+            {!invoice.bill_to_name && client && canEdit && onUpdateInvoice && (
+              <Alert>
+                <AlertDescription className="flex items-center justify-between">
+                  <span className="text-sm">This invoice has no billing snapshot. Click to populate from current customer data.</span>
+                  <Button type="button" variant="outline" size="sm" className="ml-3 shrink-0" onClick={resolveCurrentSnapshot}>
+                    <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                    Populate Snapshot
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
+
             {invType === "progress" && (
               <div className="bg-muted/50 rounded-lg p-3 text-sm space-y-1">
                 <Label className="text-sm font-semibold">Progress Billing</Label>

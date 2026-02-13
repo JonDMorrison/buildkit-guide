@@ -1051,6 +1051,7 @@ const Invoicing = () => {
         <InvoiceDetailModal open={showDetail} onOpenChange={setShowDetail}
           invoice={detailInvoice} lineItems={detailLineItems}
           settings={settings} client={detailInvoice ? clients.find((c) => c.id === detailInvoice.client_id) || null : null}
+          clients={clients} projects={projects}
           onSaveLineItems={handleDetailSaveLineItems} onUpdateInvoice={updateInvoice} onExportPDF={triggerPDF}
           onSaved={handleDetailSaved}
           currencySymbol={currencySymbol}
