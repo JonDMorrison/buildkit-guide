@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -6,8 +6,11 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertTriangle, Clock, Eye } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { AlertTriangle, Clock, Eye, Info, LinkIcon } from 'lucide-react';
 import { formatNumber } from '@/lib/formatters';
+import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
   DialogContent,
@@ -17,6 +20,7 @@ import {
 
 interface ScopeItemVarianceProps {
   projectId: string;
+  canEdit?: boolean;
 }
 
 interface ScopeItemRow {
@@ -30,19 +34,31 @@ interface ScopeItemRow {
 
 interface UnassignedEntry {
   id: string;
+  user_id: string;
   user_name: string;
   check_in_at: string;
   duration_hours: number;
+  notes: string | null;
 }
 
-export function ScopeItemVarianceTable({ projectId }: ScopeItemVarianceProps) {
+interface CoverageStats {
+  totalProjectHours: number;
+  taskLinkedHours: number;
+  coveragePercent: number;
+  unassignedHours: number;
+  unassignedCount: number;
+}
+
+export function ScopeItemVarianceTable({ projectId, canEdit = false }: ScopeItemVarianceProps) {
+  const { toast } = useToast();
   const [rows, setRows] = useState<ScopeItemRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [unassignedHours, setUnassignedHours] = useState(0);
-  const [unassignedCount, setUnassignedCount] = useState(0);
+  const [coverage, setCoverage] = useState<CoverageStats>({ totalProjectHours: 0, taskLinkedHours: 0, coveragePercent: 0, unassignedHours: 0, unassignedCount: 0 });
   const [showUnassigned, setShowUnassigned] = useState(false);
   const [unassignedEntries, setUnassignedEntries] = useState<UnassignedEntry[]>([]);
   const [loadingUnassigned, setLoadingUnassigned] = useState(false);
+  const [projectTasks, setProjectTasks] = useState<{ id: string; title: string }[]>([]);
+  const [assigningId, setAssigningId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!projectId) return;
@@ -58,12 +74,6 @@ export function ScopeItemVarianceTable({ projectId }: ScopeItemVarianceProps) {
           .eq('item_type', 'task')
           .eq('is_archived', false)
           .order('sort_order');
-
-        if (!scopeItems?.length) {
-          setRows([]);
-          setLoading(false);
-          return;
-        }
 
         // Fetch tasks linked to scope items
         const { data: tasks } = await supabase
@@ -83,9 +93,8 @@ export function ScopeItemVarianceTable({ projectId }: ScopeItemVarianceProps) {
         // Fetch time entries WITH task_id for this project
         const allTaskIds = Array.from(tasksByScope.values()).flat();
         let timeByTask = new Map<string, number>();
-        
+
         if (allTaskIds.length > 0) {
-          // Batch in groups of 100
           for (let i = 0; i < allTaskIds.length; i += 100) {
             const batch = allTaskIds.slice(i, i + 100);
             const { data: entries } = await supabase
@@ -94,7 +103,7 @@ export function ScopeItemVarianceTable({ projectId }: ScopeItemVarianceProps) {
               .eq('project_id', projectId)
               .eq('status', 'closed')
               .in('task_id', batch);
-            
+
             for (const e of entries || []) {
               if (!e.task_id) continue;
               timeByTask.set(e.task_id, (timeByTask.get(e.task_id) || 0) + (Number(e.duration_hours) || 0));
@@ -103,7 +112,7 @@ export function ScopeItemVarianceTable({ projectId }: ScopeItemVarianceProps) {
         }
 
         // Build rows
-        const result: ScopeItemRow[] = scopeItems.map((si) => {
+        const result: ScopeItemRow[] = (scopeItems || []).map((si) => {
           const linkedTasks = tasksByScope.get(si.id) || [];
           const actualHours = linkedTasks.reduce((sum, tid) => sum + (timeByTask.get(tid) || 0), 0);
           const planned = Number(si.planned_hours) || 0;
@@ -119,19 +128,35 @@ export function ScopeItemVarianceTable({ projectId }: ScopeItemVarianceProps) {
 
         setRows(result);
 
-        // Count unassigned time entries (task_id is null)
-        const { count, data: unassignedData } = await supabase
+        // Coverage stats: total project hours vs task-linked hours
+        const { data: allEntries } = await supabase
           .from('time_entries')
-          .select('duration_hours', { count: 'exact' })
+          .select('duration_hours, task_id')
           .eq('project_id', projectId)
-          .eq('status', 'closed')
-          .is('task_id', null);
+          .eq('status', 'closed');
 
-        const totalUnassigned = (unassignedData || []).reduce(
-          (s, e) => s + (Number(e.duration_hours) || 0), 0
-        );
-        setUnassignedHours(totalUnassigned);
-        setUnassignedCount(count || 0);
+        let totalH = 0;
+        let linkedH = 0;
+        let unassignedC = 0;
+        for (const e of allEntries || []) {
+          const h = Number(e.duration_hours) || 0;
+          totalH += h;
+          if (e.task_id) {
+            linkedH += h;
+          } else {
+            unassignedC++;
+          }
+        }
+        const unassignedH = totalH - linkedH;
+        const pct = totalH > 0 ? (linkedH / totalH) * 100 : 0;
+
+        setCoverage({
+          totalProjectHours: totalH,
+          taskLinkedHours: linkedH,
+          coveragePercent: pct,
+          unassignedHours: unassignedH,
+          unassignedCount: unassignedC,
+        });
       } catch (err) {
         console.error('ScopeItemVariance fetch error:', err);
       } finally {
@@ -142,38 +167,79 @@ export function ScopeItemVarianceTable({ projectId }: ScopeItemVarianceProps) {
     fetchData();
   }, [projectId]);
 
-  const handleViewUnassigned = async () => {
+  const handleViewUnassigned = useCallback(async () => {
     setShowUnassigned(true);
     setLoadingUnassigned(true);
     try {
-      const { data } = await supabase
-        .from('time_entries')
-        .select('id, user_id, check_in_at, duration_hours')
-        .eq('project_id', projectId)
-        .eq('status', 'closed')
-        .is('task_id', null)
-        .order('check_in_at', { ascending: false })
-        .limit(50);
+      const [entriesRes, tasksRes] = await Promise.all([
+        supabase
+          .from('time_entries')
+          .select('id, user_id, check_in_at, duration_hours, notes')
+          .eq('project_id', projectId)
+          .eq('status', 'closed')
+          .is('task_id', null)
+          .order('check_in_at', { ascending: false })
+          .limit(100),
+        supabase
+          .from('tasks')
+          .select('id, title')
+          .eq('project_id', projectId)
+          .in('status', ['not_started', 'in_progress'])
+          .order('title'),
+      ]);
 
       // Get user names
-      const userIds = [...new Set((data || []).map(e => e.user_id))];
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, full_name')
-        .in('id', userIds);
+      const userIds = [...new Set((entriesRes.data || []).map(e => e.user_id))];
+      const { data: profiles } = userIds.length > 0
+        ? await supabase.from('profiles').select('id, full_name').in('id', userIds)
+        : { data: [] };
 
       const nameMap = new Map((profiles || []).map(p => [p.id, p.full_name || 'Unknown']));
 
-      setUnassignedEntries((data || []).map(e => ({
+      setUnassignedEntries((entriesRes.data || []).map(e => ({
         id: e.id,
+        user_id: e.user_id,
         user_name: nameMap.get(e.user_id) || 'Unknown',
         check_in_at: e.check_in_at,
         duration_hours: Number(e.duration_hours) || 0,
+        notes: e.notes,
       })));
+      setProjectTasks(tasksRes.data || []);
     } catch (err) {
       console.error('Unassigned entries fetch error:', err);
     } finally {
       setLoadingUnassigned(false);
+    }
+  }, [projectId]);
+
+  const handleAssignTask = async (entryId: string, taskId: string) => {
+    setAssigningId(entryId);
+    try {
+      const { error } = await supabase
+        .from('time_entries')
+        .update({ task_id: taskId })
+        .eq('id', entryId);
+      if (error) throw error;
+      // Remove from list
+      setUnassignedEntries(prev => prev.filter(e => e.id !== entryId));
+      setCoverage(prev => {
+        const entry = unassignedEntries.find(e => e.id === entryId);
+        const h = entry?.duration_hours || 0;
+        const newLinked = prev.taskLinkedHours + h;
+        return {
+          ...prev,
+          taskLinkedHours: newLinked,
+          unassignedHours: prev.unassignedHours - h,
+          unassignedCount: prev.unassignedCount - 1,
+          coveragePercent: prev.totalProjectHours > 0 ? (newLinked / prev.totalProjectHours) * 100 : 0,
+        };
+      });
+      toast({ title: 'Task assigned', description: 'Time entry linked to task.' });
+    } catch (err) {
+      console.error('Assign task error:', err);
+      toast({ title: 'Failed to assign', variant: 'destructive' });
+    } finally {
+      setAssigningId(null);
     }
   };
 
@@ -181,20 +247,54 @@ export function ScopeItemVarianceTable({ projectId }: ScopeItemVarianceProps) {
     return <Skeleton className="h-48" />;
   }
 
-  if (rows.length === 0) {
-    return null; // Don't show section if no scope items
+  if (rows.length === 0 && coverage.totalProjectHours === 0) {
+    return null;
   }
+
+  const coverageColor = coverage.coveragePercent >= 80 ? 'text-status-complete' : coverage.coveragePercent >= 50 ? 'text-amber-600' : 'text-destructive';
 
   return (
     <>
-      {/* Unassigned hours warning */}
-      {unassignedCount > 0 && (
+      {/* Coverage summary strip */}
+      {coverage.totalProjectHours > 0 && (
+        <Card className="mb-4">
+          <CardContent className="py-3 px-4">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+              <div className="flex items-center gap-1.5">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Task-linked time coverage:</span>
+                <span className={`font-semibold ${coverageColor}`}>
+                  {coverage.coveragePercent.toFixed(0)}%
+                </span>
+                <span className="text-muted-foreground">
+                  ({formatNumber(coverage.taskLinkedHours)}h of {formatNumber(coverage.totalProjectHours)}h)
+                </span>
+              </div>
+              {coverage.unassignedHours > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
+                  <span className="text-amber-600 font-medium">
+                    Unassigned: {formatNumber(coverage.unassignedHours)}h
+                  </span>
+                  <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={handleViewUnassigned}>
+                    <Eye className="h-3 w-3 mr-1" />
+                    View
+                  </Button>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Unassigned hours alert (when there are scope items but unassigned time) */}
+      {coverage.unassignedCount > 0 && rows.length > 0 && (
         <Alert className="mb-4">
           <Clock className="h-4 w-4" />
           <AlertTitle>Unassigned Time Entries</AlertTitle>
           <AlertDescription className="flex items-center justify-between">
             <span>
-              {formatNumber(unassignedHours)} hours ({unassignedCount} entries) are not assigned to any task. Scope-level hours may be incomplete.
+              {formatNumber(coverage.unassignedHours)} hours ({coverage.unassignedCount} entries) are not assigned to any task and are excluded from scope variance.
             </span>
             <Button variant="outline" size="sm" className="ml-4 shrink-0" onClick={handleViewUnassigned}>
               <Eye className="h-4 w-4 mr-1" />
@@ -204,53 +304,70 @@ export function ScopeItemVarianceTable({ projectId }: ScopeItemVarianceProps) {
         </Alert>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Scope Item Variance</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Scope Item</TableHead>
-                <TableHead className="text-right">Tasks</TableHead>
-                <TableHead className="text-right">Planned</TableHead>
-                <TableHead className="text-right">Actual</TableHead>
-                <TableHead className="text-right">Delta</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((r) => {
-                const isOver = r.delta < 0;
-                return (
-                  <TableRow key={r.id}>
-                    <TableCell className="font-medium">{r.title}</TableCell>
-                    <TableCell className="text-right">
-                      <Badge variant="secondary" className="text-xs">{r.task_count}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatNumber(r.planned_hours)}h
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatNumber(r.actual_hours)}h
-                    </TableCell>
-                    <TableCell className={`text-right tabular-nums font-medium ${isOver ? 'text-destructive' : r.delta > 0 ? 'text-status-complete' : ''}`}>
-                      {r.delta > 0 ? '+' : ''}{formatNumber(r.delta)}h
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      {rows.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              Scope Item Variance
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs text-sm">
+                    Scope variance uses only task-linked time entries. Assign tasks during check-in to improve accuracy.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Scope Item</TableHead>
+                  <TableHead className="text-right">Tasks</TableHead>
+                  <TableHead className="text-right">Planned</TableHead>
+                  <TableHead className="text-right">Actual</TableHead>
+                  <TableHead className="text-right">Delta</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((r) => {
+                  const isOver = r.delta < 0;
+                  return (
+                    <TableRow key={r.id}>
+                      <TableCell className="font-medium">{r.title}</TableCell>
+                      <TableCell className="text-right">
+                        <Badge variant="secondary" className="text-xs">{r.task_count}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatNumber(r.planned_hours)}h
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatNumber(r.actual_hours)}h
+                      </TableCell>
+                      <TableCell className={`text-right tabular-nums font-medium ${isOver ? 'text-destructive' : r.delta > 0 ? 'text-status-complete' : ''}`}>
+                        {r.delta > 0 ? '+' : ''}{formatNumber(r.delta)}h
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Unassigned entries dialog */}
       <Dialog open={showUnassigned} onOpenChange={setShowUnassigned}>
-        <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Unassigned Time Entries</DialogTitle>
           </DialogHeader>
+          <p className="text-sm text-muted-foreground mb-3">
+            These time entries have no task assigned and are not included in scope variance calculations.
+          </p>
           {loadingUnassigned ? (
             <Skeleton className="h-32" />
           ) : unassignedEntries.length === 0 ? (
@@ -259,21 +376,48 @@ export function ScopeItemVarianceTable({ projectId }: ScopeItemVarianceProps) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Worker</TableHead>
                   <TableHead>Date</TableHead>
+                  <TableHead>Worker</TableHead>
                   <TableHead className="text-right">Hours</TableHead>
+                  <TableHead>Notes</TableHead>
+                  {canEdit && projectTasks.length > 0 && (
+                    <TableHead>Assign Task</TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {unassignedEntries.map((e) => (
                   <TableRow key={e.id}>
-                    <TableCell className="font-medium">{e.user_name}</TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
+                    <TableCell className="text-sm whitespace-nowrap">
                       {new Date(e.check_in_at).toLocaleDateString()}
                     </TableCell>
+                    <TableCell className="font-medium">{e.user_name}</TableCell>
                     <TableCell className="text-right tabular-nums">
                       {e.duration_hours.toFixed(1)}h
                     </TableCell>
+                    <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate" title={e.notes || ''}>
+                      {e.notes || '—'}
+                    </TableCell>
+                    {canEdit && projectTasks.length > 0 && (
+                      <TableCell>
+                        <Select
+                          value=""
+                          onValueChange={(taskId) => handleAssignTask(e.id, taskId)}
+                          disabled={assigningId === e.id}
+                        >
+                          <SelectTrigger className="h-8 w-[160px] text-xs">
+                            <SelectValue placeholder={assigningId === e.id ? 'Saving...' : 'Select task'} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {projectTasks.map(t => (
+                              <SelectItem key={t.id} value={t.id} className="text-xs">
+                                {t.title}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
