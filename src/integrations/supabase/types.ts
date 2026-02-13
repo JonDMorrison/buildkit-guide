@@ -2171,9 +2171,11 @@ export type Database = {
       }
       project_scope_items: {
         Row: {
+          archived_at: string | null
           created_at: string
           description: string | null
           id: string
+          is_archived: boolean
           item_type: string
           name: string
           organization_id: string
@@ -2194,9 +2196,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archived_at?: string | null
           created_at?: string
           description?: string | null
           id?: string
+          is_archived?: boolean
           item_type?: string
           name: string
           organization_id: string
@@ -2217,9 +2221,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archived_at?: string | null
           created_at?: string
           description?: string | null
           id?: string
+          is_archived?: boolean
           item_type?: string
           name?: string
           organization_id?: string

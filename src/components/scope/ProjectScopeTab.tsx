@@ -8,6 +8,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { EmptyState } from '@/components/EmptyState';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { ScopeItemRow } from './ScopeItemRow';
@@ -22,7 +24,7 @@ interface ProjectScopeTabProps {
   projectId: string;
 }
 
-interface ScopeItem {
+export interface ScopeItem {
   id: string;
   name: string;
   description: string | null;
@@ -31,6 +33,8 @@ interface ScopeItem {
   planned_total: number;
   sort_order: number;
   organization_id: string;
+  is_archived: boolean;
+  archived_at: string | null;
 }
 
 export const ProjectScopeTab = ({ projectId }: ProjectScopeTabProps) => {
@@ -40,6 +44,7 @@ export const ProjectScopeTab = ({ projectId }: ProjectScopeTabProps) => {
 
   const [items, setItems] = useState<ScopeItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showArchived, setShowArchived] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
 
@@ -53,7 +58,7 @@ export const ProjectScopeTab = ({ projectId }: ProjectScopeTabProps) => {
   const fetchItems = useCallback(async () => {
     const { data, error } = await supabase
       .from('project_scope_items')
-      .select('id, name, description, item_type, planned_hours, planned_total, sort_order, organization_id')
+      .select('id, name, description, item_type, planned_hours, planned_total, sort_order, organization_id, is_archived, archived_at')
       .eq('project_id', projectId)
       .order('sort_order');
 
@@ -72,7 +77,6 @@ export const ProjectScopeTab = ({ projectId }: ProjectScopeTabProps) => {
   const handleAdd = async () => {
     setAdding(true);
     try {
-      // Get org_id from project
       const { data: proj } = await supabase
         .from('projects')
         .select('organization_id')
@@ -99,11 +103,51 @@ export const ProjectScopeTab = ({ projectId }: ProjectScopeTabProps) => {
     }
   };
 
+  const handleArchive = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('project_scope_items')
+        .update({ is_archived: true, archived_at: new Date().toISOString() })
+        .eq('id', id);
+      if (error) throw error;
+      toast({ title: 'Scope item archived' });
+      fetchItems();
+    } catch (err: any) {
+      toast({ title: 'Error archiving scope item', description: err.message, variant: 'destructive' });
+    }
+  };
+
+  const handleUnarchive = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('project_scope_items')
+        .update({ is_archived: false, archived_at: null })
+        .eq('id', id);
+      if (error) throw error;
+      toast({ title: 'Scope item restored' });
+      fetchItems();
+    } catch (err: any) {
+      toast({ title: 'Error restoring scope item', description: err.message, variant: 'destructive' });
+    }
+  };
+
   const handleDelete = async () => {
     if (!deleteId) return;
     try {
       const { error } = await supabase.from('project_scope_items').delete().eq('id', deleteId);
-      if (error) throw error;
+      if (error) {
+        // Trigger will block if linked tasks exist
+        if (error.message.includes('linked tasks')) {
+          toast({
+            title: 'Cannot delete',
+            description: 'This scope item has linked tasks. Archive it instead.',
+            variant: 'destructive',
+          });
+          setDeleteId(null);
+          return;
+        }
+        throw error;
+      }
       setDeleteId(null);
       fetchItems();
     } catch (err: any) {
@@ -134,8 +178,10 @@ export const ProjectScopeTab = ({ projectId }: ProjectScopeTabProps) => {
     }
   };
 
-  const taskScopeItems = items.filter((i) => i.item_type === 'task');
-  const hasTaskItems = taskScopeItems.length > 0;
+  const visibleItems = showArchived ? items : items.filter((i) => !i.is_archived);
+  const archivedCount = items.filter((i) => i.is_archived).length;
+  const activeTaskItems = items.filter((i) => i.item_type === 'task' && !i.is_archived);
+  const hasTaskItems = activeTaskItems.length > 0;
 
   if (loading || roleLoading) {
     return (
@@ -183,20 +229,37 @@ export const ProjectScopeTab = ({ projectId }: ProjectScopeTabProps) => {
             </Button>
           </>
         )}
+
+        {archivedCount > 0 && (
+          <div className="ml-auto flex items-center gap-2">
+            <Switch
+              id="show-archived"
+              checked={showArchived}
+              onCheckedChange={setShowArchived}
+            />
+            <Label htmlFor="show-archived" className="text-sm text-muted-foreground cursor-pointer">
+              Show archived ({archivedCount})
+            </Label>
+          </div>
+        )}
       </div>
 
       {/* Scope items table */}
-      {items.length === 0 ? (
+      {visibleItems.length === 0 ? (
         <EmptyState
           icon={<FileText className="h-10 w-10" />}
-          title="No scope items"
-          description="Add scope items to define the project's work breakdown, then generate tasks from them."
+          title={showArchived ? "No scope items" : "No active scope items"}
+          description={
+            archivedCount > 0 && !showArchived
+              ? `${archivedCount} archived item${archivedCount !== 1 ? 's' : ''} hidden. Toggle "Show archived" to view them.`
+              : "Add scope items to define the project's work breakdown, then generate tasks from them."
+          }
         />
       ) : (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">
-              Scope Items ({items.length})
+              Scope Items ({visibleItems.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -208,16 +271,18 @@ export const ProjectScopeTab = ({ projectId }: ProjectScopeTabProps) => {
                   <TableHead>Planned Hours</TableHead>
                   <TableHead className="text-right">Planned Total</TableHead>
                   <TableHead>Order</TableHead>
-                  <TableHead className="w-24" />
+                  <TableHead className="w-28" />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.map((item) => (
+                {visibleItems.map((item) => (
                   <ScopeItemRow
                     key={item.id}
                     item={item}
                     canEdit={canEdit}
                     onUpdate={fetchItems}
+                    onArchive={handleArchive}
+                    onUnarchive={handleUnarchive}
                     onDelete={setDeleteId}
                   />
                 ))}
@@ -227,12 +292,12 @@ export const ProjectScopeTab = ({ projectId }: ProjectScopeTabProps) => {
         </Card>
       )}
 
-      {/* Delete confirm */}
+      {/* Delete confirm — only for items with no linked tasks */}
       <ConfirmDialog
         open={!!deleteId}
         onCancel={() => setDeleteId(null)}
         title="Delete scope item?"
-        description="This will remove this scope item. Any tasks already generated from it will keep their scope_item_id set to null."
+        description="This will permanently remove this scope item. This is only allowed if no tasks are linked to it."
         onConfirm={handleDelete}
         variant="destructive"
       />
