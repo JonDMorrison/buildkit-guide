@@ -14,19 +14,25 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { DollarSign, TrendingUp, AlertTriangle, BarChart3, Clock, Activity, ShieldAlert } from "lucide-react";
+import { DollarSign, TrendingUp, AlertTriangle, BarChart3, Clock, Activity, ShieldAlert, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
 import { getDataQualityFlags } from "@/lib/dataQualityFlags";
 
 const statusOptions = [
+  { value: "active", label: "Active (Default)" },
   { value: "all", label: "All Statuses" },
   { value: "awarded", label: "Awarded" },
   { value: "in_progress", label: "In Progress" },
   { value: "completed", label: "Completed" },
   { value: "potential", label: "Potential" },
+  { value: "not_started", label: "Not Started" },
   { value: "didnt_get", label: "Didn't Get" },
 ];
+
+const ACTIVE_STATUSES = new Set(["not_started", "in_progress", "awarded", "potential"]);
+
+const pageSizeOptions = [25, 50, 100] as const;
 
 const dataQualityFilterOptions = [
   { key: "no_budget", label: "Missing budget" },
@@ -37,16 +43,27 @@ const dataQualityFilterOptions = [
 const Insights = () => {
   const navigate = useNavigate();
   const { isGlobalAdmin, loading: roleLoading } = useProjectRole();
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("active");
   const [qualityFilters, setQualityFilters] = useState<Set<string>>(new Set());
-  const { rows, loading, error } = usePortfolioInsights(
-    statusFilter === "all" ? null : statusFilter
-  );
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState<number>(25);
+
+  // "active" is a UI-only composite filter — pass null to the hook (fetch all) and filter client-side
+  const rpcStatusFilter = statusFilter === "all" || statusFilter === "active" ? null : statusFilter;
+  const { rows, loading, error } = usePortfolioInsights(rpcStatusFilter);
+
+  // Client-side status filtering for "active" composite
+  const statusFilteredRows = useMemo(() => {
+    if (statusFilter === "active") {
+      return rows.filter((r) => ACTIVE_STATUSES.has(r.status));
+    }
+    return rows;
+  }, [rows, statusFilter]);
 
   // Apply data quality filters
   const filteredRows = useMemo(() => {
-    if (qualityFilters.size === 0) return rows;
-    return rows.filter((r) => {
+    if (qualityFilters.size === 0) return statusFilteredRows;
+    return statusFilteredRows.filter((r) => {
       const flags = getDataQualityFlags(r);
       const flagKeys = new Set(flags.map((f) => f.key));
       for (const filter of qualityFilters) {
@@ -54,7 +71,7 @@ const Insights = () => {
       }
       return false;
     });
-  }, [rows, qualityFilters]);
+  }, [statusFilteredRows, qualityFilters]);
 
   // Split rows by budget status
   const withBudget = useMemo(() => filteredRows.filter((r) => r.has_budget), [filteredRows]);
@@ -67,6 +84,7 @@ const Insights = () => {
       else next.add(key);
       return next;
     });
+    setPage(0);
   };
 
   // Aggregate KPIs — only from projects WITH budgets
@@ -92,13 +110,28 @@ const Insights = () => {
   // Sort by worst variance (most negative delta = biggest overrun)
   const sorted = useMemo(
     () => [...filteredRows].sort((a, b) => {
-      // Projects with budgets first, then sort by delta
       if (a.has_budget && !b.has_budget) return -1;
       if (!a.has_budget && b.has_budget) return 1;
       return a.total_cost_delta - b.total_cost_delta;
     }),
     [filteredRows]
   );
+
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
+  const safePage = Math.min(page, totalPages - 1);
+  const paginatedRows = sorted.slice(safePage * pageSize, (safePage + 1) * pageSize);
+
+  // Reset page when filters change
+  const handleStatusChange = (val: string) => {
+    setStatusFilter(val);
+    setPage(0);
+  };
+
+  const handlePageSizeChange = (val: string) => {
+    setPageSize(Number(val));
+    setPage(0);
+  };
 
   if (roleLoading) {
     return (
@@ -110,6 +143,8 @@ const Insights = () => {
     );
   }
 
+  const skeletonRows = Array.from({ length: 5 });
+
   return (
     <Layout>
       <div className="container max-w-6xl mx-auto px-4 py-6">
@@ -119,7 +154,7 @@ const Insights = () => {
         <div className="flex flex-wrap gap-4 mb-6 items-end">
           <div className="space-y-1.5 min-w-[180px]">
             <Label>Status</Label>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter} onValueChange={handleStatusChange}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -180,7 +215,8 @@ const Insights = () => {
           </div>
         </div>
 
-        {loading && (
+        {/* Initial load skeleton */}
+        {loading && sorted.length === 0 && (
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {[...Array(4)].map((_, i) => (
@@ -200,7 +236,7 @@ const Insights = () => {
           </Card>
         )}
 
-        {!loading && !error && rows.length === 0 && (
+        {!error && rows.length === 0 && !loading && (
           <Card>
             <CardContent className="py-12 text-center">
               <BarChart3 className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
@@ -211,20 +247,20 @@ const Insights = () => {
           </Card>
         )}
 
-        {!loading && !error && kpis && (
+        {!error && (kpis || (loading && sorted.length > 0)) && (
           <>
             {/* KPI Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 ${loading ? "opacity-60" : ""}`}>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium">Total Contract Value</CardTitle>
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{formatCurrency(kpis.totalContract)}</div>
+                  <div className="text-2xl font-bold">{kpis ? formatCurrency(kpis.totalContract) : "—"}</div>
                   <p className="text-xs text-muted-foreground">
-                    {kpis.includedCount} of {kpis.totalCount} projects
-                    {kpis.excludedCount > 0 && (
+                    {kpis ? `${kpis.includedCount} of ${kpis.totalCount} projects` : "Loading…"}
+                    {kpis && kpis.excludedCount > 0 && (
                       <span className="text-status-issue"> · {kpis.excludedCount} missing budget</span>
                     )}
                   </p>
@@ -236,9 +272,9 @@ const Insights = () => {
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{formatCurrency(kpis.totalActual)}</div>
+                  <div className="text-2xl font-bold">{kpis ? formatCurrency(kpis.totalActual) : "—"}</div>
                   <p className="text-xs text-muted-foreground">
-                    Planned: {formatCurrency(kpis.totalPlanned)}
+                    {kpis ? `Planned: ${formatCurrency(kpis.totalPlanned)}` : "Loading…"}
                   </p>
                 </CardContent>
               </Card>
@@ -249,13 +285,15 @@ const Insights = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {kpis.totalContract > 0
-                      ? `${kpis.weightedMargin.toFixed(1)}%`
-                      : "N/A"}
+                    {kpis
+                      ? kpis.totalContract > 0
+                        ? `${kpis.weightedMargin.toFixed(1)}%`
+                        : "N/A"
+                      : "—"}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Weighted by contract value
-                    {kpis.excludedCount > 0 && " · budgeted only"}
+                    {kpis && kpis.excludedCount > 0 && " · budgeted only"}
                   </p>
                 </CardContent>
               </Card>
@@ -265,9 +303,9 @@ const Insights = () => {
                   <AlertTriangle className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{kpis.overBudget}</div>
+                  <div className="text-2xl font-bold">{kpis ? kpis.overBudget : "—"}</div>
                   <p className="text-xs text-muted-foreground">
-                    of {kpis.includedCount} budgeted projects
+                    {kpis ? `of ${kpis.includedCount} budgeted projects` : "Loading…"}
                   </p>
                 </CardContent>
               </Card>
@@ -275,8 +313,11 @@ const Insights = () => {
 
             {/* Variance Leaderboard */}
             <Card className="mb-6">
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-base">Variance Leaderboard</CardTitle>
+                {loading && sorted.length > 0 && (
+                  <span className="text-xs text-muted-foreground animate-pulse">Updating…</span>
+                )}
               </CardHeader>
               <CardContent>
                 <Table>
@@ -296,114 +337,170 @@ const Insights = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sorted.map((r) => {
-                      const deltaPct =
-                        r.planned_total_cost !== 0
-                          ? (r.total_cost_delta / r.planned_total_cost) * 100
-                          : 0;
-                      const isOver = r.total_cost_delta < 0;
-                      const qualityFlags = getDataQualityFlags(r);
-                      return (
-                        <TableRow
-                          key={r.project_id}
-                          className="cursor-pointer"
-                          onClick={() =>
-                            navigate(`/insights/project?projectId=${r.project_id}`)
-                          }
-                        >
-                          <TableCell className="font-mono text-sm">
-                            {r.job_number || "—"}
-                          </TableCell>
-                          <TableCell className="font-medium">{r.project_name}</TableCell>
-                          <TableCell>
-                            <Badge variant="secondary" className="capitalize text-xs">
-                              {r.status?.replace(/_/g, " ") || "—"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {r.has_budget ? (
-                              <Badge variant="secondary" className="text-xs">Set</Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-xs text-status-issue border-status-issue/30">
-                                Missing
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {qualityFlags.length === 0 ? (
-                              <Badge variant="secondary" className="text-xs">Clean</Badge>
-                            ) : (
-                              <div className="flex flex-wrap gap-1">
-                                {qualityFlags.filter(f => f.key !== "no_budget").map((f) => (
-                                  <Badge
-                                    key={f.key}
-                                    variant="outline"
-                                    className={`text-xs ${f.severity === "error" ? "text-destructive border-destructive/30" : "text-status-issue border-status-issue/30"}`}
-                                  >
-                                    {f.label}
+                    {loading && sorted.length === 0
+                      ? skeletonRows.map((_, i) => (
+                          <TableRow key={i}>
+                            {Array.from({ length: 11 }).map((_, j) => (
+                              <TableCell key={j}>
+                                <Skeleton className="h-5 w-full" />
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        ))
+                      : paginatedRows.map((r) => {
+                          const deltaPct =
+                            r.planned_total_cost !== 0
+                              ? (r.total_cost_delta / r.planned_total_cost) * 100
+                              : 0;
+                          const isOver = r.total_cost_delta < 0;
+                          const qualityFlags = getDataQualityFlags(r);
+                          return (
+                            <TableRow
+                              key={r.project_id}
+                              className="cursor-pointer"
+                              onClick={() =>
+                                navigate(`/insights/project?projectId=${r.project_id}`)
+                              }
+                            >
+                              <TableCell className="font-mono text-sm">
+                                {r.job_number || "—"}
+                              </TableCell>
+                              <TableCell className="font-medium">{r.project_name}</TableCell>
+                              <TableCell>
+                                <Badge variant="secondary" className="capitalize text-xs">
+                                  {r.status?.replace(/_/g, " ") || "—"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {r.has_budget ? (
+                                  <Badge variant="secondary" className="text-xs">Set</Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-xs text-status-issue border-status-issue/30">
+                                    Missing
                                   </Badge>
-                                ))}
-                                {qualityFlags.every(f => f.key === "no_budget") && (
-                                  <span className="text-xs text-muted-foreground">—</span>
                                 )}
-                              </div>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {r.has_budget ? formatCurrency(r.planned_total_cost) : (
-                              <span className="text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {formatCurrency(r.actual_total_cost)}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {r.has_budget ? (
-                              <span className={`font-medium ${isOver ? "text-destructive" : "text-status-complete"}`}>
-                                {isOver ? "-" : "+"}
-                                {formatCurrency(Math.abs(r.total_cost_delta))}
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {r.has_budget ? (
-                              <span className={isOver ? "text-destructive" : "text-status-complete"}>
-                                {deltaPct.toFixed(1)}%
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {r.has_budget && r.contract_value > 0 ? (
-                              <span className={`font-medium ${r.actual_margin_percent < 0 ? "text-destructive" : "text-status-complete"}`}>
-                                {r.actual_margin_percent.toFixed(1)}%
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {!r.has_budget && (
-                              <Button
-                                variant="outline"
-                                size="xs"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(`/project-overview?projectId=${r.project_id}&tab=budget`);
-                                }}
-                              >
-                                Set budget
-                              </Button>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
+                              </TableCell>
+                              <TableCell>
+                                {qualityFlags.length === 0 ? (
+                                  <Badge variant="secondary" className="text-xs">Clean</Badge>
+                                ) : (
+                                  <div className="flex flex-wrap gap-1">
+                                    {qualityFlags.filter(f => f.key !== "no_budget").map((f) => (
+                                      <Badge
+                                        key={f.key}
+                                        variant="outline"
+                                        className={`text-xs ${f.severity === "error" ? "text-destructive border-destructive/30" : "text-status-issue border-status-issue/30"}`}
+                                      >
+                                        {f.label}
+                                      </Badge>
+                                    ))}
+                                    {qualityFlags.every(f => f.key === "no_budget") && (
+                                      <span className="text-xs text-muted-foreground">—</span>
+                                    )}
+                                  </div>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {r.has_budget ? formatCurrency(r.planned_total_cost) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {formatCurrency(r.actual_total_cost)}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {r.has_budget ? (
+                                  <span className={`font-medium ${isOver ? "text-destructive" : "text-status-complete"}`}>
+                                    {isOver ? "-" : "+"}
+                                    {formatCurrency(Math.abs(r.total_cost_delta))}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {r.has_budget ? (
+                                  <span className={isOver ? "text-destructive" : "text-status-complete"}>
+                                    {deltaPct.toFixed(1)}%
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {r.has_budget && r.contract_value > 0 ? (
+                                  <span className={`font-medium ${r.actual_margin_percent < 0 ? "text-destructive" : "text-status-complete"}`}>
+                                    {r.actual_margin_percent.toFixed(1)}%
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {!r.has_budget && (
+                                  <Button
+                                    variant="outline"
+                                    size="xs"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(`/project-overview?projectId=${r.project_id}&tab=budget`);
+                                    }}
+                                  >
+                                    Set budget
+                                  </Button>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                   </TableBody>
                 </Table>
+
+                {/* Pagination controls */}
+                {sorted.length > 0 && (
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <span>
+                        {safePage * pageSize + 1}–{Math.min((safePage + 1) * pageSize, sorted.length)} of {sorted.length}
+                      </span>
+                      <Select value={String(pageSize)} onValueChange={handlePageSizeChange}>
+                        <SelectTrigger className="h-8 w-[80px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {pageSizeOptions.map((s) => (
+                            <SelectItem key={s} value={String(s)}>
+                              {s}/page
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
+                        disabled={safePage === 0}
+                        onClick={() => setPage((p) => Math.max(0, p - 1))}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <span className="text-sm text-muted-foreground px-2">
+                        Page {safePage + 1} of {totalPages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
+                        disabled={safePage >= totalPages - 1}
+                        onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
