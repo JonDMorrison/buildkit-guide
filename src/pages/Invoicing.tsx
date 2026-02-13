@@ -89,7 +89,7 @@ const Invoicing = () => {
 
   const prefillData = location.state as { prefillLineItems?: any[]; prefillProjectId?: string } | null;
 
-  const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
+  const [projects, setProjects] = useState<{ id: string; name: string; client_id?: string | null; location?: string | null }[]>([]);
   const [showClientModal, setShowClientModal] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [showCreateInvoice, setShowCreateInvoice] = useState(!!prefillData?.prefillLineItems);
@@ -147,11 +147,11 @@ const Invoicing = () => {
     if (!activeOrganizationId) return;
     const fetchProjects = async () => {
       const { data } = await supabase
-        .from("projects").select("id, name")
+        .from("projects").select("id, name, client_id, location")
         .eq("is_deleted", false)
         .eq("organization_id", activeOrganizationId)
         .order("name");
-      setProjects(data || []);
+      setProjects((data as any[]) || []);
     };
     fetchProjects();
   }, [activeOrganizationId]);
@@ -741,31 +741,77 @@ const Invoicing = () => {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Name</TableHead>
-                        <TableHead className="hidden md:table-cell">Contact</TableHead>
-                        <TableHead className="hidden md:table-cell">Email</TableHead>
+                        <TableHead className="hidden md:table-cell">Parent</TableHead>
+                        <TableHead className="hidden md:table-cell">A/P Email</TableHead>
+                        <TableHead className="hidden md:table-cell">GST #</TableHead>
                         <TableHead className="text-right">Invoices</TableHead>
-                        <TableHead className="text-right hidden sm:table-cell">Billed</TableHead>
                         <TableHead className="text-right hidden sm:table-cell">Outstanding</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {clients.map((c) => {
+                      {clients.filter(c => c.is_active).map((c) => {
                         const summary = clientSummaries.get(c.id);
+                        const parent = c.parent_client_id ? clients.find(p => p.id === c.parent_client_id) : null;
+                        const childProjects = projects.filter(p => {
+                          // Show projects linked to this client (future: when project has client_id)
+                          return false; // placeholder — projects don't have client_id wired yet in this query
+                        });
                         return (
                           <TableRow key={c.id}>
-                            <TableCell className="font-medium">{c.name}</TableCell>
-                            <TableCell className="hidden md:table-cell">{c.contact_name || "—"}</TableCell>
-                            <TableCell className="hidden md:table-cell">{c.email || "—"}</TableCell>
+                            <TableCell className="font-medium">
+                              {c.name}
+                              {c.parent_client_id && (
+                                <Badge variant="outline" className="ml-2 text-xs">Child</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="hidden md:table-cell">{parent?.name || "—"}</TableCell>
+                            <TableCell className="hidden md:table-cell">{c.ap_email || c.email || "—"}</TableCell>
+                            <TableCell className="hidden md:table-cell">{c.gst_number || "—"}</TableCell>
                             <TableCell className="text-right">{summary?.count || 0}</TableCell>
-                            <TableCell className="text-right hidden sm:table-cell">{summary ? fmt(summary.totalBilled) : "—"}</TableCell>
                             <TableCell className="text-right hidden sm:table-cell">{summary?.outstanding ? fmt(summary.outstanding) : "—"}</TableCell>
                             <TableCell className="text-right">
-                              <Button variant="ghost" size="sm" onClick={() => { setEditingClient(c); setShowClientModal(true); }}>Edit</Button>
+                              <div className="flex gap-1 justify-end">
+                                <Button variant="ghost" size="sm" onClick={() => { setEditingClient(c); setShowClientModal(true); }}>
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={async () => {
+                                  await updateClient(c.id, { is_active: false } as any);
+                                  toast({ title: "Client archived" });
+                                }}>
+                                  <Ban className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         );
                       })}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Archived clients */}
+            {clients.some(c => !c.is_active) && (
+              <Card>
+                <CardHeader><CardTitle className="text-sm">Archived Clients</CardTitle></CardHeader>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableBody>
+                      {clients.filter(c => !c.is_active).map((c) => (
+                        <TableRow key={c.id}>
+                          <TableCell className="text-muted-foreground">{c.name}</TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="sm" onClick={async () => {
+                              await updateClient(c.id, { is_active: true } as any);
+                              toast({ title: "Client reactivated" });
+                            }}>
+                              Reactivate
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
                     </TableBody>
                   </Table>
                 </CardContent>
@@ -979,6 +1025,7 @@ const Invoicing = () => {
 
         {/* Modals */}
         <ClientFormModal open={showClientModal} onOpenChange={setShowClientModal} initialData={editingClient}
+          allClients={clients}
           onSubmit={async (data) => {
             if (editingClient) { await updateClient(editingClient.id, data); }
             else { await createClient(data); }

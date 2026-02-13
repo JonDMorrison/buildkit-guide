@@ -28,8 +28,9 @@ export const SendInvoiceModal = ({ open, onOpenChange, invoice, settings, client
 
   useEffect(() => {
     if (open && invoice) {
-      setEmail(client?.email || "");
-      setRecipientName(client?.contact_name || client?.name || "");
+      // Prefer A/P email for invoice sending, fall back to primary email
+      setEmail(client?.ap_email || client?.email || "");
+      setRecipientName(client?.ap_contact_name || client?.contact_name || client?.name || "");
       setSubject(`Invoice ${invoice.invoice_number} from ${settings?.company_name || "us"}`);
       setMessage(`Please find attached Invoice ${invoice.invoice_number} for $${Number(invoice.total).toFixed(2)}.`);
     }
