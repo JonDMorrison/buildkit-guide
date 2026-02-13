@@ -351,52 +351,88 @@ export type Database = {
       }
       clients: {
         Row: {
+          ap_contact_name: string | null
+          ap_email: string | null
+          ap_phone: string | null
           billing_address: string | null
           city: string | null
           contact_name: string | null
           created_at: string
           email: string | null
+          gst_number: string | null
           id: string
           is_active: boolean
           name: string
           notes: string | null
           organization_id: string
+          parent_client_id: string | null
           phone: string | null
+          pm_contact_name: string | null
+          pm_email: string | null
+          pm_phone: string | null
           postal_code: string | null
           province: string | null
+          site_contact_email: string | null
+          site_contact_name: string | null
+          site_contact_phone: string | null
           updated_at: string
+          zones: number
         }
         Insert: {
+          ap_contact_name?: string | null
+          ap_email?: string | null
+          ap_phone?: string | null
           billing_address?: string | null
           city?: string | null
           contact_name?: string | null
           created_at?: string
           email?: string | null
+          gst_number?: string | null
           id?: string
           is_active?: boolean
           name: string
           notes?: string | null
           organization_id: string
+          parent_client_id?: string | null
           phone?: string | null
+          pm_contact_name?: string | null
+          pm_email?: string | null
+          pm_phone?: string | null
           postal_code?: string | null
           province?: string | null
+          site_contact_email?: string | null
+          site_contact_name?: string | null
+          site_contact_phone?: string | null
           updated_at?: string
+          zones?: number
         }
         Update: {
+          ap_contact_name?: string | null
+          ap_email?: string | null
+          ap_phone?: string | null
           billing_address?: string | null
           city?: string | null
           contact_name?: string | null
           created_at?: string
           email?: string | null
+          gst_number?: string | null
           id?: string
           is_active?: boolean
           name?: string
           notes?: string | null
           organization_id?: string
+          parent_client_id?: string | null
           phone?: string | null
+          pm_contact_name?: string | null
+          pm_email?: string | null
+          pm_phone?: string | null
           postal_code?: string | null
           province?: string | null
+          site_contact_email?: string | null
+          site_contact_name?: string | null
+          site_contact_phone?: string | null
           updated_at?: string
+          zones?: number
         }
         Relationships: [
           {
@@ -404,6 +440,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_parent_client_id_fkey"
+            columns: ["parent_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]
@@ -1984,9 +2027,90 @@ export type Database = {
         }
         Relationships: []
       }
+      project_budgets: {
+        Row: {
+          client_id: string | null
+          contract_value: number
+          created_at: string
+          currency: string
+          id: string
+          organization_id: string
+          planned_billable_amount: number
+          planned_labor_cost: number
+          planned_labor_hours: number
+          planned_machine_cost: number
+          planned_material_cost: number
+          planned_other_cost: number
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          client_id?: string | null
+          contract_value?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          organization_id: string
+          planned_billable_amount?: number
+          planned_labor_cost?: number
+          planned_labor_hours?: number
+          planned_machine_cost?: number
+          planned_material_cost?: number
+          planned_other_cost?: number
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string | null
+          contract_value?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          organization_id?: string
+          planned_billable_amount?: number
+          planned_labor_cost?: number
+          planned_labor_hours?: number
+          planned_machine_cost?: number
+          planned_material_cost?: number
+          planned_other_cost?: number
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_budgets_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_budgets_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_budgets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_budgets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "v_project_progress"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_members: {
         Row: {
           bill_rate: number | null
+          cost_rate: number
           created_at: string
           id: string
           project_id: string
@@ -1996,6 +2120,7 @@ export type Database = {
         }
         Insert: {
           bill_rate?: number | null
+          cost_rate?: number
           created_at?: string
           id?: string
           project_id: string
@@ -2005,6 +2130,7 @@ export type Database = {
         }
         Update: {
           bill_rate?: number | null
+          cost_rate?: number
           created_at?: string
           id?: string
           project_id?: string
@@ -2039,6 +2165,100 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_scope_items: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          item_type: string
+          name: string
+          organization_id: string
+          planned_cost_rate: number
+          planned_hours: number
+          planned_machine_cost: number
+          planned_material_cost: number
+          planned_total: number
+          planned_unit_rate: number
+          project_id: string
+          quantity: number
+          sort_order: number
+          source_id: string | null
+          source_type: string
+          tax1_rate: number
+          tax2_rate: number
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          item_type?: string
+          name: string
+          organization_id: string
+          planned_cost_rate?: number
+          planned_hours?: number
+          planned_machine_cost?: number
+          planned_material_cost?: number
+          planned_total?: number
+          planned_unit_rate?: number
+          project_id: string
+          quantity?: number
+          sort_order?: number
+          source_id?: string | null
+          source_type?: string
+          tax1_rate?: number
+          tax2_rate?: number
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          item_type?: string
+          name?: string
+          organization_id?: string
+          planned_cost_rate?: number
+          planned_hours?: number
+          planned_machine_cost?: number
+          planned_material_cost?: number
+          planned_total?: number
+          planned_unit_rate?: number
+          project_id?: string
+          quantity?: number
+          sort_order?: number
+          source_id?: string | null
+          source_type?: string
+          tax1_rate?: number
+          tax2_rate?: number
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_scope_items_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_scope_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_scope_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_progress"
             referencedColumns: ["id"]
           },
         ]
@@ -2113,6 +2333,7 @@ export type Database = {
         Row: {
           amount: number | null
           category: Database["public"]["Enums"]["receipt_category"]
+          cost_type: string
           created_at: string
           currency: string
           file_path: string
@@ -2133,6 +2354,7 @@ export type Database = {
         Insert: {
           amount?: number | null
           category?: Database["public"]["Enums"]["receipt_category"]
+          cost_type?: string
           created_at?: string
           currency?: string
           file_path: string
@@ -2153,6 +2375,7 @@ export type Database = {
         Update: {
           amount?: number | null
           category?: Database["public"]["Enums"]["receipt_category"]
+          cost_type?: string
           created_at?: string
           currency?: string
           file_path?: string
@@ -2925,11 +3148,14 @@ export type Database = {
           estimated_hours: number | null
           id: string
           is_deleted: boolean
+          is_generated: boolean
           location: string | null
+          planned_hours: number | null
           priority: number
           project_id: string
           review_requested_at: string | null
           review_requested_by: string | null
+          scope_item_id: string | null
           sort_order: number | null
           start_date: string | null
           status: Database["public"]["Enums"]["task_status"]
@@ -2947,11 +3173,14 @@ export type Database = {
           estimated_hours?: number | null
           id?: string
           is_deleted?: boolean
+          is_generated?: boolean
           location?: string | null
+          planned_hours?: number | null
           priority?: number
           project_id: string
           review_requested_at?: string | null
           review_requested_by?: string | null
+          scope_item_id?: string | null
           sort_order?: number | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["task_status"]
@@ -2969,11 +3198,14 @@ export type Database = {
           estimated_hours?: number | null
           id?: string
           is_deleted?: boolean
+          is_generated?: boolean
           location?: string | null
+          planned_hours?: number | null
           priority?: number
           project_id?: string
           review_requested_at?: string | null
           review_requested_by?: string | null
+          scope_item_id?: string | null
           sort_order?: number | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["task_status"]
@@ -3014,6 +3246,13 @@ export type Database = {
             columns: ["review_requested_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_scope_item_id_fkey"
+            columns: ["scope_item_id"]
+            isOneToOne: false
+            referencedRelation: "project_scope_items"
             referencedColumns: ["id"]
           },
         ]
