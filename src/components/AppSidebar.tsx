@@ -53,15 +53,10 @@ export const AppSidebar = () => {
 
   return (
     <Sidebar collapsible="icon">
-      {/* Background gradient — muted industrial navy */}
+      {/* Background — theme-aware */}
+      <div className="absolute inset-0 pointer-events-none bg-sidebar" />
       <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: "linear-gradient(180deg, hsl(222 40% 8%) 0%, hsl(222 45% 6%) 100%)",
-        }}
-      />
-      <div
-        className="absolute inset-0 pointer-events-none opacity-[0.015]"
+        className="absolute inset-0 pointer-events-none opacity-[0.015] dark:block hidden"
         style={{
           backgroundImage:
             "linear-gradient(hsl(215 20% 40% / 0.2) 1px, transparent 1px), linear-gradient(90deg, hsl(215 20% 40% / 0.2) 1px, transparent 1px)",
@@ -77,7 +72,7 @@ export const AppSidebar = () => {
 
         {/* ── Divider ── */}
         <div className={cn("mb-2", collapsed ? "mx-2" : "mx-4")}>
-          <div className="border-t border-white/[0.06]" />
+          <div className="border-t border-sidebar-border" />
         </div>
 
         {/* ── Project Switcher ── */}
@@ -122,7 +117,7 @@ function SidebarCollapseToggle({ collapsed }: { collapsed: boolean }) {
       onClick={toggleSidebar}
       className={cn(
         "flex items-center justify-center rounded-md transition-colors duration-150",
-        "text-sidebar-foreground/40 hover:text-sidebar-foreground/70 hover:bg-white/[0.06]",
+        "text-sidebar-foreground/40 hover:text-sidebar-foreground/70 hover:bg-sidebar-accent/50",
         collapsed ? "h-8 w-8" : "h-7 w-7",
       )}
       aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
