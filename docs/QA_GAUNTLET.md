@@ -1,6 +1,6 @@
 # QA Gauntlet — Full-Stack Test Plan
 
-> **Version**: 1.3 · **Date**: 2026-02-13 · **Scope**: Budget-to-Execution Intelligence, Estimate Accuracy, Task Automation, Client Hierarchy, Invoice Snapshots, Invoice Accounting Rules, AI Insight EVIDENCE Verifier, Task-Level Time Tracking, Data Health, Snapshots/Trends/Recommendations/AI, Time Entry Inclusion Contract
+> **Version**: 1.4 · **Date**: 2026-02-14 · **Scope**: Budget-to-Execution Intelligence, Estimate Accuracy, Task Automation, Client Hierarchy, Invoice Snapshots, Invoice Accounting Rules, AI Insight EVIDENCE Verifier, Task-Level Time Tracking, Data Health, Snapshots/Trends/Recommendations/AI, Time Entry Inclusion Contract
 
 ---
 
@@ -238,175 +238,141 @@
 
 ## 2. Seed Data Recipes
 
-### 2.1 Minimal Multi-Tenant Setup
+### 2.0 Seed Data Change Log (v1.4)
+
+| # | Location | Was | Now | Reason |
+|---|----------|-----|-----|--------|
+| S-01 | §2.2 `project_members.role` | `'worker'` | `'internal_worker'` | `app_role` enum has no `'worker'` value; `'worker'` is only valid in `organization_memberships.role` (free-text) |
+| S-02 | §2.4 `tasks.status` | `'pending'` | `'not_started'` | `task_status` enum: `not_started\|in_progress\|blocked\|done`. `'pending'` is invalid and will fail INSERT |
+| S-03 | §4 Race 2 `tasks.status` | `'completed'` | `'done'` | Same enum — `'completed'` does not exist |
+| S-04 | §2.5 `receipts` columns | `organization_id`, `status` | removed `organization_id`; `status`→`review_status` | `receipts` table has no `organization_id` column; status column is `review_status` (enum: `pending\|reviewed\|processed`) |
+| S-05 | §2.5 `receipts.status` values | `'approved'` | `'reviewed'` | `receipt_review_status` enum has no `'approved'` value |
+| S-06 | §2.5 `receipts` | missing `file_path` | added `file_path` | `file_path` is required (NOT NULL, no default) |
+| S-07 | §2.2 `projects` | missing `created_by`, `location` | added both | Both are required (NOT NULL, no default) |
+| S-08 | §2.4 `tasks` | missing `created_by` | added `created_by` | Required (NOT NULL, no default) |
+| S-09 | §2.4 `time_entries` | missing `project_timezone` | added `project_timezone` | Required (NOT NULL, no default) |
+| S-10 | §2.4 `time_entries.source` | `'self'` | `'gps'` or `'manual'` | Valid app values: `gps\|manual\|manual_adjustment\|offline_sync`. `'self'` is not used anywhere in app code |
+| S-11 | §2.4 `project_scope_items` (archived) | missing `planned_unit_rate` | added `planned_unit_rate=50` | Without it, `planned_total` trigger computes 0 (default `planned_unit_rate=0`) |
+
+### 2.0a Schema Verification Queries
+
+> Run these BEFORE inserting seed data to confirm column names and enum values match your environment.
 
 ```sql
--- ===== ORG 1: "Horizon Construction" (primary test org) =====
+-- Verify all enum values
+SELECT enum_schema, enum_name, string_agg(enum_value, ', ' ORDER BY enum_sort_order)
+FROM (
+  SELECT n.nspname AS enum_schema, t.typname AS enum_name, e.enumlabel AS enum_value,
+         e.enumsortorder AS enum_sort_order
+  FROM pg_type t JOIN pg_enum e ON t.oid = e.enumtypid
+  JOIN pg_namespace n ON t.typnamespace = n.oid
+  WHERE n.nspname = 'public'
+) sub
+GROUP BY enum_schema, enum_name ORDER BY enum_name;
+
+-- Verify required (NOT NULL, no default) columns on key tables
+SELECT table_name, column_name, is_nullable, column_default
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name IN ('projects','tasks','time_entries','receipts','project_members','project_scope_items')
+  AND is_nullable = 'NO'
+  AND column_default IS NULL
+ORDER BY table_name, ordinal_position;
+
+-- Verify receipts columns exist
+SELECT column_name, data_type, udt_name
+FROM information_schema.columns
+WHERE table_schema = 'public' AND table_name = 'receipts'
+ORDER BY ordinal_position;
+
+-- Verify time_entries columns exist
+SELECT column_name, data_type, udt_name
+FROM information_schema.columns
+WHERE table_schema = 'public' AND table_name = 'time_entries'
+ORDER BY ordinal_position;
+```
+
+### 2.1 Minimal Seed Set (Core Happy Path Only)
+
+> This seed set covers A-001 through A-008, C-001 through C-010, D-001 through D-004, E-001, and the Time Entry Inclusion Contract. Omits multi-org isolation, race test, and notification seeds.
+
+```sql
+-- ===== ORG 1: "Horizon Construction" =====
 INSERT INTO organizations (id, name) VALUES
   (:org1_id, 'Horizon Construction');
 
--- Users (insert into auth.users first via Supabase dashboard, then profiles)
--- Profiles
+-- Profiles (auth.users must exist first)
 INSERT INTO profiles (id, email, full_name) VALUES
   (:admin_uid, 'admin@horizon.test', 'Alice Admin'),
   (:pm_uid, 'pm@horizon.test', 'Pete PM'),
-  (:foreman_uid, 'foreman@horizon.test', 'Frank Foreman'),
-  (:worker_uid, 'worker@horizon.test', 'Will Worker'),
-  (:acct_uid, 'acct@horizon.test', 'Accounting Amy');
+  (:worker_uid, 'worker@horizon.test', 'Will Worker');
 
--- Organization memberships
+-- Org memberships (free-text role — NOT app_role enum)
 INSERT INTO organization_memberships (user_id, organization_id, role, is_active) VALUES
   (:admin_uid, :org1_id, 'admin', true),
   (:pm_uid, :org1_id, 'pm', true),
-  (:foreman_uid, :org1_id, 'foreman', true),
-  (:worker_uid, :org1_id, 'worker', true),
-  (:acct_uid, :org1_id, 'accounting', true);
+  (:worker_uid, :org1_id, 'worker', true);
 
--- User roles (global)
+-- Global admin
 INSERT INTO user_roles (user_id, role) VALUES
   (:admin_uid, 'admin');
 
--- ===== ORG 2: "Rival Builders" (cross-org isolation test) =====
-INSERT INTO organizations (id, name) VALUES
-  (:org2_id, 'Rival Builders');
-INSERT INTO profiles (id, email, full_name) VALUES
-  (:rival_uid, 'admin@rival.test', 'Rob Rival');
-INSERT INTO organization_memberships (user_id, organization_id, role, is_active) VALUES
-  (:rival_uid, :org2_id, 'admin', true);
+-- Project (note: created_by and location are required NOT NULL)
+INSERT INTO projects (id, name, organization_id, status, job_number, created_by, location) VALUES
+  (:proj1_id, 'Tower Alpha', :org1_id, 'active', 'TA-001', :admin_uid, '123 Main St');
 
--- ===== ORG 3: "Empty Corp" (empty state tests) =====
-INSERT INTO organizations (id, name) VALUES
-  (:org3_id, 'Empty Corp');
-INSERT INTO organization_memberships (user_id, organization_id, role, is_active) VALUES
-  (:admin_uid, :org3_id, 'admin', true);
-
--- ===== ORG 4: "Cycle Test LLC" (hierarchy cycle tests) =====
-INSERT INTO organizations (id, name) VALUES
-  (:org4_id, 'Cycle Test LLC');
-INSERT INTO organization_memberships (user_id, organization_id, role, is_active) VALUES
-  (:admin_uid, :org4_id, 'admin', true);
-```
-
-### 2.2 Projects + Budgets
-
-```sql
--- Project WITH budget
-INSERT INTO projects (id, name, organization_id, status, job_number) VALUES
-  (:proj1_id, 'Tower Alpha', :org1_id, 'active', 'TA-001');
-
+-- Budget
 INSERT INTO project_budgets (project_id, organization_id, contract_value,
   planned_labor_hours, planned_labor_cost, planned_material_cost,
   planned_machine_cost, planned_other_cost) VALUES
   (:proj1_id, :org1_id, 50000, 200, 10000, 5000, 2000, 1000);
 
--- Project WITHOUT budget
-INSERT INTO projects (id, name, organization_id, status, job_number) VALUES
-  (:proj2_id, 'Garage Beta', :org1_id, 'active', 'GB-002');
-
--- Project in ORG 2 (isolation test)
-INSERT INTO projects (id, name, organization_id, status) VALUES
-  (:proj_rival_id, 'Rival Tower', :org2_id, 'active');
-
--- Deleted project (should be excluded from reports)
-INSERT INTO projects (id, name, organization_id, status, is_deleted) VALUES
-  (:proj_deleted_id, 'Demolished', :org1_id, 'deleted', true);
-
--- Project members
+-- Project members (role is app_role enum — NO 'worker' value!)
 INSERT INTO project_members (user_id, project_id, role, cost_rate) VALUES
-  (:admin_uid, :proj1_id, 'project_manager', 0),
+  (:admin_uid, :proj1_id, 'admin', 0),
   (:pm_uid, :proj1_id, 'project_manager', 75),
-  (:foreman_uid, :proj1_id, 'foreman', 60),
-  (:worker_uid, :proj1_id, 'worker', 45);
-```
+  (:worker_uid, :proj1_id, 'internal_worker', 45);
 
-### 2.3 Clients (Parent/Child)
+-- Client
+INSERT INTO clients (id, name, organization_id, is_active, billing_address) VALUES
+  (:parent_client_id, 'Mega Corp', :org1_id, true, '100 King St, Toronto');
 
-```sql
--- Parent client
-INSERT INTO clients (id, name, organization_id, is_active,
-  billing_address, gst_number, ap_contact_name, ap_email, zones) VALUES
-  (:parent_client_id, 'Mega Corp', :org1_id, true,
-   '100 King St, Toronto', 'GST-123456', 'Finance Dept', 'ap@megacorp.com', 3);
-
--- Child client
-INSERT INTO clients (id, name, organization_id, is_active, parent_client_id) VALUES
-  (:child_client_id, 'Mega Corp - Division A', :org1_id, true, :parent_client_id);
-
--- Archived client
-INSERT INTO clients (id, name, organization_id, is_active) VALUES
-  (:archived_client_id, 'Old Client', :org1_id, false);
-
--- Client in ORG 2 (cross-org cycle test)
-INSERT INTO clients (id, name, organization_id, is_active) VALUES
-  (:rival_client_id, 'Rival Client', :org2_id, true);
-
--- Clients in ORG 4 (cycle test)
-INSERT INTO clients (id, name, organization_id, is_active) VALUES
-  (:cycle_a_id, 'Cycle A', :org4_id, true),
-  (:cycle_b_id, 'Cycle B', :org4_id, true);
-UPDATE clients SET parent_client_id = :cycle_b_id WHERE id = :cycle_a_id;
--- Now attempt: UPDATE clients SET parent_client_id = :cycle_a_id WHERE id = :cycle_b_id;
--- → should fail (cycle)
-```
-
-### 2.4 Scope Items + Tasks + Time Entries
-
-```sql
 -- Scope items
 INSERT INTO project_scope_items (id, project_id, organization_id, name,
   item_type, planned_hours, planned_unit_rate, planned_material_cost,
   planned_machine_cost, quantity, sort_order) VALUES
   (:scope1_id, :proj1_id, :org1_id, 'Framing', 'labor', 40, 75, 500, 200, 1, 1),
-  (:scope2_id, :proj1_id, :org1_id, 'Electrical', 'labor', 20, 80, 300, 0, 1, 2),
-  (:scope3_id, :proj1_id, :org1_id, 'Cleanup', 'labor', 10, 50, 0, 0, 1, 3);
+  (:scope2_id, :proj1_id, :org1_id, 'Electrical', 'labor', 20, 80, 300, 0, 1, 2);
 
--- Archived scope item
-INSERT INTO project_scope_items (id, project_id, organization_id, name,
-  item_type, planned_hours, is_archived, archived_at, sort_order) VALUES
-  (:scope_archived_id, :proj1_id, :org1_id, 'Old Work', 'labor', 30, true, now(), 4);
+-- Tasks (status must be task_status enum: not_started|in_progress|blocked|done)
+-- (created_by is required NOT NULL)
+INSERT INTO tasks (id, project_id, title, status, scope_item_id, planned_hours, created_by) VALUES
+  (:task1_id, :proj1_id, 'Frame walls', 'in_progress', :scope1_id, 40, :pm_uid),
+  (:task2_id, :proj1_id, 'Wire outlets', 'not_started', :scope2_id, 20, :pm_uid);
 
--- Tasks linked to scope items
-INSERT INTO tasks (id, project_id, title, status, scope_item_id, planned_hours) VALUES
-  (:task1_id, :proj1_id, 'Frame walls', 'in_progress', :scope1_id, 40),
-  (:task2_id, :proj1_id, 'Wire outlets', 'pending', :scope2_id, 20);
-
--- Task WITHOUT scope link (for unlinked coverage tests)
-INSERT INTO tasks (id, project_id, title, status, planned_hours) VALUES
-  (:task_unlinked_id, :proj1_id, 'General labor', 'in_progress', 8);
-
--- Time entries — closed, with task_id
+-- Time entries (project_timezone is required NOT NULL; source valid: gps|manual|manual_adjustment|offline_sync)
 INSERT INTO time_entries (id, organization_id, user_id, project_id, task_id,
-  check_in_at, check_out_at, duration_hours, duration_minutes, status, source) VALUES
+  check_in_at, check_out_at, duration_hours, duration_minutes, status, source, project_timezone) VALUES
   (:te1_id, :org1_id, :worker_uid, :proj1_id, :task1_id,
-   now()-interval '10h', now()-interval '2h', 8.0, 480, 'closed', 'self'),
+   now()-interval '10h', now()-interval '2h', 8.0, 480, 'closed', 'gps', 'America/Toronto'),
   (:te2_id, :org1_id, :worker_uid, :proj1_id, :task2_id,
-   now()-interval '26h', now()-interval '22h', 4.0, 240, 'closed', 'self');
+   now()-interval '26h', now()-interval '22h', 4.0, 240, 'closed', 'manual', 'America/Toronto');
 
--- Time entry — closed, NO task_id (unassigned)
-INSERT INTO time_entries (id, organization_id, user_id, project_id, task_id,
-  check_in_at, check_out_at, duration_hours, duration_minutes, status, source) VALUES
-  (:te_unassigned_id, :org1_id, :worker_uid, :proj1_id, NULL,
-   now()-interval '50h', now()-interval '48h', 2.0, 120, 'closed', 'self');
-
--- Time entry — OPEN (should be excluded from actuals)
+-- Open entry (excluded from actuals)
 INSERT INTO time_entries (id, organization_id, user_id, project_id,
-  check_in_at, status, source) VALUES
+  check_in_at, status, source, project_timezone) VALUES
   (:te_open_id, :org1_id, :worker_uid, :proj1_id,
-   now()-interval '1h', 'open', 'self');
-```
+   now()-interval '1h', 'open', 'gps', 'America/Toronto');
 
-### 2.5 Receipts + Invoices
+-- Receipts (NO organization_id column; review_status enum: pending|reviewed|processed; file_path required)
+INSERT INTO receipts (id, project_id, uploaded_by, amount, cost_type, review_status, file_path) VALUES
+  (:rcpt1_id, :proj1_id, :worker_uid, 100.00, 'material', 'reviewed', 'receipts/test1.jpg'),
+  (:rcpt2_id, :proj1_id, :worker_uid, 200.00, 'material', 'reviewed', 'receipts/test2.jpg'),
+  (:rcpt3_id, :proj1_id, :worker_uid, 150.00, 'machine', 'reviewed', 'receipts/test3.jpg'),
+  (:rcpt4_id, :proj1_id, :worker_uid, 50.00, 'other', 'reviewed', 'receipts/test4.jpg'),
+  (:rcpt5_id, :proj1_id, :worker_uid, 75.00, NULL, 'pending', 'receipts/test5.jpg');
 
-```sql
--- Receipts with various cost types
-INSERT INTO receipts (id, project_id, organization_id, uploaded_by, amount, cost_type, status) VALUES
-  (:rcpt1_id, :proj1_id, :org1_id, :worker_uid, 100.00, 'material', 'approved'),
-  (:rcpt2_id, :proj1_id, :org1_id, :worker_uid, 200.00, 'material', 'approved'),
-  (:rcpt3_id, :proj1_id, :org1_id, :worker_uid, 150.00, 'machine', 'approved'),
-  (:rcpt4_id, :proj1_id, :org1_id, :worker_uid, 50.00, 'other', 'approved'),
-  (:rcpt5_id, :proj1_id, :org1_id, :worker_uid, 75.00, NULL, 'approved'); -- unclassified
-
--- Invoices
+-- Invoices (invoice_status enum: draft|sent|paid|overdue|void)
 INSERT INTO invoices (id, organization_id, project_id, invoice_number, status,
   subtotal, tax_amount, total, issue_date, created_by,
   bill_to_client_id, bill_to_name, bill_to_address, ship_to_address, send_to_emails) VALUES
@@ -424,9 +390,107 @@ INSERT INTO invoices (id, organization_id, project_id, invoice_number, status,
    :parent_client_id, 'Mega Corp', '100 King St', '200 Queen St', NULL);
 ```
 
-### 2.6 Notification Preferences
+### 2.2 Expanded Seed Set (Multi-Tenant, Race Tests, Notifications)
+
+> Extends the Minimal Seed Set with cross-org isolation, foreman/accounting roles, deleted projects, archived scope items, client hierarchy, and notification preferences. Required for: §3 Permission Gauntlet, §4 Race Tests, §7 Security & Data Isolation.
 
 ```sql
+-- ===== Additional profiles =====
+INSERT INTO profiles (id, email, full_name) VALUES
+  (:foreman_uid, 'foreman@horizon.test', 'Frank Foreman'),
+  (:acct_uid, 'acct@horizon.test', 'Accounting Amy'),
+  (:rival_uid, 'admin@rival.test', 'Rob Rival');
+
+-- Additional org memberships
+INSERT INTO organization_memberships (user_id, organization_id, role, is_active) VALUES
+  (:foreman_uid, :org1_id, 'foreman', true),
+  (:acct_uid, :org1_id, 'accounting', true);
+
+-- Additional project members (app_role enum)
+INSERT INTO project_members (user_id, project_id, role, cost_rate) VALUES
+  (:foreman_uid, :proj1_id, 'foreman', 60);
+
+-- ===== ORG 2: "Rival Builders" (cross-org isolation) =====
+INSERT INTO organizations (id, name) VALUES
+  (:org2_id, 'Rival Builders');
+INSERT INTO organization_memberships (user_id, organization_id, role, is_active) VALUES
+  (:rival_uid, :org2_id, 'admin', true);
+
+-- Rival project (isolation test)
+INSERT INTO projects (id, name, organization_id, status, created_by, location) VALUES
+  (:proj_rival_id, 'Rival Tower', :org2_id, 'active', :rival_uid, '456 Rival Ave');
+
+-- ===== ORG 3: "Empty Corp" (empty state tests) =====
+INSERT INTO organizations (id, name) VALUES
+  (:org3_id, 'Empty Corp');
+INSERT INTO organization_memberships (user_id, organization_id, role, is_active) VALUES
+  (:admin_uid, :org3_id, 'admin', true);
+
+-- ===== ORG 4: "Cycle Test LLC" (hierarchy cycle tests) =====
+INSERT INTO organizations (id, name) VALUES
+  (:org4_id, 'Cycle Test LLC');
+INSERT INTO organization_memberships (user_id, organization_id, role, is_active) VALUES
+  (:admin_uid, :org4_id, 'admin', true);
+
+-- Project without budget (for B-008, B-012 tests)
+INSERT INTO projects (id, name, organization_id, status, job_number, created_by, location) VALUES
+  (:proj2_id, 'Garage Beta', :org1_id, 'active', 'GB-002', :admin_uid, '789 Beta Blvd');
+
+-- Deleted project (excluded from reports)
+INSERT INTO projects (id, name, organization_id, status, is_deleted, created_by, location) VALUES
+  (:proj_deleted_id, 'Demolished', :org1_id, 'deleted', true, :admin_uid, '000 Gone St');
+
+-- Worker with $0 cost rate (Data Health tests)
+INSERT INTO project_members (user_id, project_id, role, cost_rate) VALUES
+  (:admin_uid, :proj1_id, 'admin', 0);
+
+-- Extended client hierarchy
+INSERT INTO clients (id, name, organization_id, is_active,
+  billing_address, gst_number, ap_contact_name, ap_email, zones) VALUES
+  (:parent_client_id, 'Mega Corp', :org1_id, true,
+   '100 King St, Toronto', 'GST-123456', 'Finance Dept', 'ap@megacorp.com', 3)
+  ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO clients (id, name, organization_id, is_active, parent_client_id) VALUES
+  (:child_client_id, 'Mega Corp - Division A', :org1_id, true, :parent_client_id);
+
+INSERT INTO clients (id, name, organization_id, is_active) VALUES
+  (:archived_client_id, 'Old Client', :org1_id, false);
+
+-- Cross-org client (isolation test)
+INSERT INTO clients (id, name, organization_id, is_active) VALUES
+  (:rival_client_id, 'Rival Client', :org2_id, true);
+
+-- Cycle test clients
+INSERT INTO clients (id, name, organization_id, is_active) VALUES
+  (:cycle_a_id, 'Cycle A', :org4_id, true),
+  (:cycle_b_id, 'Cycle B', :org4_id, true);
+UPDATE clients SET parent_client_id = :cycle_b_id WHERE id = :cycle_a_id;
+-- Now attempt cycle: UPDATE clients SET parent_client_id = :cycle_a_id WHERE id = :cycle_b_id;
+-- → should fail (cycle)
+
+-- Additional scope items
+INSERT INTO project_scope_items (id, project_id, organization_id, name,
+  item_type, planned_hours, planned_unit_rate, planned_material_cost,
+  planned_machine_cost, quantity, sort_order) VALUES
+  (:scope3_id, :proj1_id, :org1_id, 'Cleanup', 'labor', 10, 50, 0, 0, 1, 3);
+
+-- Archived scope item (must include planned_unit_rate for trigger)
+INSERT INTO project_scope_items (id, project_id, organization_id, name,
+  item_type, planned_hours, planned_unit_rate, is_archived, archived_at, sort_order) VALUES
+  (:scope_archived_id, :proj1_id, :org1_id, 'Old Work', 'labor', 30, 50, true, now(), 4);
+
+-- Task without scope link
+INSERT INTO tasks (id, project_id, title, status, planned_hours, created_by) VALUES
+  (:task_unlinked_id, :proj1_id, 'General labor', 'in_progress', 8, :pm_uid);
+
+-- Unassigned time entry (no task_id)
+INSERT INTO time_entries (id, organization_id, user_id, project_id, task_id,
+  check_in_at, check_out_at, duration_hours, duration_minutes, status, source, project_timezone) VALUES
+  (:te_unassigned_id, :org1_id, :worker_uid, :proj1_id, NULL,
+   now()-interval '50h', now()-interval '48h', 2.0, 120, 'closed', 'manual', 'America/Toronto');
+
+-- Notification preferences
 INSERT INTO notification_preferences (user_id, weekly_digest) VALUES
   (:admin_uid, true),
   (:pm_uid, true),
@@ -588,10 +652,10 @@ HAVING COUNT(*) > 1;
 **Setup**: PM syncing scope (sync_existing mode), Foreman marking task complete simultaneously.
 
 **Steps**:
-1. Foreman updates task status to 'completed' at T=0
+1. Foreman updates task status to 'done' at T=0
 2. PM calls sync_existing at T=0+100ms (which updates planned_hours)
 
-**Expected**: Task status = 'completed' AND planned_hours updated. Neither write lost.
+**Expected**: Task status = 'done' AND planned_hours updated. Neither write lost.
 
 **Detection**: `SELECT status, planned_hours FROM tasks WHERE id = :task_id` — both fields correct.
 
