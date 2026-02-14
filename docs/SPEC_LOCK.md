@@ -21,9 +21,9 @@
 
 **QA Doc Reference**: A-009 mentions `status!='deleted'`; A-011 mentions `p_status_filter='active'`; seed data uses `'active'` and `'deleted'`.
 
-**Resolution**: `projects.status` is APP-ENFORCED ONLY. Valid values are `active | completed | on_hold | deleted`. A CHECK constraint or enum should be added. Until then, P0 tests must verify the app rejects invalid values at the API/UI layer.
+**Resolution**: `projects.status` is DB-ENFORCED via CHECK constraint `chk_projects_status`. Valid values are `not_started | in_progress | completed | archived | deleted | potential | awarded | didnt_get`.
 
-**⚠ RECOMMENDED FIX**: Add `CHECK (status IN ('active','completed','on_hold','deleted'))` constraint on `projects.status`.
+**⚠ STATUS**: ✅ CHECK constraint exists: `CHECK (status IN ('not_started','in_progress','completed','archived','deleted','potential','awarded','didnt_get'))`.
 
 ---
 
@@ -85,7 +85,7 @@
 
 **Problem**: Seed data uses `organization_memberships.role = 'worker'` but this is a free-text field. The QA doc Permission Grid header says "Worker" but the app_role enum (used in `project_members`) has `internal_worker` and `external_trade`, NOT `worker`.
 
-**Resolution**: `organization_memberships.role` is a free-text string (not the `app_role` enum). Valid org-level roles are: `admin | pm | foreman | worker | accounting | hr`. The `app_role` enum (`admin | project_manager | foreman | internal_worker | external_trade | accounting`) is used ONLY in `project_members.role` and `user_roles.role`.
+**Resolution**: `organization_memberships.role` is DB-ENFORCED via CHECK constraint `valid_org_role`. Valid org-level roles are: `admin | hr | pm | foreman | internal_worker | external_trade`. The `app_role` enum (`admin | project_manager | foreman | internal_worker | external_trade | accounting`) is used ONLY in `project_members.role` and `user_roles.role`.
 
 ---
 
@@ -196,15 +196,15 @@ These columns are `text`/`varchar` with NO enum or CHECK. Invalid values are sil
 
 | Table.Column | Expected Values (per app code) | Risk | Recommended Fix |
 |---|---|---|---|
-| `projects.status` | `active`, `completed`, `on_hold`, `deleted` | Any string accepted; RPCs may break with unexpected values | Add CHECK constraint |
+| `projects.status` | `not_started`, `in_progress`, `completed`, `archived`, `deleted`, `potential`, `awarded`, `didnt_get` | ~~Any string accepted~~ ✅ CHECK constraint enforced | ✅ Done |
 | `time_entries.status` | `open`, `closed` | Any string accepted; cost calculations may miscount | Add CHECK constraint |
 | `time_entries.source` | `gps`, `manual`, `manual_adjustment`, `offline_sync` | Any string accepted | Add CHECK constraint |
 | `time_entries.closed_method` | `self`, `auto_close`, `force`, `admin` | Any string accepted | Add CHECK constraint |
-| `project_scope_items.item_type` | `labor`, `material`, `equipment`, `subcontract`, `other` | Any string accepted | Add CHECK constraint |
-| `project_scope_items.source_type` | `manual`, `import` | Any string accepted | Add CHECK constraint |
+| `project_scope_items.item_type` | `labor`, `material`, `machine`, `other` | ~~Any string accepted~~ ✅ CHECK constraint `chk_scope_item_type` enforced | ✅ Done |
+| `project_scope_items.source_type` | `estimate`, `manual`, `template` | ~~Any string accepted~~ ✅ CHECK constraint enforced | ✅ Done |
 | `time_adjustment_requests.status` | `pending`, `approved`, `denied`, `cancelled` | Any string accepted | Add CHECK constraint |
 | `time_adjustment_requests.request_type` | `missed_check_in`, `missed_check_out`, `add_manual_entry`, `change_times`, `change_job_site`, `add_note` | Any string accepted | Add CHECK constraint |
-| `organization_memberships.role` | `admin`, `pm`, `foreman`, `worker`, `accounting`, `hr` | Any string accepted; role checks may fail silently | Add CHECK constraint |
+| `organization_memberships.role` | `admin`, `hr`, `pm`, `foreman`, `internal_worker`, `external_trade` | ~~Any string accepted~~ ✅ CHECK constraint `valid_org_role` enforced | ✅ Done |
 | `manpower_requests.status` | `pending`, `approved`, `denied` | Any string accepted | Add CHECK constraint |
 | `timesheet_periods.status` | `open`, `submitted`, `approved`, `locked` | Any string accepted; state machine RPCs assume specific values | Add CHECK constraint |
 
@@ -212,15 +212,15 @@ These columns are `text`/`varchar` with NO enum or CHECK. Invalid values are sil
 
 | QA Doc Value | Column | DB Type | ✅ Valid? | Fix Required |
 |---|---|---|---|---|
-| `'active'` | projects.status | string | ✅ (app convention) | Add CHECK |
-| `'deleted'` | projects.status | string | ✅ (app convention) | Add CHECK |
+| `'active'` | projects.status | CHECK constraint | ❌ **INVALID** — not in CHECK | Use `'in_progress'` |
+| `'deleted'` | projects.status | CHECK constraint | ✅ Valid | — |
 | `'completed'` | tasks.status | task_status enum | ❌ **INVALID** | Use `'done'` |
 | `'pending'` | tasks.status | task_status enum | ❌ **INVALID** | Use `'not_started'` |
 | `'approved'` | receipts.status | N/A | ❌ **COLUMN DOESN'T EXIST** | Use `review_status IN ('reviewed','processed')` |
 | `'closed'` | time_entries.status | string | ✅ (app convention) | Add CHECK |
 | `'open'` | time_entries.status | string | ✅ (app convention) | Add CHECK |
-| `'labor'` | project_scope_items.item_type | string | ✅ (app convention) | Add CHECK |
-| `'worker'` | org_memberships.role | string | ✅ (app convention) | Add CHECK |
+| `'labor'` | project_scope_items.item_type | CHECK constraint | ✅ Valid | — |
+| `'worker'` | org_memberships.role | CHECK constraint | ❌ **INVALID** — not in CHECK | Use `'internal_worker'` |
 
 ---
 
@@ -300,35 +300,27 @@ UPDATE time_entries SET status = 'pending' WHERE id = :teid;
 
 ---
 
-## Appendix: Recommended Migration to Close Gaps
+## Appendix: Constraint Status (as of 2026-02-14)
+
+| Table | Constraint | Status |
+|---|---|---|
+| `projects` | `chk_projects_status` | ✅ Exists |
+| `project_scope_items` | `chk_scope_item_type` | ✅ Exists |
+| `project_scope_items` | `source_type_check` | ✅ Exists |
+| `organization_memberships` | `valid_org_role` | ✅ Exists |
+| `time_adjustment_requests` | `status_check` | ✅ Exists |
+| `time_entries` | `status` CHECK | ❌ Missing — still accepts any string |
+| `time_entries` | `source` CHECK | ❌ Missing — still accepts any string |
+| `time_entries` | `closed_method` CHECK | ❌ Missing — still accepts any string |
+| `timesheet_periods` | `status` CHECK | ❌ Missing — still accepts any string |
+| `manpower_requests` | `status` CHECK | ❌ Missing — still accepts any string |
+
+### Recommended Migration for Remaining Gaps
 
 ```sql
--- Add CHECK constraints for app-enforced strings
--- Run AFTER verifying no existing rows violate these constraints
-
-ALTER TABLE projects
-  ADD CONSTRAINT chk_projects_status
-  CHECK (status IN ('active', 'completed', 'on_hold', 'deleted'));
-
 ALTER TABLE time_entries
   ADD CONSTRAINT chk_time_entries_status
   CHECK (status IN ('open', 'closed'));
-
-ALTER TABLE project_scope_items
-  ADD CONSTRAINT chk_scope_items_item_type
-  CHECK (item_type IN ('labor', 'material', 'equipment', 'subcontract', 'other'));
-
-ALTER TABLE organization_memberships
-  ADD CONSTRAINT chk_org_memberships_role
-  CHECK (role IN ('admin', 'pm', 'foreman', 'worker', 'accounting', 'hr'));
-
-ALTER TABLE time_adjustment_requests
-  ADD CONSTRAINT chk_time_adj_status
-  CHECK (status IN ('pending', 'approved', 'denied', 'cancelled'));
-
-ALTER TABLE time_adjustment_requests
-  ADD CONSTRAINT chk_time_adj_request_type
-  CHECK (request_type IN ('missed_check_in', 'missed_check_out', 'add_manual_entry', 'change_times', 'change_job_site', 'add_note'));
 
 ALTER TABLE timesheet_periods
   ADD CONSTRAINT chk_timesheet_status
