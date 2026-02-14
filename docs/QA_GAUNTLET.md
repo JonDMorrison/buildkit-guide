@@ -1,22 +1,102 @@
 # QA Gauntlet — Full-Stack Test Plan
 
-> **Version**: 1.4 · **Date**: 2026-02-14 · **Scope**: Budget-to-Execution Intelligence, Estimate Accuracy, Task Automation, Client Hierarchy, Invoice Snapshots, Invoice Accounting Rules, AI Insight EVIDENCE Verifier, Task-Level Time Tracking, Data Health, Snapshots/Trends/Recommendations/AI, Time Entry Inclusion Contract
+> **Version**: 1.5 · **Date**: 2026-02-14 · **Scope**: Budget-to-Execution Intelligence, Estimate Accuracy, Task Automation, Client Hierarchy, Invoice Snapshots, Invoice Accounting Rules, AI Insight EVIDENCE Verifier, Task-Level Time Tracking, Data Health, Snapshots/Trends/Recommendations/AI, Time Entry Inclusion Contract, Traceability Rule, Random Spot Check Harness
 
 ---
 
 ## Table of Contents
 
-1. [Test Matrix (120+ cases)](#1-test-matrix)
-2. [Seed Data Recipes](#2-seed-data-recipes)
-3. [Role & Permission Gauntlet](#3-role--permission-gauntlet)
-4. [Concurrency & Race Tests](#4-concurrency--race-tests)
-5. [Time Entry Inclusion Contract](#5-time-entry-inclusion-contract)
-6. [Reporting Trust Tests](#6-reporting-trust-tests)
-7. [Security & Data Isolation Tests](#7-security--data-isolation-tests)
-8. [Regression Checklist](#8-regression-checklist)
-9. [Acceptance Gate](#9-acceptance-gate)
+1. [Traceability Rule](#0-traceability-rule)
+2. [Test Matrix (120+ cases)](#1-test-matrix)
+3. [Seed Data Recipes](#2-seed-data-recipes)
+4. [Role & Permission Gauntlet](#3-role--permission-gauntlet)
+5. [Concurrency & Race Tests](#4-concurrency--race-tests)
+6. [Time Entry Inclusion Contract](#5-time-entry-inclusion-contract)
+7. [Reporting Trust Tests](#6-reporting-trust-tests)
+8. [Security & Data Isolation Tests](#7-security--data-isolation-tests)
+9. [Random Spot Check Harness (P0)](#8-random-spot-check-harness)
+10. [Regression Checklist](#9-regression-checklist)
+11. [Acceptance Gate](#10-acceptance-gate)
 
 ---
+
+## 0. Traceability Rule
+
+> **CANONICAL — This rule supersedes all other test guidance. No number ships without provenance.**
+
+### 0.1 The Rule
+
+**Every number displayed anywhere in the application** — KPI cards, table cells, chart data points, CSV/PDF exports, toast messages, dashboard widgets — **MUST be traceable** to all four of the following:
+
+| # | Requirement | Description |
+|---|-------------|-------------|
+| T-1 | **Source field** | The exact snapshot column, RPC return field, or database column the number comes from (e.g., `project_financial_snapshots.actual_total_cost`, `project_portfolio_report.actual_margin_percent`) |
+| T-2 | **Reproducibility query** | A standalone SQL query that, when run against the same database state, produces the identical number (±tolerance). The query must reference real table/column names — no pseudocode |
+| T-3 | **Tolerance rule** | The maximum acceptable difference between UI and SQL. Default: `|UI − SQL| ≤ $0.01` for currency, `|UI − SQL| ≤ 0.1%` for percentages, exact match for counts/hours |
+| T-4 | **Exclusion rules** | Every filter or exclusion applied before display is documented and visible in UI. Examples: "Excludes projects without budgets", "Excludes void invoices", "Excludes open time entries" |
+
+### 0.2 Failure Classification
+
+| Violation | Severity | Action |
+|-----------|----------|--------|
+| Number has no identifiable source field | **P0** | Release blocker — cannot ship unprovenanced data |
+| Number disagrees with SQL by more than tolerance | **P0** | Release blocker — data is wrong |
+| Exclusion rule applied but not shown in UI | **P1** | Must add tooltip/footnote before release |
+| Tolerance not documented for a metric | **P1** | Must be added to this document before sign-off |
+
+### 0.3 Traceability Registry
+
+> Reference table mapping every UI surface to its data source. Testers use this during spot checks.
+
+#### KPI Cards
+
+| UI Surface | Component | Display Label | Source | Field | Tolerance | Exclusions | SQL |
+|------------|-----------|---------------|--------|-------|-----------|------------|-----|
+| Portfolio page | `usePortfolioInsights` | Contract Value | `project_portfolio_report` RPC | `contract_value` | ±$0.01 | Excludes deleted projects | `SELECT contract_value FROM project_portfolio_report(:org_id) WHERE project_id=:pid` |
+| Portfolio page | `usePortfolioInsights` | Actual Total Cost | `project_portfolio_report` RPC | `actual_total_cost` | ±$0.01 | Excludes deleted projects; excludes open time entries | Same RPC |
+| Portfolio page | `usePortfolioInsights` | Actual Margin % | `project_portfolio_report` RPC | `actual_margin_percent` | ±0.1% | Excludes projects without budget | Same RPC |
+| Portfolio page | `usePortfolioInsights` | Planned Profit | `project_portfolio_report` RPC | `planned_profit` | ±$0.01 | Excludes projects without budget | Same RPC |
+| Project Budget tab | `useProjectBudget` → `variance` | Actual Labor Hours | `project_variance_summary` RPC | `actual_labor_hours` | exact | Excludes open entries, NULL/zero duration | `SELECT actual_labor_hours FROM project_variance_summary(:pid)` |
+| Project Budget tab | `useProjectBudget` → `variance` | Actual Labor Cost | `project_variance_summary` RPC | `actual_labor_cost` | ±$0.01 | Excludes $0 cost rate workers (flagged separately) | Same RPC |
+| Project Budget tab | `useProjectBudget` → `variance` | Actual Material Cost | `project_variance_summary` RPC | `actual_material_cost` | ±$0.01 | Only `review_status IN ('reviewed','processed')` receipts with `cost_type='material'` | Same RPC |
+| Invoice dashboard | `InvoiceDashboardMetrics` | Outstanding | computed client-side | `SUM(total - amount_paid) WHERE status='sent'` | ±$0.01 | Excludes void/draft/paid | `SELECT SUM(total - amount_paid) FROM invoices WHERE organization_id=:oid AND project_id=:pid AND status='sent'` |
+| Invoice dashboard | `InvoiceDashboardMetrics` | Overdue | computed client-side | `SUM(total - amount_paid) WHERE status='sent' AND due_date < today` | ±$0.01 | Excludes void/draft/paid | Add `AND due_date < CURRENT_DATE` to above |
+| Invoice dashboard | `InvoiceDashboardMetrics` | Avg Days to Pay | computed client-side | `AVG(paid_at - sent_at) WHERE status='paid'` | ±1 day | Only paid invoices with both `paid_at` and `sent_at` | `SELECT AVG(DATE_PART('day', paid_at::timestamp - sent_at::timestamp))::int FROM invoices WHERE organization_id=:oid AND status='paid' AND paid_at IS NOT NULL AND sent_at IS NOT NULL` |
+
+#### Tables
+
+| UI Surface | Component | Column | Source | Field | Tolerance | Exclusions |
+|------------|-----------|--------|--------|-------|-----------|------------|
+| Portfolio table | `PortfolioExportCSV` | Labor Hours Delta | `project_portfolio_report` RPC | `labor_hours_delta` | exact | Excludes deleted projects |
+| Portfolio table | `PortfolioExportCSV` | Billed % | `project_portfolio_report` RPC | `billed_percentage` | ±0.1% | — |
+| Scope Accuracy table | `ScopeAccuracyTable` | Actual Hours | `project_scope_accuracy` RPC | `actual_hours` | exact | Only closed entries with positive duration |
+| Scope Accuracy table | `ScopeAccuracyTable` | Delta % | `project_scope_accuracy` RPC | `delta_pct` | ±0.1% | — |
+| Hours Tracking table | `useHoursTracking` | By Scope Item | `useHoursTracking` hook | `byScopeItem[].actual` | exact | Closed entries only |
+
+#### Charts
+
+| UI Surface | Component | Data Point | Source | Field | Tolerance | Exclusions |
+|------------|-----------|------------|--------|-------|-----------|------------|
+| Org trends | `CostTrendChart` | Actual cost per week | `org_financial_snapshots` | `total_actual_cost` | ±$0.01 | One point per snapshot_date |
+| Org trends | `MarginTrendChart` | Margin % per week | `org_financial_snapshots` | `weighted_margin_pct_actual` | ±0.1% | — |
+| Org trends | `OverBudgetTrendChart` | Over-budget count | `org_financial_snapshots` | `projects_over_budget_count` | exact | — |
+| Project trends | `ActualVsPlannedChart` | Actual cost | `project_financial_snapshots` | `actual_total_cost` | ±$0.01 | — |
+| Project trends | `LaborVarianceChart` | Actual hours | `project_financial_snapshots` | `actual_labor_hours` | exact | — |
+| Invoice dashboard | `InvoiceDashboardMetrics` | Monthly revenue bar | computed client-side | `SUM(total) WHERE status='paid' GROUP BY month(paid_at)` | ±$0.01 | Only paid invoices |
+
+#### Exports
+
+| UI Surface | Component | Column | Source | Field | Tolerance | Exclusions |
+|------------|-----------|--------|--------|-------|-----------|------------|
+| Portfolio CSV | `PortfolioExportCSV` | All columns | `project_portfolio_report` RPC | 1:1 mapping | Same as table | Same as table |
+| Job Cost PDF | `JobCostExportPDF` | All rows | `useJobCostReport` hook | derived from budget + actuals | ±$0.01 | — |
+| Invoice PDF | `InvoicePDFExport` | Total / Tax / Subtotal | `invoices` table | `total`, `tax_amount`, `subtotal` | exact | — |
+
+### 0.4 How to Apply During Testing
+
+1. **Before marking any test as PASS**, verify the displayed number against T-1 through T-4 above
+2. If a number appears in the UI but is NOT listed in §0.3, **file a P1 bug** to add it to the registry
+3. During each release, execute the **Random Spot Check Harness** (§8) — minimum 10 spot checks
 
 ## 1. Test Matrix
 
@@ -1298,7 +1378,96 @@ END $$;
 
 ---
 
-## 9. Acceptance Gate
+## 8. Random Spot Check Harness (P0)
+
+> **MANDATORY** — Execute ALL 10 spot checks per release. Each is P0. Pick a **random active project** with budget and ≥5 closed time entries.
+
+### Instructions
+
+For each spot check:
+1. Note the value shown in the UI element described
+2. Run the SQL query against the database
+3. Compare using the stated tolerance
+4. If mismatch → **P0 bug**, release blocked
+
+### Spot Checks RSC-01 through RSC-08: Numbers
+
+| # | UI Location | UI Element | Expected Source Field | SQL Query | Tolerance |
+|---|-------------|------------|----------------------|-----------|-----------|
+| RSC-01 | Portfolio page → project row | **Contract Value** column | `project_portfolio_report.contract_value` | `SELECT contract_value FROM project_portfolio_report(:org_id) WHERE project_id = :pid` | ±$0.01 |
+| RSC-02 | Portfolio page → project row | **Actual Total Cost** column | `project_portfolio_report.actual_total_cost` | `SELECT actual_total_cost FROM project_portfolio_report(:org_id) WHERE project_id = :pid` | ±$0.01 |
+| RSC-03 | Portfolio page → project row | **Actual Margin %** column | `project_portfolio_report.actual_margin_percent` | `SELECT actual_margin_percent FROM project_portfolio_report(:org_id) WHERE project_id = :pid` | ±0.1% |
+| RSC-04 | Project Overview → Budget tab → Variance card | **Actual Labor Hours** | `project_variance_summary.actual_labor_hours` | `SELECT actual_labor_hours FROM project_variance_summary(:pid)` | exact |
+| RSC-05 | Project Overview → Budget tab → Variance card | **Actual Material Cost** | `project_variance_summary.actual_material_cost` | `SELECT actual_material_cost FROM project_variance_summary(:pid)` | ±$0.01 |
+| RSC-06 | Project Overview → Budget tab → Variance card | **Planned Profit** | `project_variance_summary.planned_profit` | `SELECT planned_profit FROM project_variance_summary(:pid)` | ±$0.01 |
+| RSC-07 | Scope Accuracy page → first scope item row | **Actual Hours** | `project_scope_accuracy.actual_hours` | `SELECT actual_hours FROM project_scope_accuracy(:pid) WHERE scope_item_id = :sid LIMIT 1` | exact |
+| RSC-08 | Invoice dashboard → Outstanding KPI card | **Outstanding amount** | client-side sum | `SELECT SUM(total - amount_paid) FROM invoices WHERE organization_id = :oid AND status = 'sent' AND (due_date IS NULL OR due_date >= CURRENT_DATE)` | ±$0.01 |
+
+### Spot Checks RSC-09 through RSC-10: Chart Points
+
+| # | UI Location | Chart Element | Expected Source | SQL Query | Tolerance |
+|---|-------------|--------------|-----------------|-----------|-----------|
+| RSC-09 | Insights → Org Trends → Cost Trend chart | **Most recent actual cost data point** (rightmost) | `org_financial_snapshots.total_actual_cost` | `SELECT total_actual_cost FROM org_financial_snapshots WHERE organization_id = :oid AND snapshot_period = 'weekly' ORDER BY snapshot_date DESC LIMIT 1` | ±$0.01 |
+| RSC-10 | Insights → Project Trends → Labor Variance chart | **Most recent actual hours data point** (rightmost) | `project_financial_snapshots.actual_labor_hours` | `SELECT actual_labor_hours FROM project_financial_snapshots WHERE project_id = :pid AND snapshot_period = 'weekly' ORDER BY snapshot_date DESC LIMIT 1` | exact |
+
+### Spot Check Execution Template
+
+```
+Release: ___________  Date: ___________  Tester: ___________
+
+Random Project: ___________  (ID: ___________)
+Organization:   ___________  (ID: ___________)
+
+| # | UI Value | SQL Value | Tolerance | PASS/FAIL | Notes |
+|---|----------|-----------|-----------|-----------|-------|
+| RSC-01 | | | ±$0.01 | | |
+| RSC-02 | | | ±$0.01 | | |
+| RSC-03 | | | ±0.1% | | |
+| RSC-04 | | | exact | | |
+| RSC-05 | | | ±$0.01 | | |
+| RSC-06 | | | ±$0.01 | | |
+| RSC-07 | | | exact | | |
+| RSC-08 | | | ±$0.01 | | |
+| RSC-09 | | | ±$0.01 | | |
+| RSC-10 | | | exact | | |
+
+Result: ___ / 10 PASS.  Any FAIL = P0 release blocker.
+```
+
+---
+
+## 9. Regression Checklist
+
+> Quick pass/fail for every PR that touches budget, variance, invoicing, scope, time tracking, or snapshot code.
+
+- [ ] `project_actual_costs(:pid)` returns expected values after seed
+- [ ] `project_variance_summary(:pid)` deltas = planned − actual
+- [ ] Portfolio report excludes deleted projects
+- [ ] Portfolio report `has_budget` flag matches `project_budgets` existence
+- [ ] CSV export column count matches header count
+- [ ] Invoice "strict" total ≤ "relaxed" total (always)
+- [ ] Client hierarchy: child inherits parent billing_address where child's is NULL
+- [ ] Invoice snapshot fields frozen after creation
+- [ ] `generate_tasks_from_scope` is idempotent
+- [ ] Scope item archive → linked tasks NOT auto-deleted
+- [ ] Data quality flags shown when `labor_hours_missing_cost_rate > 0`
+- [ ] Weekly digest: only Admin/PM with `weekly_digest=true` receive it
+- [ ] Worker cannot access portfolio insights
+- [ ] AI insight response contains `evidence` block
+- [ ] AI insight `evidence` values match input snapshot (no `evidence_warnings`)
+- [ ] Mutated snapshot → new `input_hash` → new evidence matches mutated data
+- [ ] Time entries with `status='open'` excluded from all actuals
+- [ ] Time entries with `duration_hours IS NULL` or `duration_hours <= 0` excluded from actuals
+- [ ] Rolling-window queries use `check_out_at`, not `created_at`
+- [ ] Data Health: overlapping time entries detected (adjacent excluded)
+- [ ] Data Health: cross-project task references = 0
+- [ ] Data Health: budget component sum consistency verified
+- [ ] Traceability: every KPI card number appears in §0.3 registry
+- [ ] Random Spot Check Harness: 10/10 PASS
+
+---
+
+## 10. Acceptance Gate
 
 ### Pass Criteria
 
@@ -1309,6 +1478,8 @@ END $$;
 | **P2** | No limit, but must be triaged and ticketed. |
 | **Security** | Zero unresolved security failures across all categories (cross-org isolation, RLS, SECURITY DEFINER, hierarchy constraints). Any security failure = automatic release block regardless of severity label. |
 | **Trust Tests** | All 6 reconciliation queries must match within stated tolerance. Any mismatch = P0 bug. |
+| **Traceability** | Every number in the UI must have a source field, SQL query, tolerance, and exclusion rule documented in §0.3. Missing entries = P1; mismatches = P0. |
+| **Spot Checks** | All 10 Random Spot Checks (§8) must PASS. Any FAIL = P0 release blocker. |
 | **UI vs SQL** | Every KPI card, every table cell, every chart data point must trace to a verifiable SQL query. Random sampling: at minimum 10 spot checks per release. |
 
 ### Sign-Off Checklist
@@ -1316,6 +1487,8 @@ END $$;
 - [ ] All P0 tests passing
 - [ ] Security gauntlet: 0 failures
 - [ ] Trust tests: all 6 reconciliations within tolerance
+- [ ] Traceability Rule: §0.3 registry complete for all shipped UI numbers
+- [ ] Random Spot Check Harness: 10/10 PASS (attach completed template)
 - [ ] Role permission grid: all negative tests confirmed denied
 - [ ] Concurrency tests: no data corruption detected
 - [ ] CSV export validation: headers + sample values verified
@@ -1327,4 +1500,4 @@ END $$;
 
 ---
 
-*End of QA Gauntlet v1.0*
+*End of QA Gauntlet v1.5*
