@@ -27,7 +27,7 @@
 
 | # | Issue | Location | Severity | Fix |
 |---|-------|----------|----------|-----|
-| 1 | `item_type = 'task'` used in `generate_tasks_from_scope` RPC filter, but SPEC_LOCK and all seed data use `item_type = 'labor'` | RPC body vs `docs/SPEC_LOCK.md` §scope_item_types, seed recipes §2 | **P0** | Either change RPC to filter `item_type = 'labor'` OR update SPEC_LOCK + seeds to include `'task'` type. Must be one canonical value. |
+| 1 | ~~`item_type = 'task'` used in `generate_tasks_from_scope` RPC filter~~ | ~~RPC body vs SPEC_LOCK~~ | ~~P0~~ | ✅ **RESOLVED** — Migration converted all 'task' → 'labor', updated both RPCs, added CHECK constraint `chk_scope_item_type`, dropped legacy constraint `project_scope_items_item_type_check`. |
 | 2 | Task status tests reference `'completed'` and `'cancelled'` but DB enum is `'done'` and task has no `'cancelled'` value | §1 test matrix TASK-* tests | **P0** | Replace `'completed'` → `'done'` in all test assertions. Remove or clarify `'cancelled'` — it doesn't exist in the enum. |
 | 3 | Receipt tests reference `receipts.status` column with values `'approved'`, `'rejected'` | §6 RPT-RCPT-* tests | **P0** | Column is `review_status` with values `'reviewed'`, `'flagged'`, `'pending'`. Update all receipt test references. |
 
