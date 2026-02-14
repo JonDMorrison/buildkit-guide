@@ -4674,6 +4674,10 @@ export type Database = {
         Args: { p_org_id: string; p_user_id: string }
         Returns: boolean
       }
+      has_project_access: {
+        Args: { p_org_roles?: string[]; p_project_id: string }
+        Returns: boolean
+      }
       has_project_membership: {
         Args: { _project_id: string }
         Returns: boolean
@@ -4704,6 +4708,10 @@ export type Database = {
       }
       is_org_member: {
         Args: { _org_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_org_scoped_project_member: {
+        Args: { p_project_id: string; p_user_id: string }
         Returns: boolean
       }
       is_project_member: {
