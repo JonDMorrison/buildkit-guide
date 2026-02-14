@@ -706,96 +706,177 @@ SELECT * FROM rpc_submit_timesheet_period(:period_id, :pm_uid, 'I attest');
 
 ## 4. Concurrency & Race Tests
 
-### Race 1: Dual Task Generation from Scope
+> **ALL tests in §4 are P0 release blockers.** Any duplicate row, lost update, or partial write = release blocked.
 
-**Setup**: PM-A and PM-B both on project with 5 scope items, 0 existing tasks.
+### 4.0 Concurrency Protection Mechanisms
+
+| Mechanism | Where | Purpose |
+|-----------|-------|---------|
+| **Advisory lock** (`pg_advisory_xact_lock`) | `generate_tasks_from_scope` | Serializes concurrent calls per project. Prevents wasted work and race between NOT EXISTS check and INSERT |
+| **Unique partial index** | `tasks(project_id, scope_item_id) WHERE scope_item_id IS NOT NULL` | Belt-and-suspenders: even if advisory lock fails, ON CONFLICT DO NOTHING prevents duplicates |
+| **UPSERT** (`ON CONFLICT ... DO UPDATE`) | `generate_project_financial_snapshot`, `generate_org_financial_snapshot` | Unique key `(project_id, snapshot_date, snapshot_period)` ensures exactly one row per snapshot window |
+| **Idempotency keys** | `time-check-in`, `time-check-out` edge functions | `api_idempotency_keys` table prevents double-tap duplicates |
+
+### Race 1: Task Generation Under Heavy Concurrency (20 Calls)
+
+**Setup**: Project with 5 scope items (`item_type='task'`, not archived), 0 existing tasks. 20 concurrent sessions.
 
 **Steps**:
-1. PM-A calls `generate_tasks_from_scope(:pid, 'create_missing')` at T=0
-2. PM-B calls same RPC at T=0+50ms
+1. Fire 20 simultaneous calls to `generate_tasks_from_scope(:pid, 'create_missing')` from 20 database sessions
+2. Wait for all to complete
 
-**Expected**: Exactly 5 tasks created (not 10). Second call should find existing tasks and skip.
+**Expected**:
+- Exactly 5 tasks created (not 10, not 100)
+- The first call to acquire the advisory lock creates tasks; remaining 19 calls find existing tasks and skip
+- Sum of all `created` return values across all 20 calls = 5
+- Sum of all `skipped` return values across all 20 calls = 95 (19 × 5)
 
-**Detection**:
+**Zero-Duplicate Assertion (P0)**:
 ```sql
+-- MUST return 0 rows. Any row = P0 release blocker.
 SELECT scope_item_id, COUNT(*) AS task_count
-FROM tasks WHERE project_id = :pid
+FROM tasks
+WHERE project_id = :pid AND scope_item_id IS NOT NULL
 GROUP BY scope_item_id
 HAVING COUNT(*) > 1;
--- Must return 0 rows
+
+-- Total tasks for project MUST equal scope item count
+SELECT COUNT(*) AS task_count FROM tasks WHERE project_id = :pid AND is_generated = true;
+-- Must equal: SELECT COUNT(*) FROM project_scope_items WHERE project_id = :pid AND item_type = 'task' AND is_archived = false;
 ```
 
-**Risk**: No advisory lock in RPC → duplicate tasks.
+**Advisory Lock Verification**:
+```sql
+-- During execution, confirm lock is held (run in separate session while calls are in-flight):
+SELECT locktype, objid, granted, pid
+FROM pg_locks
+WHERE locktype = 'advisory' AND objid = hashtext('gen_tasks_' || :pid::text);
+-- At least one row with granted=true expected while calls are running
+```
+
+**Stress Test Script** (for pgbench or manual execution):
+```sql
+-- Run this 20 times in parallel sessions:
+SELECT generate_tasks_from_scope(:pid, 'create_missing');
+```
+
+| # | Test | Steps | Expected | SQL Verification | Sev |
+|---|------|-------|----------|-----------------|-----|
+| R1-01 | 2 concurrent calls, 5 scope items | PM-A and PM-B call simultaneously | Exactly 5 tasks; no duplicates | Duplicate query above = 0 rows | P0 |
+| R1-02 | 20 concurrent calls, 5 scope items | 20 sessions fire simultaneously | Exactly 5 tasks; sum(created) = 5 | Same duplicate query = 0 rows; total tasks = 5 | P0 |
+| R1-03 | 20 concurrent calls, 0 scope items | 20 sessions fire simultaneously | 0 tasks created; all return `{"created":0,"updated":0,"skipped":0}` | `SELECT COUNT(*) FROM tasks WHERE project_id=:pid AND is_generated=true` = 0 | P0 |
+| R1-04 | Call after tasks exist | Run create_missing when tasks already exist | `created=0`, `skipped=5` | Duplicate query = 0 rows | P0 |
+| R1-05 | Advisory lock present during execution | Monitor pg_locks during R1-02 | At least 1 advisory lock row visible | Lock query above returns ≥1 row | P0 |
 
 ### Race 2: Sync While Foreman Updates Task
 
-**Setup**: PM syncing scope (sync_existing mode), Foreman marking task complete simultaneously.
+**Setup**: PM syncing scope (`sync_existing` mode), Foreman marking task complete simultaneously.
 
 **Steps**:
-1. Foreman updates task status to 'done' at T=0
-2. PM calls sync_existing at T=0+100ms (which updates planned_hours)
+1. Foreman updates task status to `'done'` at T=0
+2. PM calls `generate_tasks_from_scope(:pid, 'sync_existing')` at T=0+50ms (which updates `planned_hours` and `title`)
 
-**Expected**: Task status = 'done' AND planned_hours updated. Neither write lost.
+**Expected**: Task has `status = 'done'` AND `planned_hours` updated to scope value. Neither write lost.
 
-**Detection**: `SELECT status, planned_hours FROM tasks WHERE id = :task_id` — both fields correct.
+**Detection**:
+```sql
+-- Both fields must reflect their respective writers:
+SELECT status, planned_hours FROM tasks WHERE id = :task_id;
+-- status = 'done' (from foreman), planned_hours = <scope value> (from sync)
+```
+
+**Why no lost update**: `sync_existing` only updates `title`, `description`, `planned_hours` — it does NOT touch `status`. These are independent column sets → no conflict.
+
+| # | Test | Steps | Expected | SQL Verification | Sev |
+|---|------|-------|----------|-----------------|-----|
+| R2-01 | Concurrent status + sync | Foreman sets done; PM syncs | Both writes preserved | `SELECT status, planned_hours FROM tasks WHERE id=:tid` — status='done', planned_hours=scope value | P0 |
+| R2-02 | 20 concurrent syncs | 20 sessions call sync_existing | All return same updated/skipped counts; no duplicate tasks | Duplicate query = 0 rows; task values = scope values | P0 |
 
 ### Race 3: Assign Time Entry During Check-Out
 
-**Setup**: Worker has open entry :te_id. PM tries to assign it to a task simultaneously with worker checking out.
+**Setup**: Worker has open entry `:te_id`. PM assigns it to a task while worker checks out.
 
 **Steps**:
 1. Worker calls `time-check-out` edge function at T=0
 2. PM calls `assign_time_entry_task(:te_id, :task_id)` at T=0+50ms
 
-**Expected**: Both succeed. Entry is closed AND has task_id assigned.
+**Expected**: Entry is closed AND has `task_id` set. No partial update (closed without task, or task assigned but still open).
 
-**Detection**: `SELECT status, task_id FROM time_entries WHERE id = :te_id` — status='closed', task_id=:task_id.
+**Partial Update Assertion (P0)**:
+```sql
+-- Final state: BOTH conditions must hold
+SELECT status, task_id, check_out_at, duration_hours
+FROM time_entries WHERE id = :te_id;
 
-### Race 4: Snapshot Generation During Invoice Creation — Time Boundary Contract
+-- Assert ALL of:
+--   status = 'closed'
+--   task_id = :task_id (NOT NULL)
+--   check_out_at IS NOT NULL
+--   duration_hours > 0
+```
 
-> **CANONICAL**: A snapshot represents the state of data **as-of `captured_at`** (set to `now()` at the start of the RPC call). Any data created after `captured_at` MUST NOT appear in that snapshot. It MUST appear in the next snapshot run.
+**Why this works**: `time-check-out` updates `status`, `check_out_at`, `duration_*`, `closed_by`, `closed_method`. `assign_time_entry_task` updates only `task_id`. Independent column sets → both writes succeed regardless of ordering.
+
+| # | Test | Steps | Expected | SQL Verification | Sev |
+|---|------|-------|----------|-----------------|-----|
+| R3-01 | Concurrent check-out + assign | Worker checks out; PM assigns | status='closed' AND task_id=:task_id | Query above — all 4 assertions hold | P0 |
+| R3-02 | Assign then check-out | PM assigns first; worker checks out 100ms later | Same: status='closed' AND task_id=:task_id | Same query | P0 |
+| R3-03 | Double check-out | Worker checks out twice simultaneously | Exactly 1 closed entry; no error (idempotency key prevents second) | `SELECT COUNT(*) FROM time_entries WHERE id=:te_id` = 1; status='closed' | P0 |
+
+### Race 4: Snapshot Generation Concurrency
+
+> **CANONICAL**: A snapshot represents the state of data **as-of `captured_at`** (set to `now()` at the start of the RPC call). Any data created after `captured_at` MUST NOT appear in that snapshot.
 
 **Schema fields enforcing this contract**:
 
 | Table | Column | Purpose |
 |-------|--------|---------|
-| `project_financial_snapshots` | `captured_at` (timestamptz) | Exact instant data was read — all queries are point-in-time relative to this |
+| `project_financial_snapshots` | `captured_at` (timestamptz) | Exact instant data was read |
 | `org_financial_snapshots` | `captured_at` (timestamptz) | Same, for org-level aggregation |
 | `snapshots_run_log` | `started_at` (timestamptz) | When the cron/backfill began |
 | `snapshots_run_log` | `finished_at` (timestamptz) | When it completed |
 
-**Setup**: Snapshot cron fires while PM is creating a new invoice.
-
-**Steps**:
-1. Record `T0 = captured_at` from the snapshot RPC (set at function entry via `v_captured_at := now()`)
-2. PM creates invoice worth $5000 at `T0 + 200ms` (after `captured_at`)
-
-**Expected**: Snapshot's `invoiced_amount_strict` does NOT include the $5000. Next week's snapshot DOES include it.
-
-**Detection**:
-```sql
--- Verify the invoice was created AFTER captured_at
-SELECT s.captured_at, i.created_at, s.invoiced_amount_strict
-FROM project_financial_snapshots s
-JOIN invoices i ON i.project_id = s.project_id
-WHERE s.project_id = :pid
-  AND s.snapshot_date = :date
-  AND i.total = 5000;
--- Assert: i.created_at > s.captured_at → invoice NOT in invoiced_amount_strict
-```
-
-**Idempotency rule**: Re-running `generate_weekly_snapshots_for_org` for the same `(org_id, snapshot_date, period)` performs an UPSERT. `captured_at` IS updated on re-run (reflects the latest data read). This is correct — a re-run should capture the latest state.
-
-### Race 4 Tests
+**Unique keys preventing duplicates**:
+- `project_financial_snapshots`: `UNIQUE (project_id, snapshot_date, snapshot_period)`
+- `org_financial_snapshots`: `UNIQUE (organization_id, snapshot_date, snapshot_period)`
 
 | # | Test | Steps | Expected | SQL Verification | Sev |
 |---|------|-------|----------|-----------------|-----|
-| R4-01 | Invoice created AFTER captured_at excluded | 1. Run snapshot for today 2. Note `captured_at` from result 3. Create invoice ($5000, status=sent) with `created_at` > `captured_at` 4. Query snapshot | `invoiced_amount_strict` does NOT include $5000 | `SELECT invoiced_amount_strict FROM project_financial_snapshots WHERE project_id=:pid AND snapshot_date=:date` — compare to sum of invoices WHERE `created_at < captured_at` | P0 |
-| R4-02 | Invoice created BEFORE captured_at included | 1. Create invoice ($3000, status=sent) 2. Wait 1s 3. Run snapshot | `invoiced_amount_strict` includes $3000 | Same query — $3000 present | P0 |
-| R4-03 | Re-run snapshot is idempotent (no duplicates) | 1. Run snapshot 2. Run snapshot again for same date | Only 1 row per `(project_id, snapshot_date, period)`. `captured_at` updates to latest run. | `SELECT COUNT(*) FROM project_financial_snapshots WHERE project_id=:pid AND snapshot_date=:date AND snapshot_period='weekly'` = 1 | P0 |
-| R4-04 | Re-run captures updated data | 1. Run snapshot 2. Create new receipt ($500) 3. Re-run snapshot for same date | `actual_material_cost` increases by $500; `captured_at` is newer than first run | Compare two `captured_at` values — second > first | P0 |
-| R4-05 | `captured_at` is NOT NULL on new snapshots | Run snapshot | `captured_at IS NOT NULL` for both project and org snapshots | `SELECT COUNT(*) FROM project_financial_snapshots WHERE captured_at IS NULL AND snapshot_date=:date` = 0 | P0 |
-| R4-06 | `started_at` and `finished_at` populated in run log | Run snapshot via edge function | `started_at` ≤ `finished_at`, both NOT NULL | `SELECT started_at, finished_at FROM snapshots_run_log ORDER BY run_at DESC LIMIT 1` — both non-null, `finished_at >= started_at` | P1 |
+| R4-01 | Invoice created AFTER `captured_at` excluded | 1. Run snapshot for today 2. Note `captured_at` 3. Create invoice ($5000, status=sent) 4. Query snapshot | `invoiced_amount_strict` does NOT include $5000 | `SELECT invoiced_amount_strict FROM project_financial_snapshots WHERE project_id=:pid AND snapshot_date=:date` — compare to sum of invoices WHERE `created_at < captured_at` | P0 |
+| R4-02 | Invoice created BEFORE `captured_at` included | 1. Create invoice ($3000, status=sent) 2. Wait 1s 3. Run snapshot | `invoiced_amount_strict` includes $3000 | Same query — $3000 present | P0 |
+| R4-03 | Re-run snapshot = no duplicates (UPSERT) | 1. Run snapshot 2. Run snapshot again for same date | Exactly 1 row per `(project_id, snapshot_date, period)`. `captured_at` updates to latest run | Zero-duplicate query below | P0 |
+| R4-04 | Re-run captures updated data | 1. Run snapshot 2. Create new receipt ($500) 3. Re-run | `actual_material_cost` increases by $500; `captured_at` is newer | Compare two `captured_at` values — second > first | P0 |
+| R4-05 | `captured_at` is NOT NULL on new snapshots | Run snapshot | `captured_at IS NOT NULL` | `SELECT COUNT(*) FROM project_financial_snapshots WHERE captured_at IS NULL AND snapshot_date=:date` = 0 | P0 |
+| R4-06 | `started_at` and `finished_at` in run log | Run snapshot via edge function | Both NOT NULL; `started_at` ≤ `finished_at` | `SELECT started_at, finished_at FROM snapshots_run_log ORDER BY run_at DESC LIMIT 1` — both non-null | P0 |
+| R4-07 | 10 concurrent snapshot runs | Fire `generate_weekly_snapshots_for_org` 10 times simultaneously | Exactly 1 row per project per date in `project_financial_snapshots`; exactly 1 org row | Zero-duplicate queries below | P0 |
+| R4-08 | Run log has entry per invocation | Fire 3 runs; check run log | 3 rows in `snapshots_run_log` for the org+date; each has `started_at` and `finished_at` | `SELECT COUNT(*) FROM snapshots_run_log WHERE organization_id=:oid AND snapshot_date=:date` ≥ 3 | P0 |
+
+**Snapshot Zero-Duplicate Assertions (P0)**:
+```sql
+-- Project snapshots: MUST return 0 rows
+SELECT project_id, snapshot_date, snapshot_period, COUNT(*) AS cnt
+FROM project_financial_snapshots
+WHERE organization_id = :oid AND snapshot_date = :date
+GROUP BY project_id, snapshot_date, snapshot_period
+HAVING COUNT(*) > 1;
+
+-- Org snapshots: MUST return 0 rows
+SELECT organization_id, snapshot_date, snapshot_period, COUNT(*) AS cnt
+FROM org_financial_snapshots
+WHERE organization_id = :oid AND snapshot_date = :date
+GROUP BY organization_id, snapshot_date, snapshot_period
+HAVING COUNT(*) > 1;
+
+-- Run log: MUST have at least 1 completed row per invocation
+SELECT id, started_at, finished_at,
+       CASE WHEN finished_at IS NULL THEN 'INCOMPLETE' ELSE 'OK' END AS status
+FROM snapshots_run_log
+WHERE organization_id = :oid
+ORDER BY run_at DESC
+LIMIT 10;
+```
+
+**Idempotency rule**: Re-running `generate_weekly_snapshots_for_org` for the same `(org_id, snapshot_date, period)` performs an UPSERT. `captured_at` IS updated on re-run (reflects the latest data read). This is correct — a re-run should capture the latest state.
 
 ### Chart-to-Snapshot Column Spot Checks
 
