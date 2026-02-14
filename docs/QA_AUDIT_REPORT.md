@@ -101,10 +101,10 @@ Snapshot boundaries are implicitly correct via UPSERT but not explicitly tested.
 
 | # | Issue | Severity |
 |---|-------|----------|
-| 1 | `generate_tasks_from_scope` uses `SECURITY DEFINER` and checks `EXISTS(SELECT 1 FROM project_members WHERE project_id = p_project_id AND user_id = auth.uid())` — **correct** | OK |
+| 1 | `generate_tasks_from_scope` uses `SECURITY DEFINER` and checks `is_org_member` — **correct** | OK |
 | 2 | `collect-weekly-snapshots` edge function runs as service role — no per-user auth check needed (cron job) — **correct** | OK |
-| 3 | No test verifies that calling `generate_tasks_from_scope` with a `project_id` from another org raises an error (not just 0 rows) | **P0** |
-| 4 | `assign_time_entry_task` — no explicit test that the task's `project_id` matches the time entry's `project_id` | **P0** |
+| 3 | ~~No test verifies that calling `generate_tasks_from_scope` with a `project_id` from another org raises an error~~ | ~~P0~~ ✅ **RESOLVED** — All RPCs now raise SQLSTATE 42501 on cross-org access |
+| 4 | ~~`assign_time_entry_task` — no explicit test that the task's `project_id` matches the time entry's `project_id`~~ | ~~P0~~ ✅ **RESOLVED** — Cross-project mismatch raises SQLSTATE 42501 with descriptive message |
 | 5 | Snapshot tables (`project_financial_snapshots`, `org_financial_snapshots`) — no test confirms direct INSERT is blocked by RLS for non-service-role | **P1** |
 
 ---
@@ -149,12 +149,12 @@ Add a programmatic test that:
 | Scenario | Test Exists? | Severity if Missing |
 |----------|-------------|---------------------|
 | Mutating invoice snapshot after sent/paid | ✅ INV-SNAP-03 | — |
-| Cross-project time assignment | ❌ No explicit test | **P0** |
+| Cross-project time assignment | ✅ `assign_time_entry_task` raises SQLSTATE 42501 on mismatch | — |
 | Duplicate task generation under concurrency | ✅ Race-1, Race-2 | — |
 | Snapshot duplication under cron race | ✅ Race-4 | — |
 | Backfill limits enforced | ✅ TIME-BF-01 | — |
 | Worker self-role-escalation | ❌ No test | **P0** |
-| Cross-org scope generation | ❌ No explicit test | **P0** |
+| Cross-org scope generation | ✅ `generate_tasks_from_scope` raises SQLSTATE 42501 | — |
 
 ---
 
@@ -171,7 +171,7 @@ Add a programmatic test that:
 | P0-3 | ~~Receipt column `status` vs `review_status`~~ | ✅ **RESOLVED** — `project_actual_costs` now uses `r.review_status IN ('reviewed','processed')` |
 | P0-4 | ~~`project_actual_costs` missing `duration_hours > 0`~~ | ✅ **RESOLVED** — full Inclusion Contract enforced: `status='closed' AND check_out_at IS NOT NULL AND duration_hours IS NOT NULL AND duration_hours > 0` |
 | P0-5 | ~~`project_actual_costs` missing `check_out_at IS NOT NULL`~~ | ✅ **RESOLVED** — same fix as P0-4 |
-| P0-6 | No cross-org test for `generate_tasks_from_scope` — expects error, not silence |
+| P0-6 | ~~No cross-org test for `generate_tasks_from_scope`~~ | ✅ **RESOLVED** — All RPCs raise SQLSTATE 42501 on cross-org/cross-project access |
 | P0-7 | AI narrative numbers not cross-checked against EVIDENCE JSON — hallucinations undetectable |
 | P0-8 | Seed `time_entries` missing `project_timezone` NOT NULL column — seeds will fail to insert |
 
