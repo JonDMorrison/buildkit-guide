@@ -96,6 +96,10 @@ Deno.serve(async (req) => {
     const s7 = await runDriftDetection(db);
     (results.sections as Record<string, unknown>).drift_detection = s7;
 
+    // ─── SECTION 8: STRUCTURAL RLS CHECK ──────────────────────────
+    const s8 = await runStructuralRlsCheck(db);
+    (results.sections as Record<string, unknown>).structural_rls_check = s8;
+
     return new Response(JSON.stringify(results), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -702,5 +706,67 @@ async function runDriftDetection(db: ReturnType<typeof createClient>) {
     canonical_enums: canonicalEnums,
     not_null_issues: notNullIssues,
     note: "Verifies critical NOT NULL constraints. CHECK/ENUM verification requires direct pg_constraint access.",
+  };
+}
+
+// ─── SECTION 8: STRUCTURAL RLS CHECK ─────────────────────────────
+async function runStructuralRlsCheck(db: ReturnType<typeof createClient>) {
+  const criticalTables = [
+    "projects",
+    "tasks",
+    "time_entries",
+    "receipts",
+    "invoices",
+    "project_budgets",
+    "project_financial_snapshots",
+    "org_financial_snapshots",
+    "project_scope_items",
+    "project_members",
+    "safety_forms",
+    "blockers",
+    "deficiencies",
+    "attachments",
+    "daily_logs",
+    "comments",
+    "manpower_requests",
+    "timesheet_periods",
+  ];
+
+  const { data: rlsData, error } = await db.rpc("check_rls_status", {
+    p_tables: criticalTables,
+  });
+
+  if (error) {
+    return {
+      pass: false,
+      tables: [],
+      note: `RPC error: ${error.message}`,
+    };
+  }
+
+  const tables = (rlsData || []) as Array<{
+    table_name: string;
+    rls_enabled: boolean;
+    policy_count: number;
+    policy_names: string[];
+  }>;
+
+  const missingRls = tables.filter((t) => !t.rls_enabled);
+  const noPolicies = tables.filter((t) => t.rls_enabled && t.policy_count === 0);
+  const checkedNames = tables.map((t) => t.table_name);
+  const missingFromDb = criticalTables.filter((t) => !checkedNames.includes(t));
+
+  return {
+    pass: missingRls.length === 0 && noPolicies.length === 0 && missingFromDb.length === 0,
+    tables,
+    missing_rls: missingRls.map((t) => t.table_name),
+    rls_no_policies: noPolicies.map((t) => t.table_name),
+    missing_from_db: missingFromDb,
+    note:
+      missingRls.length > 0
+        ? `CRITICAL: ${missingRls.length} table(s) have RLS disabled`
+        : noPolicies.length > 0
+          ? `WARNING: ${noPolicies.length} table(s) have RLS enabled but no policies`
+          : `All ${tables.length} critical tables have RLS enabled with policies`,
   };
 }

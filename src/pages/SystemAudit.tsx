@@ -20,6 +20,7 @@ import {
   BarChart3,
   GitCompare,
   Timer,
+  TableProperties,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -33,6 +34,7 @@ interface AuditResults {
     ai_narrative_validation?: AINarrativeResult;
     snapshot_consistency?: SnapshotResult;
     drift_detection?: DriftResult;
+    structural_rls_check?: StructuralRlsResult;
   };
 }
 
@@ -117,6 +119,22 @@ interface DriftResult {
     expected: string;
     actual: string;
   }>;
+  note: string;
+}
+
+interface RlsTableInfo {
+  table_name: string;
+  rls_enabled: boolean;
+  policy_count: number;
+  policy_names: string[];
+}
+
+interface StructuralRlsResult {
+  pass: boolean;
+  tables: RlsTableInfo[];
+  missing_rls: string[];
+  rls_no_policies: string[];
+  missing_from_db: string[];
   note: string;
 }
 
@@ -609,6 +627,68 @@ export default function SystemAudit() {
                     .map((c) => `${c.table}.${c.constraint}`)
                     .join(", ")}
                 </div>
+              </AuditSection>
+            )}
+
+            {/* Section 8: Structural RLS Check */}
+            {s?.structural_rls_check && (
+              <AuditSection
+                title="Structural RLS Verification"
+                icon={<TableProperties className="h-5 w-5" />}
+                pass={s.structural_rls_check.pass}
+              >
+                <p className="text-sm text-muted-foreground mb-2">
+                  {s.structural_rls_check.note}
+                </p>
+                {s.structural_rls_check.tables && s.structural_rls_check.tables.length > 0 && (
+                  <div className="overflow-x-auto mt-2">
+                    <table className="w-full text-sm border-collapse">
+                      <thead>
+                        <tr className="border-b border-border text-left">
+                          <th className="py-1.5 pr-3 font-medium text-muted-foreground">Table</th>
+                          <th className="py-1.5 pr-3 font-medium text-muted-foreground">RLS</th>
+                          <th className="py-1.5 pr-3 font-medium text-muted-foreground">Policies</th>
+                          <th className="py-1.5 font-medium text-muted-foreground hidden md:table-cell">Policy Names</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {s.structural_rls_check.tables.map((t) => (
+                          <tr
+                            key={t.table_name}
+                            className={`border-b border-border/50 ${
+                              !t.rls_enabled
+                                ? "bg-destructive/10"
+                                : t.policy_count === 0
+                                  ? "bg-orange-500/10"
+                                  : ""
+                            }`}
+                          >
+                            <td className="py-1.5 pr-3 font-mono text-xs">{t.table_name}</td>
+                            <td className="py-1.5 pr-3">
+                              <Badge
+                                variant={t.rls_enabled ? "default" : "destructive"}
+                                className={`text-xs font-mono ${t.rls_enabled ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}
+                              >
+                                {t.rls_enabled ? "ON" : "OFF"}
+                              </Badge>
+                            </td>
+                            <td className="py-1.5 pr-3 font-mono text-xs">{t.policy_count}</td>
+                            <td className="py-1.5 text-xs text-muted-foreground hidden md:table-cell max-w-xs truncate">
+                              {t.policy_names.length > 0
+                                ? t.policy_names.join(", ")
+                                : <span className="text-destructive">none</span>}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {s.structural_rls_check.missing_from_db.length > 0 && (
+                  <div className="text-sm text-destructive font-mono mt-2">
+                    Missing tables: {s.structural_rls_check.missing_from_db.join(", ")}
+                  </div>
+                )}
               </AuditSection>
             )}
           </div>
