@@ -56,6 +56,7 @@ const ProjectEstimateAccuracy = lazy(() => import("./pages/ProjectEstimateAccura
 const DataHealth = lazy(() => import("./pages/DataHealth"));
 const Snapshots = lazy(() => import("./pages/Snapshots"));
 const DocsViewer = lazy(() => import("./pages/DocsViewer"));
+const SystemAudit = lazy(() => import("./pages/SystemAudit"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -423,6 +424,14 @@ const App = () => (
                   }
                 />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route
+                  path="/system-audit"
+                  element={
+                    <ProtectedRoute>
+                      <SystemAudit />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
