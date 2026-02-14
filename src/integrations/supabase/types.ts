@@ -4631,6 +4631,7 @@ export type Database = {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
       }
+      check_rls_status: { Args: { p_tables: string[] }; Returns: Json }
       cleanup_expired_idempotency_keys: { Args: never; Returns: number }
       generate_org_financial_snapshot: {
         Args: { p_org_id: string; p_period?: string; p_snapshot_date: string }
