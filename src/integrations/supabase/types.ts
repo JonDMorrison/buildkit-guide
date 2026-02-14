@@ -4645,6 +4645,10 @@ export type Database = {
         Args: { _project_id: string; _user_id: string }
         Returns: boolean
       }
+      is_valid_time_entry: {
+        Args: { te: Database["public"]["Tables"]["time_entries"]["Row"] }
+        Returns: boolean
+      }
       org_role: { Args: { _org_id: string }; Returns: string }
       org_role_for_user: {
         Args: { p_org_id: string; p_user_id: string }
