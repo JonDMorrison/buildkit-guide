@@ -66,11 +66,22 @@ interface EnumResult {
   >;
 }
 
+interface CrossOrgTestItem {
+  test_name: string;
+  actor: string;
+  query: string;
+  expected: string;
+  actual: string;
+  pass: boolean;
+}
+
 interface CrossOrgResult {
   pass: boolean;
-  tables_checked: string[];
-  tables_with_rls_policies: string[];
-  tables_without_policies: string[];
+  tests: CrossOrgTestItem[];
+  test_count: number;
+  fail_count: number;
+  target_project_id: string | null;
+  cross_org_project_id: string | null;
   note: string;
 }
 
@@ -422,26 +433,76 @@ export default function SystemAudit() {
               </AuditSection>
             )}
 
-            {/* Section 4: Cross-Org */}
+            {/* Section 4: Cross-Org Behavioral Tests */}
             {s?.cross_org_leak_test && (
               <AuditSection
-                title="Cross-Org Isolation"
+                title="Cross-Org Behavioral Isolation"
                 icon={<Lock className="h-5 w-5" />}
                 pass={s.cross_org_leak_test.pass}
               >
                 <p className="text-sm text-muted-foreground mb-2">
                   {s.cross_org_leak_test.note}
                 </p>
-                {s.cross_org_leak_test.tables_without_policies.length > 0 && (
-                  <div className="text-sm text-destructive font-mono">
-                    Missing RLS:{" "}
-                    {s.cross_org_leak_test.tables_without_policies.join(", ")}
+                {s.cross_org_leak_test.tests && s.cross_org_leak_test.tests.length > 0 && (
+                  <div className="overflow-x-auto mt-2">
+                    <table className="w-full text-sm border-collapse">
+                      <thead>
+                        <tr className="border-b border-border text-left">
+                          <th className="py-1.5 pr-3 font-medium text-muted-foreground">Test</th>
+                          <th className="py-1.5 pr-3 font-medium text-muted-foreground">Actor</th>
+                          <th className="py-1.5 pr-3 font-medium text-muted-foreground hidden md:table-cell">Expected</th>
+                          <th className="py-1.5 pr-3 font-medium text-muted-foreground">Actual</th>
+                          <th className="py-1.5 font-medium text-muted-foreground text-right">Result</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {s.cross_org_leak_test.tests.map((test, i) => (
+                          <tr
+                            key={i}
+                            className={`border-b border-border/50 ${!test.pass ? "bg-destructive/10" : ""}`}
+                          >
+                            <td className="py-1.5 pr-3 font-mono text-xs">{test.test_name}</td>
+                            <td className="py-1.5 pr-3">
+                              <Badge
+                                variant="outline"
+                                className={`text-xs ${
+                                  test.actor === "org_member"
+                                    ? "border-primary/50 text-primary"
+                                    : test.actor === "non_member"
+                                      ? "border-orange-500/50 text-orange-600"
+                                      : "border-muted-foreground/50 text-muted-foreground"
+                                }`}
+                              >
+                                {test.actor === "org_member"
+                                  ? "Member"
+                                  : test.actor === "non_member"
+                                    ? "Non-member"
+                                    : "Unauth"}
+                              </Badge>
+                            </td>
+                            <td className="py-1.5 pr-3 text-xs text-muted-foreground hidden md:table-cell">
+                              {test.expected}
+                            </td>
+                            <td className="py-1.5 pr-3 font-mono text-xs">
+                              {test.actual}
+                            </td>
+                            <td className="py-1.5 text-right">
+                              <StatusBadge pass={test.pass} />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
-                <div className="text-xs text-muted-foreground mt-1">
-                  Checked: {s.cross_org_leak_test.tables_checked.length} tables
-                  · {s.cross_org_leak_test.tables_with_rls_policies.length} with
-                  policies
+                <div className="text-xs text-muted-foreground mt-2 flex gap-3">
+                  <span>Tests: {s.cross_org_leak_test.test_count ?? s.cross_org_leak_test.tests?.length ?? 0}</span>
+                  <span>Failures: {s.cross_org_leak_test.fail_count ?? 0}</span>
+                  {s.cross_org_leak_test.cross_org_project_id && (
+                    <span className="font-mono">
+                      Cross-org target: {s.cross_org_leak_test.cross_org_project_id.slice(0, 8)}…
+                    </span>
+                  )}
                 </div>
               </AuditSection>
             )}
