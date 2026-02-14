@@ -115,17 +115,19 @@ Snapshot boundaries are implicitly correct via UPSERT but not explicitly tested.
 
 | # | Issue | Severity |
 |---|-------|----------|
-| 1 | Tests HEV-01 through HEV-06 verify that `EVIDENCE` JSON exists and has required keys, but do NOT cross-check that numeric values in the narrative text match EVIDENCE values | **P0** |
-| 2 | No test parses the `content.narrative` string to extract numbers and compare against `content.evidence` | **P0** |
+| 1 | ~~Tests HEV-01 through HEV-06 verify that `EVIDENCE` JSON exists and has required keys, but do NOT cross-check that numeric values in the narrative text match EVIDENCE values~~ | ~~P0~~ ✅ **RESOLVED** — `generate-insights` now extracts all `$X,XXX`, `XX%`, and plain numbers from narrative, cross-checks against EVIDENCE values, and rejects with HTTP 422 on mismatch |
+| 2 | ~~No test parses the `content.narrative` string to extract numbers and compare against `content.evidence`~~ | ~~P0~~ ✅ **RESOLVED** — Validation runs server-side in edge function; results logged to `ai_insight_validation_log` table |
 | 3 | `input_hash` idempotency test (HEV-05) exists but doesn't verify determinism — it only checks the hash is present, not that same input → same hash | **P1** |
 | 4 | Role restriction for regeneration (HEV-06) exists and asserts PM+ only — **correct** | OK |
 
-### Required Fix
+### Status
 
-Add a programmatic test that:
-1. Extracts all `$X,XXX` and `XX%` patterns from `narrative`
-2. Asserts each exists in `evidence` JSON
-3. Fails if any narrative number has no evidence source
+✅ **Hallucination guard implemented.** The `generate-insights` edge function now:
+1. Extracts all `$X,XXX`, `XX%`, and numeric patterns from narrative prose
+2. Cross-checks every narrative number exists in the EVIDENCE JSON
+3. Cross-checks every EVIDENCE value traces to snapshot source data
+4. **Rejects with HTTP 422** if any number is unmatched — insight is NOT stored
+5. Logs every validation (pass or fail) to `ai_insight_validation_log` for audit
 
 ---
 
@@ -172,7 +174,7 @@ Add a programmatic test that:
 | P0-4 | ~~`project_actual_costs` missing `duration_hours > 0`~~ | ✅ **RESOLVED** — full Inclusion Contract enforced: `status='closed' AND check_out_at IS NOT NULL AND duration_hours IS NOT NULL AND duration_hours > 0` |
 | P0-5 | ~~`project_actual_costs` missing `check_out_at IS NOT NULL`~~ | ✅ **RESOLVED** — same fix as P0-4 |
 | P0-6 | ~~No cross-org test for `generate_tasks_from_scope`~~ | ✅ **RESOLVED** — All RPCs raise SQLSTATE 42501 on cross-org/cross-project access |
-| P0-7 | AI narrative numbers not cross-checked against EVIDENCE JSON — hallucinations undetectable |
+| P0-7 | ~~AI narrative numbers not cross-checked against EVIDENCE JSON~~ | ✅ **RESOLVED** — Edge function extracts numbers from prose, cross-checks against EVIDENCE, rejects with HTTP 422 on mismatch, logs to `ai_insight_validation_log` |
 | P0-8 | Seed `time_entries` missing `project_timezone` NOT NULL column — seeds will fail to insert |
 
 ### P1 Weaknesses (6)
