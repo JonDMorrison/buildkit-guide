@@ -78,8 +78,8 @@ Deno.serve(async (req) => {
     const s3 = await runEnumIntegrity(db);
     (results.sections as Record<string, unknown>).enum_integrity = s3;
 
-    // ─── SECTION 4: CROSS-ORG LEAK TEST ───────────────────────────
-    const s4 = await runCrossOrgLeakTest(db);
+    // ─── SECTION 4: CROSS-ORG BEHAVIORAL ISOLATION TEST ──────────
+    const s4 = await runCrossOrgBehavioralTest(db, userClient, supabaseUrl, anonKey, user.id, projectId);
     (results.sections as Record<string, unknown>).cross_org_leak_test = s4;
 
     // ─── SECTION 5: AI NARRATIVE VALIDATION ───────────────────────
@@ -348,50 +348,150 @@ async function runEnumIntegrity(db: ReturnType<typeof createClient>) {
   return { pass: allPass, checks };
 }
 
-// ─── SECTION 4 ────────────────────────────────────────────────────
-async function runCrossOrgLeakTest(db: ReturnType<typeof createClient>) {
-  // Check RLS is enabled on critical tables
-  const criticalTables = [
-    "projects",
-    "tasks",
-    "time_entries",
-    "receipts",
-    "safety_forms",
-    "invoices",
-    "project_budgets",
-    "project_financial_snapshots",
-    "org_financial_snapshots",
-    "project_scope_items",
-    "project_members",
-  ];
+// ─── SECTION 4: BEHAVIORAL CROSS-ORG ISOLATION ───────────────────
+async function runCrossOrgBehavioralTest(
+  serviceDb: ReturnType<typeof createClient>,
+  userClient: ReturnType<typeof createClient>,
+  supabaseUrl: string,
+  anonKey: string,
+  callerUserId: string,
+  targetProjectId?: string,
+) {
+  const tests: Array<{
+    test_name: string;
+    actor: string;
+    query: string;
+    expected: string;
+    actual: string;
+    pass: boolean;
+  }> = [];
 
-  const { data: rlsData } = await db.rpc("check_rls_enabled" as never);
+  // Find caller's org(s)
+  const { data: callerOrgs } = await serviceDb
+    .from("organization_memberships")
+    .select("organization_id")
+    .eq("user_id", callerUserId)
+    .eq("is_active", true);
 
-  // Fallback: query pg_class directly via a simple check
-  // Since we can't run raw SQL, we check policies exist
-  const { data: policies } = await db
-    .from("pg_policies" as never)
-    .select("tablename, policyname")
-    .in("tablename", criticalTables);
+  const callerOrgIds = (callerOrgs || []).map((o: { organization_id: string }) => o.organization_id);
 
-  const tablesWithPolicies = new Set(
-    (policies || []).map((p: Record<string, string>) => p.tablename)
-  );
-  const tablesWithoutPolicies = criticalTables.filter(
-    (t) => !tablesWithPolicies.has(t)
-  );
+  // Find a project NOT in caller's org(s) for cross-org tests
+  let crossOrgProjectId: string | null = null;
+  if (callerOrgIds.length > 0) {
+    const { data: otherProject } = await serviceDb
+      .from("projects")
+      .select("id")
+      .not("organization_id", "in", `(${callerOrgIds.join(",")})`)
+      .limit(1)
+      .maybeSingle();
+    crossOrgProjectId = otherProject?.id || null;
+  }
 
-  // Check for cross-org data: any project_members referencing users not in the project's org
-  const { count: crossOrgMembers } = await db
-    .from("project_members")
-    .select("id", { count: "exact", head: true });
+  const anonClient = createClient(supabaseUrl, anonKey);
+
+  // ── BASELINE: Member can see own project ──
+  if (targetProjectId) {
+    const { data, error } = await userClient
+      .from("projects")
+      .select("id")
+      .eq("id", targetProjectId);
+
+    tests.push({
+      test_name: "Baseline: member can read own project",
+      actor: "org_member",
+      query: `SELECT id FROM projects WHERE id = '${targetProjectId}'`,
+      expected: "1 row",
+      actual: error ? `Error: ${error.code}` : `${(data || []).length} rows`,
+      pass: !error && (data || []).length === 1,
+    });
+  }
+
+  // ── CROSS-ORG: Caller queries project from another org ──
+  if (crossOrgProjectId) {
+    const crossTests: Array<{ name: string; table: string; filter: string }> = [
+      { name: "SELECT projects", table: "projects", filter: "id" },
+      { name: "SELECT tasks", table: "tasks", filter: "project_id" },
+      { name: "SELECT invoices", table: "invoices", filter: "project_id" },
+      { name: "SELECT time_entries", table: "time_entries", filter: "project_id" },
+      { name: "SELECT receipts", table: "receipts", filter: "project_id" },
+      { name: "SELECT safety_forms", table: "safety_forms", filter: "project_id" },
+      { name: "SELECT project_budgets", table: "project_budgets", filter: "project_id" },
+      { name: "SELECT project_scope_items", table: "project_scope_items", filter: "project_id" },
+    ];
+
+    for (const ct of crossTests) {
+      const q = userClient
+        .from(ct.table)
+        .select("id", { count: "exact", head: false })
+        .eq(ct.filter, crossOrgProjectId)
+        .limit(1);
+
+      const { data: rows, error: qErr } = await q;
+      const rowCount = (rows || []).length;
+
+      tests.push({
+        test_name: `Cross-org ${ct.name}`,
+        actor: "non_member",
+        query: `SELECT id FROM ${ct.table} WHERE ${ct.filter} = '${crossOrgProjectId}' LIMIT 1`,
+        expected: "0 rows",
+        actual: qErr ? `Error: ${qErr.code}` : `${rowCount} rows`,
+        pass: qErr ? qErr.code === "42501" : rowCount === 0,
+      });
+    }
+  } else {
+    tests.push({
+      test_name: "Cross-org tests skipped",
+      actor: "non_member",
+      query: "N/A — no other organization exists in the database",
+      expected: "Requires multi-org data",
+      actual: "Skipped",
+      pass: true,
+    });
+  }
+
+  // ── UNAUTHENTICATED: Anon key, no JWT ──
+  const unauthTarget = targetProjectId || crossOrgProjectId;
+  if (unauthTarget) {
+    const unauthTests: Array<{ name: string; table: string; filter: string }> = [
+      { name: "SELECT projects", table: "projects", filter: "id" },
+      { name: "SELECT tasks", table: "tasks", filter: "project_id" },
+      { name: "SELECT invoices", table: "invoices", filter: "project_id" },
+      { name: "SELECT time_entries", table: "time_entries", filter: "project_id" },
+    ];
+
+    for (const ut of unauthTests) {
+      const { data: rows, error: qErr } = await anonClient
+        .from(ut.table)
+        .select("id")
+        .eq(ut.filter, unauthTarget)
+        .limit(1);
+
+      const rowCount = (rows || []).length;
+
+      tests.push({
+        test_name: `Unauth ${ut.name}`,
+        actor: "unauthenticated",
+        query: `SELECT id FROM ${ut.table} WHERE ${ut.filter} = '${unauthTarget}' LIMIT 1`,
+        expected: "0 rows or permission error",
+        actual: qErr ? `Error: ${qErr.code}` : `${rowCount} rows`,
+        pass: qErr !== null || rowCount === 0,
+      });
+    }
+  }
+
+  const allPass = tests.every(t => t.pass);
+  const failCount = tests.filter(t => !t.pass).length;
 
   return {
-    pass: tablesWithoutPolicies.length === 0,
-    tables_checked: criticalTables,
-    tables_with_rls_policies: [...tablesWithPolicies],
-    tables_without_policies: tablesWithoutPolicies,
-    note: "Structural check only — verifies RLS policies exist on critical tables",
+    pass: allPass,
+    tests,
+    test_count: tests.length,
+    fail_count: failCount,
+    target_project_id: targetProjectId || null,
+    cross_org_project_id: crossOrgProjectId,
+    note: crossOrgProjectId
+      ? `Behavioral isolation tests ran across ${tests.length} queries`
+      : "Limited to baseline + unauthenticated tests (single org detected)",
   };
 }
 
