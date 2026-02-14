@@ -2955,6 +2955,238 @@ export type Database = {
           },
         ]
       }
+      quote_conversions: {
+        Row: {
+          converted_at: string
+          converted_by: string
+          id: string
+          invoice_id: string
+          organization_id: string
+          quote_id: string
+        }
+        Insert: {
+          converted_at?: string
+          converted_by: string
+          id?: string
+          invoice_id: string
+          organization_id: string
+          quote_id: string
+        }
+        Update: {
+          converted_at?: string
+          converted_by?: string
+          id?: string
+          invoice_id?: string
+          organization_id?: string
+          quote_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_conversions_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_conversions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_conversions_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: true
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quote_line_items: {
+        Row: {
+          amount: number
+          description: string | null
+          id: string
+          organization_id: string
+          product_or_service: string
+          quantity: number
+          quote_id: string
+          rate: number
+          sales_tax_amount: number
+          sales_tax_rate: number
+          sort_order: number
+        }
+        Insert: {
+          amount?: number
+          description?: string | null
+          id?: string
+          organization_id: string
+          product_or_service: string
+          quantity?: number
+          quote_id: string
+          rate?: number
+          sales_tax_amount?: number
+          sales_tax_rate?: number
+          sort_order?: number
+        }
+        Update: {
+          amount?: number
+          description?: string | null
+          id?: string
+          organization_id?: string
+          product_or_service?: string
+          quantity?: number
+          quote_id?: string
+          rate?: number
+          sales_tax_amount?: number
+          sales_tax_rate?: number
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_line_items_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_line_items_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quotes: {
+        Row: {
+          approved_at: string | null
+          bill_to_address: string | null
+          bill_to_ap_email: string | null
+          bill_to_name: string | null
+          client_id: string | null
+          created_at: string
+          created_by: string
+          customer_pm_email: string | null
+          customer_pm_name: string | null
+          customer_pm_phone: string | null
+          customer_po_number: string | null
+          gst: number
+          id: string
+          internal_notes: string | null
+          memo_on_statement: string | null
+          note_for_customer: string | null
+          organization_id: string
+          parent_client_id: string | null
+          project_id: string | null
+          pst: number
+          quote_number: string
+          ship_to_address: string | null
+          ship_to_name: string | null
+          status: string
+          subtotal: number
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          bill_to_address?: string | null
+          bill_to_ap_email?: string | null
+          bill_to_name?: string | null
+          client_id?: string | null
+          created_at?: string
+          created_by: string
+          customer_pm_email?: string | null
+          customer_pm_name?: string | null
+          customer_pm_phone?: string | null
+          customer_po_number?: string | null
+          gst?: number
+          id?: string
+          internal_notes?: string | null
+          memo_on_statement?: string | null
+          note_for_customer?: string | null
+          organization_id: string
+          parent_client_id?: string | null
+          project_id?: string | null
+          pst?: number
+          quote_number: string
+          ship_to_address?: string | null
+          ship_to_name?: string | null
+          status?: string
+          subtotal?: number
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          bill_to_address?: string | null
+          bill_to_ap_email?: string | null
+          bill_to_name?: string | null
+          client_id?: string | null
+          created_at?: string
+          created_by?: string
+          customer_pm_email?: string | null
+          customer_pm_name?: string | null
+          customer_pm_phone?: string | null
+          customer_po_number?: string | null
+          gst?: number
+          id?: string
+          internal_notes?: string | null
+          memo_on_statement?: string | null
+          note_for_customer?: string | null
+          organization_id?: string
+          parent_client_id?: string | null
+          project_id?: string | null
+          pst?: number
+          quote_number?: string
+          ship_to_address?: string | null
+          ship_to_name?: string | null
+          status?: string
+          subtotal?: number
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_parent_client_id_fkey"
+            columns: ["parent_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_progress"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       receipts: {
         Row: {
           amount: number | null
@@ -4896,6 +5128,10 @@ export type Database = {
       }
       check_rls_status: { Args: { p_tables: string[] }; Returns: Json }
       cleanup_expired_idempotency_keys: { Args: never; Returns: number }
+      convert_quote_to_invoice: {
+        Args: { p_actor_id: string; p_quote_id: string }
+        Returns: string
+      }
       estimate_variance_summary: {
         Args: { p_project_id: string }
         Returns: Json
@@ -4922,6 +5158,7 @@ export type Database = {
       }
       get_next_estimate_number: { Args: { p_org_id: string }; Returns: string }
       get_next_invoice_number: { Args: { org_id: string }; Returns: string }
+      get_next_quote_number: { Args: { p_org_id: string }; Returns: string }
       get_task_project_id: { Args: { _task_id: string }; Returns: string }
       get_time_cron_secret: { Args: never; Returns: string }
       get_user_organizations: { Args: { _user_id: string }; Returns: string[] }

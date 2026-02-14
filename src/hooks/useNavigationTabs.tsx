@@ -30,6 +30,7 @@ export const tabs: TabConfig[] = [
   { name: "Job Cost", path: "/job-cost-report", icon: DollarSign, tiers: ['all', 'office'] },
   { name: "Invoicing", path: "/invoicing", icon: FileText, tiers: ['all', 'office'] },
   { name: "Estimates", path: "/estimates", icon: FileText, tiers: ['all', 'office'] },
+  { name: "Quotes", path: "/quotes", icon: FileText, tiers: ['all', 'office'] },
   { name: "Insights", path: "/insights", icon: TrendingUp, tiers: ['all', 'office'] },
   { name: "Lookahead", path: "/lookahead", icon: Calendar, tiers: ['all'] },
   { name: "Manpower", path: "/manpower", icon: Users, tiers: ['all'] },
