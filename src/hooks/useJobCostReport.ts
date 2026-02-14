@@ -30,7 +30,9 @@ export const useJobCostReport = ({ projectId, startDate, endDate }: UseJobCostRe
           .select('user_id, duration_hours, check_in_at')
           .eq('project_id', projectId)
           .eq('status', 'closed')
-          .not('duration_hours', 'is', null);
+          .not('check_out_at', 'is', null)
+          .not('duration_hours', 'is', null)
+          .gt('duration_hours', 0);
 
         if (startDate) {
           timeQuery = timeQuery.gte('check_in_at', startDate.toISOString());

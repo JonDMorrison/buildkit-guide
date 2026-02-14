@@ -48,14 +48,14 @@ AND duration_hours > 0
 
 | # | Issue | RPC / Location | Severity |
 |---|-------|----------------|----------|
-| 1 | `project_actual_costs` RPC does NOT filter `duration_hours > 0` — it only checks `status = 'closed'` | RPC body in migration | **P0** |
-| 2 | `project_task_actual_hours` RPC does NOT filter `check_out_at IS NOT NULL` | RPC body in migration | **P0** |
-| 3 | `v_project_progress` view uses `status = 'closed'` but doesn't enforce `duration_hours > 0` | View definition | **P1** |
+| 1 | ~~`project_actual_costs` RPC does NOT filter `duration_hours > 0`~~ | ~~RPC body~~ | ~~P0~~ ✅ **RESOLVED** — full 4-clause predicate enforced |
+| 2 | ~~`project_task_actual_hours` RPC does NOT filter `check_out_at IS NOT NULL`~~ | ~~RPC body~~ | ~~P0~~ ✅ **RESOLVED** — full 4-clause predicate enforced |
+| 3 | `v_project_progress` view uses `status = 'closed'` but doesn't enforce `duration_hours > 0` | View definition | **P1** — N/A: view only counts tasks, not time entries |
 | 4 | No negative test seeds a row with `status='closed'` + `duration_hours = 0` to confirm exclusion | §2 seed data | **P1** |
 
-### Required Fix
+### Status
 
-All RPCs and views that aggregate time data MUST use the full 4-clause inclusion predicate. Add seed row with `duration_hours = 0, status = 'closed'` and assert it is excluded from every aggregation.
+✅ Canonical `is_valid_time_entry(te)` SQL function created. All RPCs (`project_actual_costs`, `project_task_actual_hours`) and frontend (`useJobCostReport`) now enforce the full 4-clause Inclusion Contract. `v_project_progress` does not aggregate time data (tasks only) so no change needed.
 
 ---
 
@@ -184,7 +184,7 @@ Add a programmatic test that:
 | P1-3 | Snapshot time boundary tests don't assert cross-midnight correctness |
 | P1-4 | `input_hash` idempotency test doesn't verify determinism |
 | P1-5 | Snapshot tables lack direct-INSERT RLS denial tests |
-| P1-6 | `v_project_progress` view doesn't enforce full inclusion contract |
+| P1-6 | ~~`v_project_progress` view doesn't enforce full inclusion contract~~ — N/A: view counts tasks only, no time aggregation |
 
 ### Biggest Systemic Risk
 
