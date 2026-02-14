@@ -93,7 +93,7 @@ export function useProjectBudget(projectId: string) {
           .from('project_scope_items')
           .select('planned_hours, planned_material_cost, planned_machine_cost, planned_total')
           .eq('project_id', projectId)
-          .eq('item_type', 'task')
+          .eq('item_type', 'labor')
           .eq('is_archived', false),
         supabase.rpc('project_actual_costs', { p_project_id: projectId }),
         supabase.rpc('project_variance_summary', { p_project_id: projectId }),

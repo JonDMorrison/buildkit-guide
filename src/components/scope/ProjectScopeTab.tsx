@@ -89,7 +89,7 @@ export const ProjectScopeTab = ({ projectId }: ProjectScopeTabProps) => {
         project_id: projectId,
         organization_id: proj.organization_id,
         name: 'New Scope Item',
-        item_type: 'task',
+        item_type: 'labor',
         source_type: 'manual',
         sort_order: items.length,
       });
@@ -180,7 +180,7 @@ export const ProjectScopeTab = ({ projectId }: ProjectScopeTabProps) => {
 
   const visibleItems = showArchived ? items : items.filter((i) => !i.is_archived);
   const archivedCount = items.filter((i) => i.is_archived).length;
-  const activeTaskItems = items.filter((i) => i.item_type === 'task' && !i.is_archived);
+  const activeTaskItems = items.filter((i) => i.item_type === 'labor' && !i.is_archived);
   const hasTaskItems = activeTaskItems.length > 0;
 
   if (loading || roleLoading) {
