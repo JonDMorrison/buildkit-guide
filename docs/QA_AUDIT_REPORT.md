@@ -166,11 +166,11 @@ Add a programmatic test that:
 
 | # | Summary |
 |---|---------|
-| P0-1 | `item_type = 'task'` vs `'labor'` mismatch — all task generation tests silently return 0 results |
+| P0-1 | ~~`item_type = 'task'` vs `'labor'` mismatch~~ | ✅ **RESOLVED** |
 | P0-2 | Task status enum references `'completed'`/`'cancelled'` — these don't exist in the DB |
-| P0-3 | Receipt column `status` vs `review_status` with wrong enum values — corrupts financial trust tests |
-| P0-4 | `project_actual_costs` RPC missing `duration_hours > 0` filter — violates Time Entry Inclusion Contract |
-| P0-5 | `project_task_actual_hours` RPC missing `check_out_at IS NOT NULL` filter |
+| P0-3 | ~~Receipt column `status` vs `review_status`~~ | ✅ **RESOLVED** — `project_actual_costs` now uses `r.review_status IN ('reviewed','processed')` |
+| P0-4 | ~~`project_actual_costs` missing `duration_hours > 0`~~ | ✅ **RESOLVED** — full Inclusion Contract enforced: `status='closed' AND check_out_at IS NOT NULL AND duration_hours IS NOT NULL AND duration_hours > 0` |
+| P0-5 | ~~`project_actual_costs` missing `check_out_at IS NOT NULL`~~ | ✅ **RESOLVED** — same fix as P0-4 |
 | P0-6 | No cross-org test for `generate_tasks_from_scope` — expects error, not silence |
 | P0-7 | AI narrative numbers not cross-checked against EVIDENCE JSON — hallucinations undetectable |
 | P0-8 | Seed `time_entries` missing `project_timezone` NOT NULL column — seeds will fail to insert |
