@@ -8,7 +8,7 @@ interface NavSectionProps {
 
 export const NavSection = ({ title, collapsed, children }: NavSectionProps) => {
   return (
-    <div className="mt-5 first:mt-0">
+    <div className="mt-3 first:mt-0">
       {!collapsed ? (
         <div className="px-4 mb-2">
           <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-sidebar-foreground/40 select-none">
