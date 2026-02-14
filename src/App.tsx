@@ -51,6 +51,7 @@ const HoursTracking = lazy(() => import("./pages/HoursTracking"));
 const Setup = lazy(() => import("./pages/Setup"));
 const JobCostReport = lazy(() => import("./pages/JobCostReport"));
 const Invoicing = lazy(() => import("./pages/Invoicing"));
+const Estimates = lazy(() => import("./pages/Estimates"));
 const Insights = lazy(() => import("./pages/Insights"));
 const ProjectEstimateAccuracy = lazy(() => import("./pages/ProjectEstimateAccuracy"));
 const DataHealth = lazy(() => import("./pages/DataHealth"));
@@ -380,6 +381,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <Invoicing />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/estimates"
+                  element={
+                    <ProtectedRoute>
+                      <Estimates />
                     </ProtectedRoute>
                   }
                 />
