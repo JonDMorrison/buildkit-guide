@@ -276,33 +276,107 @@ Generate the executive insight.`;
       };
     }
 
-    // Validate EVIDENCE block: every value must exist in the input snapshot data
-    if (content.evidence && Object.keys(content.evidence).length > 0) {
-      const allSnapshotValues = new Set<number>();
-      for (const snap of metricsForPrompt) {
-        for (const val of Object.values(snap)) {
-          if (typeof val === 'number') allSnapshotValues.add(val);
-        }
-      }
+    // ============================================================
+    // HALLUCINATION GUARD: Narrative ↔ Evidence cross-validation
+    // ============================================================
 
-      const invalidKeys: string[] = [];
-      for (const [key, val] of Object.entries(content.evidence)) {
-        if (typeof val === 'number' && !allSnapshotValues.has(val)) {
-          invalidKeys.push(key);
-        }
-      }
+    // 1. Extract all numeric patterns from narrative text
+    const narrativeText = [content.what_changed, content.what_it_means, content.what_to_do]
+      .filter(Boolean).join(' ');
 
-      if (invalidKeys.length > 0) {
-        console.warn(`EVIDENCE validation failed: keys with unmatched values: ${invalidKeys.join(', ')}`);
-        // Tag the content with a verification warning
-        (content as any).evidence_warnings = invalidKeys;
+    // Match: $1,234  $1,234.56  12.5%  12%  plain numbers like 1234.56
+    const numericPatterns = narrativeText.match(
+      /\$[\d,]+(?:\.\d+)?|[\d,]+(?:\.\d+)?%|(?<!\w)[\d,]+(?:\.\d+)?(?!\w)/g
+    ) || [];
+
+    // Parse extracted strings to numbers
+    const narrativeNumbers: number[] = numericPatterns.map(s => {
+      const cleaned = s.replace(/[$,%]/g, '').replace(/,/g, '');
+      return parseFloat(cleaned);
+    }).filter(n => !isNaN(n) && n !== 0); // Exclude zero (too common / meaningless)
+
+    // 2. Build set of all evidence values
+    const evidenceValues = content.evidence || {};
+    const evidenceNumbers = new Set<number>();
+    for (const val of Object.values(evidenceValues)) {
+      if (typeof val === 'number') {
+        evidenceNumbers.add(val);
+        // Also add common representations (rounded, absolute, percentage-converted)
+        evidenceNumbers.add(Math.round(val));
+        evidenceNumbers.add(Math.round(val * 100) / 100);
+        evidenceNumbers.add(Math.abs(val));
+        evidenceNumbers.add(Math.abs(Math.round(val)));
       }
-    } else {
-      console.warn('AI response missing EVIDENCE block');
-      (content as any).evidence_warnings = ['__missing_evidence_block'];
     }
 
-    // Store in ai_insights (upsert based on unique constraint)
+    // 3. Build set of all snapshot source values for evidence validation
+    const allSnapshotValues = new Set<number>();
+    for (const snap of metricsForPrompt) {
+      for (const val of Object.values(snap)) {
+        if (typeof val === 'number') {
+          allSnapshotValues.add(val);
+          allSnapshotValues.add(Math.round(val));
+          allSnapshotValues.add(Math.round(val * 100) / 100);
+          allSnapshotValues.add(Math.abs(val));
+        }
+      }
+    }
+
+    // 4. Cross-check: every narrative number must exist in evidence
+    const unmatchedNarrative = narrativeNumbers.filter(n => !evidenceNumbers.has(n));
+
+    // 5. Cross-check: every evidence value must trace to snapshot data
+    const unmatchedEvidence: string[] = [];
+    for (const [key, val] of Object.entries(evidenceValues)) {
+      if (typeof val === 'number' && !allSnapshotValues.has(val)) {
+        unmatchedEvidence.push(key);
+      }
+    }
+
+    // 6. Determine validation result
+    let validationResult: string;
+    const hasMissingEvidence = !content.evidence || Object.keys(evidenceValues).length === 0;
+    const hasNarrativeMismatch = unmatchedNarrative.length > 0;
+    const hasEvidenceMismatch = unmatchedEvidence.length > 0;
+
+    if (hasMissingEvidence) {
+      validationResult = 'fail_missing_evidence';
+    } else if (hasNarrativeMismatch) {
+      validationResult = 'fail_narrative_numbers';
+    } else if (hasEvidenceMismatch) {
+      validationResult = 'fail_evidence_mismatch';
+    } else {
+      validationResult = 'pass';
+    }
+
+    // 7. Log validation result (always — pass or fail)
+    await adminClient.from('ai_insight_validation_log').insert({
+      organization_id,
+      project_id: project_id || null,
+      insight_type,
+      snapshot_date: snapshotDate,
+      validation_result: validationResult,
+      narrative_numbers: narrativeNumbers,
+      evidence_values: evidenceValues,
+      mismatched_numbers: unmatchedNarrative,
+      raw_content: validationResult !== 'pass' ? content : null,
+    });
+
+    // 8. REJECT on failure — do NOT store insight
+    if (validationResult !== 'pass') {
+      console.error(`AI insight REJECTED: ${validationResult}. Unmatched narrative numbers: [${unmatchedNarrative.join(', ')}]. Unmatched evidence keys: [${unmatchedEvidence.join(', ')}]`);
+      return new Response(JSON.stringify({
+        error: 'AI insight failed numeric integrity validation',
+        validation_result: validationResult,
+        unmatched_narrative_numbers: unmatchedNarrative,
+        unmatched_evidence_keys: unmatchedEvidence,
+      }), {
+        status: 422,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // 9. PASS — store in ai_insights
     const { error: insertErr } = await adminClient
       .from('ai_insights')
       .upsert({
@@ -319,7 +393,6 @@ Generate the executive insight.`;
 
     if (insertErr) {
       console.error('Insert error:', insertErr);
-      // Don't fail the response, just log
     }
 
     return new Response(JSON.stringify({

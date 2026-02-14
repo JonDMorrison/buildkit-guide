@@ -14,6 +14,70 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_insight_validation_log: {
+        Row: {
+          created_at: string
+          evidence_values: Json
+          id: string
+          insight_type: string
+          mismatched_numbers: Json
+          narrative_numbers: Json
+          organization_id: string
+          project_id: string | null
+          raw_content: Json | null
+          snapshot_date: string
+          validation_result: string
+        }
+        Insert: {
+          created_at?: string
+          evidence_values?: Json
+          id?: string
+          insight_type?: string
+          mismatched_numbers?: Json
+          narrative_numbers?: Json
+          organization_id: string
+          project_id?: string | null
+          raw_content?: Json | null
+          snapshot_date: string
+          validation_result: string
+        }
+        Update: {
+          created_at?: string
+          evidence_values?: Json
+          id?: string
+          insight_type?: string
+          mismatched_numbers?: Json
+          narrative_numbers?: Json
+          organization_id?: string
+          project_id?: string | null
+          raw_content?: Json | null
+          snapshot_date?: string
+          validation_result?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_insight_validation_log_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_insight_validation_log_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_insight_validation_log_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_progress"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_insights: {
         Row: {
           content: Json
