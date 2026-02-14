@@ -138,6 +138,24 @@ interface StructuralRlsResult {
   note: string;
 }
 
+/**
+ * Security model config constant.
+ * 'RLS'      — RLS is mandatory; any cross-org row leak is a release blocker.
+ * 'RPC_ONLY' — Direct table access is not relied on; behavioral tests focus on RPC authorization.
+ */
+const SECURITY_MODEL: "RLS" | "RPC_ONLY" = "RLS";
+
+const SECURITY_MODEL_BANNER = {
+  RLS: {
+    text: "RLS is mandatory. Any table returning rows cross-org is a release blocker.",
+    className: "bg-destructive/10 border-destructive/30 text-destructive",
+  },
+  RPC_ONLY: {
+    text: "Direct table access is not relied on for isolation. Behavioral tests focus on RPC authorization.",
+    className: "bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-400",
+  },
+} as const;
+
 const StatusBadge = ({ pass }: { pass: boolean }) => (
   <Badge
     variant={pass ? "default" : "destructive"}
@@ -458,6 +476,12 @@ export default function SystemAudit() {
                 icon={<Lock className="h-5 w-5" />}
                 pass={s.cross_org_leak_test.pass}
               >
+                <div
+                  className={`text-sm font-medium px-3 py-2 rounded border mb-3 ${SECURITY_MODEL_BANNER[SECURITY_MODEL].className}`}
+                >
+                  <span className="font-mono text-xs mr-2">[{SECURITY_MODEL}]</span>
+                  {SECURITY_MODEL_BANNER[SECURITY_MODEL].text}
+                </div>
                 <p className="text-sm text-muted-foreground mb-2">
                   {s.cross_org_leak_test.note}
                 </p>
