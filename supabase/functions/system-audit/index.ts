@@ -483,16 +483,28 @@ async function runCrossOrgBehavioralTest(
     }
   }
 
+  // ── RELEASE-BLOCKING: Explicit projects cross-org count ──
+  let projectsCrossOrgCount = 0;
+  if (crossOrgProjectId) {
+    const { data: projRows } = await userClient
+      .from("projects")
+      .select("id")
+      .eq("id", crossOrgProjectId);
+    projectsCrossOrgCount = (projRows || []).length;
+  }
+
   const allPass = tests.every(t => t.pass);
   const failCount = tests.filter(t => !t.pass).length;
 
   return {
-    pass: allPass,
+    pass: allPass && projectsCrossOrgCount === 0,
     tests,
     test_count: tests.length,
     fail_count: failCount,
     target_project_id: targetProjectId || null,
     cross_org_project_id: crossOrgProjectId,
+    projects_cross_org_count: projectsCrossOrgCount,
+    release_blocked: projectsCrossOrgCount > 0,
     note: crossOrgProjectId
       ? `Behavioral isolation tests ran across ${tests.length} queries`
       : "Limited to baseline + unauthenticated tests (single org detected)",

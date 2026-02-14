@@ -21,6 +21,9 @@ import {
   GitCompare,
   Timer,
   TableProperties,
+  ClipboardCheck,
+  AlertTriangle,
+  CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -84,6 +87,8 @@ interface CrossOrgResult {
   fail_count: number;
   target_project_id: string | null;
   cross_org_project_id: string | null;
+  projects_cross_org_count: number;
+  release_blocked: boolean;
   note: string;
 }
 
@@ -654,6 +659,10 @@ export default function SystemAudit() {
               </AuditSection>
             )}
 
+            {/* Section 9: Release Checklist */}
+            {results && (
+              <ReleaseChecklist sections={s} />
+            )}
             {/* Section 8: Structural RLS Check */}
             {s?.structural_rls_check && (
               <AuditSection
@@ -719,6 +728,120 @@ export default function SystemAudit() {
         )}
       </div>
     </Layout>
+  );
+}
+function ReleaseChecklist({ sections }: { sections: AuditResults["sections"] }) {
+  const checks = [
+    {
+      id: "cross_org_projects",
+      label: "Cross-org projects isolation",
+      description: "No authenticated user can SELECT projects from another organization",
+      pass: sections?.cross_org_leak_test
+        ? (sections.cross_org_leak_test.projects_cross_org_count ?? 0) === 0
+        : null,
+      blocker: true,
+    },
+    {
+      id: "cross_org_all_tables",
+      label: "Cross-org behavioral isolation (all tables)",
+      description: "All cross-org SELECT queries return 0 rows",
+      pass: sections?.cross_org_leak_test?.pass ?? null,
+      blocker: true,
+    },
+    {
+      id: "rls_structural",
+      label: "Structural RLS enabled on all critical tables",
+      description: "Every critical table has RLS enabled with at least one policy",
+      pass: sections?.structural_rls_check?.pass ?? null,
+      blocker: true,
+    },
+    {
+      id: "financial_reconciliation",
+      label: "Financial reconciliation within tolerance",
+      description: "RPC and snapshot totals match manual recomputation (±$0.01)",
+      pass: sections?.financial_reconciliation?.pass ?? null,
+      blocker: false,
+    },
+    {
+      id: "time_contract",
+      label: "Time entry inclusion contract enforced",
+      description: "No closed entries with zero duration or null checkout",
+      pass: sections?.time_inclusion_contract?.pass ?? null,
+      blocker: false,
+    },
+    {
+      id: "enum_integrity",
+      label: "Enum integrity verified",
+      description: "All status/type columns contain only canonical values",
+      pass: sections?.enum_integrity?.pass ?? null,
+      blocker: false,
+    },
+  ];
+
+  const blockersFailing = checks.filter((c) => c.blocker && c.pass === false);
+  const allBlockersPass = blockersFailing.length === 0 && checks.some((c) => c.blocker && c.pass === true);
+
+  return (
+    <Card className={blockersFailing.length > 0 ? "border-destructive/50 bg-destructive/5" : ""}>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <ClipboardCheck className="h-5 w-5" />
+            Release Checklist
+          </CardTitle>
+          {allBlockersPass ? (
+            <Badge className="bg-emerald-600 hover:bg-emerald-700 text-xs">RELEASE OK</Badge>
+          ) : blockersFailing.length > 0 ? (
+            <Badge variant="destructive" className="text-xs">RELEASE BLOCKED</Badge>
+          ) : (
+            <Badge variant="outline" className="text-xs">PENDING</Badge>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        <p className="text-xs text-muted-foreground mb-3">
+          Run the full audit after every migration. All blocker items must pass before publishing.
+        </p>
+        <div className="space-y-2">
+          {checks.map((check) => (
+            <div
+              key={check.id}
+              className={`flex items-start gap-3 p-2.5 rounded text-sm ${
+                check.pass === false
+                  ? "bg-destructive/10 border border-destructive/30"
+                  : check.pass === true
+                    ? "bg-muted/50"
+                    : "bg-muted/30 opacity-60"
+              }`}
+            >
+              <div className="mt-0.5">
+                {check.pass === true ? (
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                ) : check.pass === false ? (
+                  <AlertTriangle className="h-4 w-4 text-destructive" />
+                ) : (
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{check.label}</span>
+                  {check.blocker && (
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-destructive/50 text-destructive">
+                      BLOCKER
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">{check.description}</p>
+              </div>
+              <div className="shrink-0">
+                {check.pass !== null && <StatusBadge pass={check.pass} />}
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
