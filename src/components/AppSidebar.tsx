@@ -1,12 +1,10 @@
 import { useMemo } from "react";
 import { PanelLeftClose, PanelLeft } from "lucide-react";
 import { useNavigationTabs, TabConfig } from "@/hooks/useNavigationTabs";
-import { useCurrentProject } from "@/hooks/useCurrentProject";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NavItem } from "./sidebar/NavItem";
 import { NavSection } from "./sidebar/NavSection";
+import { SidebarProjectSwitcher } from "./sidebar/SidebarProjectSwitcher";
 import {
   Sidebar,
   SidebarContent,
@@ -39,22 +37,6 @@ export const AppSidebar = () => {
   const { visibleTabs, isLoading } = useNavigationTabs();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
-  const { currentProjectId } = useCurrentProject();
-
-  const { data: currentProject } = useQuery({
-    queryKey: ["sidebar-project", currentProjectId],
-    queryFn: async () => {
-      if (!currentProjectId) return null;
-      const { data } = await supabase
-        .from("projects")
-        .select("id, name")
-        .eq("id", currentProjectId)
-        .maybeSingle();
-      return data;
-    },
-    enabled: !!currentProjectId,
-    staleTime: 30_000,
-  });
 
   /* Build sections from visible tabs */
   const sections = useMemo(() => {
@@ -98,17 +80,13 @@ export const AppSidebar = () => {
           <div className="border-t border-white/[0.06]" />
         </div>
 
-        {/* ── Contextual project label ── */}
-        {currentProject && !collapsed && (
-          <div className="px-4 mb-3">
-            <span className="text-[10px] font-medium uppercase tracking-wider text-primary/60">
-              Project
-            </span>
-            <p className="text-xs font-semibold text-sidebar-foreground/90 truncate mt-0.5">
-              {currentProject.name}
-            </p>
-          </div>
-        )}
+        {/* ── Project Switcher ── */}
+        <SidebarProjectSwitcher collapsed={collapsed} />
+
+        {/* ── Divider below switcher ── */}
+        <div className={cn("mt-2 mb-1", collapsed ? "mx-2" : "mx-4")}>
+          <div className="border-t border-white/[0.06]" />
+        </div>
 
         {/* ── Navigation sections ── */}
         {isLoading ? (

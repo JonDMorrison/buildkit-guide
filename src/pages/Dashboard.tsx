@@ -9,7 +9,6 @@ import { EmptyState } from "@/components/EmptyState";
 import { useDashboardLayout } from "@/hooks/useDashboardLayout";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { DashboardCustomizer } from "@/components/dashboard/DashboardCustomizer";
 import { NewUserWelcome } from "@/components/dashboard/NewUserWelcome";
 import {
@@ -29,19 +28,10 @@ import {
 } from "@/components/dashboard/widgets";
 import type { SnapshotTask, SnapshotTrade } from "@/components/dashboard/widgets";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Input } from "@/components/ui/input";
-import {
-  CheckCircle2,
   ArrowRight,
   Building2,
-  ChevronDown,
   MoveIcon,
   Plus,
-  Search,
 } from "lucide-react";
 import { QuickAddModal } from "@/components/dashboard/QuickAddModal";
 import { format, isAfter, isBefore, addDays, startOfDay, subDays } from "date-fns";
@@ -57,8 +47,7 @@ export default function Dashboard() {
   const { currentProjectId, setCurrentProject } = useCurrentProject();
   const { isPM, isForeman, isAdmin, isInternalWorker, isExternalTrade, loading: roleLoading } = useAuthRole(currentProjectId || undefined);
   const [currentBreakpoint, setCurrentBreakpoint] = useState("lg");
-  const [projectSearchOpen, setProjectSearchOpen] = useState(false);
-  const [projectSearchQuery, setProjectSearchQuery] = useState("");
+  // projectSearchOpen/Query removed — now handled by SidebarProjectSwitcher
   
   // Modal/popover states for snapshot strip
   const [startingModalOpen, setStartingModalOpen] = useState(false);
@@ -354,18 +343,6 @@ export default function Dashboard() {
     task: b.task,
   })), [blockers]);
 
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
-      case "completed": return "default";
-      case "in_progress": return "secondary";
-      case "planning": return "outline";
-      case "on_hold": return "destructive";
-      default: return "outline";
-    }
-  };
-
-  const formatStatus = (status: string) => status.split("_").map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
-
   const handleLayoutChange = useCallback((currentLayout: GridLayout[], allLayouts: { [key: string]: GridLayout[] }) => {
     if (isEditMode) {
       Object.entries(allLayouts).forEach(([breakpoint, layout]) => {
@@ -379,9 +356,6 @@ export default function Dashboard() {
 
   const handleBreakpointChange = useCallback((newBreakpoint: string) => setCurrentBreakpoint(newBreakpoint), []);
   const handleSaveLayout = useCallback(() => saveLayout(layouts), [saveLayout, layouts]);
-  
-  // Memoize handlers that are passed as props
-  const handleSetCurrentProject = useCallback((projectId: string) => setCurrentProject(projectId), [setCurrentProject]);
 
   // Redirect field/minimal tier users to /tasks
   if (!roleLoading && !isAdmin && !isPM() && !isForeman() && (isInternalWorker() || isExternalTrade())) {
@@ -432,88 +406,9 @@ export default function Dashboard() {
           {/* Header */}
           <div className="widget-card !bg-gradient-to-br !from-card !via-primary/5 !to-secondary/5">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              <div className="space-y-3">
-                <Popover open={projectSearchOpen} onOpenChange={(open) => {
-                  setProjectSearchOpen(open);
-                  if (!open) setProjectSearchQuery("");
-                }}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="justify-start gap-2 h-auto py-2 px-3 border-border hover:border-primary/50 hover:bg-muted hover:text-foreground"
-                      role="combobox"
-                      aria-expanded={projectSearchOpen}
-                    >
-                      <Building2 className="h-4 w-4 text-primary" />
-                      <div className="text-left">
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Project</p>
-                        <p className="text-sm font-semibold text-foreground truncate max-w-[200px]">
-                          {currentProject?.name || "Select Project"}
-                        </p>
-                      </div>
-                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent align="start" className="w-[300px] p-0" sideOffset={4}>
-                    <div className="p-2 border-b border-border">
-                      <Input
-                        placeholder="Search projects..."
-                        value={projectSearchQuery}
-                        onChange={(e) => setProjectSearchQuery(e.target.value)}
-                        className="h-8 text-sm"
-                        autoFocus
-                      />
-                    </div>
-                    <div className="max-h-[250px] overflow-y-auto p-1">
-                      {(userProjects || [])
-                        .filter((p: any) => 
-                          !projectSearchQuery || 
-                          p.name.toLowerCase().includes(projectSearchQuery.toLowerCase()) ||
-                          p.location?.toLowerCase().includes(projectSearchQuery.toLowerCase())
-                        )
-                        .map((project: any) => (
-                        <button
-                          key={project.id}
-                          onClick={() => {
-                            handleSetCurrentProject(project.id);
-                            setProjectSearchOpen(false);
-                            setProjectSearchQuery("");
-                          }}
-                          className="flex items-center gap-3 p-3 cursor-pointer w-full text-left rounded-md hover:bg-muted transition-colors"
-                        >
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              {project.id === currentProjectId && <CheckCircle2 className="h-3 w-3 text-status-complete" />}
-                              <p className="font-medium text-sm truncate">{project.name}</p>
-                            </div>
-                            {project.totalTasks > 0 && (
-                              <div className="flex items-center gap-2 mt-1.5">
-                                <div className="flex-1 h-1.5 bg-muted/30 rounded-full overflow-hidden">
-                                  <div className="h-full bg-status-complete rounded-full transition-all" style={{ width: `${project.progress}%` }} />
-                                </div>
-                                <span className="text-xs font-medium text-muted-foreground">{project.progress}%</span>
-                              </div>
-                            )}
-                          </div>
-                          <Badge variant={getStatusBadgeVariant(project.status)} className="text-[10px]">
-                            {formatStatus(project.status)}
-                          </Badge>
-                        </button>
-                      ))}
-                      {(userProjects || []).filter((p: any) => 
-                        !projectSearchQuery || 
-                        p.name.toLowerCase().includes(projectSearchQuery.toLowerCase())
-                      ).length === 0 && (
-                        <p className="text-sm text-muted-foreground text-center py-4">No projects found</p>
-                      )}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-
-                <div>
-                  <h1 className="text-2xl md:text-3xl font-bold text-foreground">Today on Site</h1>
-                  <p className="text-sm text-muted-foreground">Project status and priorities</p>
-                </div>
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold text-foreground">Today on Site</h1>
+                <p className="text-sm text-muted-foreground">Project status and priorities</p>
               </div>
 
               <div className="flex items-center gap-2">
