@@ -26,7 +26,7 @@ export const Layout = ({ children }: LayoutProps) => {
         <TopNav />
         <div className="flex flex-1 min-h-0 w-full">
           <AppSidebar />
-          <div className="flex flex-col flex-1 min-w-0">
+          <div className="flex flex-col flex-1 min-w-0" style={{ boxShadow: "inset 1px 0 0 rgba(255,255,255,0.03)" }}>
             <Breadcrumbs />
             <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto pb-tab-bar md:pb-0 outline-none">
               <PageTransition>{children}</PageTransition>
