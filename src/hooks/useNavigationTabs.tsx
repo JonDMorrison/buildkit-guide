@@ -29,6 +29,7 @@ export const tabs: TabConfig[] = [
   { name: "Hours", path: "/hours-tracking", icon: BarChart3, tiers: ['all', 'office'] },
   { name: "Job Cost", path: "/job-cost-report", icon: DollarSign, tiers: ['all', 'office'] },
   { name: "Invoicing", path: "/invoicing", icon: FileText, tiers: ['all', 'office'] },
+  { name: "Estimates", path: "/estimates", icon: FileText, tiers: ['all', 'office'] },
   { name: "Insights", path: "/insights", icon: TrendingUp, tiers: ['all', 'office'] },
   { name: "Lookahead", path: "/lookahead", icon: Calendar, tiers: ['all'] },
   { name: "Manpower", path: "/manpower", icon: Users, tiers: ['all'] },

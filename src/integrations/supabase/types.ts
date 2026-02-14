@@ -878,6 +878,269 @@ export type Database = {
           },
         ]
       }
+      estimate_line_items: {
+        Row: {
+          amount: number
+          description: string | null
+          estimate_id: string
+          id: string
+          item_type: string
+          name: string
+          organization_id: string
+          quantity: number
+          rate: number
+          sales_tax_amount: number
+          sales_tax_rate: number
+          scope_item_id: string | null
+          sort_order: number
+          task_id: string | null
+          unit: string | null
+        }
+        Insert: {
+          amount?: number
+          description?: string | null
+          estimate_id: string
+          id?: string
+          item_type?: string
+          name: string
+          organization_id: string
+          quantity?: number
+          rate?: number
+          sales_tax_amount?: number
+          sales_tax_rate?: number
+          scope_item_id?: string | null
+          sort_order?: number
+          task_id?: string | null
+          unit?: string | null
+        }
+        Update: {
+          amount?: number
+          description?: string | null
+          estimate_id?: string
+          id?: string
+          item_type?: string
+          name?: string
+          organization_id?: string
+          quantity?: number
+          rate?: number
+          sales_tax_amount?: number
+          sales_tax_rate?: number
+          scope_item_id?: string | null
+          sort_order?: number
+          task_id?: string | null
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estimate_line_items_estimate_id_fkey"
+            columns: ["estimate_id"]
+            isOneToOne: false
+            referencedRelation: "estimates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimate_line_items_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimate_line_items_scope_item_id_fkey"
+            columns: ["scope_item_id"]
+            isOneToOne: false
+            referencedRelation: "project_scope_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimate_line_items_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      estimate_task_links: {
+        Row: {
+          created_at: string
+          estimate_line_item_id: string
+          id: string
+          task_id: string
+        }
+        Insert: {
+          created_at?: string
+          estimate_line_item_id: string
+          id?: string
+          task_id: string
+        }
+        Update: {
+          created_at?: string
+          estimate_line_item_id?: string
+          id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estimate_task_links_estimate_line_item_id_fkey"
+            columns: ["estimate_line_item_id"]
+            isOneToOne: false
+            referencedRelation: "estimate_line_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimate_task_links_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      estimates: {
+        Row: {
+          approved_at: string | null
+          bill_to_address: string | null
+          bill_to_ap_email: string | null
+          bill_to_name: string | null
+          client_id: string | null
+          contract_value: number
+          created_at: string
+          created_by: string
+          customer_pm_email: string | null
+          customer_pm_name: string | null
+          customer_pm_phone: string | null
+          customer_po_number: string | null
+          estimate_number: string
+          id: string
+          internal_notes: string | null
+          memo_on_statement: string | null
+          note_for_customer: string | null
+          organization_id: string
+          parent_client_id: string | null
+          planned_labor_bill_amount: number
+          planned_labor_bill_rate: number
+          planned_labor_hours: number
+          planned_machine_cost: number
+          planned_margin_percent: number
+          planned_material_cost: number
+          planned_other_cost: number
+          planned_profit: number
+          planned_total_cost: number
+          project_id: string
+          ship_to_address: string | null
+          ship_to_name: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          bill_to_address?: string | null
+          bill_to_ap_email?: string | null
+          bill_to_name?: string | null
+          client_id?: string | null
+          contract_value?: number
+          created_at?: string
+          created_by: string
+          customer_pm_email?: string | null
+          customer_pm_name?: string | null
+          customer_pm_phone?: string | null
+          customer_po_number?: string | null
+          estimate_number: string
+          id?: string
+          internal_notes?: string | null
+          memo_on_statement?: string | null
+          note_for_customer?: string | null
+          organization_id: string
+          parent_client_id?: string | null
+          planned_labor_bill_amount?: number
+          planned_labor_bill_rate?: number
+          planned_labor_hours?: number
+          planned_machine_cost?: number
+          planned_margin_percent?: number
+          planned_material_cost?: number
+          planned_other_cost?: number
+          planned_profit?: number
+          planned_total_cost?: number
+          project_id: string
+          ship_to_address?: string | null
+          ship_to_name?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          bill_to_address?: string | null
+          bill_to_ap_email?: string | null
+          bill_to_name?: string | null
+          client_id?: string | null
+          contract_value?: number
+          created_at?: string
+          created_by?: string
+          customer_pm_email?: string | null
+          customer_pm_name?: string | null
+          customer_pm_phone?: string | null
+          customer_po_number?: string | null
+          estimate_number?: string
+          id?: string
+          internal_notes?: string | null
+          memo_on_statement?: string | null
+          note_for_customer?: string | null
+          organization_id?: string
+          parent_client_id?: string | null
+          planned_labor_bill_amount?: number
+          planned_labor_bill_rate?: number
+          planned_labor_hours?: number
+          planned_machine_cost?: number
+          planned_margin_percent?: number
+          planned_material_cost?: number
+          planned_other_cost?: number
+          planned_profit?: number
+          planned_total_cost?: number
+          project_id?: string
+          ship_to_address?: string | null
+          ship_to_name?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estimates_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimates_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimates_parent_client_id_fkey"
+            columns: ["parent_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimates_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimates_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_progress"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_dedupe: {
         Row: {
           dedupe_key: string
@@ -4633,6 +4896,10 @@ export type Database = {
       }
       check_rls_status: { Args: { p_tables: string[] }; Returns: Json }
       cleanup_expired_idempotency_keys: { Args: never; Returns: number }
+      estimate_variance_summary: {
+        Args: { p_project_id: string }
+        Returns: Json
+      }
       generate_org_financial_snapshot: {
         Args: { p_org_id: string; p_period?: string; p_snapshot_date: string }
         Returns: string
@@ -4653,6 +4920,7 @@ export type Database = {
         Args: { p_org_id: string; p_snapshot_date?: string }
         Returns: Json
       }
+      get_next_estimate_number: { Args: { p_org_id: string }; Returns: string }
       get_next_invoice_number: { Args: { org_id: string }; Returns: string }
       get_task_project_id: { Args: { _task_id: string }; Returns: string }
       get_time_cron_secret: { Args: never; Returns: string }
