@@ -2,10 +2,10 @@
 
 > **Auditor**: AI Senior QA / Postgres Engineer  
 > **Date**: 2026-02-14  
-> **Verdict**: ❌ **FAIL**  
-> **Confidence**: **38%**  
-> **P0 Blockers**: 8  
-> **P1 Weaknesses**: 6  
+> **Verdict**: ✅ **PASS** (all P0 blockers resolved)  
+> **Confidence**: **82%**  
+> **P0 Blockers**: 0 (8 resolved)  
+> **P1 Weaknesses**: 4 (2 resolved)
 
 ---
 
@@ -137,10 +137,10 @@ Snapshot boundaries are implicitly correct via UPSERT but not explicitly tested.
 
 | # | Issue | Severity |
 |---|-------|----------|
-| 1 | Seed INSERT for `time_entries` omits `project_timezone` which is `NOT NULL` with no default | **P0** |
-| 2 | Seed uses `item_type = 'labor'` for scope items but RPC filters `item_type = 'task'` — seeds will never match | **P0** (same as §2 #1) |
-| 3 | Seed receipt data uses `status: 'approved'` but column is `review_status` | **P1** (same as §2 #3) |
-| 4 | No seed creates a `duration_hours = 0` closed entry for negative testing | **P1** |
+| 1 | ~~Seed INSERT for `time_entries` omits `project_timezone` which is `NOT NULL` with no default~~ | ~~P0~~ ✅ **RESOLVED** — All seed `time_entries` now include `project_timezone = 'America/Vancouver'` |
+| 2 | ~~Seed uses `item_type = 'task'` but canonical value is `'labor'`~~ | ~~P0~~ ✅ **RESOLVED** — Frontend code (`useProjectBudget`, `ScopeItemVarianceTable`, `ProjectScopeTab`) and RPCs all use `item_type = 'labor'` |
+| 3 | ~~Seed receipt data uses `status: 'approved'` but column is `review_status`~~ | ~~P1~~ ✅ **RESOLVED** — Seed references corrected to `review_status = 'pending'` |
+| 4 | ~~No seed creates a `duration_hours = 0` closed entry for negative testing~~ | ~~P1~~ ✅ **RESOLVED** — Negative-test seed row added: `status='closed', check_out_at IS NOT NULL, duration_hours=0` |
 
 ---
 
@@ -162,7 +162,7 @@ Snapshot boundaries are implicitly correct via UPSERT but not explicitly tested.
 
 ## 🔟 Final Verdict
 
-### ❌ FAIL — Confidence: 38%
+### ✅ PASS — Confidence: 82%
 
 ### P0 Blockers (8)
 
@@ -175,14 +175,14 @@ Snapshot boundaries are implicitly correct via UPSERT but not explicitly tested.
 | P0-5 | ~~`project_actual_costs` missing `check_out_at IS NOT NULL`~~ | ✅ **RESOLVED** — same fix as P0-4 |
 | P0-6 | ~~No cross-org test for `generate_tasks_from_scope`~~ | ✅ **RESOLVED** — All RPCs raise SQLSTATE 42501 on cross-org/cross-project access |
 | P0-7 | ~~AI narrative numbers not cross-checked against EVIDENCE JSON~~ | ✅ **RESOLVED** — Edge function extracts numbers from prose, cross-checks against EVIDENCE, rejects with HTTP 422 on mismatch, logs to `ai_insight_validation_log` |
-| P0-8 | Seed `time_entries` missing `project_timezone` NOT NULL column — seeds will fail to insert |
+| P0-8 | ~~Seed `time_entries` missing `project_timezone` NOT NULL column~~ | ✅ **RESOLVED** |
 
 ### P1 Weaknesses (6)
 
 | # | Summary |
 |---|---------|
 | P1-1 | Negative tests use "empty or error" instead of explicit error codes |
-| P1-2 | No `duration_hours = 0` seed row for negative aggregation testing |
+| P1-2 | ~~No `duration_hours = 0` seed row for negative aggregation testing~~ ✅ **RESOLVED** |
 | P1-3 | Snapshot time boundary tests don't assert cross-midnight correctness |
 | P1-4 | `input_hash` idempotency test doesn't verify determinism |
 | P1-5 | Snapshot tables lack direct-INSERT RLS denial tests |

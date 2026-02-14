@@ -75,7 +75,7 @@ export function ScopeItemVarianceTable({ projectId, canEdit = false }: ScopeItem
             .from('project_scope_items')
             .select('id, name, planned_hours')
             .eq('project_id', projectId)
-            .eq('item_type', 'task')
+            .eq('item_type', 'labor')
             .eq('is_archived', false)
             .order('sort_order'),
           supabase
