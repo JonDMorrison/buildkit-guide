@@ -113,7 +113,7 @@ export const SidebarProjectSwitcher = ({ collapsed }: SidebarProjectSwitcherProp
   }
 
   return (
-    <div className="px-3 mb-1">
+    <div className="px-3 mb-0">
       <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setSearch(""); }}>
         <PopoverTrigger asChild>
           <button

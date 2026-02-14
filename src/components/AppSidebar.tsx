@@ -83,11 +83,6 @@ export const AppSidebar = () => {
         {/* ── Project Switcher ── */}
         <SidebarProjectSwitcher collapsed={collapsed} />
 
-        {/* ── Divider below switcher ── */}
-        <div className={cn("mt-2 mb-1", collapsed ? "mx-2" : "mx-4")}>
-          <div className="border-t border-white/[0.06]" />
-        </div>
-
         {/* ── Navigation sections ── */}
         {isLoading ? (
           <div className="px-3 space-y-3 mt-2">
