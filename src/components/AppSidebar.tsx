@@ -53,18 +53,18 @@ export const AppSidebar = () => {
 
   return (
     <Sidebar collapsible="icon">
-      {/* Background gradient + blueprint overlay */}
+      {/* Background gradient — muted industrial navy */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: "linear-gradient(180deg, hsl(222 47% 11%) 0%, hsl(222 55% 9%) 100%)",
+          background: "linear-gradient(180deg, hsl(222 40% 8%) 0%, hsl(222 45% 6%) 100%)",
         }}
       />
       <div
-        className="absolute inset-0 pointer-events-none opacity-[0.025]"
+        className="absolute inset-0 pointer-events-none opacity-[0.015]"
         style={{
           backgroundImage:
-            "linear-gradient(hsl(210 40% 50% / 0.3) 1px, transparent 1px), linear-gradient(90deg, hsl(210 40% 50% / 0.3) 1px, transparent 1px)",
+            "linear-gradient(hsl(215 20% 40% / 0.2) 1px, transparent 1px), linear-gradient(90deg, hsl(215 20% 40% / 0.2) 1px, transparent 1px)",
           backgroundSize: "24px 24px",
         }}
       />
