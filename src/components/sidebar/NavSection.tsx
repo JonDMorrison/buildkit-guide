@@ -14,10 +14,10 @@ export const NavSection = ({ title, collapsed, children }: NavSectionProps) => {
           <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-sidebar-foreground/40 select-none">
             {title}
           </span>
-          <div className="mt-1.5 border-t border-white/[0.06]" />
+          <div className="mt-1.5 border-t border-sidebar-border" />
         </div>
       ) : (
-        <div className="mx-2 mb-2 border-t border-white/[0.06]" />
+        <div className="mx-2 mb-2 border-t border-sidebar-border" />
       )}
 
       <nav className={cn("flex flex-col gap-0.5", collapsed ? "px-1" : "px-2")}>

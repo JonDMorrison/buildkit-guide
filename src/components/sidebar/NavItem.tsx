@@ -15,13 +15,13 @@ export const NavItem = ({ label, icon: Icon, route, badgeCount, collapsed }: Nav
       to={route}
       className={cn(
         "group relative flex items-center gap-3 rounded-lg transition-all duration-150 ease-out",
-        "text-[hsl(var(--icon-inactive))] hover:text-sidebar-foreground/85",
-        "hover:bg-white/[0.03]",
+        "text-sidebar-foreground/50 hover:text-sidebar-foreground/85",
+        "hover:bg-sidebar-accent/50",
         collapsed ? "justify-center px-2 py-2.5" : "px-4 py-2.5",
       )}
       activeClassName={cn(
-        "!text-[hsl(217,91%,70%)] font-semibold bg-primary/[0.10]",
-        "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-[3px] before:rounded-r-full before:bg-primary",
+        "!text-sidebar-primary font-semibold bg-sidebar-primary/10",
+        "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-[3px] before:rounded-r-full before:bg-sidebar-primary",
         "hover:translate-y-0",
       )}
     >
