@@ -1,6 +1,49 @@
 # QA Gauntlet — Full-Stack Test Plan
 
-> **Version**: 1.5 · **Date**: 2026-02-14 · **Scope**: Budget-to-Execution Intelligence, Estimate Accuracy, Task Automation, Client Hierarchy, Invoice Snapshots, Invoice Accounting Rules, AI Insight EVIDENCE Verifier, Task-Level Time Tracking, Data Health, Snapshots/Trends/Recommendations/AI, Time Entry Inclusion Contract, Traceability Rule, Random Spot Check Harness
+> **Version**: 2.0 · **Date**: 2026-02-14 · **Scope**: Budget-to-Execution Intelligence, Estimate Accuracy, Task Automation, Client Hierarchy, Invoice Snapshots, Invoice Accounting Rules, AI Insight EVIDENCE Verifier, Task-Level Time Tracking, Data Health, Snapshots/Trends/Recommendations/AI, Time Entry Inclusion Contract, Traceability Rule, Random Spot Check Harness
+>
+> **⚠ REBUILT FROM LIVE SCHEMA** — All enums, CHECK constraints, column names, and status values in this document are verified against the production Postgres schema as of 2026-02-14. Any deviation from this document is a bug in the code, not this document.
+
+---
+
+### Schema Truth Reference (from `pg_type`, `pg_constraint`, `information_schema`)
+
+#### DB-Enforced Enums (`CREATE TYPE`)
+
+| Enum Name | Allowed Values |
+|---|---|
+| `task_status` | `not_started`, `in_progress`, `blocked`, `done` |
+| `invoice_status` | `draft`, `sent`, `paid`, `overdue`, `void` |
+| `deficiency_status` | `open`, `in_progress`, `fixed`, `verified` |
+| `safety_status` | `draft`, `submitted`, `reviewed` |
+| `notification_type` | `task_assigned`, `blocker_added`, `safety_alert`, `manpower_request`, `general`, `blocker_cleared`, `manpower_approved`, `manpower_denied`, `deficiency_created`, `document_uploaded`, `incident_report` |
+| `receipt_category` | `fuel`, `materials`, `tools`, `meals`, `lodging`, `other` |
+| `receipt_review_status` | `pending`, `reviewed`, `processed` |
+| `app_role` | `admin`, `project_manager`, `foreman`, `internal_worker`, `external_trade`, `accounting` |
+
+#### CHECK Constraints (from `pg_constraint`)
+
+| Table | Constraint | Allowed Values |
+|---|---|---|
+| `projects` | `chk_projects_status` | `not_started`, `in_progress`, `completed`, `archived`, `deleted`, `potential`, `awarded`, `didnt_get` |
+| `project_scope_items` | `chk_scope_item_type` | `labor`, `material`, `machine`, `other` |
+| `project_scope_items` | `source_type_check` | `estimate`, `manual`, `template` |
+| `organization_memberships` | `valid_org_role` | `admin`, `hr`, `pm`, `foreman`, `internal_worker`, `external_trade` |
+| `receipts` | `cost_type_check` | `material`, `machine`, `other` |
+| `time_adjustment_requests` | `status_check` | `pending`, `approved`, `denied`, `cancelled` |
+| `safety_form_amendments` | `status_check` | `pending`, `approved`, `denied`, `cancelled` |
+| `invitations` | `status_check` | `pending`, `accepted`, `expired` |
+| `gc_deficiency_imports` | `status_check` | `uploaded`, `parsing`, `parsed`, `importing`, `imported`, `parse_failed` |
+| `ai_insight_validation_log` | `validation_result_check` | `pass`, `fail_narrative_numbers`, `fail_evidence_mismatch`, `fail_missing_evidence` |
+
+#### Key NOT NULL Columns (no default)
+
+| Table | Column | Type | Note |
+|---|---|---|---|
+| `time_entries` | `project_timezone` | text | **Seeds MUST include this** |
+| `time_entries` | `organization_id` | uuid | FK to organizations |
+| `time_entries` | `user_id` | uuid | FK to profiles |
+| `receipts` | `review_status` | receipt_review_status | **NOT `status`** — uses enum `receipt_review_status` |
 
 ---
 
@@ -114,7 +157,7 @@
 | A-008 | project_invoicing_summary strict vs relaxed | Admin | 3 invoices: 1 sent ($1000), 1 paid ($2000), 1 draft ($500). contract_value=10000 | 1. Call `project_invoicing_summary(:pid, false, false)` | strict: sent+paid = $3000, billed_pct=30%. 2. Call with include_drafts=true | relaxed includes draft: $3500, 35% | Draft counted in strict | `SELECT status, SUM(total) FROM invoices WHERE project_id=:pid GROUP BY status` | P0 |
 | A-009 | project_portfolio_report — aggregation across projects | Admin | 3 projects (1 with budget, 1 without, 1 deleted) | 1. Call `project_portfolio_report(:org_id)` | Only active projects returned; project without budget shows 0 for planned fields | Deleted projects included; division by zero on 0 budget | `SELECT COUNT(*) FROM projects WHERE organization_id=:org_id AND status!='deleted'` vs row count | P0 |
 | A-010 | portfolio_report — pagination | Admin | 15 projects | 1. Call with p_limit=5, p_offset=0 2. Then p_offset=5 3. Then p_offset=10 | 5,5,5 rows respectively; no duplicates across pages | Duplicate rows; wrong offset | Union all pages, `SELECT COUNT(DISTINCT project_id)` = 15 | P1 |
-| A-011 | portfolio_report — status filter | Admin | Projects: 2 active, 1 completed, 1 on_hold | 1. Call with p_status_filter='active' | Only 2 rows | Filter ignored | Count result rows | P1 |
+| A-011 | portfolio_report — status filter | Admin | Projects: 2 in_progress, 1 completed, 1 archived | 1. Call with p_status_filter='in_progress' | Only 2 rows | Filter ignored | Count result rows | P1 |
 | A-012 | Budget with contract_value=0 | Admin | Budget exists, contract_value=0 | 1. View variance summary | margin_percent should be 0% (not NaN/Infinity); UI shows "N/A" or 0% | Division by zero crash | `SELECT actual_margin_percent FROM project_variance_summary(:pid)` | P0 |
 | A-013 | Budget with all planned costs = 0 | Admin | Budget exists, all planned fields = 0 | 1. View variance | total_cost_delta = -actual_total; no division errors | Crash on 0 denominator | Check delta_pct fields aren't NaN | P1 |
 
@@ -213,7 +256,7 @@
 | G-003 | Missing cost rates section | Admin | 3 users with cost_rate=0 and time entries in last 30 days | 1. View section | Lists 3 users with affected projects and hours | Users with cost_rate>0 shown | `SELECT pm.user_id FROM project_members pm WHERE pm.cost_rate=0 AND EXISTS(SELECT 1 FROM time_entries te WHERE te.user_id=pm.user_id AND te.created_at > now()-interval '30 days')` | P1 |
 | G-004 | Unmatched time entries section | Admin | Time entries where user not in project_members | 1. View section | Shows count and entries | Not detected | See A-006 query | P1 |
 | G-005 | Unclassified receipts section | Admin | Receipts with NULL cost_type across 2 projects | 1. View section | Groups by project; shows totals | Wrong totals | `SELECT project_id, COUNT(*), SUM(amount) FROM receipts WHERE cost_type IS NULL GROUP BY project_id` | P1 |
-| G-006 | Active projects missing budgets | Admin | 3 active projects, 1 without budget | 1. View section | Shows 1 project with "Create Budget" CTA | Shows projects with budgets | `SELECT p.id FROM projects p WHERE p.status='active' AND NOT EXISTS (SELECT 1 FROM project_budgets pb WHERE pb.project_id=p.id)` | P1 |
+| G-006 | Active projects missing budgets | Admin | 3 in_progress projects, 1 without budget | 1. View section | Shows 1 project with "Create Budget" CTA | Shows projects with budgets | `SELECT p.id FROM projects p WHERE p.status='in_progress' AND NOT EXISTS (SELECT 1 FROM project_budgets pb WHERE pb.project_id=p.id)` | P1 |
 | G-007 | Create Budget CTA navigates correctly | Admin | Missing budget listed | 1. Click "Create Budget" | Navigates to project's budget tab | Broken link | URL check | P2 |
 | G-008 | Links from Insights → Data Health | Admin | Recommendation with data_quality category | 1. Click "Fix" link on recommendation | Navigates to /data-health | 404 or wrong page | URL check | P2 |
 | G-009 | Data Health → back to Insights | Admin | On Data Health page | 1. Click breadcrumb/back link | Returns to Insights | Broken navigation | URL check | P2 |
@@ -223,7 +266,7 @@
 | G-013 | Cross-project task reference — injected violation | Admin | (Test harness) Manually insert time_entry with task_id from different project | 1. View Data Health | "Cross-Project Task References" shows 1 row with both project names | Not detected | Same query as G-012 returns 1 row | P0 |
 | G-014 | Budget total consistency — RPC vs components | Admin | Budget exists with known component values | 1. Call `project_variance_summary(:pid)` 2. Compare `planned_total_cost` to `SUM(planned_labor_cost + planned_material_cost + planned_machine_cost + planned_other_cost)` from `project_budgets` | Values match within $0.01 | RPC computes differently than component sum | `SELECT ABS((planned_labor_cost+planned_material_cost+planned_machine_cost+planned_other_cost) - (SELECT planned_total_cost FROM project_variance_summary(project_id))) FROM project_budgets WHERE project_id=:pid` ≤ 0.01 | P0 |
 | G-015 | Budget total consistency — after component update | Admin | Update planned_labor_cost | 1. Re-call `project_variance_summary(:pid)` | `planned_total_cost` reflects new component sum immediately | Stale/cached value returned | Same verification as G-014 | P0 |
-| G-016 | Scope items archived but tasks still active | Admin | Scope item is_archived=true but linked tasks have status != 'completed' and != 'cancelled' | 1. Verify via SQL | 0 active tasks linked to archived scope items | Tasks still generating/active for archived scope | `SELECT t.id FROM tasks t JOIN project_scope_items psi ON psi.id=t.scope_item_id WHERE psi.is_archived=true AND t.status NOT IN ('completed','cancelled')` — must be 0 rows | P0 |
+| G-016 | Scope items archived but tasks still active | Admin | Scope item is_archived=true but linked tasks have status != 'done' | 1. Verify via SQL | 0 active tasks linked to archived scope items | Tasks still generating/active for archived scope | `SELECT t.id FROM tasks t JOIN project_scope_items psi ON psi.id=t.scope_item_id WHERE psi.is_archived=true AND t.status != 'done'` — must be 0 rows | P0 |
 
 ### H — Snapshots + Trends + Recommendations + AI
 
@@ -318,21 +361,26 @@
 
 ## 2. Seed Data Recipes
 
-### 2.0 Seed Data Change Log (v1.4)
+### 2.0 Seed Data Change Log (v2.0 — rebuilt from live schema)
 
 | # | Location | Was | Now | Reason |
 |---|----------|-----|-----|--------|
-| S-01 | §2.2 `project_members.role` | `'worker'` | `'internal_worker'` | `app_role` enum has no `'worker'` value; `'worker'` is only valid in `organization_memberships.role` (free-text) |
-| S-02 | §2.4 `tasks.status` | `'pending'` | `'not_started'` | `task_status` enum: `not_started\|in_progress\|blocked\|done`. `'pending'` is invalid and will fail INSERT |
-| S-03 | §4 Race 2 `tasks.status` | `'completed'` | `'done'` | Same enum — `'completed'` does not exist |
-| S-04 | §2.5 `receipts` columns | `organization_id`, `status` | removed `organization_id`; `status`→`review_status` | `receipts` table has no `organization_id` column; status column is `review_status` (enum: `pending\|reviewed\|processed`) |
+| S-01 | §2.2 `project_members.role` | `'worker'` | `'internal_worker'` | `app_role` enum has no `'worker'` value |
+| S-02 | §2.4 `tasks.status` | `'pending'` | `'not_started'` | `task_status` enum: `not_started\|in_progress\|blocked\|done` |
+| S-03 | §4 Race 2 `tasks.status` | `'completed'` | `'done'` | Same enum |
+| S-04 | §2.5 `receipts` columns | `status` | `review_status` | Column is `review_status` (enum: `pending\|reviewed\|processed`) |
 | S-05 | §2.5 `receipts.status` values | `'approved'` | `'reviewed'` | `receipt_review_status` enum has no `'approved'` value |
 | S-06 | §2.5 `receipts` | missing `file_path` | added `file_path` | `file_path` is required (NOT NULL, no default) |
 | S-07 | §2.2 `projects` | missing `created_by`, `location` | added both | Both are required (NOT NULL, no default) |
 | S-08 | §2.4 `tasks` | missing `created_by` | added `created_by` | Required (NOT NULL, no default) |
 | S-09 | §2.4 `time_entries` | missing `project_timezone` | added `project_timezone` | Required (NOT NULL, no default) |
-| S-10 | §2.4 `time_entries.source` | `'self'` | `'gps'` or `'manual'` | Valid app values: `gps\|manual\|manual_adjustment\|offline_sync`. `'self'` is not used anywhere in app code |
-| S-11 | §2.4 `project_scope_items` (archived) | missing `planned_unit_rate` | added `planned_unit_rate=50` | Without it, `planned_total` trigger computes 0 (default `planned_unit_rate=0`) |
+| S-10 | §2.4 `time_entries.source` | `'self'` | `'gps'` or `'manual'` | Valid app values: `gps\|manual\|manual_adjustment\|offline_sync` |
+| S-11 | §2.4 `project_scope_items` (archived) | missing `planned_unit_rate` | added `planned_unit_rate=50` | Without it, `planned_total` trigger computes 0 |
+| S-12 | §2.1 `projects.status` | `'active'` | `'in_progress'` | DB CHECK `chk_projects_status` does not include `'active'` |
+| S-13 | §2.2 `org_memberships.role` | `'worker'`, `'accounting'` | `'internal_worker'`, `'pm'` | DB CHECK `valid_org_role` allows: `admin\|hr\|pm\|foreman\|internal_worker\|external_trade` |
+| S-14 | §5E time entries | missing `project_timezone` | added `'America/Toronto'` | Required NOT NULL column |
+| S-15 | §6.2 receipts query | `WHERE status = 'approved'` | `WHERE review_status IN ('reviewed','processed')` | Column is `review_status`, no `'approved'` value |
+| S-16 | §4 Race 1 | `item_type='task'` | `item_type='labor'` | DB CHECK `chk_scope_item_type` only allows `labor\|material\|machine\|other` |
 
 ### 2.0a Schema Verification Queries
 
@@ -391,15 +439,15 @@ INSERT INTO profiles (id, email, full_name) VALUES
 INSERT INTO organization_memberships (user_id, organization_id, role, is_active) VALUES
   (:admin_uid, :org1_id, 'admin', true),
   (:pm_uid, :org1_id, 'pm', true),
-  (:worker_uid, :org1_id, 'worker', true);
+  (:worker_uid, :org1_id, 'internal_worker', true);
 
 -- Global admin
 INSERT INTO user_roles (user_id, role) VALUES
   (:admin_uid, 'admin');
 
--- Project (note: created_by and location are required NOT NULL)
+-- Project (note: created_by and location are required NOT NULL; status must match chk_projects_status CHECK)
 INSERT INTO projects (id, name, organization_id, status, job_number, created_by, location) VALUES
-  (:proj1_id, 'Tower Alpha', :org1_id, 'active', 'TA-001', :admin_uid, '123 Main St');
+  (:proj1_id, 'Tower Alpha', :org1_id, 'in_progress', 'TA-001', :admin_uid, '123 Main St');
 
 -- Budget
 INSERT INTO project_budgets (project_id, organization_id, contract_value,
@@ -484,7 +532,7 @@ INSERT INTO profiles (id, email, full_name) VALUES
 -- Additional org memberships
 INSERT INTO organization_memberships (user_id, organization_id, role, is_active) VALUES
   (:foreman_uid, :org1_id, 'foreman', true),
-  (:acct_uid, :org1_id, 'accounting', true);
+  (:acct_uid, :org1_id, 'pm', true);  -- accounting users use 'pm' org role; accounting is an app_role not org role
 
 -- Additional project members (app_role enum)
 INSERT INTO project_members (user_id, project_id, role, cost_rate) VALUES
@@ -496,9 +544,9 @@ INSERT INTO organizations (id, name) VALUES
 INSERT INTO organization_memberships (user_id, organization_id, role, is_active) VALUES
   (:rival_uid, :org2_id, 'admin', true);
 
--- Rival project (isolation test)
+-- Rival project (isolation test; uses valid status from CHECK constraint)
 INSERT INTO projects (id, name, organization_id, status, created_by, location) VALUES
-  (:proj_rival_id, 'Rival Tower', :org2_id, 'active', :rival_uid, '456 Rival Ave');
+  (:proj_rival_id, 'Rival Tower', :org2_id, 'in_progress', :rival_uid, '456 Rival Ave');
 
 -- ===== ORG 3: "Empty Corp" (empty state tests) =====
 INSERT INTO organizations (id, name) VALUES
@@ -514,7 +562,7 @@ INSERT INTO organization_memberships (user_id, organization_id, role, is_active)
 
 -- Project without budget (for B-008, B-012 tests)
 INSERT INTO projects (id, name, organization_id, status, job_number, created_by, location) VALUES
-  (:proj2_id, 'Garage Beta', :org1_id, 'active', 'GB-002', :admin_uid, '789 Beta Blvd');
+  (:proj2_id, 'Garage Beta', :org1_id, 'in_progress', 'GB-002', :admin_uid, '789 Beta Blvd');
 
 -- Deleted project (excluded from reports)
 INSERT INTO projects (id, name, organization_id, status, is_deleted, created_by, location) VALUES
@@ -719,7 +767,7 @@ SELECT * FROM rpc_submit_timesheet_period(:period_id, :pm_uid, 'I attest');
 
 ### Race 1: Task Generation Under Heavy Concurrency (20 Calls)
 
-**Setup**: Project with 5 scope items (`item_type='task'`, not archived), 0 existing tasks. 20 concurrent sessions.
+**Setup**: Project with 5 scope items (`item_type='labor'`, not archived), 0 existing tasks. 20 concurrent sessions.
 
 **Steps**:
 1. Fire 20 simultaneous calls to `generate_tasks_from_scope(:pid, 'create_missing')` from 20 database sessions
@@ -742,7 +790,7 @@ HAVING COUNT(*) > 1;
 
 -- Total tasks for project MUST equal scope item count
 SELECT COUNT(*) AS task_count FROM tasks WHERE project_id = :pid AND is_generated = true;
--- Must equal: SELECT COUNT(*) FROM project_scope_items WHERE project_id = :pid AND item_type = 'task' AND is_archived = false;
+-- Must equal: SELECT COUNT(*) FROM project_scope_items WHERE project_id = :pid AND item_type = 'labor' AND is_archived = false;
 ```
 
 **Advisory Lock Verification**:
@@ -924,15 +972,16 @@ WHERE te.project_id = :pid
 
 **Consumers that MUST use this contract:**
 
-| Consumer | Current Filter | Gap |
-|----------|---------------|-----|
-| `project_actual_costs` RPC | `status='closed'` | Missing NULL/zero/negative duration guard |
-| `project_variance_summary` RPC | Delegates to `project_actual_costs` | Inherits gap |
-| `project_task_actual_hours` RPC | `status='closed'` | Missing NULL/zero duration guard |
-| Scope variance coverage UI | `status='closed'` | Missing NULL/zero duration guard |
-| `generate_project_financial_snapshot` | Delegates to `project_actual_costs` | Inherits gap |
-| `useJobCostReport` hook | `status='closed'` + `NOT NULL duration_hours` | Missing zero/negative guard |
-| Data Health "missing cost rates" | `created_at > now()-30d` | Uses `created_at` not `check_out_at`; no status filter |
+| Consumer | Current Filter | Status |
+|----------|---------------|--------|
+| `project_actual_costs` RPC | Full 4-clause contract | ✅ Verified |
+| `project_variance_summary` RPC | Delegates to `project_actual_costs` | ✅ Inherits |
+| `project_task_actual_hours` RPC | Full 4-clause contract | ✅ Verified |
+| Scope variance coverage UI | Delegates to `project_task_actual_hours` | ✅ Inherits |
+| `generate_project_financial_snapshot` | Delegates to `project_actual_costs` | ✅ Inherits |
+| `useJobCostReport` hook | `status='closed'` + `check_out_at IS NOT NULL` + `duration_hours > 0` | ✅ Verified |
+| `is_valid_time_entry(te)` SQL function | Full 4-clause contract | ✅ Canonical reference |
+| Data Health "missing cost rates" | `created_at > now()-30d` | ⚠ Uses `created_at` not `check_out_at`; no status filter — acceptable (diagnostic, not financial) |
 
 ### 5B. Timestamp for "Last N Days" Windows
 
@@ -995,37 +1044,41 @@ AND te.check_out_at >= (now() AT TIME ZONE 'America/Vancouver' - interval '30 da
 ```sql
 -- Closed but NULL duration (TE-001 through TE-004)
 INSERT INTO time_entries (id, organization_id, user_id, project_id, task_id,
-  check_in_at, check_out_at, duration_hours, duration_minutes, status, source) VALUES
+  check_in_at, check_out_at, duration_hours, duration_minutes, status, source, project_timezone) VALUES
   (:te_null_dur_id, :org1_id, :worker_uid, :proj1_id, :task1_id,
-   now()-interval '5h', now()-interval '1h', NULL, NULL, 'closed', 'manual_adjustment');
+   now()-interval '5h', now()-interval '1h', NULL, NULL, 'closed', 'manual_adjustment', 'America/Toronto');
 
--- Zero duration (TE-007)
+-- Zero duration (TE-007) — negative test: MUST be excluded from all actuals
 INSERT INTO time_entries (id, organization_id, user_id, project_id,
-  check_in_at, check_out_at, duration_hours, duration_minutes, status, source) VALUES
+  check_in_at, check_out_at, duration_hours, duration_minutes, status, source, project_timezone) VALUES
   (:te_zero_dur_id, :org1_id, :worker_uid, :proj1_id,
-   now()-interval '3h', now()-interval '3h', 0.0, 0, 'closed', 'self');
+   now()-interval '3h', now()-interval '3h', 0.0, 0, 'closed', 'self', 'America/Toronto');
 
 -- Closed but no checkout (TE-016, inconsistent state)
 INSERT INTO time_entries (id, organization_id, user_id, project_id,
-  check_in_at, check_out_at, duration_hours, duration_minutes, status, source) VALUES
+  check_in_at, check_out_at, duration_hours, duration_minutes, status, source, project_timezone) VALUES
   (:te_no_checkout_id, :org1_id, :worker_uid, :proj1_id,
-   now()-interval '6h', NULL, 8.0, 480, 'closed', 'manual_adjustment');
+   now()-interval '6h', NULL, 8.0, 480, 'closed', 'manual_adjustment', 'America/Toronto');
 
 -- Overlapping entries for same user (TE-012, TE-013)
 INSERT INTO time_entries (id, organization_id, user_id, project_id,
-  check_in_at, check_out_at, duration_hours, duration_minutes, status, source) VALUES
+  check_in_at, check_out_at, duration_hours, duration_minutes, status, source, project_timezone) VALUES
   (:te_overlap_a_id, :org1_id, :worker_uid, :proj1_id,
-   '2026-02-10 08:00:00-08', '2026-02-10 16:00:00-08', 8.0, 480, 'closed', 'self'),
+   '2026-02-10 08:00:00-08', '2026-02-10 16:00:00-08', 8.0, 480, 'closed', 'self', 'America/Toronto'),
   (:te_overlap_b_id, :org1_id, :worker_uid, :proj1_id,
-   '2026-02-10 14:00:00-08', '2026-02-10 20:00:00-08', 6.0, 360, 'closed', 'self');
+   '2026-02-10 14:00:00-08', '2026-02-10 20:00:00-08', 6.0, 360, 'closed', 'self', 'America/Toronto');
 
 -- Timezone boundary entries (TE-014, TE-015)
 INSERT INTO time_entries (id, organization_id, user_id, project_id,
-  check_in_at, check_out_at, duration_hours, duration_minutes, status, source) VALUES
+  check_in_at, check_out_at, duration_hours, duration_minutes, status, source, project_timezone) VALUES
   (:te_tz_before_id, :org1_id, :worker_uid, :proj1_id,
-   '2025-12-31 15:00:00-08', '2025-12-31 23:59:00-08', 8.98, 539, 'closed', 'self'),
+   '2025-12-31 15:00:00-08', '2025-12-31 23:59:00-08', 8.98, 539, 'closed', 'self', 'America/Toronto'),
   (:te_tz_after_id, :org1_id, :worker_uid, :proj1_id,
-   '2025-12-31 16:00:00-08', '2026-01-01 00:01:00-08', 8.02, 481, 'closed', 'self');
+   '2025-12-31 16:00:00-08', '2026-01-01 00:01:00-08', 8.02, 481, 'closed', 'self', 'America/Toronto');
+
+-- Receipt with review_status='pending' (negative test: excluded from reviewed actuals)
+INSERT INTO receipts (id, project_id, uploaded_by, amount, cost_type, review_status, file_path) VALUES
+  (:rcpt_pending_id, :proj1_id, :worker_uid, 99.00, 'material', 'pending', 'receipts/pending.jpg');
 ```
 
 ### 5F. Recommended DB Constraint
@@ -1139,7 +1192,7 @@ receipts_by_type AS (
     COALESCE(SUM(CASE WHEN cost_type='machine' THEN amount END), 0) AS machine,
     COALESCE(SUM(CASE WHEN cost_type='other' THEN amount END), 0) AS other,
     COALESCE(SUM(CASE WHEN cost_type IS NULL THEN amount END), 0) AS unclassified
-  FROM receipts WHERE project_id = :pid AND status = 'approved'
+  FROM receipts WHERE project_id = :pid AND review_status IN ('reviewed', 'processed')
 )
 SELECT
   labor.cost + receipts_by_type.material + receipts_by_type.machine
@@ -1581,4 +1634,4 @@ Result: ___ / 10 PASS.  Any FAIL = P0 release blocker.
 
 ---
 
-*End of QA Gauntlet v1.5*
+*End of QA Gauntlet v2.0 — Rebuilt from live schema 2026-02-14*
