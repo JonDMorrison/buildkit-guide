@@ -221,7 +221,7 @@ const Invoicing = () => {
   }, [settings]);
 
   const settingsDirty = JSON.stringify(settingsForm) !== settingsSnapshot.current;
-  const currencySymbol = settingsForm.currency === "USD" ? "$" : settingsForm.currency === "EUR" ? "€" : settingsForm.currency === "GBP" ? "£" : "$";
+  const currencySymbol = "$";
 
   const filteredInvoices = useMemo(() => {
     return invoices.filter((inv) => {
@@ -1081,8 +1081,6 @@ const Invoicing = () => {
                       <SelectContent>
                         <SelectItem value="CAD">CAD ($)</SelectItem>
                         <SelectItem value="USD">USD ($)</SelectItem>
-                        <SelectItem value="EUR">EUR (€)</SelectItem>
-                        <SelectItem value="GBP">GBP (£)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

@@ -33,7 +33,7 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
 };
 
 const fmtCurrency = (v: number, currency = "CAD") =>
-  new Intl.NumberFormat("en-CA", { style: "currency", currency }).format(v);
+  `${new Intl.NumberFormat("en-CA", { style: "currency", currency }).format(v)} ${currency}`;
 
 const Estimates = () => {
   const { currentProjectId } = useCurrentProject();

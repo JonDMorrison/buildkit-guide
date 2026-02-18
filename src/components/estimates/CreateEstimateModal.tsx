@@ -175,8 +175,8 @@ export const CreateEstimateModal = ({ projectId, onClose, onCreated }: Props) =>
     onCreated();
   };
 
-  const formatCurrency = (v: number) =>
-    new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD" }).format(v);
+  const formatCurrency = (v: number, currency = "CAD") =>
+    `${new Intl.NumberFormat("en-CA", { style: "currency", currency }).format(v)} ${currency}`;
 
   return (
     <Dialog open onOpenChange={onClose}>

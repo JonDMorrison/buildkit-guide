@@ -34,8 +34,8 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
   archived: { label: "Archived", variant: "outline" },
 };
 
-const formatCurrency = (v: number) =>
-  new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD" }).format(v);
+const fmtCurrency = (v: number, currency = "CAD") =>
+  `${new Intl.NumberFormat("en-CA", { style: "currency", currency }).format(v)} ${currency}`;
 
 const Quotes = () => {
   const { role: orgRole, isLoading: orgRoleLoading } = useOrganizationRole();
@@ -234,7 +234,7 @@ const Quotes = () => {
                           <TableCell>
                             <Badge variant={sc.variant}>{sc.label}</Badge>
                           </TableCell>
-                          <TableCell className="text-right">{formatCurrency(q.total)}</TableCell>
+                          <TableCell className="text-right">{fmtCurrency(q.total, q.currency || "CAD")}</TableCell>
                           <TableCell>{format(new Date(q.updated_at), "MMM d, yyyy")}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>

@@ -30,7 +30,7 @@ const ITEM_TYPES = [
 ];
 
 const formatCurrency = (v: number, currency = "CAD") =>
-  new Intl.NumberFormat("en-CA", { style: "currency", currency }).format(v);
+  `${new Intl.NumberFormat("en-CA", { style: "currency", currency }).format(v)} ${currency}`;
 
 export const EstimateDetailModal = ({ estimate, canEdit, onClose, onUpdated }: Props) => {
   const {

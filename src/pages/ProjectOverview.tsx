@@ -4,6 +4,7 @@ import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -32,7 +33,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, AlertTriangle, Shield, CheckCircle2, FileText, Users, Calendar, Plus, MoreVertical, Archive, Receipt, Pencil, FileImage, Trash2, Zap } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Shield, CheckCircle2, FileText, Users, Calendar, Plus, MoreVertical, Archive, Receipt, Pencil, FileImage, Trash2, Zap, DollarSign } from 'lucide-react';
 import { IntegrityBadge } from '@/components/IntegrityBadge';
 import { useProjectIntegrity } from '@/hooks/useProjectIntegrity';
 import { ProjectScopeTab } from '@/components/scope/ProjectScopeTab';
@@ -55,6 +56,7 @@ interface Project {
   pm_contact_name: string | null;
   pm_email: string | null;
   pm_phone: string | null;
+  currency: string | null;
 }
 
 interface ProjectStats {
@@ -227,6 +229,36 @@ const ProjectOverview = () => {
                 canEdit={canManageProject}
                 onStatusChanged={(newStatus) => setProject(prev => prev ? { ...prev, status: newStatus } : prev)}
               />
+              {canManageProject ? (
+                <Select
+                  value={project.currency || "CAD"}
+                  onValueChange={async (val) => {
+                    const { error } = await supabase.rpc('rpc_update_project_currency', {
+                      p_project_id: projectId!,
+                      p_currency: val,
+                    });
+                    if (error) {
+                      toast({ title: "Cannot change currency", description: error.message, variant: "destructive" });
+                    } else {
+                      setProject(prev => prev ? { ...prev, currency: val } : prev);
+                      toast({ title: `Currency set to ${val}` });
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-24 h-7 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="CAD">CAD ($)</SelectItem>
+                    <SelectItem value="USD">USD ($)</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Badge variant="outline" className="text-xs">
+                  <DollarSign className="h-3 w-3 mr-0.5" />
+                  {project.currency || "CAD"}
+                </Badge>
+              )}
             </div>
           </div>
           {canManageProject && (

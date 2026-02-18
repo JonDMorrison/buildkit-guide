@@ -6286,6 +6286,14 @@ export type Database = {
         Args: { p_estimate_id: string; p_patch: Json }
         Returns: Json
       }
+      rpc_update_org_base_currency: {
+        Args: { p_currency: string; p_org_id: string }
+        Returns: undefined
+      }
+      rpc_update_project_currency: {
+        Args: { p_currency: string; p_project_id: string }
+        Returns: undefined
+      }
       rpc_update_project_status: {
         Args: { p_project_id: string; p_status: string }
         Returns: undefined
