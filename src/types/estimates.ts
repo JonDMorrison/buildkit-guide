@@ -62,9 +62,11 @@ export interface EstimateLineItem {
 export interface EstimateVarianceSummary {
   has_estimate: boolean;
   estimate_id: string | null;
+  currency: string;
   planned: {
     labor_hours: number;
     labor_bill_amount: number;
+    labor_cost_rate: number;
     material_cost: number;
     machine_cost: number;
     other_cost: number;
@@ -97,7 +99,12 @@ export interface EstimateVarianceSummary {
   };
   diagnostics: {
     missing_cost_rates_hours: number;
+    missing_cost_rates_count: number;
     unassigned_time_hours: number;
     unclassified_receipts_amount: number;
+    currency_mismatch_hours: number;
+    currency_mismatch_count: number;
+    currency_mismatch_detected: boolean;
+    missing_estimate: boolean;
   };
 }

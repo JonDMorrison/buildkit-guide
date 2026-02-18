@@ -881,6 +881,7 @@ export type Database = {
       estimate_line_items: {
         Row: {
           amount: number
+          created_at: string
           description: string | null
           estimate_id: string
           id: string
@@ -895,9 +896,11 @@ export type Database = {
           sort_order: number
           task_id: string | null
           unit: string | null
+          updated_at: string
         }
         Insert: {
           amount?: number
+          created_at?: string
           description?: string | null
           estimate_id: string
           id?: string
@@ -912,9 +915,11 @@ export type Database = {
           sort_order?: number
           task_id?: string | null
           unit?: string | null
+          updated_at?: string
         }
         Update: {
           amount?: number
+          created_at?: string
           description?: string | null
           estimate_id?: string
           id?: string
@@ -929,6 +934,7 @@ export type Database = {
           sort_order?: number
           task_id?: string | null
           unit?: string | null
+          updated_at?: string
         }
         Relationships: [
           {
