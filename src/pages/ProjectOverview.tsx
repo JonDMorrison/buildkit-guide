@@ -32,9 +32,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, AlertTriangle, Shield, CheckCircle2, FileText, Users, Calendar, Plus, MoreVertical, Archive, Receipt, Pencil, FileImage, Trash2 } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Shield, CheckCircle2, FileText, Users, Calendar, Plus, MoreVertical, Archive, Receipt, Pencil, FileImage, Trash2, Zap } from 'lucide-react';
 import { ProjectScopeTab } from '@/components/scope/ProjectScopeTab';
 import { ProjectBudgetTab } from '@/components/budget/ProjectBudgetTab';
+import { Switch } from '@/components/ui/switch';
+import { useProjectWorkflow } from '@/hooks/useProjectWorkflow';
 
 interface Project {
   id: string;
@@ -746,7 +748,47 @@ const ProjectOverviewTab = ({ projectId, stats }: { projectId: string; stats: Pr
         <Plus className="h-5 w-5 mr-2" />
         Add Task
       </Button>
+
+      {/* Workflow Toggle */}
+      <WorkflowToggleCard projectId={projectId} />
     </div>
+  );
+};
+
+const WorkflowToggleCard = ({ projectId }: { projectId: string }) => {
+  const { workflow, setFlowMode } = useProjectWorkflow(projectId);
+  const navigate = useNavigate();
+  const { can } = useAuthRole(projectId);
+  const canManage = can('manage_project', projectId);
+
+  return (
+    <Card>
+      <CardContent className="py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Zap className="h-5 w-5 text-primary" />
+            <div>
+              <p className="text-sm font-medium">AI-Optimized Flow</p>
+              <p className="text-xs text-muted-foreground">Guided workflow with phase gating and approvals</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            {workflow?.flow_mode === 'ai_optimized' && (
+              <Button variant="link" size="sm" className="p-0 h-auto" onClick={() => navigate(`/workflow?projectId=${projectId}`)}>
+                View Workflow →
+              </Button>
+            )}
+            {canManage && (
+              <Switch
+                checked={workflow?.flow_mode === 'ai_optimized'}
+                onCheckedChange={(checked) => setFlowMode.mutate(checked ? 'ai_optimized' : 'standard')}
+                disabled={setFlowMode.isPending}
+              />
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
