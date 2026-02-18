@@ -39,7 +39,7 @@ export interface Estimate {
   client?: { name: string } | null;
 }
 
-export type EstimateLineItemType = 'task' | 'service' | 'product';
+export type EstimateLineItemType = 'labor' | 'material' | 'machine' | 'other';
 
 export interface EstimateLineItem {
   id: string;

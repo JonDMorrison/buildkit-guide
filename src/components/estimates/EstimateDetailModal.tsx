@@ -2,10 +2,16 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Separator } from "@/components/ui/separator";
 import { useEstimates } from "@/hooks/useEstimates";
-import { CheckCircle2, Copy, Lock } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { CheckCircle2, Copy, Lock, Plus, Trash2, Wand2, Save, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import type { Estimate, EstimateLineItem } from "@/types/estimates";
 
@@ -16,13 +22,39 @@ interface Props {
   onUpdated: () => void;
 }
 
+const ITEM_TYPES = [
+  { value: "labor", label: "Labor" },
+  { value: "material", label: "Material" },
+  { value: "machine", label: "Machine" },
+  { value: "other", label: "Other" },
+];
+
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD" }).format(v);
 
 export const EstimateDetailModal = ({ estimate, canEdit, onClose, onUpdated }: Props) => {
-  const { fetchLineItems, approveEstimate, duplicateEstimate } = useEstimates(estimate.project_id);
+  const {
+    fetchLineItems, approveEstimate, duplicateEstimate,
+    updateEstimateHeader, upsertLineItem, deleteLineItem,
+    generateTasksFromEstimate,
+  } = useEstimates(estimate.project_id);
+  const { toast } = useToast();
+
   const [lineItems, setLineItems] = useState<EstimateLineItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
+
+  // Editable header fields
+  const [contractValue, setContractValue] = useState(String(estimate.contract_value));
+  const [internalNotes, setInternalNotes] = useState(estimate.internal_notes || "");
+  const [noteCustomer, setNoteCustomer] = useState(estimate.note_for_customer || "");
+
+  // New line item draft
+  const [newLines, setNewLines] = useState<Array<{
+    item_type: string; name: string; description: string;
+    quantity: number; unit: string; rate: number; sales_tax_rate: number;
+  }>>([]);
 
   useEffect(() => {
     const load = async () => {
@@ -36,6 +68,57 @@ export const EstimateDetailModal = ({ estimate, canEdit, onClose, onUpdated }: P
   const isDraft = estimate.status === "draft";
   const subtotal = lineItems.reduce((s, li) => s + li.amount, 0);
   const totalTax = lineItems.reduce((s, li) => s + li.sales_tax_amount, 0);
+  const laborCount = lineItems.filter(li => li.item_type === 'labor').length;
+
+  const handleSaveHeader = async () => {
+    setSaving(true);
+    await updateEstimateHeader(estimate.id, {
+      contract_value: Number(contractValue) || 0,
+      internal_notes: internalNotes || null,
+      note_for_customer: noteCustomer || null,
+    });
+    setSaving(false);
+    toast({ title: "Estimate saved" });
+    onUpdated();
+  };
+
+  const handleAddLine = () => {
+    setNewLines(prev => [...prev, {
+      item_type: "labor", name: "", description: "",
+      quantity: 1, unit: "hours", rate: 0, sales_tax_rate: 0,
+    }]);
+  };
+
+  const handleSaveNewLine = async (idx: number) => {
+    const li = newLines[idx];
+    if (!li.name.trim()) return;
+    setSaving(true);
+    await upsertLineItem(estimate.id, null, {
+      item_type: li.item_type,
+      name: li.name,
+      description: li.description || null,
+      quantity: li.quantity,
+      unit: li.unit || null,
+      rate: li.rate,
+      sales_tax_rate: li.sales_tax_rate,
+    });
+    setNewLines(prev => prev.filter((_, i) => i !== idx));
+    const items = await fetchLineItems(estimate.id);
+    setLineItems(items);
+    setSaving(false);
+  };
+
+  const handleDeleteLine = async (id: string) => {
+    await deleteLineItem(id);
+    const items = await fetchLineItems(estimate.id);
+    setLineItems(items);
+  };
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    await generateTasksFromEstimate(estimate.id);
+    setGenerating(false);
+  };
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -55,7 +138,11 @@ export const EstimateDetailModal = ({ estimate, canEdit, onClose, onUpdated }: P
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
             <div>
               <p className="text-muted-foreground text-xs">Contract Value</p>
-              <p className="font-semibold">{formatCurrency(estimate.contract_value)}</p>
+              {isDraft && canEdit ? (
+                <Input type="number" value={contractValue} onChange={e => setContractValue(e.target.value)} className="h-8 text-sm" />
+              ) : (
+                <p className="font-semibold">{formatCurrency(estimate.contract_value)}</p>
+              )}
             </div>
             <div>
               <p className="text-muted-foreground text-xs">Planned Total Cost</p>
@@ -94,33 +181,16 @@ export const EstimateDetailModal = ({ estimate, canEdit, onClose, onUpdated }: P
             </div>
           </div>
 
-          {/* Customer PM info */}
-          {(estimate.customer_pm_name || estimate.customer_po_number) && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-              {estimate.customer_po_number && (
-                <div>
-                  <p className="text-muted-foreground text-xs">PO #</p>
-                  <p>{estimate.customer_po_number}</p>
-                </div>
-              )}
-              {estimate.customer_pm_name && (
-                <div>
-                  <p className="text-muted-foreground text-xs">Customer PM</p>
-                  <p>{estimate.customer_pm_name}</p>
-                </div>
-              )}
-              {estimate.customer_pm_email && (
-                <div>
-                  <p className="text-muted-foreground text-xs">PM Email</p>
-                  <p>{estimate.customer_pm_email}</p>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Line Items */}
           <div>
-            <p className="text-sm font-semibold mb-2">Line Items</p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-semibold">Line Items</p>
+              {isDraft && canEdit && (
+                <Button variant="outline" size="sm" onClick={handleAddLine}>
+                  <Plus className="h-3 w-3 mr-1" /> Add Row
+                </Button>
+              )}
+            </div>
             {loading ? (
               <div className="space-y-2">
                 {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
@@ -137,6 +207,7 @@ export const EstimateDetailModal = ({ estimate, canEdit, onClose, onUpdated }: P
                       <TableHead className="text-right">Rate</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
                       <TableHead className="text-right">Tax</TableHead>
+                      {isDraft && canEdit && <TableHead className="w-10"></TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -151,6 +222,47 @@ export const EstimateDetailModal = ({ estimate, canEdit, onClose, onUpdated }: P
                         <TableCell className="text-right">{formatCurrency(li.rate)}</TableCell>
                         <TableCell className="text-right font-medium">{formatCurrency(li.amount)}</TableCell>
                         <TableCell className="text-right">{formatCurrency(li.sales_tax_amount)}</TableCell>
+                        {isDraft && canEdit && (
+                          <TableCell>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteLine(li.id)}>
+                              <Trash2 className="h-3 w-3 text-destructive" />
+                            </Button>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                    {/* New unsaved lines */}
+                    {newLines.map((nl, idx) => (
+                      <TableRow key={`new-${idx}`} className="bg-muted/30">
+                        <TableCell>
+                          <Select value={nl.item_type} onValueChange={v => setNewLines(prev => prev.map((l, i) => i === idx ? { ...l, item_type: v } : l))}>
+                            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {ITEM_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell>
+                          <Input className="h-8 text-sm" value={nl.name} onChange={e => setNewLines(prev => prev.map((l, i) => i === idx ? { ...l, name: e.target.value } : l))} placeholder="Item name" />
+                        </TableCell>
+                        <TableCell>
+                          <Input className="h-8 text-sm w-16" type="number" value={nl.quantity} onChange={e => setNewLines(prev => prev.map((l, i) => i === idx ? { ...l, quantity: Number(e.target.value) } : l))} />
+                        </TableCell>
+                        <TableCell>
+                          <Input className="h-8 text-sm w-16" value={nl.unit} onChange={e => setNewLines(prev => prev.map((l, i) => i === idx ? { ...l, unit: e.target.value } : l))} />
+                        </TableCell>
+                        <TableCell>
+                          <Input className="h-8 text-sm w-20" type="number" value={nl.rate} onChange={e => setNewLines(prev => prev.map((l, i) => i === idx ? { ...l, rate: Number(e.target.value) } : l))} />
+                        </TableCell>
+                        <TableCell className="text-right text-sm">{formatCurrency(nl.quantity * nl.rate)}</TableCell>
+                        <TableCell>
+                          <Input className="h-8 text-sm w-16" type="number" value={nl.sales_tax_rate} onChange={e => setNewLines(prev => prev.map((l, i) => i === idx ? { ...l, sales_tax_rate: Number(e.target.value) } : l))} />
+                        </TableCell>
+                        <TableCell>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleSaveNewLine(idx)} disabled={saving}>
+                            <Save className="h-3 w-3 text-primary" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -165,35 +277,70 @@ export const EstimateDetailModal = ({ estimate, canEdit, onClose, onUpdated }: P
           </div>
 
           {/* Notes */}
-          {(estimate.note_for_customer || estimate.internal_notes) && (
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              {estimate.note_for_customer && (
-                <div>
-                  <p className="text-xs font-semibold text-muted-foreground">Note for Customer</p>
-                  <p className="whitespace-pre-wrap">{estimate.note_for_customer}</p>
-                </div>
-              )}
-              {estimate.internal_notes && (
-                <div>
-                  <p className="text-xs font-semibold text-muted-foreground">Internal Notes</p>
-                  <p className="whitespace-pre-wrap">{estimate.internal_notes}</p>
-                </div>
-              )}
+          {isDraft && canEdit ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-xs">Note for Customer</Label>
+                <Textarea value={noteCustomer} onChange={e => setNoteCustomer(e.target.value)} rows={3} />
+              </div>
+              <div>
+                <Label className="text-xs">Internal Notes</Label>
+                <Textarea value={internalNotes} onChange={e => setInternalNotes(e.target.value)} rows={3} />
+              </div>
             </div>
+          ) : (
+            (estimate.note_for_customer || estimate.internal_notes) && (
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                {estimate.note_for_customer && (
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground">Note for Customer</p>
+                    <p className="whitespace-pre-wrap">{estimate.note_for_customer}</p>
+                  </div>
+                )}
+                {estimate.internal_notes && (
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground">Internal Notes</p>
+                    <p className="whitespace-pre-wrap">{estimate.internal_notes}</p>
+                  </div>
+                )}
+              </div>
+            )
+          )}
+
+          {/* Generate Tasks CTA */}
+          {canEdit && laborCount > 0 && (
+            <>
+              <Separator />
+              <div className="flex items-center justify-between p-3 rounded-md border border-dashed">
+                <div>
+                  <p className="text-sm font-medium">Generate Tasks from Estimate</p>
+                  <p className="text-xs text-muted-foreground">{laborCount} labor line items → scope items → tasks (idempotent)</p>
+                </div>
+                <Button size="sm" onClick={handleGenerate} disabled={generating}>
+                  {generating ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Wand2 className="h-4 w-4 mr-1.5" />}
+                  Generate Tasks
+                </Button>
+              </div>
+            </>
           )}
 
           {/* Actions */}
           <div className="flex justify-end gap-2">
             {isDraft && canEdit && (
-              <Button
-                variant="default"
-                onClick={async () => {
-                  await approveEstimate(estimate.id);
-                  onUpdated();
-                }}
-              >
-                <CheckCircle2 className="h-4 w-4 mr-2" /> Approve & Lock
-              </Button>
+              <>
+                <Button variant="outline" onClick={handleSaveHeader} loading={saving}>
+                  <Save className="h-4 w-4 mr-2" /> Save
+                </Button>
+                <Button
+                  variant="default"
+                  onClick={async () => {
+                    await approveEstimate(estimate.id);
+                    onUpdated();
+                  }}
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-2" /> Approve & Lock
+                </Button>
+              </>
             )}
             <Button
               variant="outline"

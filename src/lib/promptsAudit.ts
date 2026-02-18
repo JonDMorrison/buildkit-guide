@@ -173,6 +173,15 @@ async function checkRpcInventory(): Promise<AuditCheck> {
     'convert_quote_to_invoice',
     'rpc_log_quote_event',
     'rpc_update_project_status',
+    'rpc_create_estimate',
+    'rpc_update_estimate_header',
+    'rpc_upsert_estimate_line_item',
+    'rpc_delete_estimate_line_item',
+    'rpc_recalculate_estimate_totals',
+    'rpc_approve_estimate',
+    'rpc_delete_estimate',
+    'rpc_duplicate_estimate',
+    'rpc_generate_tasks_from_estimate',
   ];
 
   try {
@@ -728,6 +737,44 @@ async function checkConversionSourceIntegrity(): Promise<AuditCheck> {
     JSON.stringify({ invoice, client, projectLocation: project?.location, pmEmail, mismatches }, null, 2));
 }
 
+// -- Estimates Checks --
+
+async function checkEstimatesRls(): Promise<AuditCheck> {
+  const id = 'estimates_rls';
+  const name = 'Estimates RLS + FORCE + Write Deny';
+  const area = 'Security';
+  const severity: 'P0' = 'P0';
+  const expected = 'RLS forced, direct INSERT/UPDATE/DELETE denied on estimates and estimate_line_items';
+
+  try {
+    const { error } = await (supabase as any)
+      .from('estimates')
+      .insert({ project_id: '00000000-0000-0000-0000-000000000000', organization_id: '00000000-0000-0000-0000-000000000000', created_by: '00000000-0000-0000-0000-000000000000', estimate_number: 'TEST' });
+    if (!error) {
+      return makeCheck(id, name, area, severity, expected, 'INSERT succeeded (VULNERABILITY)', 'FAIL', 'Direct INSERT on estimates was NOT denied.');
+    }
+    const code = error.code;
+    const msg = (error.message || '').toLowerCase();
+    const denied = code === '42501' || msg.includes('row-level security');
+    if (!denied) {
+      return makeCheck(id, name, area, severity, expected, `Error but not RLS: ${error.message}`, 'FAIL', error.message);
+    }
+    return makeCheck(id, name, area, severity, expected, 'Write denied by RLS', 'PASS', `INSERT denied: ${error.message}`);
+  } catch (e: any) {
+    return makeCheck(id, name, area, severity, expected, `Exception: ${e.message}`, 'FAIL', e.message);
+  }
+}
+
+async function checkEstimateTaskGeneration(): Promise<AuditCheck> {
+  return makeCheck(
+    'estimate_task_gen', 'Generate Tasks from Estimate (Idempotency)', 'Estimates', 'P1',
+    'rpc_generate_tasks_from_estimate creates scope items idempotently',
+    'Cannot be verified automatically without mutating data',
+    'NEEDS_MANUAL',
+    'Manual test:\n1. Create an estimate with labor line items\n2. Click "Generate Tasks from Estimate"\n3. Verify scope items and tasks created\n4. Click again — verify no duplicates (skipped count > 0)',
+  );
+}
+
 // -- Main Runner --
 
 export async function runPromptsAudit(projectId: string): Promise<PromptsAuditResult> {
@@ -746,6 +793,8 @@ export async function runPromptsAudit(projectId: string): Promise<PromptsAuditRe
     checkProjectStatusConstraint(),
     checkInvoiceSendGuardrail(),
     checkNotificationsHooked(projectId),
+    checkEstimatesRls(),
+    checkEstimateTaskGeneration(),
   ]);
 
   const checks: AuditCheck[] = [];

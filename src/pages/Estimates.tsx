@@ -1,19 +1,16 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { Layout } from "@/components/Layout";
 import { SectionHeader } from "@/components/SectionHeader";
 import { useEstimates } from "@/hooks/useEstimates";
-import { useClients } from "@/hooks/useClients";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
-import { useOrganization } from "@/hooks/useOrganization";
 import { useOrganizationRole } from "@/hooks/useOrganizationRole";
-import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { NoAccess } from "@/components/NoAccess";
 import { CreateEstimateModal } from "@/components/estimates/CreateEstimateModal";
 import { EstimateDetailModal } from "@/components/estimates/EstimateDetailModal";
 import { EstimateVarianceView } from "@/components/estimates/EstimateVarianceView";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,7 +21,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Plus, FileText, CheckCircle2, Copy, Trash2, BarChart3, Archive,
+  Plus, FileText, CheckCircle2, Copy, Trash2, BarChart3,
 } from "lucide-react";
 import { format } from "date-fns";
 import type { Estimate } from "@/types/estimates";
@@ -35,13 +32,11 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
   archived: { label: "Archived", variant: "outline" },
 };
 
-const formatCurrency = (v: number) => {
-  return new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD" }).format(v);
-};
+const formatCurrency = (v: number) =>
+  new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD" }).format(v);
 
 const Estimates = () => {
   const { currentProjectId } = useCurrentProject();
-  const { activeOrganizationId } = useOrganization();
   const { role: orgRole, isLoading: orgRoleLoading } = useOrganizationRole();
   const { toast } = useToast();
 
@@ -132,33 +127,24 @@ const Estimates = () => {
 
         {currentProjectId && (
           <>
-            {/* Summary KPIs */}
             {approvedEstimate && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card>
-                  <CardContent className="p-4">
-                    <p className="text-xs text-muted-foreground">Contract Value</p>
-                    <p className="text-lg font-bold">{formatCurrency(approvedEstimate.contract_value)}</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4">
-                    <p className="text-xs text-muted-foreground">Planned Cost</p>
-                    <p className="text-lg font-bold">{formatCurrency(approvedEstimate.planned_total_cost)}</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4">
-                    <p className="text-xs text-muted-foreground">Planned Profit</p>
-                    <p className="text-lg font-bold">{formatCurrency(approvedEstimate.planned_profit)}</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4">
-                    <p className="text-xs text-muted-foreground">Margin</p>
-                    <p className="text-lg font-bold">{approvedEstimate.planned_margin_percent}%</p>
-                  </CardContent>
-                </Card>
+                <Card><CardContent className="p-4">
+                  <p className="text-xs text-muted-foreground">Contract Value</p>
+                  <p className="text-lg font-bold">{formatCurrency(approvedEstimate.contract_value)}</p>
+                </CardContent></Card>
+                <Card><CardContent className="p-4">
+                  <p className="text-xs text-muted-foreground">Planned Cost</p>
+                  <p className="text-lg font-bold">{formatCurrency(approvedEstimate.planned_total_cost)}</p>
+                </CardContent></Card>
+                <Card><CardContent className="p-4">
+                  <p className="text-xs text-muted-foreground">Planned Profit</p>
+                  <p className="text-lg font-bold">{formatCurrency(approvedEstimate.planned_profit)}</p>
+                </CardContent></Card>
+                <Card><CardContent className="p-4">
+                  <p className="text-xs text-muted-foreground">Margin</p>
+                  <p className="text-lg font-bold">{approvedEstimate.planned_margin_percent}%</p>
+                </CardContent></Card>
               </div>
             )}
 
@@ -205,9 +191,7 @@ const Estimates = () => {
                               onClick={() => setSelectedEstimate(est)}
                             >
                               <TableCell className="font-medium">{est.estimate_number}</TableCell>
-                              <TableCell>
-                                <Badge variant={sc.variant}>{sc.label}</Badge>
-                              </TableCell>
+                              <TableCell><Badge variant={sc.variant}>{sc.label}</Badge></TableCell>
                               <TableCell className="text-right">{formatCurrency(est.contract_value)}</TableCell>
                               <TableCell className="text-right">{formatCurrency(est.planned_total_cost)}</TableCell>
                               <TableCell className="text-right">{est.planned_margin_percent}%</TableCell>
@@ -215,27 +199,15 @@ const Estimates = () => {
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                                   {est.status === 'draft' && canEdit && (
-                                    <Button
-                                      variant="ghost" size="icon"
-                                      onClick={() => handleApprove(est)}
-                                      title="Approve"
-                                    >
+                                    <Button variant="ghost" size="icon" onClick={() => handleApprove(est)} title="Approve">
                                       <CheckCircle2 className="h-4 w-4 text-green-500" />
                                     </Button>
                                   )}
-                                  <Button
-                                    variant="ghost" size="icon"
-                                    onClick={() => handleDuplicate(est)}
-                                    title="Duplicate"
-                                  >
+                                  <Button variant="ghost" size="icon" onClick={() => handleDuplicate(est)} title="Duplicate">
                                     <Copy className="h-4 w-4" />
                                   </Button>
                                   {est.status === 'draft' && canEdit && (
-                                    <Button
-                                      variant="ghost" size="icon"
-                                      onClick={() => setDeleteTarget(est)}
-                                      title="Delete"
-                                    >
+                                    <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(est)} title="Delete">
                                       <Trash2 className="h-4 w-4 text-destructive" />
                                     </Button>
                                   )}
@@ -254,7 +226,6 @@ const Estimates = () => {
         )}
       </div>
 
-      {/* Modals */}
       {createOpen && currentProjectId && (
         <CreateEstimateModal
           projectId={currentProjectId}
@@ -279,7 +250,6 @@ const Estimates = () => {
         />
       )}
 
-      {/* Delete confirmation */}
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
