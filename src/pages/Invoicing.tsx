@@ -138,6 +138,7 @@ const Invoicing = () => {
   const { isAdmin: isGlobalAdmin } = useAuthRole();
   const canAccess = isGlobalAdmin || orgRole === "admin" || orgRole === "pm";
   const isAdmin = isGlobalAdmin || orgRole === "admin";
+  const canSendInvoice = isGlobalAdmin || orgRole === "admin" || orgRole === "hr";
 
   useEffect(() => {
     if (prefillData?.prefillLineItems) {
@@ -371,13 +372,18 @@ const Invoicing = () => {
   };
 
   const handleBulkSend = async () => {
+    if (!canSendInvoice) {
+      toast({ title: "Not authorized", description: "Only Admin or Accounting/HR can send invoices.", variant: "destructive" });
+      return;
+    }
     const toSend = filteredInvoices.filter(i => selectedInvoices.has(i.id) && (getDisplayStatus(i) === "draft" || getDisplayStatus(i) === "sent"));
     for (const inv of toSend) {
-      if (inv.client?.email) {
-        // Mark as sent at least
-        await handleStatusChange(inv, "sent");
+      const { error } = await supabase.rpc('rpc_send_invoice', { p_invoice_id: inv.id });
+      if (error) {
+        toast({ title: `Failed to send ${inv.invoice_number}`, description: error.message, variant: "destructive" });
       }
     }
+    await fetchInvoices();
     setSelectedInvoices(new Set());
     toast({ title: `${toSend.length} invoices processed` });
   };
@@ -539,9 +545,24 @@ const Invoicing = () => {
                     <Button variant="outline" size="sm" onClick={handleBulkExportPDF}>
                       <Download className="h-3.5 w-3.5 mr-1" /> PDF ({selectedInvoices.size})
                     </Button>
-                    <Button variant="outline" size="sm" onClick={handleBulkSend}>
-                      <Send className="h-3.5 w-3.5 mr-1" /> Send ({selectedInvoices.size})
-                    </Button>
+                    {canSendInvoice ? (
+                      <Button variant="outline" size="sm" onClick={handleBulkSend}>
+                        <Send className="h-3.5 w-3.5 mr-1" /> Send ({selectedInvoices.size})
+                      </Button>
+                    ) : (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span>
+                              <Button variant="outline" size="sm" disabled>
+                                <Send className="h-3.5 w-3.5 mr-1" /> Send ({selectedInvoices.size})
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>PM can create drafts. Admin/Accounting must send.</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
                     <Button variant="outline" size="sm" onClick={handleBulkVoid}>
                       <Ban className="h-3.5 w-3.5 mr-1" /> Void
                     </Button>
@@ -619,8 +640,18 @@ const Invoicing = () => {
                               <TableCell className="text-right">{balance > 0 ? fmt(balance) : "—"}</TableCell>
                               <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                                 <div className="flex gap-1 justify-end flex-wrap">
-                                  {(displayStatus === "draft" || displayStatus === "sent" || displayStatus === "overdue") && (
+                                  {(displayStatus === "draft" || displayStatus === "sent" || displayStatus === "overdue") && canSendInvoice && (
                                     <Button variant="ghost" size="sm" onClick={() => { setSendInvoice(inv); setShowSend(true); }} title="Send via email"><Mail className="h-3.5 w-3.5" /></Button>
+                                  )}
+                                  {(displayStatus === "draft" || displayStatus === "sent" || displayStatus === "overdue") && !canSendInvoice && (
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <span><Button variant="ghost" size="sm" disabled><Mail className="h-3.5 w-3.5 text-muted-foreground/40" /></Button></span>
+                                        </TooltipTrigger>
+                                        <TooltipContent>PM can create drafts. Admin/Accounting must send.</TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
                                   )}
                                   {(displayStatus === "sent" || displayStatus === "overdue") && (
                                     <Button variant="ghost" size="sm" onClick={() => { setPaymentInvoice(inv); setShowPayment(true); }} title="Record payment"><DollarSign className="h-3.5 w-3.5" /></Button>
@@ -680,8 +711,18 @@ const Invoicing = () => {
                             </div>
                           </div>
                           <div className="flex gap-1 mt-2 justify-end" onClick={(e) => e.stopPropagation()}>
-                            {(displayStatus === "draft" || displayStatus === "sent" || displayStatus === "overdue") && (
+                            {(displayStatus === "draft" || displayStatus === "sent" || displayStatus === "overdue") && canSendInvoice && (
                               <Button variant="ghost" size="sm" onClick={() => { setSendInvoice(inv); setShowSend(true); }}><Mail className="h-3.5 w-3.5" /></Button>
+                            )}
+                            {(displayStatus === "draft" || displayStatus === "sent" || displayStatus === "overdue") && !canSendInvoice && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span><Button variant="ghost" size="sm" disabled><Mail className="h-3.5 w-3.5 text-muted-foreground/40" /></Button></span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>PM can create drafts. Admin/Accounting must send.</TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
                             )}
                             <Button variant="ghost" size="sm" onClick={() => triggerPDF(inv)}><FileText className="h-3.5 w-3.5" /></Button>
                             {(displayStatus === "sent" || displayStatus === "overdue") && (

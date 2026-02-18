@@ -5946,6 +5946,7 @@ export type Database = {
         }
         Returns: Json
       }
+      rpc_send_invoice: { Args: { p_invoice_id: string }; Returns: undefined }
       rpc_set_project_flow_mode: {
         Args: { p_flow_mode: string; p_project_id: string }
         Returns: {

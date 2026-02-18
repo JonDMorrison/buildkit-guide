@@ -83,6 +83,12 @@ export const SendInvoiceModal = ({ open, onOpenChange, invoice, settings, client
       });
       if (res.error) throw res.error;
 
+      // Server-side status transition with role enforcement
+      const { error: rpcError } = await supabase.rpc('rpc_send_invoice', {
+        p_invoice_id: invoice.id,
+      });
+      if (rpcError) throw rpcError;
+
       // Persist the send_to_emails back to the invoice for future sends
       await supabase
         .from('invoices')
