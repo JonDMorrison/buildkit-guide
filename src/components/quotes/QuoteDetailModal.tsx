@@ -18,7 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CheckCircle2, Send, XCircle, Lock, ArrowRightLeft, Mail, AlertTriangle, ChevronDown, Bug, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import type { Quote, QuoteLineItem, QuoteConversion } from "@/types/quotes";
+import type { Quote, QuoteLineItem } from "@/types/quotes";
 
 interface Props {
   quote: Quote;
@@ -43,14 +43,13 @@ const fmt = (v: number) =>
 export const QuoteDetailModal = ({ quote, canEdit, onClose, onUpdated }: Props) => {
   const {
     fetchLineItems, approveQuote, markSent, rejectQuote,
-    convertToInvoice, getConversion,
+    convertToInvoice, getConvertedInvoiceId,
   } = useQuotes();
   const { role: orgRole } = useOrganizationRole();
   const navigate = useNavigate();
 
   const [lineItems, setLineItems] = useState<QuoteLineItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [conversion, setConversion] = useState<QuoteConversion | null>(null);
   const [showConvertDialog, setShowConvertDialog] = useState(false);
   const [converting, setConverting] = useState(false);
   const [events, setEvents] = useState<QuoteEvent[]>([]);
@@ -58,14 +57,14 @@ export const QuoteDetailModal = ({ quote, canEdit, onClose, onUpdated }: Props) 
 
   const showDebug = orgRole === 'admin' || orgRole === 'pm';
 
+  // Canonical conversion check — uses quotes.converted_invoice_id
+  const convertedInvoiceId = getConvertedInvoiceId(quote);
+  const isConverted = !!convertedInvoiceId;
+
   useEffect(() => {
     const load = async () => {
-      const [items, conv] = await Promise.all([
-        fetchLineItems(quote.id),
-        getConversion(quote.id),
-      ]);
+      const items = await fetchLineItems(quote.id);
       setLineItems(items);
-      setConversion(conv);
 
       // Load events with actor profiles
       const { data: evts } = await (supabase as any)
@@ -99,7 +98,6 @@ export const QuoteDetailModal = ({ quote, canEdit, onClose, onUpdated }: Props) 
   const isDraft = quote.status === "draft";
   const isSent = quote.status === "sent";
   const isApproved = quote.status === "approved";
-  const isConverted = !!conversion;
 
   const handleConvert = async () => {
     setConverting(true);
@@ -123,7 +121,7 @@ export const QuoteDetailModal = ({ quote, canEdit, onClose, onUpdated }: Props) 
     shipToAddress: quote.ship_to_address || null,
     parentClientId: quote.parent_client_id || null,
     clientId: quote.client_id || null,
-    convertedInvoiceId: (quote as any).converted_invoice_id || conversion?.invoice_id || null,
+    convertedInvoiceId,
   };
 
   return (
@@ -273,17 +271,46 @@ export const QuoteDetailModal = ({ quote, canEdit, onClose, onUpdated }: Props) 
             )}
 
             {/* Conversion info */}
-            {isConverted && conversion && (
+            {isConverted && (
               <Alert>
                 <ArrowRightLeft className="h-4 w-4" />
                 <AlertTitle>Converted to Invoice</AlertTitle>
                 <AlertDescription>
-                  Converted on {format(new Date(conversion.converted_at), "MMM d, yyyy")}.{" "}
+                  Invoice ID: {convertedInvoiceId}.{" "}
                   <Button variant="link" className="p-0 h-auto" onClick={() => { onClose(); navigate("/invoicing"); }}>
                     View Invoice →
                   </Button>
                 </AlertDescription>
               </Alert>
+            )}
+
+            {/* Conversion Preview Panel (for approved, unconverted quotes) */}
+            {isApproved && !isConverted && canEdit && (
+              <Card className="border-dashed">
+                <CardContent className="pt-4 space-y-3">
+                  <p className="text-sm font-semibold">Conversion Preview</p>
+                  <div className="grid grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <p className="font-semibold text-muted-foreground uppercase tracking-wider mb-1">Bill To (from parent client)</p>
+                      <p>{quote.bill_to_name || "—"}</p>
+                      <p className="text-muted-foreground">{quote.bill_to_address || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-muted-foreground uppercase tracking-wider mb-1">Ship To (from project)</p>
+                      <p>{quote.ship_to_name || "—"}</p>
+                      <p className="text-muted-foreground">{quote.ship_to_address || "—"}</p>
+                    </div>
+                  </div>
+                  <Alert variant="default" className="border-accent/30">
+                    <AlertTriangle className="h-4 w-4 text-accent" />
+                    <AlertTitle className="text-sm">Email Recipient Swap</AlertTitle>
+                    <AlertDescription className="text-xs space-y-1">
+                      <p><strong>Quote sent to:</strong> {quote.customer_pm_email || "No PM email"} <span className="text-muted-foreground">(Project Manager)</span></p>
+                      <p><strong>Invoice will go to:</strong> {quote.bill_to_ap_email || "No AP email"} <span className="text-muted-foreground">(Accounts Payable)</span></p>
+                    </AlertDescription>
+                  </Alert>
+                </CardContent>
+              </Card>
             )}
 
             {/* Audit Trail */}
@@ -297,6 +324,7 @@ export const QuoteDetailModal = ({ quote, canEdit, onClose, onUpdated }: Props) 
                       evt.event_type === 'approved' ? 'text-emerald-600 dark:text-emerald-400' :
                       evt.event_type === 'rejected' ? 'text-destructive' :
                       evt.event_type === 'converted' ? 'text-primary' :
+                      evt.event_type === 'line_item_added' || evt.event_type === 'line_item_updated' || evt.event_type === 'line_item_deleted' ? 'text-blue-600 dark:text-blue-400' :
                       'text-muted-foreground';
 
                     return (
