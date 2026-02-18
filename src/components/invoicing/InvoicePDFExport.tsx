@@ -14,7 +14,8 @@ export const generateInvoicePDF = async (
   const doc = new jsPDF();
   const m = 14;
   let y = 20;
-  const cs = (settings as any)?.currency === "EUR" ? "€" : (settings as any)?.currency === "GBP" ? "£" : "$";
+  const cs = "$";
+  const currencyCode = (settings as any)?.currency || "CAD";
 
   // Logo rendering (1F fix)
   if (settings?.logo_url) {

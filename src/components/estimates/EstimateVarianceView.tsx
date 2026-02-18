@@ -18,7 +18,7 @@ interface Props {
 
 const DeltaCell = ({ value, currency }: { value: number; currency: string }) => {
   const fmt = (v: number) =>
-    new Intl.NumberFormat("en-CA", { style: "currency", currency }).format(v);
+    `${new Intl.NumberFormat("en-CA", { style: "currency", currency }).format(v)} ${currency}`;
   const isNeg = value < 0;
   const isPos = value > 0;
   return (
@@ -47,7 +47,7 @@ export const EstimateVarianceView = ({ projectId, onClose }: Props) => {
 
   const cur = data?.currency || "CAD";
   const fmt = (v: number) =>
-    new Intl.NumberFormat("en-CA", { style: "currency", currency: cur }).format(v);
+    `${new Intl.NumberFormat("en-CA", { style: "currency", currency: cur }).format(v)} ${cur}`;
 
   return (
     <Dialog open onOpenChange={onClose}>

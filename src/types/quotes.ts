@@ -21,6 +21,7 @@ export interface Quote {
   gst: number;
   pst: number;
   total: number;
+  currency: string;
   note_for_customer: string | null;
   memo_on_statement: string | null;
   internal_notes: string | null;

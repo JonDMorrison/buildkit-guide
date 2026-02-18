@@ -37,8 +37,8 @@ interface QuoteEvent {
   actor_name?: string;
 }
 
-const fmt = (v: number) =>
-  new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD" }).format(v);
+const fmt = (v: number, currency = "CAD") =>
+  `${new Intl.NumberFormat("en-CA", { style: "currency", currency }).format(v)} ${currency}`;
 
 export const QuoteDetailModal = ({ quote, canEdit, onClose, onUpdated }: Props) => {
   const {

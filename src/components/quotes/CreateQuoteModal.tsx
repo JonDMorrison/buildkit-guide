@@ -142,8 +142,8 @@ export const CreateQuoteModal = ({ onClose, onCreated }: Props) => {
   const subtotal = lineItems.reduce((s, li) => s + (Number(li.quantity) || 0) * (Number(li.rate) || 0), 0);
   const totalAmount = Math.round((subtotal + (Number(gst) || 0) + (Number(pst) || 0)) * 100) / 100;
 
-  const formatCurrency = (v: number) =>
-    new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD" }).format(v);
+  const formatCurrency = (v: number, currency = "CAD") =>
+    `${new Intl.NumberFormat("en-CA", { style: "currency", currency }).format(v)} ${currency}`;
 
   const handleSave = async () => {
     if (lineItems.every(li => !li.product_or_service.trim())) {

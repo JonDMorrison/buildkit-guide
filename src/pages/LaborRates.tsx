@@ -150,15 +150,14 @@ export default function LaborRates() {
 
   const handleSaveBaseCurrency = async (newCurrency: string) => {
     if (!activeOrganizationId) return;
-    const { error } = await supabase
-      .from("organizations")
-      .update({ base_currency: newCurrency } as any)
-      .eq("id", activeOrganizationId);
+    const { error } = await supabase.rpc('rpc_update_org_base_currency', {
+      p_org_id: activeOrganizationId,
+      p_currency: newCurrency,
+    });
     if (error) {
-      toast({ title: "Failed to update base currency", description: error.message, variant: "destructive" });
+      toast({ title: "Cannot change base currency", description: error.message, variant: "destructive" });
     } else {
       toast({ title: `Base currency set to ${newCurrency}` });
-      // Force reload to reflect in context
       window.location.reload();
     }
   };
