@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useEstimates } from "@/hooks/useEstimates";
-import { AlertTriangle, TrendingDown, TrendingUp, Globe } from "lucide-react";
+import { AlertTriangle, TrendingDown, TrendingUp, Globe, Settings } from "lucide-react";
 import type { EstimateVarianceSummary } from "@/types/estimates";
 
 interface Props {
@@ -30,6 +31,7 @@ const DeltaCell = ({ value, currency }: { value: number; currency: string }) => 
 };
 
 export const EstimateVarianceView = ({ projectId, onClose }: Props) => {
+  const navigate = useNavigate();
   const { fetchVariance } = useEstimates(projectId);
   const [data, setData] = useState<EstimateVarianceSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -181,8 +183,19 @@ export const EstimateVarianceView = ({ projectId, onClose }: Props) => {
                   <Alert variant="default">
                     <AlertTriangle className="h-4 w-4" />
                     <AlertTitle>Unrated Labor Hours</AlertTitle>
-                    <AlertDescription>
-                      <strong>{data.diagnostics.missing_cost_rates_hours}h</strong> ({data.diagnostics.missing_cost_rates_count} entries) have no cost rate — labor cost is understated.
+                    <AlertDescription className="flex items-center justify-between gap-2">
+                      <span>
+                        <strong>{data.diagnostics.missing_cost_rates_hours}h</strong> ({data.diagnostics.missing_cost_rates_count} entries) have no cost rate — labor cost is understated.
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0"
+                        onClick={() => { onClose(); navigate('/settings/labor-rates'); }}
+                      >
+                        <Settings className="h-3 w-3 mr-1.5" />
+                        Set Labor Rates
+                      </Button>
                     </AlertDescription>
                   </Alert>
                 )}
