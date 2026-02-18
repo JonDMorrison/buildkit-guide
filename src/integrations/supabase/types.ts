@@ -3061,6 +3061,7 @@ export type Database = {
       projects: {
         Row: {
           billing_address: string | null
+          client_id: string | null
           created_at: string
           created_by: string
           description: string | null
@@ -3071,12 +3072,16 @@ export type Database = {
           location: string
           name: string
           organization_id: string
+          pm_contact_name: string | null
+          pm_email: string | null
+          pm_phone: string | null
           start_date: string | null
           status: string
           updated_at: string
         }
         Insert: {
           billing_address?: string | null
+          client_id?: string | null
           created_at?: string
           created_by: string
           description?: string | null
@@ -3087,12 +3092,16 @@ export type Database = {
           location: string
           name: string
           organization_id: string
+          pm_contact_name?: string | null
+          pm_email?: string | null
+          pm_phone?: string | null
           start_date?: string | null
           status?: string
           updated_at?: string
         }
         Update: {
           billing_address?: string | null
+          client_id?: string | null
           created_at?: string
           created_by?: string
           description?: string | null
@@ -3103,11 +3112,21 @@ export type Database = {
           location?: string
           name?: string
           organization_id?: string
+          pm_contact_name?: string | null
+          pm_email?: string | null
+          pm_phone?: string | null
           start_date?: string | null
           status?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "projects_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "projects_created_by_fkey"
             columns: ["created_by"]

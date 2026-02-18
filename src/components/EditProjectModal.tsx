@@ -32,6 +32,9 @@ const projectSchema = z.object({
   endDate: z.string().optional(),
   status: z.string(),
   clientId: z.string().optional(),
+  pmContactName: z.string().trim().optional(),
+  pmEmail: z.string().trim().optional(),
+  pmPhone: z.string().trim().optional(),
 });
 
 type ProjectForm = z.infer<typeof projectSchema>;
@@ -83,6 +86,9 @@ export const EditProjectModal = ({ open, onOpenChange, project, onSuccess }: Edi
     endDate: '',
     status: 'planning',
     clientId: '',
+    pmContactName: '',
+    pmEmail: '',
+    pmPhone: '',
   });
   const [errors, setErrors] = useState<Partial<Record<keyof ProjectForm, string>>>({});
 
@@ -98,6 +104,9 @@ export const EditProjectModal = ({ open, onOpenChange, project, onSuccess }: Edi
         endDate: project.end_date || '',
         status: project.status || 'planning',
         clientId: (project as any).client_id || '',
+        pmContactName: (project as any).pm_contact_name || '',
+        pmEmail: (project as any).pm_email || '',
+        pmPhone: (project as any).pm_phone || '',
       });
     }
   }, [project]);
@@ -151,7 +160,10 @@ export const EditProjectModal = ({ open, onOpenChange, project, onSuccess }: Edi
           end_date: validatedData.endDate || null,
           status: validatedData.status,
           client_id: validatedData.clientId || null,
-        })
+          pm_contact_name: validatedData.pmContactName || null,
+          pm_email: validatedData.pmEmail || null,
+          pm_phone: validatedData.pmPhone || null,
+        } as any)
         .eq('id', project.id);
 
       if (error) throw error;
@@ -282,6 +294,40 @@ export const EditProjectModal = ({ open, onOpenChange, project, onSuccess }: Edi
               className="min-h-[52px]"
             />
           </FormField>
+
+          {/* PM Contact Override */}
+          {form.clientId && (
+            <div className="space-y-2 border rounded-lg p-3">
+              <p className="text-sm font-medium text-muted-foreground">PM Contact Override <span className="text-xs font-normal">(for Quotes — leave blank to use client defaults)</span></p>
+              <div className="grid grid-cols-3 gap-3">
+                <FormField label="PM Name">
+                  <Input
+                    value={form.pmContactName}
+                    onChange={(e) => setForm({ ...form, pmContactName: e.target.value })}
+                    placeholder="Override"
+                    className="min-h-[44px]"
+                  />
+                </FormField>
+                <FormField label="PM Email">
+                  <Input
+                    type="email"
+                    value={form.pmEmail}
+                    onChange={(e) => setForm({ ...form, pmEmail: e.target.value })}
+                    placeholder="Override"
+                    className="min-h-[44px]"
+                  />
+                </FormField>
+                <FormField label="PM Phone">
+                  <Input
+                    value={form.pmPhone}
+                    onChange={(e) => setForm({ ...form, pmPhone: e.target.value })}
+                    placeholder="Override"
+                    className="min-h-[44px]"
+                  />
+                </FormField>
+              </div>
+            </div>
+          )}
 
           <FormField label="Description" error={errors.description}>
             <Textarea
