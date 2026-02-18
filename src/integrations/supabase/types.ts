@@ -5732,6 +5732,15 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      rpc_log_quote_event: {
+        Args: {
+          p_event_type: string
+          p_message?: string
+          p_metadata?: Json
+          p_quote_id: string
+        }
+        Returns: undefined
+      }
       rpc_request_phase_advance: {
         Args: { p_notes?: string; p_phase_key: string; p_project_id: string }
         Returns: {

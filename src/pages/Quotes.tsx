@@ -3,6 +3,7 @@ import { Layout } from "@/components/Layout";
 import { SectionHeader } from "@/components/SectionHeader";
 import { useQuotes } from "@/hooks/useQuotes";
 import { useOrganizationRole } from "@/hooks/useOrganizationRole";
+import { useClients } from "@/hooks/useClients";
 import { NoAccess } from "@/components/NoAccess";
 import { CreateQuoteModal } from "@/components/quotes/CreateQuoteModal";
 import { QuoteDetailModal } from "@/components/quotes/QuoteDetailModal";
@@ -10,15 +11,17 @@ import { QuoteDetailModal } from "@/components/quotes/QuoteDetailModal";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Plus, FileText, Trash2, Send, CheckCircle2, XCircle,
+  Plus, FileText, Trash2, Send, CheckCircle2, XCircle, Filter,
 } from "lucide-react";
 import { format } from "date-fns";
 import type { Quote } from "@/types/quotes";
@@ -40,6 +43,7 @@ const Quotes = () => {
     quotes, loading, fetchQuotes,
     approveQuote, markSent, rejectQuote, deleteQuote,
   } = useQuotes();
+  const { clients } = useClients();
 
   const canEdit = orgRole === 'admin' || orgRole === 'pm';
   const [createOpen, setCreateOpen] = useState(false);
@@ -47,10 +51,37 @@ const Quotes = () => {
   const [deleteTarget, setDeleteTarget] = useState<Quote | null>(null);
   const [tab, setTab] = useState("all");
 
+  // Filters
+  const [filterCustomer, setFilterCustomer] = useState("all");
+  const [filterProject, setFilterProject] = useState("");
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Unique customers/projects from quotes
+  const uniqueCustomers = useMemo(() => {
+    const map = new Map<string, string>();
+    quotes.forEach(q => {
+      if (q.client?.name && q.client_id) map.set(q.client_id, q.client.name);
+    });
+    return Array.from(map.entries());
+  }, [quotes]);
+
   const filtered = useMemo(() => {
-    if (tab === "all") return quotes;
-    return quotes.filter(q => q.status === tab);
-  }, [quotes, tab]);
+    let result = quotes;
+    if (tab !== "all") result = result.filter(q => q.status === tab);
+    if (filterCustomer && filterCustomer !== "all") result = result.filter(q => q.client_id === filterCustomer);
+    if (filterProject) {
+      const lc = filterProject.toLowerCase();
+      result = result.filter(q =>
+        q.project?.name?.toLowerCase().includes(lc) ||
+        q.project?.job_number?.toLowerCase().includes(lc)
+      );
+    }
+    if (filterDateFrom) result = result.filter(q => q.created_at >= filterDateFrom);
+    if (filterDateTo) result = result.filter(q => q.created_at <= filterDateTo + "T23:59:59");
+    return result;
+  }, [quotes, tab, filterCustomer, filterProject, filterDateFrom, filterDateTo]);
 
   if (orgRoleLoading) {
     return (
@@ -77,13 +108,75 @@ const Quotes = () => {
       <div className="p-4 md:p-6 space-y-6">
         <div className="flex items-center justify-between">
           <SectionHeader title="Quotes" subtitle="Customer-facing proposals" />
-          {canEdit && (
-            <Button size="sm" onClick={() => setCreateOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Quote
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+              className={showFilters ? "bg-accent" : ""}
+            >
+              <Filter className="h-4 w-4 mr-2" />
+              Filters
             </Button>
-          )}
+            {canEdit && (
+              <Button size="sm" onClick={() => setCreateOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Quote
+              </Button>
+            )}
+          </div>
         </div>
+
+        {/* Filters bar */}
+        {showFilters && (
+          <Card>
+            <CardContent className="py-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Customer</p>
+                  <Select value={filterCustomer} onValueChange={setFilterCustomer}>
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder="All" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Customers</SelectItem>
+                      {uniqueCustomers.map(([id, name]) => (
+                        <SelectItem key={id} value={id}>{name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Project</p>
+                  <Input
+                    className="h-8 text-sm"
+                    placeholder="Search by name or job #"
+                    value={filterProject}
+                    onChange={e => setFilterProject(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">From</p>
+                  <Input
+                    className="h-8 text-sm"
+                    type="date"
+                    value={filterDateFrom}
+                    onChange={e => setFilterDateFrom(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">To</p>
+                  <Input
+                    className="h-8 text-sm"
+                    type="date"
+                    value={filterDateTo}
+                    onChange={e => setFilterDateTo(e.target.value)}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
@@ -114,6 +207,7 @@ const Quotes = () => {
                       <TableHead>Quote #</TableHead>
                       <TableHead>Customer</TableHead>
                       <TableHead>Project</TableHead>
+                      <TableHead>PM Email</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Total</TableHead>
                       <TableHead>Updated</TableHead>
@@ -131,7 +225,12 @@ const Quotes = () => {
                         >
                           <TableCell className="font-medium">{q.quote_number}</TableCell>
                           <TableCell>{q.client?.name || "—"}</TableCell>
-                          <TableCell>{q.project?.name || "—"}</TableCell>
+                          <TableCell>
+                            {q.project ? (
+                              <span>{q.project.job_number ? `${q.project.job_number} — ` : ""}{q.project.name}</span>
+                            ) : "—"}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{q.customer_pm_email || "—"}</TableCell>
                           <TableCell>
                             <Badge variant={sc.variant}>{sc.label}</Badge>
                           </TableCell>
@@ -141,37 +240,21 @@ const Quotes = () => {
                             <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                               {q.status === 'draft' && canEdit && (
                                 <>
-                                  <Button
-                                    variant="ghost" size="icon"
-                                    onClick={() => markSent(q.id)}
-                                    title="Mark Sent"
-                                  >
+                                  <Button variant="ghost" size="icon" onClick={() => markSent(q.id)} title="Mark Sent">
                                     <Send className="h-4 w-4" />
                                   </Button>
-                                  <Button
-                                    variant="ghost" size="icon"
-                                    onClick={() => setDeleteTarget(q)}
-                                    title="Delete"
-                                  >
+                                  <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(q)} title="Delete">
                                     <Trash2 className="h-4 w-4 text-destructive-foreground" />
                                   </Button>
                                 </>
                               )}
                               {(q.status === 'draft' || q.status === 'sent') && canEdit && (
-                                <Button
-                                  variant="ghost" size="icon"
-                                  onClick={() => approveQuote(q.id)}
-                                  title="Approve"
-                                >
+                                <Button variant="ghost" size="icon" onClick={() => approveQuote(q.id)} title="Approve">
                                   <CheckCircle2 className="h-4 w-4 text-primary" />
                                 </Button>
                               )}
                               {q.status === 'sent' && canEdit && (
-                                <Button
-                                  variant="ghost" size="icon"
-                                  onClick={() => rejectQuote(q.id)}
-                                  title="Reject"
-                                >
+                                <Button variant="ghost" size="icon" onClick={() => rejectQuote(q.id)} title="Reject">
                                   <XCircle className="h-4 w-4 text-destructive" />
                                 </Button>
                               )}
