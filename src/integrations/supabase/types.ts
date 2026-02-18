@@ -2304,25 +2304,34 @@ export type Database = {
       organization_memberships: {
         Row: {
           created_at: string
+          hourly_bill_rate: number | null
+          hourly_cost_rate: number | null
           id: string
           is_active: boolean
           organization_id: string
+          rates_currency: string
           role: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          hourly_bill_rate?: number | null
+          hourly_cost_rate?: number | null
           id?: string
           is_active?: boolean
           organization_id: string
+          rates_currency?: string
           role?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          hourly_bill_rate?: number | null
+          hourly_cost_rate?: number | null
           id?: string
           is_active?: boolean
           organization_id?: string
+          rates_currency?: string
           role?: string
           user_id?: string
         }
