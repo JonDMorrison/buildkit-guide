@@ -62,6 +62,7 @@ const DocsViewer = lazy(() => import("./pages/DocsViewer"));
 const SystemAudit = lazy(() => import("./pages/SystemAudit"));
 const SecurityIsolationReport = lazy(() => import("./pages/SecurityIsolationReport"));
 const Workflow = lazy(() => import("./pages/Workflow"));
+const PromptsAudit = lazy(() => import("./pages/PromptsAudit"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -465,6 +466,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <Workflow />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/audit/prompts-1-10"
+                  element={
+                    <ProtectedRoute>
+                      <PromptsAudit />
                     </ProtectedRoute>
                   }
                 />
