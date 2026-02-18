@@ -23,6 +23,7 @@ import {
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
+import { ScopePhaseActions } from '@/components/workflow/ScopePhaseActions';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof Circle }> = {
   not_started: { label: 'Not Started', color: 'bg-muted text-muted-foreground', icon: Circle },
@@ -183,6 +184,11 @@ function PhaseCard({
                 </Button>
               </div>
             </div>
+          )}
+
+          {/* Scope phase CTA */}
+          {phase.key === 'scope_of_work' && isCurrent && (
+            <ScopePhaseActions projectId={projectId} />
           )}
         </CardContent>
       </Card>
