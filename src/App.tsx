@@ -66,6 +66,7 @@ const Workflow = lazy(() => import("./pages/Workflow"));
 const PromptsAudit = lazy(() => import("./pages/PromptsAudit"));
 const InsightsAudit = lazy(() => import("./pages/InsightsAudit"));
 const ConversionTestHarness = lazy(() => import("./pages/ConversionTestHarness"));
+const OrgSettings = lazy(() => import("./pages/OrgSettings"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -275,6 +276,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <LaborRates />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/settings/organization"
+                  element={
+                    <ProtectedRoute>
+                      <OrgSettings />
                     </ProtectedRoute>
                   }
                 />
