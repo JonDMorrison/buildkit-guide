@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from '@/hooks/useOrganization';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import type { Quote, QuoteLineItem, QuoteConversion } from '@/types/quotes';
+import type { Quote, QuoteLineItem } from '@/types/quotes';
 
 const logQuoteEvent = async (quoteId: string, eventType: string, metadata: Record<string, any> = {}) => {
   try {
@@ -95,7 +95,10 @@ export const useQuotes = () => {
         quote_id: (data as any).id,
         organization_id: activeOrganizationId,
       }));
-      await supabase.from('quote_line_items').insert(rows as any);
+      const { error: liError } = await supabase.from('quote_line_items').insert(rows as any);
+      if (liError) {
+        console.warn('Failed to insert line items', liError.message);
+      }
     }
 
     if (data) {
@@ -120,7 +123,6 @@ export const useQuotes = () => {
       return false;
     }
 
-    // Build diff summary of changed fields
     const changedFields = Object.keys(updates).filter(k => k !== 'updated_at');
     await logQuoteEvent(id, 'updated', { changed_fields: changedFields });
 
@@ -186,6 +188,9 @@ export const useQuotes = () => {
   };
 
   const deleteQuote = async (id: string) => {
+    // Log before deleting (event references the quote)
+    await logQuoteEvent(id, 'deleted');
+
     await supabase.from('quote_line_items').delete().eq('quote_id', id);
     const { error } = await supabase.from('quotes').delete().eq('id', id);
     if (error) {
@@ -205,6 +210,74 @@ export const useQuotes = () => {
     return (data as any[]) || [];
   };
 
+  const addLineItem = async (quoteId: string, lineItem: Partial<QuoteLineItem>) => {
+    const qty = Number(lineItem.quantity) || 0;
+    const rate = Number(lineItem.rate) || 0;
+    const amount = Math.round(qty * rate * 100) / 100;
+    const taxRate = Number(lineItem.sales_tax_rate) || 0;
+    const taxAmount = Math.round(amount * (taxRate / 100) * 100) / 100;
+
+    const { data, error } = await supabase
+      .from('quote_line_items')
+      .insert({
+        ...lineItem,
+        quote_id: quoteId,
+        organization_id: activeOrganizationId,
+        amount,
+        sales_tax_amount: taxAmount,
+      } as any)
+      .select()
+      .single();
+
+    if (error) {
+      toast({ title: 'Error adding line item', description: error.message, variant: 'destructive' });
+      return null;
+    }
+    await logQuoteEvent(quoteId, 'line_item_added', {
+      line_item_id: (data as any)?.id,
+      product: lineItem.product_or_service,
+      amount,
+    });
+    return data;
+  };
+
+  const updateLineItem = async (quoteId: string, lineItemId: string, updates: Partial<QuoteLineItem>) => {
+    const qty = Number(updates.quantity) || 0;
+    const rate = Number(updates.rate) || 0;
+    const amount = Math.round(qty * rate * 100) / 100;
+    const taxRate = Number(updates.sales_tax_rate) || 0;
+    const taxAmount = Math.round(amount * (taxRate / 100) * 100) / 100;
+
+    const { error } = await supabase
+      .from('quote_line_items')
+      .update({ ...updates, amount, sales_tax_amount: taxAmount } as any)
+      .eq('id', lineItemId);
+
+    if (error) {
+      toast({ title: 'Error updating line item', description: error.message, variant: 'destructive' });
+      return false;
+    }
+    await logQuoteEvent(quoteId, 'line_item_updated', {
+      line_item_id: lineItemId,
+      changed_fields: Object.keys(updates),
+    });
+    return true;
+  };
+
+  const deleteLineItem = async (quoteId: string, lineItemId: string) => {
+    const { error } = await supabase
+      .from('quote_line_items')
+      .delete()
+      .eq('id', lineItemId);
+
+    if (error) {
+      toast({ title: 'Error deleting line item', description: error.message, variant: 'destructive' });
+      return false;
+    }
+    await logQuoteEvent(quoteId, 'line_item_deleted', { line_item_id: lineItemId });
+    return true;
+  };
+
   const convertToInvoice = async (quoteId: string): Promise<string | null> => {
     if (!user) return null;
     const { data, error } = await supabase.rpc('convert_quote_to_invoice', {
@@ -221,19 +294,16 @@ export const useQuotes = () => {
     return data as string;
   };
 
-  const getConversion = async (quoteId: string): Promise<QuoteConversion | null> => {
-    const { data } = await supabase
-      .from('quote_conversions')
-      .select('*')
-      .eq('quote_id', quoteId)
-      .maybeSingle();
-    return (data as any) || null;
+  /** Canonical conversion check via quotes.converted_invoice_id */
+  const getConvertedInvoiceId = (quote: Quote): string | null => {
+    return (quote as any).converted_invoice_id || null;
   };
 
   return {
     quotes, loading,
     fetchQuotes, createQuote, updateQuote,
     approveQuote, markSent, rejectQuote, archiveQuote, deleteQuote,
-    fetchLineItems, convertToInvoice, getConversion,
+    fetchLineItems, addLineItem, updateLineItem, deleteLineItem,
+    convertToInvoice, getConvertedInvoiceId,
   };
 };
