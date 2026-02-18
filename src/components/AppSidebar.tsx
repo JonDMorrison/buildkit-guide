@@ -31,6 +31,10 @@ const SECTIONS: SectionDef[] = [
     title: "Field & Compliance",
     paths: ["/drawings", "/deficiencies", "/safety"],
   },
+  {
+    title: "Settings",
+    paths: ["/settings/labor-rates"],
+  },
 ];
 
 export const AppSidebar = () => {

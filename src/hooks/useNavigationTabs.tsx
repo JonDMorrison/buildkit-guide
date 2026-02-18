@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Home, CheckSquare, Calendar, Users, AlertCircle, Shield, Receipt, Clock, Layers, BarChart3, DollarSign, FileText, TrendingUp, Workflow } from "lucide-react";
+import { Home, CheckSquare, Calendar, Users, AlertCircle, Shield, Receipt, Clock, Layers, BarChart3, DollarSign, FileText, TrendingUp, Workflow, Settings } from "lucide-react";
 import { useProjectRole } from "@/hooks/useProjectRole";
 import { useOrganizationRole } from "@/hooks/useOrganizationRole";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -44,6 +44,7 @@ export const tabs: TabConfig[] = [
   { name: "Deficiencies", path: "/deficiencies", icon: AlertCircle, tiers: ['all'] },
   { name: "Safety", path: "/safety", icon: Shield, tiers: ['all', 'field'] },
   { name: "Receipts", path: "/receipts", icon: Receipt, tiers: ['all', 'office', 'field', 'minimal'] },
+  { name: "Labor Rates", path: "/settings/labor-rates", icon: Settings, tiers: ['all', 'office'] },
 ];
 
 export const useNavigationTabs = () => {
