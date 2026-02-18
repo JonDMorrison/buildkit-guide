@@ -259,8 +259,9 @@ export const InvoiceDetailModal = ({
             )}
 
             {/* Approval status */}
-            {(invoice as any).approval_status && (invoice as any).approval_status !== "none" && (
-              <div className="text-sm">
+            {invoice.approval_status && invoice.approval_status !== "none" && (
+              <div className="bg-muted/50 rounded-lg p-3 text-sm space-y-2">
+                <Label className="text-sm font-semibold">Approval</Label>
                 <InvoiceApprovalActions
                   invoice={invoice}
                   canApprove={false}
@@ -268,6 +269,21 @@ export const InvoiceDetailModal = ({
                   onApprove={async () => {}}
                   onReject={async () => {}}
                 />
+                <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground mt-1">
+                  {invoice.approved_at && (
+                    <div>
+                      <span className="font-medium text-foreground">
+                        {invoice.approval_status === "approved" ? "Approved" : "Reviewed"}:
+                      </span>{" "}
+                      {format(new Date(invoice.approved_at), "MMM d, yyyy h:mm a")}
+                    </div>
+                  )}
+                  {invoice.approval_status === "rejected" && invoice.rejection_reason && (
+                    <div className="col-span-2">
+                      <span className="font-medium text-destructive">Reason:</span> {invoice.rejection_reason}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
