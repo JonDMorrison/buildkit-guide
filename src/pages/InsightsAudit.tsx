@@ -5,7 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Play, Download, ChevronDown, AlertTriangle, CheckCircle2, HelpCircle } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Play, Download, ChevronDown, AlertTriangle, CheckCircle2, HelpCircle, Server, Monitor, Wrench } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { runPromptsAudit, type PromptsAuditResult, type AuditCheck, type AuditStatus } from '@/lib/promptsAudit';
 import { useOrganization } from '@/hooks/useOrganization';
@@ -27,6 +29,7 @@ const severityClass: Record<string, string> = {
 function CheckCard({ check }: { check: AuditCheck }) {
   const cfg = statusConfig[check.status];
   const Icon = cfg.icon;
+  const SourceIcon = check.source === 'server' ? Server : Monitor;
   return (
     <Card className={`${severityClass[check.severity]} border`}>
       <CardContent className="p-4 space-y-2">
@@ -36,6 +39,7 @@ function CheckCard({ check }: { check: AuditCheck }) {
             <span className="font-medium text-sm truncate">{check.name}</span>
             <Badge variant="outline" className="text-xs shrink-0">{check.severity}</Badge>
             <Badge variant="outline" className="text-xs shrink-0">{check.area}</Badge>
+            <SourceIcon className="h-3 w-3 shrink-0 text-muted-foreground" />
           </div>
           <Badge className={`${cfg.class} text-xs shrink-0`}>{cfg.label}</Badge>
         </div>
@@ -43,6 +47,46 @@ function CheckCard({ check }: { check: AuditCheck }) {
           <div><span className="font-medium">Expected:</span> {check.expected}</div>
           <div><span className="font-medium">Actual:</span> {check.actual}</div>
         </div>
+
+        {/* Remediation */}
+        {check.remediation && (
+          <div className="flex items-start gap-1.5 mt-1 p-2 rounded bg-muted text-xs">
+            <Wrench className="h-3 w-3 mt-0.5 shrink-0 text-muted-foreground" />
+            <span className="whitespace-pre-wrap">{check.remediation}</span>
+          </div>
+        )}
+
+        {/* Offender samples */}
+        {check.offenders && check.offenders.length > 0 && (
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center gap-1 text-xs text-destructive hover:text-destructive/80">
+              <ChevronDown className="h-3 w-3" /> {check.offenders.length} Offender Sample(s)
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="mt-1 overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      {Object.keys(check.offenders[0]).map(k => (
+                        <TableHead key={k} className="text-xs py-1 px-2">{k}</TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {check.offenders.map((row, i) => (
+                      <TableRow key={i}>
+                        {Object.values(row).map((v, j) => (
+                          <TableCell key={j} className="text-xs py-1 px-2 font-mono">{String(v ?? '—')}</TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
         <Collapsible>
           <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
             <ChevronDown className="h-3 w-3" /> Evidence
@@ -102,14 +146,22 @@ export default function InsightsAudit() {
     P2: result.checks.filter(c => c.severity === 'P2'),
   } : null;
 
+  const serverChecks = result ? result.checks.filter(c => c.source === 'server') : [];
+  const clientChecks = result ? result.checks.filter(c => c.source !== 'server') : [];
+
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto p-6 space-y-6">
+      <div className="max-w-5xl mx-auto p-6 space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">Prompts 1-10 Implementation Audit</h1>
+          <h1 className="text-2xl font-bold">Expanded Audit Suite</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            P0/P1 checks for RLS, currency, variance, labor inclusion, and workflow correctness.
+          </p>
           {result && (
-            <p className="text-sm text-muted-foreground mt-1">
-              Last run: {new Date(result.ran_at).toLocaleString()} | Env: {result.environment}
+            <p className="text-xs text-muted-foreground mt-1">
+              Last run: {new Date(result.ran_at).toLocaleString()} | Env: {result.environment} | 
+              <Server className="inline h-3 w-3 mx-1" />{serverChecks.length} server • 
+              <Monitor className="inline h-3 w-3 mx-1" />{clientChecks.length} client
             </p>
           )}
         </div>
@@ -141,7 +193,8 @@ export default function InsightsAudit() {
 
         {result && (
           <>
-            <div className="grid grid-cols-4 gap-3">
+            {/* Summary cards */}
+            <div className="grid grid-cols-5 gap-3">
               <Card><CardContent className="p-4 text-center">
                 <div className="text-2xl font-bold">{result.summary.total}</div>
                 <div className="text-xs text-muted-foreground">Total</div>
@@ -158,14 +211,19 @@ export default function InsightsAudit() {
                 <div className="text-2xl font-bold text-accent-foreground">{result.summary.needs_manual}</div>
                 <div className="text-xs text-muted-foreground">Manual</div>
               </CardContent></Card>
+              <Card className="border-destructive/50"><CardContent className="p-4 text-center">
+                <div className="text-2xl font-bold text-destructive">{result.summary.blockers.length}</div>
+                <div className="text-xs text-muted-foreground">P0 Blockers</div>
+              </CardContent></Card>
             </div>
 
+            {/* Blockers banner */}
             {result.summary.blockers.length > 0 && (
               <Card className="border-destructive bg-destructive/5">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm text-destructive flex items-center gap-2">
                     <AlertTriangle className="h-4 w-4" />
-                    {result.summary.blockers.length} P0 Blocker(s)
+                    {result.summary.blockers.length} P0 Blocker(s) — Must Fix Before Release
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0">
@@ -173,7 +231,7 @@ export default function InsightsAudit() {
                     {result.summary.blockers.map(b => (
                       <li key={b.id}>
                         <Badge className={statusConfig[b.status].class + ' text-xs mr-2'}>{b.status}</Badge>
-                        {b.name}: {b.actual}
+                        <strong>{b.name}:</strong> {b.actual}
                       </li>
                     ))}
                   </ul>
@@ -181,16 +239,53 @@ export default function InsightsAudit() {
               </Card>
             )}
 
-            {grouped && (['P0', 'P1', 'P2'] as const).map(sev => {
-              const items = grouped[sev];
-              if (items.length === 0) return null;
-              return (
-                <div key={sev} className="space-y-2">
-                  <h2 className="text-sm font-semibold text-muted-foreground">{sev} Checks ({items.length})</h2>
-                  {items.map(c => <CheckCard key={c.id} check={c} />)}
-                </div>
-              );
-            })}
+            {/* Tabs: By Severity or By Source */}
+            <Tabs defaultValue="severity">
+              <TabsList>
+                <TabsTrigger value="severity">By Severity</TabsTrigger>
+                <TabsTrigger value="source">By Source</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="severity" className="space-y-6 mt-4">
+                {grouped && (['P0', 'P1', 'P2'] as const).map(sev => {
+                  const items = grouped[sev];
+                  if (items.length === 0) return null;
+                  const passCount = items.filter(c => c.status === 'PASS').length;
+                  return (
+                    <div key={sev} className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-sm font-semibold text-muted-foreground">
+                          {sev} Checks ({items.length})
+                        </h2>
+                        <Badge variant={passCount === items.length ? 'default' : 'destructive'} className="text-xs">
+                          {passCount}/{items.length} pass
+                        </Badge>
+                      </div>
+                      {items.map(c => <CheckCard key={c.id} check={c} />)}
+                    </div>
+                  );
+                })}
+              </TabsContent>
+
+              <TabsContent value="source" className="space-y-6 mt-4">
+                {serverChecks.length > 0 && (
+                  <div className="space-y-2">
+                    <h2 className="text-sm font-semibold text-muted-foreground flex items-center gap-1">
+                      <Server className="h-3.5 w-3.5" /> Server-Side Checks ({serverChecks.length})
+                    </h2>
+                    {serverChecks.map(c => <CheckCard key={c.id} check={c} />)}
+                  </div>
+                )}
+                {clientChecks.length > 0 && (
+                  <div className="space-y-2">
+                    <h2 className="text-sm font-semibold text-muted-foreground flex items-center gap-1">
+                      <Monitor className="h-3.5 w-3.5" /> Client-Side Checks ({clientChecks.length})
+                    </h2>
+                    {clientChecks.map(c => <CheckCard key={c.id} check={c} />)}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
           </>
         )}
       </div>
