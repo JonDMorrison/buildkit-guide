@@ -6003,6 +6003,10 @@ export type Database = {
         Args: { p_org_id: string }
         Returns: Json
       }
+      rpc_update_project_status: {
+        Args: { p_project_id: string; p_status: string }
+        Returns: undefined
+      }
       shares_any_project: {
         Args: { p_actor_id: string; p_org_id: string; p_target_id: string }
         Returns: boolean
