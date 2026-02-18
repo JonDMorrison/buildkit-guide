@@ -53,6 +53,7 @@ const JobCostReport = lazy(() => import("./pages/JobCostReport"));
 const Invoicing = lazy(() => import("./pages/Invoicing"));
 const Estimates = lazy(() => import("./pages/Estimates"));
 const Quotes = lazy(() => import("./pages/Quotes"));
+const Proposals = lazy(() => import("./pages/Proposals"));
 const Insights = lazy(() => import("./pages/Insights"));
 const ProjectEstimateAccuracy = lazy(() => import("./pages/ProjectEstimateAccuracy"));
 const DataHealth = lazy(() => import("./pages/DataHealth"));
@@ -400,6 +401,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <Quotes />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/proposals"
+                  element={
+                    <ProtectedRoute>
+                      <Proposals />
                     </ProtectedRoute>
                   }
                 />
