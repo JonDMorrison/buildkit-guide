@@ -2408,19 +2408,25 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_sandbox: boolean
           name: string
+          sandbox_label: string | null
           slug: string | null
         }
         Insert: {
           created_at?: string
           id?: string
+          is_sandbox?: boolean
           name: string
+          sandbox_label?: string | null
           slug?: string | null
         }
         Update: {
           created_at?: string
           id?: string
+          is_sandbox?: boolean
           name?: string
+          sandbox_label?: string | null
           slug?: string | null
         }
         Relationships: []

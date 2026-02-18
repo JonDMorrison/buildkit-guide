@@ -1,16 +1,19 @@
 import { useState, useEffect } from "react";
 import { Search } from "lucide-react";
 import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
 import { UserMenu } from "./UserMenu";
 import { NotificationsDropdown } from "./notifications/NotificationsDropdown";
 import { SidebarTrigger } from "./ui/sidebar";
 import { GlobalSearchModal } from "./GlobalSearchModal";
+import { useOrganization } from "@/hooks/useOrganization";
 import projectPathLogo from "@/assets/project-path-logo.png";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export const TopNav = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const isMobile = useIsMobile();
+  const { activeOrganization } = useOrganization();
 
   // Global keyboard shortcut ⌘K / Ctrl+K
   useEffect(() => {
@@ -31,6 +34,11 @@ export const TopNav = () => {
         <div className="flex items-center gap-2 sm:gap-4">
           {!isMobile && <SidebarTrigger className="h-9 w-9" />}
           <img src={projectPathLogo} alt="Project Path" className={isMobile ? "h-20 w-auto" : "h-24 w-auto"} />
+          {activeOrganization?.is_sandbox && (
+            <Badge variant="outline" className="border-amber-500/50 text-amber-500 bg-amber-500/10 text-xs font-medium">
+              {activeOrganization.sandbox_label || "Sandbox"}
+            </Badge>
+          )}
         </div>
         
         <div className="flex items-center gap-2">

@@ -56,9 +56,14 @@ export const OrganizationSwitcher = memo(function OrganizationSwitcher() {
             className="flex items-center justify-between cursor-pointer"
           >
             <span className="truncate">{org.name}</span>
-            {activeOrganization?.id === org.id && (
-              <Check className="h-4 w-4 text-primary" />
-            )}
+            <div className="flex items-center gap-1.5">
+              {(org as any).is_sandbox && (
+                <span className="text-[10px] text-amber-500 font-medium px-1 py-0.5 rounded bg-amber-500/10">Sandbox</span>
+              )}
+              {activeOrganization?.id === org.id && (
+                <Check className="h-4 w-4 text-primary" />
+              )}
+            </div>
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>
