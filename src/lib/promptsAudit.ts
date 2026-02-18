@@ -316,41 +316,31 @@ async function checkQuoteStatusAndEvents(): Promise<AuditCheck> {
   );
 }
 
-// C) Fixed: use quote_conversions properly, no auto-conversion
+// C) Uses quotes.converted_invoice_id as canonical source
 async function checkQuoteConversion(): Promise<AuditCheck> {
   const id = 'quote_conversion';
   const name = 'Quote -> Invoice Conversion';
   const area = 'Conversion';
   const severity: 'P0' = 'P0';
+  const expected = 'Idempotent conversion: repeated call returns same invoice_id';
 
-  // Find an approved quote
   const { data: approvedQuotes } = await (supabase as any)
     .from('quotes')
-    .select('id, quote_number')
+    .select('id, quote_number, converted_invoice_id')
     .eq('status', 'approved')
     .limit(1);
 
   if (!approvedQuotes || approvedQuotes.length === 0) {
-    return makeCheck(id, name, area, severity,
-      'Convert approved quote to invoice, verify idempotency',
-      'No approved quotes found',
-      'NEEDS_MANUAL',
+    return makeCheck(id, name, area, severity, expected,
+      'No approved quotes found', 'NEEDS_MANUAL',
       'Create and approve a quote, then rerun audit to test conversion.');
   }
 
-  const quoteId = approvedQuotes[0].id;
+  const quote = approvedQuotes[0];
 
-  // Check if already converted via quote_conversions
-  const { data: existingConversion } = await (supabase as any)
-    .from('quote_conversions')
-    .select('invoice_id')
-    .eq('quote_id', quoteId)
-    .maybeSingle();
-
-  if (!existingConversion) {
-    return makeCheck(id, name, area, severity,
-      'Approved quote convertible and idempotent',
-      `Quote ${approvedQuotes[0].quote_number} is approved but not yet converted`,
+  if (!quote.converted_invoice_id) {
+    return makeCheck(id, name, area, severity, expected,
+      `Quote ${quote.quote_number} is approved but not yet converted`,
       'NEEDS_MANUAL',
       'Click Convert in the Quote Detail UI, then rerun audit to verify idempotency.');
   }
@@ -360,44 +350,44 @@ async function checkQuoteConversion(): Promise<AuditCheck> {
     const { data: session } = await supabase.auth.getSession();
     const userId = session?.session?.user?.id;
     const { data: secondResult, error } = await (supabase as any).rpc('convert_quote_to_invoice', {
-      p_quote_id: quoteId,
+      p_quote_id: quote.id,
       p_actor_id: userId,
     });
 
-    const idempotent = !error && secondResult === existingConversion.invoice_id;
+    const idempotent = !error && secondResult === quote.converted_invoice_id;
 
-    return makeCheck(id, name, area, severity,
-      'Second conversion returns same invoice_id (idempotent)',
-      idempotent ? `Same invoice_id: ${secondResult}` : `Mismatch: got=${secondResult}, expected=${existingConversion.invoice_id}`,
+    return makeCheck(id, name, area, severity, expected,
+      idempotent ? `Same invoice_id: ${secondResult}` : `Mismatch: got=${secondResult}, expected=${quote.converted_invoice_id}`,
       idempotent ? 'PASS' : 'FAIL',
-      `First: ${existingConversion.invoice_id}, Second: ${secondResult}, Error: ${error?.message ?? 'none'}`);
+      `Canonical: ${quote.converted_invoice_id}, Repeat call: ${secondResult}, Error: ${error?.message ?? 'none'}`);
   } catch (e: any) {
-    return makeCheck(id, name, area, severity,
-      'Idempotent conversion', `Error: ${e.message}`, 'FAIL', e.message);
+    return makeCheck(id, name, area, severity, expected,
+      `Error: ${e.message}`, 'FAIL', e.message);
   }
 }
 
-// D) Fixed: use quote_conversions, require all snapshot fields
+// D) Uses quotes.converted_invoice_id as canonical source for snapshots
 async function checkConversionSnapshots(): Promise<AuditCheck> {
   const id = 'conversion_snapshots';
   const name = 'Conversion Snapshots';
   const area = 'Conversion';
   const severity: 'P0' = 'P0';
+  const expected = 'bill_to, ship_to, and send_to_emails all populated on converted invoice';
 
-  const { data: conversions } = await (supabase as any)
-    .from('quote_conversions')
-    .select('quote_id, invoice_id')
+  const { data: convertedQuotes } = await (supabase as any)
+    .from('quotes')
+    .select('id, quote_number, converted_invoice_id')
+    .not('converted_invoice_id', 'is', null)
+    .order('updated_at', { ascending: false })
     .limit(1);
 
-  if (!conversions || conversions.length === 0) {
-    return makeCheck(id, name, area, severity,
-      'Invoice has bill_to, ship_to, send_to_emails from conversion',
-      'No conversions exist',
-      'NEEDS_MANUAL',
+  if (!convertedQuotes || convertedQuotes.length === 0) {
+    return makeCheck(id, name, area, severity, expected,
+      'No converted quotes found', 'NEEDS_MANUAL',
       'Convert a quote to invoice first, then rerun audit.');
   }
 
-  const invoiceId = conversions[0].invoice_id;
+  const invoiceId = convertedQuotes[0].converted_invoice_id;
   const { data: invoice } = await (supabase as any)
     .from('invoices')
     .select('bill_to_name, bill_to_address, ship_to_name, ship_to_address, send_to_emails')
@@ -405,19 +395,22 @@ async function checkConversionSnapshots(): Promise<AuditCheck> {
     .maybeSingle();
 
   if (!invoice) {
-    return makeCheck(id, name, area, severity,
-      'Invoice exists with snapshot data',
-      `Invoice ${invoiceId} not found`, 'FAIL', `Invoice ${invoiceId} missing from invoices table.`);
+    return makeCheck(id, name, area, severity, expected,
+      `Invoice ${invoiceId} not found`, 'FAIL',
+      `Quote ${convertedQuotes[0].quote_number} points to invoice ${invoiceId} but it is missing from invoices table.`);
   }
 
   const hasBillTo = !!(invoice.bill_to_name || invoice.bill_to_address);
   const hasShipTo = !!(invoice.ship_to_name || invoice.ship_to_address);
   const hasSendTo = Array.isArray(invoice.send_to_emails) ? invoice.send_to_emails.length > 0 : !!invoice.send_to_emails;
-  const allPresent = hasBillTo && hasShipTo && hasSendTo;
+  const missing: string[] = [];
+  if (!hasBillTo) missing.push('bill_to_name/bill_to_address');
+  if (!hasShipTo) missing.push('ship_to_name/ship_to_address');
+  if (!hasSendTo) missing.push('send_to_emails');
+  const allPresent = missing.length === 0;
 
-  return makeCheck(id, name, area, severity,
-    'bill_to, ship_to, and send_to_emails all populated',
-    `bill_to=${hasBillTo}, ship_to=${hasShipTo}, send_to=${hasSendTo}`,
+  return makeCheck(id, name, area, severity, expected,
+    allPresent ? 'All snapshot fields present' : `Missing: ${missing.join(', ')}`,
     allPresent ? 'PASS' : 'FAIL',
     JSON.stringify(invoice, null, 2));
 }
