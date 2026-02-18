@@ -49,6 +49,10 @@ interface Project {
   status: string;
   start_date: string | null;
   end_date: string | null;
+  client_id: string | null;
+  pm_contact_name: string | null;
+  pm_email: string | null;
+  pm_phone: string | null;
 }
 
 interface ProjectStats {
@@ -466,6 +470,97 @@ const ProjectOverview = () => {
   );
 };
 
+// Customer Hierarchy Card
+const CustomerHierarchyCard = ({ projectId }: { projectId: string }) => {
+  const [clientData, setClientData] = useState<any>(null);
+  const [parentData, setParentData] = useState<any>(null);
+  const [projectPm, setProjectPm] = useState<{ pm_contact_name: string | null; pm_email: string | null; pm_phone: string | null }>({ pm_contact_name: null, pm_email: null, pm_phone: null });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetch = async () => {
+      const { data: proj } = await supabase
+        .from('projects')
+        .select('client_id, pm_contact_name, pm_email, pm_phone')
+        .eq('id', projectId)
+        .single();
+      if (!proj) { setLoading(false); return; }
+      setProjectPm({ pm_contact_name: (proj as any).pm_contact_name, pm_email: (proj as any).pm_email, pm_phone: (proj as any).pm_phone });
+      const cid = (proj as any).client_id;
+      if (!cid) { setLoading(false); return; }
+      const { data: client } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', cid)
+        .single();
+      if (client) {
+        setClientData(client);
+        if ((client as any).parent_client_id) {
+          const { data: parent } = await supabase
+            .from('clients')
+            .select('*')
+            .eq('id', (client as any).parent_client_id)
+            .single();
+          setParentData(parent);
+        }
+      }
+      setLoading(false);
+    };
+    fetch();
+  }, [projectId]);
+
+  if (loading) return <Skeleton className="h-40" />;
+  if (!clientData) return null;
+
+  const billingClient = parentData || clientData;
+  const effectivePmName = projectPm.pm_contact_name || clientData.pm_contact_name || clientData.contact_name;
+  const effectivePmEmail = projectPm.pm_email || clientData.pm_email;
+  const effectivePmPhone = projectPm.pm_phone || clientData.pm_phone;
+  const isOverride = !!(projectPm.pm_contact_name || projectPm.pm_email || projectPm.pm_phone);
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center gap-2">
+          <Users className="h-5 w-5 text-primary" />
+          <CardTitle className="text-lg">Customer & Contacts</CardTitle>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+          {/* Billing / AP (read-only from parent client) */}
+          <div className="space-y-1.5 p-3 rounded-lg bg-muted/50">
+            <p className="font-medium text-xs text-muted-foreground uppercase tracking-wide">Bill-To (AP) — for Invoices</p>
+            <p className="font-medium">{billingClient.name}</p>
+            {billingClient.billing_address && <p className="text-muted-foreground">{[billingClient.billing_address, billingClient.city, billingClient.province, billingClient.postal_code].filter(Boolean).join(", ")}</p>}
+            {billingClient.ap_email && <p className="text-primary">{billingClient.ap_email}</p>}
+            {billingClient.ap_contact_name && <p className="text-muted-foreground">{billingClient.ap_contact_name} {billingClient.ap_phone ? `• ${billingClient.ap_phone}` : ""}</p>}
+            {billingClient.gst_number && <p className="text-muted-foreground">GST: {billingClient.gst_number}</p>}
+          </div>
+
+          {/* PM Contact — for Quotes */}
+          <div className="space-y-1.5 p-3 rounded-lg bg-muted/50">
+            <p className="font-medium text-xs text-muted-foreground uppercase tracking-wide">PM Contact — for Quotes</p>
+            <p className="font-medium">{effectivePmName || "—"}</p>
+            {effectivePmEmail && <p className="text-primary">{effectivePmEmail}</p>}
+            {effectivePmPhone && <p className="text-muted-foreground">{effectivePmPhone}</p>}
+            {isOverride && <Badge variant="outline" className="text-xs">Project Override</Badge>}
+          </div>
+
+          {/* Site Contact */}
+          <div className="space-y-1.5 p-3 rounded-lg bg-muted/50">
+            <p className="font-medium text-xs text-muted-foreground uppercase tracking-wide">Site Contact</p>
+            <p className="font-medium">{clientData.site_contact_name || "—"}</p>
+            {clientData.site_contact_email && <p className="text-primary">{clientData.site_contact_email}</p>}
+            {clientData.site_contact_phone && <p className="text-muted-foreground">{clientData.site_contact_phone}</p>}
+            {clientData.zones > 1 && <p className="text-muted-foreground">{clientData.zones} zones</p>}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 // Tab Components
 const ProjectOverviewTab = ({ projectId, stats }: { projectId: string; stats: ProjectStats | null }) => {
   const navigate = useNavigate();
@@ -558,6 +653,9 @@ const ProjectOverviewTab = ({ projectId, stats }: { projectId: string; stats: Pr
 
   return (
     <div className="space-y-6">
+      {/* Customer Hierarchy */}
+      <CustomerHierarchyCard projectId={projectId} />
+
       {/* Drawings Quick Access */}
       <Card className="border-primary/20 bg-primary/5">
         <CardHeader className="pb-3">

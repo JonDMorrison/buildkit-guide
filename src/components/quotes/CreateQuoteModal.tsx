@@ -105,18 +105,28 @@ export const CreateQuoteModal = ({ onClose, onCreated }: Props) => {
     setCustomerPmPhone(client.pm_phone || "");
   }, [clientId, clients]);
 
-  // Auto-populate ship-to from project
+  // Auto-populate ship-to from project + PM override
   useEffect(() => {
     if (!projectId) return;
     const load = async () => {
       const { data } = await supabase
         .from('projects')
-        .select('name, location, billing_address')
+        .select('name, location, billing_address, pm_contact_name, pm_email, pm_phone')
         .eq('id', projectId)
         .single();
       if (data) {
         setShipToName((data as any).name || "");
         setShipToAddress((data as any).location || (data as any).billing_address || "");
+        // Project-level PM override takes precedence over client PM
+        if ((data as any).pm_email) {
+          setCustomerPmEmail((data as any).pm_email);
+        }
+        if ((data as any).pm_contact_name) {
+          setCustomerPmName((data as any).pm_contact_name);
+        }
+        if ((data as any).pm_phone) {
+          setCustomerPmPhone((data as any).pm_phone);
+        }
       }
     };
     load();
