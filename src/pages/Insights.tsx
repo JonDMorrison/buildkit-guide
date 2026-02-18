@@ -15,6 +15,7 @@ import { OrgScopeLearningPanel } from "@/components/insights/OrgScopeLearningPan
 import { WeeklyInsightCard } from "@/components/insights/WeeklyInsightCard";
 import { getPortfolioRecommendations } from "@/lib/recommendations/rules";
 import { NoAccess } from "@/components/NoAccess";
+import { UnratedLaborBanner } from "@/components/UnratedLaborBanner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -178,6 +179,7 @@ const Insights = () => {
     <Layout>
       <div className="container max-w-6xl mx-auto px-4 py-6">
         <SectionHeader title="Portfolio Insights" />
+        <UnratedLaborBanner />
 
         {/* Filters */}
         <div className="flex flex-wrap gap-4 mb-6 items-end">
