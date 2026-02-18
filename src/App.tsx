@@ -64,6 +64,7 @@ const SecurityIsolationReport = lazy(() => import("./pages/SecurityIsolationRepo
 const Workflow = lazy(() => import("./pages/Workflow"));
 const PromptsAudit = lazy(() => import("./pages/PromptsAudit"));
 const InsightsAudit = lazy(() => import("./pages/InsightsAudit"));
+const ConversionTestHarness = lazy(() => import("./pages/ConversionTestHarness"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -483,6 +484,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <InsightsAudit />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/insights/conversion-test"
+                  element={
+                    <ProtectedRoute>
+                      <ConversionTestHarness />
                     </ProtectedRoute>
                   }
                 />
