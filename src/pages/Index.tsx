@@ -11,6 +11,13 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuthRole } from "@/hooks/useAuthRole";
 import { Plus, Building2 } from "lucide-react";
 import type { ProjectProgress } from "@/types/hours-tracking";
+import type { IntegrityStatus } from "@/hooks/useProjectIntegrity";
+
+interface ProjectIntegrity {
+  status: IntegrityStatus;
+  score: number;
+  blockers: string[];
+}
 
 interface Project {
   id: string;
@@ -20,6 +27,7 @@ interface Project {
   tasks: { total: number; completed: number };
   blockedTasks: number;
   safetyCompliance: number;
+  integrity: ProjectIntegrity | null;
 }
 
 const Index = () => {
@@ -85,10 +93,35 @@ const Index = () => {
           },
           blockedTasks: Number(p.blocked_tasks) || 0,
           safetyCompliance,
+          integrity: null,
         };
       });
 
       setProjects(formattedProjects);
+
+      // Fetch integrity data in background (non-blocking)
+      formattedProjects.forEach(async (proj) => {
+        try {
+          const { data } = await supabase.rpc(
+            'estimate_variance_summary' as any,
+            { p_project_id: proj.id }
+          );
+          const result = typeof data === 'string' ? JSON.parse(data) : data;
+          if (result?.integrity) {
+            setProjects(prev => prev.map(p => 
+              p.id === proj.id 
+                ? { ...p, integrity: {
+                    status: result.integrity.status as IntegrityStatus,
+                    score: Number(result.integrity.score) || 0,
+                    blockers: Array.isArray(result.integrity.blockers) ? result.integrity.blockers : [],
+                  }}
+                : p
+            ));
+          }
+        } catch {
+          // Silently skip — integrity is supplementary
+        }
+      });
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       toast({
@@ -144,6 +177,7 @@ const Index = () => {
           tasks: { total, completed },
           blockedTasks: blocked,
           safetyCompliance,
+          integrity: null,
         };
       })
     );
