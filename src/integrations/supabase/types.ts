@@ -3102,6 +3102,165 @@ export type Database = {
           },
         ]
       }
+      proposal_events: {
+        Row: {
+          actor_user_id: string
+          created_at: string
+          event_type: string
+          id: string
+          message: string | null
+          proposal_id: string
+        }
+        Insert: {
+          actor_user_id: string
+          created_at?: string
+          event_type: string
+          id?: string
+          message?: string | null
+          proposal_id: string
+        }
+        Update: {
+          actor_user_id?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          message?: string | null
+          proposal_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_events_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposal_sections: {
+        Row: {
+          content: string
+          id: string
+          proposal_id: string
+          section_type: string
+          sort_order: number
+        }
+        Insert: {
+          content?: string
+          id?: string
+          proposal_id: string
+          section_type?: string
+          sort_order?: number
+        }
+        Update: {
+          content?: string
+          id?: string
+          proposal_id?: string
+          section_type?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_sections_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposals: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          assumptions: string
+          created_at: string
+          created_by: string
+          customer_po_or_contract_number: string | null
+          estimate_id: string | null
+          exclusions: string
+          id: string
+          organization_id: string
+          project_id: string
+          rejected_reason: string | null
+          status: Database["public"]["Enums"]["proposal_status"]
+          submitted_at: string | null
+          summary: string
+          timeline_text: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          assumptions?: string
+          created_at?: string
+          created_by: string
+          customer_po_or_contract_number?: string | null
+          estimate_id?: string | null
+          exclusions?: string
+          id?: string
+          organization_id: string
+          project_id: string
+          rejected_reason?: string | null
+          status?: Database["public"]["Enums"]["proposal_status"]
+          submitted_at?: string | null
+          summary?: string
+          timeline_text?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          assumptions?: string
+          created_at?: string
+          created_by?: string
+          customer_po_or_contract_number?: string | null
+          estimate_id?: string | null
+          exclusions?: string
+          id?: string
+          organization_id?: string
+          project_id?: string
+          rejected_reason?: string | null
+          status?: Database["public"]["Enums"]["proposal_status"]
+          submitted_at?: string | null
+          summary?: string
+          timeline_text?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposals_estimate_id_fkey"
+            columns: ["estimate_id"]
+            isOneToOne: false
+            referencedRelation: "estimates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposals_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposals_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposals_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_progress"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_conversions: {
         Row: {
           converted_at: string
@@ -3215,6 +3374,7 @@ export type Database = {
           bill_to_ap_email: string | null
           bill_to_name: string | null
           client_id: string | null
+          converted_proposal_id: string | null
           created_at: string
           created_by: string
           customer_pm_email: string | null
@@ -3244,6 +3404,7 @@ export type Database = {
           bill_to_ap_email?: string | null
           bill_to_name?: string | null
           client_id?: string | null
+          converted_proposal_id?: string | null
           created_at?: string
           created_by: string
           customer_pm_email?: string | null
@@ -3273,6 +3434,7 @@ export type Database = {
           bill_to_ap_email?: string | null
           bill_to_name?: string | null
           client_id?: string | null
+          converted_proposal_id?: string | null
           created_at?: string
           created_by?: string
           customer_pm_email?: string | null
@@ -3302,6 +3464,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_converted_proposal_id_fkey"
+            columns: ["converted_proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
             referencedColumns: ["id"]
           },
           {
@@ -5672,6 +5841,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      rpc_convert_proposal_to_quote: {
+        Args: { p_include_estimate_lines?: boolean; p_proposal_id: string }
+        Returns: string
+      }
       rpc_ensure_timesheet_period: {
         Args: {
           p_period_end: string
@@ -5864,6 +6037,12 @@ export type Database = {
         | "deficiency_created"
         | "document_uploaded"
         | "incident_report"
+      proposal_status:
+        | "draft"
+        | "submitted"
+        | "approved"
+        | "rejected"
+        | "archived"
       receipt_category:
         | "fuel"
         | "materials"
@@ -6023,6 +6202,13 @@ export const Constants = {
         "deficiency_created",
         "document_uploaded",
         "incident_report",
+      ],
+      proposal_status: [
+        "draft",
+        "submitted",
+        "approved",
+        "rejected",
+        "archived",
       ],
       receipt_category: [
         "fuel",
