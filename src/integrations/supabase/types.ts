@@ -3318,6 +3318,7 @@ export type Database = {
           id: string
           message: string | null
           metadata: Json | null
+          organization_id: string | null
           quote_id: string
         }
         Insert: {
@@ -3327,6 +3328,7 @@ export type Database = {
           id?: string
           message?: string | null
           metadata?: Json | null
+          organization_id?: string | null
           quote_id: string
         }
         Update: {
@@ -3336,9 +3338,17 @@ export type Database = {
           id?: string
           message?: string | null
           metadata?: Json | null
+          organization_id?: string | null
           quote_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "quote_events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "quote_events_quote_id_fkey"
             columns: ["quote_id"]
@@ -3412,6 +3422,7 @@ export type Database = {
           bill_to_ap_email: string | null
           bill_to_name: string | null
           client_id: string | null
+          converted_invoice_id: string | null
           converted_proposal_id: string | null
           created_at: string
           created_by: string
@@ -3442,6 +3453,7 @@ export type Database = {
           bill_to_ap_email?: string | null
           bill_to_name?: string | null
           client_id?: string | null
+          converted_invoice_id?: string | null
           converted_proposal_id?: string | null
           created_at?: string
           created_by: string
@@ -3472,6 +3484,7 @@ export type Database = {
           bill_to_ap_email?: string | null
           bill_to_name?: string | null
           client_id?: string | null
+          converted_invoice_id?: string | null
           converted_proposal_id?: string | null
           created_at?: string
           created_by?: string
@@ -3502,6 +3515,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_converted_invoice_id_fkey"
+            columns: ["converted_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
             referencedColumns: ["id"]
           },
           {
@@ -5882,6 +5902,10 @@ export type Database = {
       rpc_convert_proposal_to_quote: {
         Args: { p_include_estimate_lines?: boolean; p_proposal_id: string }
         Returns: string
+      }
+      rpc_create_conversion_test_fixture: {
+        Args: { p_org_id: string }
+        Returns: Json
       }
       rpc_ensure_timesheet_period: {
         Args: {

@@ -322,12 +322,14 @@ async function checkQuoteConversion(): Promise<AuditCheck> {
   const name = 'Quote -> Invoice Conversion';
   const area = 'Conversion';
   const severity: 'P0' = 'P0';
-  const expected = 'Idempotent conversion: repeated call returns same invoice_id';
+  const expected = 'Conversion creates invoice, quote.converted_invoice_id set, repeat call blocked (idempotency guard)';
 
+  // 1. Find an approved quote (deterministic ordering)
   const { data: approvedQuotes } = await (supabase as any)
     .from('quotes')
     .select('id, quote_number, converted_invoice_id')
     .eq('status', 'approved')
+    .order('updated_at', { ascending: false })
     .limit(1);
 
   if (!approvedQuotes || approvedQuotes.length === 0) {
@@ -338,6 +340,7 @@ async function checkQuoteConversion(): Promise<AuditCheck> {
 
   const quote = approvedQuotes[0];
 
+  // 2. If not yet converted, we cannot test -- NEEDS_MANUAL
   if (!quote.converted_invoice_id) {
     return makeCheck(id, name, area, severity, expected,
       `Quote ${quote.quote_number} is approved but not yet converted`,
@@ -345,38 +348,63 @@ async function checkQuoteConversion(): Promise<AuditCheck> {
       'Click Convert in the Quote Detail UI, then rerun audit to verify idempotency.');
   }
 
-  // Already converted -- test idempotency
+  // 3. Already converted -- verify idempotency guard by re-calling RPC
   try {
     const { data: session } = await supabase.auth.getSession();
     const userId = session?.session?.user?.id;
-    const { data: secondResult, error } = await (supabase as any).rpc('convert_quote_to_invoice', {
+    if (!userId) {
+      return makeCheck(id, name, area, severity, expected,
+        'No authenticated user session', 'NEEDS_MANUAL',
+        'Log in and rerun audit.');
+    }
+
+    const { data: secondResult, error } = await supabase.rpc('convert_quote_to_invoice', {
       p_quote_id: quote.id,
       p_actor_id: userId,
     });
 
-    const idempotent = !error && secondResult === quote.converted_invoice_id;
+    if (error) {
+      // Expected: RPC raises "already converted" exception
+      const msg = (error.message || '').toLowerCase();
+      const isAlreadyConverted = msg.includes('already converted');
+      return makeCheck(id, name, area, severity, expected,
+        isAlreadyConverted
+          ? `Idempotency guard working: RPC rejected duplicate conversion`
+          : `Unexpected error on re-call: ${error.message}`,
+        isAlreadyConverted ? 'PASS' : 'FAIL',
+        `Canonical converted_invoice_id: ${quote.converted_invoice_id}\nRPC error: ${error.message} (code: ${error.code})`);
+    }
 
+    // RPC succeeded -- check if same ID returned (alternative idempotency)
+    if (secondResult === quote.converted_invoice_id) {
+      return makeCheck(id, name, area, severity, expected,
+        `Same invoice_id returned: ${secondResult}`, 'PASS',
+        `Canonical: ${quote.converted_invoice_id}, Repeat call: ${secondResult}`);
+    }
+
+    // Duplicate invoice created -- P0 vulnerability
     return makeCheck(id, name, area, severity, expected,
-      idempotent ? `Same invoice_id: ${secondResult}` : `Mismatch: got=${secondResult}, expected=${quote.converted_invoice_id}`,
-      idempotent ? 'PASS' : 'FAIL',
-      `Canonical: ${quote.converted_invoice_id}, Repeat call: ${secondResult}, Error: ${error?.message ?? 'none'}`);
+      `DUPLICATE INVOICE CREATED: rpc returned ${secondResult}, expected ${quote.converted_invoice_id}`,
+      'FAIL',
+      `This is a P0 idempotency violation. Two invoices exist for the same quote.`);
   } catch (e: any) {
     return makeCheck(id, name, area, severity, expected,
-      `Error: ${e.message}`, 'FAIL', e.message);
+      `Exception: ${e.message}`, 'FAIL', e.message);
   }
 }
 
 // D) Uses quotes.converted_invoice_id as canonical source for snapshots
 async function checkConversionSnapshots(): Promise<AuditCheck> {
   const id = 'conversion_snapshots';
-  const name = 'Conversion Snapshots';
+  const name = 'Conversion Snapshots (Source Integrity)';
   const area = 'Conversion';
   const severity: 'P0' = 'P0';
-  const expected = 'bill_to, ship_to, and send_to_emails all populated on converted invoice';
+  const expected = 'bill_to from parent client, ship_to from project.location, send_to from AP email (not PM email)';
 
+  // Find most recent converted quote
   const { data: convertedQuotes } = await (supabase as any)
     .from('quotes')
-    .select('id, quote_number, converted_invoice_id')
+    .select('id, quote_number, converted_invoice_id, parent_client_id, client_id, project_id, customer_pm_email')
     .not('converted_invoice_id', 'is', null)
     .order('updated_at', { ascending: false })
     .limit(1);
@@ -387,32 +415,88 @@ async function checkConversionSnapshots(): Promise<AuditCheck> {
       'Convert a quote to invoice first, then rerun audit.');
   }
 
-  const invoiceId = convertedQuotes[0].converted_invoice_id;
+  const quote = convertedQuotes[0];
+  const invoiceId = quote.converted_invoice_id;
+
+  // Load invoice
   const { data: invoice } = await (supabase as any)
     .from('invoices')
-    .select('bill_to_name, bill_to_address, ship_to_name, ship_to_address, send_to_emails')
+    .select('bill_to_name, bill_to_address, ship_to_address, send_to_emails')
     .eq('id', invoiceId)
     .maybeSingle();
 
   if (!invoice) {
     return makeCheck(id, name, area, severity, expected,
-      `Invoice ${invoiceId} not found`, 'FAIL',
-      `Quote ${convertedQuotes[0].quote_number} points to invoice ${invoiceId} but it is missing from invoices table.`);
+      `Invoice ${invoiceId} not found (missing OR not visible due to RLS)`,
+      'FAIL',
+      `Quote ${quote.quote_number} points to invoice ${invoiceId} but it is missing. User=${(await supabase.auth.getSession()).data?.session?.user?.id}. Check invoices RLS policies.`);
   }
 
-  const hasBillTo = !!(invoice.bill_to_name || invoice.bill_to_address);
-  const hasShipTo = !!(invoice.ship_to_name || invoice.ship_to_address);
-  const hasSendTo = Array.isArray(invoice.send_to_emails) ? invoice.send_to_emails.length > 0 : !!invoice.send_to_emails;
-  const missing: string[] = [];
-  if (!hasBillTo) missing.push('bill_to_name/bill_to_address');
-  if (!hasShipTo) missing.push('ship_to_name/ship_to_address');
-  if (!hasSendTo) missing.push('send_to_emails');
-  const allPresent = missing.length === 0;
+  // Load parent/client for comparison
+  const clientId = quote.parent_client_id || quote.client_id;
+  let parentClient: any = null;
+  if (clientId) {
+    const { data } = await (supabase as any).from('clients').select('name, billing_address, ap_email, email').eq('id', clientId).maybeSingle();
+    parentClient = data;
+  }
+
+  // Load project for ship_to comparison
+  let project: any = null;
+  if (quote.project_id) {
+    const { data } = await (supabase as any).from('projects').select('location').eq('id', quote.project_id).maybeSingle();
+    project = data;
+  }
+
+  const norm = (s: string | null | undefined): string => (s ?? '').trim().replace(/\s+/g, ' ');
+  const issues: string[] = [];
+
+  // bill_to checks
+  if (!invoice.bill_to_name && !invoice.bill_to_address) {
+    issues.push('bill_to_name AND bill_to_address both empty on invoice');
+  } else if (parentClient) {
+    if (norm(parentClient.name) && norm(invoice.bill_to_name) && norm(invoice.bill_to_name) !== norm(parentClient.name)) {
+      issues.push(`bill_to_name mismatch: expected="${norm(parentClient.name)}", got="${norm(invoice.bill_to_name)}"`);
+    }
+    if (norm(parentClient.billing_address) && norm(invoice.bill_to_address) && norm(invoice.bill_to_address) !== norm(parentClient.billing_address)) {
+      issues.push(`bill_to_address mismatch: expected="${norm(parentClient.billing_address)}", got="${norm(invoice.bill_to_address)}"`);
+    }
+  }
+
+  // ship_to checks
+  if (!invoice.ship_to_address) {
+    issues.push('ship_to_address empty on invoice');
+  } else if (project?.location) {
+    if (norm(invoice.ship_to_address) !== norm(project.location)) {
+      issues.push(`ship_to_address mismatch: expected="${norm(project.location)}", got="${norm(invoice.ship_to_address)}"`);
+    }
+  }
+
+  // send_to_emails checks
+  const sendTo = norm(invoice.send_to_emails);
+  if (!sendTo) {
+    issues.push('send_to_emails empty on invoice');
+  } else {
+    const apEmail = parentClient?.ap_email || parentClient?.email;
+    if (apEmail && !sendTo.toLowerCase().includes(apEmail.toLowerCase())) {
+      issues.push(`send_to_emails does not contain AP email "${apEmail}", got "${sendTo}"`);
+    }
+    const pmEmail = quote.customer_pm_email;
+    if (pmEmail && sendTo.toLowerCase().includes(pmEmail.toLowerCase())) {
+      issues.push(`send_to_emails CONTAINS PM email "${pmEmail}" -- recipient swap regression`);
+    }
+  }
+
+  // If parent client fields are empty, can't validate source -- NEEDS_MANUAL
+  if (!parentClient && issues.length === 0) {
+    return makeCheck(id, name, area, severity, expected,
+      'No parent client found to validate source integrity', 'NEEDS_MANUAL',
+      'Ensure the quote has a parent_client_id or client_id with billing fields, then rerun.');
+  }
 
   return makeCheck(id, name, area, severity, expected,
-    allPresent ? 'All snapshot fields present' : `Missing: ${missing.join(', ')}`,
-    allPresent ? 'PASS' : 'FAIL',
-    JSON.stringify(invoice, null, 2));
+    issues.length === 0 ? 'All snapshot fields match source data' : `Issues: ${issues.join('; ')}`,
+    issues.length === 0 ? 'PASS' : 'FAIL',
+    JSON.stringify({ invoice, parentClient, projectLocation: project?.location, pmEmail: quote.customer_pm_email, issues }, null, 2));
 }
 
 async function checkWorkflowRequirement(projectId: string): Promise<AuditCheck> {
@@ -557,6 +641,93 @@ async function checkInvoiceSendGuardrail(): Promise<AuditCheck> {
     'Verify that the send-invoice-email edge function enforces role checks before sending. Test as PM vs Admin.');
 }
 
+// -- New check: Conversion Source Integrity (P0) --
+async function checkConversionSourceIntegrity(): Promise<AuditCheck> {
+  const id = 'conversion_source_integrity';
+  const name = 'Conversion Source Integrity';
+  const area = 'Conversion';
+  const severity: 'P0' = 'P0';
+  const expected = 'Invoice bill_to matches parent client, ship_to matches project.location, send_to is AP email not PM email';
+
+  const { data: convertedQuotes } = await (supabase as any)
+    .from('quotes')
+    .select('id, quote_number, converted_invoice_id, parent_client_id, client_id, project_id, customer_pm_email')
+    .not('converted_invoice_id', 'is', null)
+    .order('updated_at', { ascending: false })
+    .limit(1);
+
+  if (!convertedQuotes || convertedQuotes.length === 0) {
+    return makeCheck(id, name, area, severity, expected,
+      'No converted quotes exist', 'NEEDS_MANUAL',
+      'Convert a quote to invoice, then rerun audit.');
+  }
+
+  const quote = convertedQuotes[0];
+  const { data: invoice } = await (supabase as any)
+    .from('invoices')
+    .select('bill_to_name, bill_to_address, ship_to_address, send_to_emails')
+    .eq('id', quote.converted_invoice_id)
+    .maybeSingle();
+
+  if (!invoice) {
+    return makeCheck(id, name, area, severity, expected,
+      `Invoice ${quote.converted_invoice_id} not found (missing OR not visible due to RLS)`,
+      'FAIL',
+      `Check invoices RLS policies. Quote ${quote.quote_number} references this invoice.`);
+  }
+
+  const clientId = quote.parent_client_id || quote.client_id;
+  let client: any = null;
+  if (clientId) {
+    const { data } = await (supabase as any).from('clients').select('name, billing_address, ap_email, email').eq('id', clientId).maybeSingle();
+    client = data;
+  }
+
+  let project: any = null;
+  if (quote.project_id) {
+    const { data } = await (supabase as any).from('projects').select('location').eq('id', quote.project_id).maybeSingle();
+    project = data;
+  }
+
+  if (!client) {
+    return makeCheck(id, name, area, severity, expected,
+      'No client found to validate source integrity', 'NEEDS_MANUAL',
+      'Ensure the quote has a parent_client_id or client_id with billing fields.');
+  }
+
+  const norm = (s: string | null | undefined): string => (s ?? '').trim().replace(/\s+/g, ' ');
+  const mismatches: string[] = [];
+
+  // bill_to
+  if (norm(client.name) && norm(invoice.bill_to_name) && norm(invoice.bill_to_name) !== norm(client.name)) {
+    mismatches.push(`bill_to_name: expected="${norm(client.name)}" got="${norm(invoice.bill_to_name)}"`);
+  }
+  if (norm(client.billing_address) && norm(invoice.bill_to_address) && norm(invoice.bill_to_address) !== norm(client.billing_address)) {
+    mismatches.push(`bill_to_address: expected="${norm(client.billing_address)}" got="${norm(invoice.bill_to_address)}"`);
+  }
+
+  // ship_to
+  if (project?.location && norm(invoice.ship_to_address) !== norm(project.location)) {
+    mismatches.push(`ship_to_address: expected="${norm(project.location)}" got="${norm(invoice.ship_to_address)}"`);
+  }
+
+  // send_to_emails
+  const sendTo = norm(invoice.send_to_emails);
+  const apEmail = client.ap_email || client.email;
+  if (apEmail && sendTo && !sendTo.toLowerCase().includes(apEmail.toLowerCase())) {
+    mismatches.push(`send_to_emails missing AP email "${apEmail}", got "${sendTo}"`);
+  }
+  const pmEmail = quote.customer_pm_email;
+  if (pmEmail && sendTo && sendTo.toLowerCase().includes(pmEmail.toLowerCase())) {
+    mismatches.push(`send_to_emails CONTAINS PM email "${pmEmail}" -- recipient swap regression`);
+  }
+
+  return makeCheck(id, name, area, severity, expected,
+    mismatches.length === 0 ? 'All source fields match' : mismatches.join('; '),
+    mismatches.length === 0 ? 'PASS' : 'FAIL',
+    JSON.stringify({ invoice, client, projectLocation: project?.location, pmEmail, mismatches }, null, 2));
+}
+
 // -- Main Runner --
 
 export async function runPromptsAudit(projectId: string): Promise<PromptsAuditResult> {
@@ -570,6 +741,7 @@ export async function runPromptsAudit(projectId: string): Promise<PromptsAuditRe
     checkQuoteStatusAndEvents(),
     checkQuoteConversion(),
     checkConversionSnapshots(),
+    checkConversionSourceIntegrity(),
     checkWorkflowRequirement(projectId),
     checkProjectStatusConstraint(),
     checkInvoiceSendGuardrail(),
