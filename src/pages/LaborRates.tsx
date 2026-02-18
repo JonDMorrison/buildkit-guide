@@ -7,12 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useOrganizationRole } from "@/hooks/useOrganizationRole";
 import { NoAccess } from "@/components/NoAccess";
 import { supabase } from "@/integrations/supabase/client";
-import { AlertTriangle, Save, DollarSign } from "lucide-react";
+import { AlertTriangle, Save, DollarSign, RefreshCw } from "lucide-react";
 
 interface MemberRate {
   membership_id: string;
@@ -27,7 +29,7 @@ interface MemberRate {
 }
 
 export default function LaborRates() {
-  const { activeOrganizationId } = useOrganization();
+  const { activeOrganizationId, activeOrganization } = useOrganization();
   const { role: orgRole, isLoading: roleLoading } = useOrganizationRole();
   const { toast } = useToast();
   const [members, setMembers] = useState<MemberRate[]>([]);
@@ -35,6 +37,7 @@ export default function LaborRates() {
   const [saving, setSaving] = useState(false);
 
   const isAdmin = orgRole === "admin" || orgRole === "hr";
+  const baseCurrency = activeOrganization?.base_currency || "CAD";
 
   useEffect(() => {
     if (!activeOrganizationId) return;
@@ -102,6 +105,7 @@ export default function LaborRates() {
   const missingRateCount = members.filter(
     (m) => m.hourly_cost_rate == null && ["foreman", "internal_worker", "external_trade"].includes(m.role)
   ).length;
+  const mismatchCount = members.filter((m) => m.rates_currency !== baseCurrency).length;
 
   const handleSave = async () => {
     if (!dirtyMembers.length) return;
@@ -126,14 +130,43 @@ export default function LaborRates() {
     setSaving(false);
   };
 
+  const handleFixAllCurrency = async () => {
+    if (!activeOrganizationId) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("organization_memberships")
+      .update({ rates_currency: baseCurrency } as any)
+      .eq("organization_id", activeOrganizationId)
+      .eq("is_active", true)
+      .neq("rates_currency", baseCurrency);
+    if (error) {
+      toast({ title: "Failed to update currencies", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: `All rates set to ${baseCurrency}` });
+      setMembers((prev) => prev.map((m) => ({ ...m, rates_currency: baseCurrency })));
+    }
+    setSaving(false);
+  };
+
+  const handleSaveBaseCurrency = async (newCurrency: string) => {
+    if (!activeOrganizationId) return;
+    const { error } = await supabase
+      .from("organizations")
+      .update({ base_currency: newCurrency } as any)
+      .eq("id", activeOrganizationId);
+    if (error) {
+      toast({ title: "Failed to update base currency", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: `Base currency set to ${newCurrency}` });
+      // Force reload to reflect in context
+      window.location.reload();
+    }
+  };
+
   const roleLabel = (r: string) => {
     const map: Record<string, string> = {
-      admin: "Admin",
-      hr: "HR",
-      pm: "PM",
-      foreman: "Foreman",
-      internal_worker: "Worker",
-      external_trade: "Trade",
+      admin: "Admin", hr: "HR", pm: "PM",
+      foreman: "Foreman", internal_worker: "Worker", external_trade: "Trade",
     };
     return map[r] || r;
   };
@@ -159,12 +192,54 @@ export default function LaborRates() {
           )}
         </div>
 
+        {/* Base Currency Setting */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Organization Currency</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-4">
+              <div className="space-y-1">
+                <Label className="text-sm">Base Currency</Label>
+                <Select value={baseCurrency} onValueChange={handleSaveBaseCurrency}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="CAD">CAD ($)</SelectItem>
+                    <SelectItem value="USD">USD ($)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="text-xs text-muted-foreground mt-5">
+                Changing base currency does not convert existing values. All rates and financials should match this currency.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
         {missingRateCount > 0 && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Missing Cost Rates</AlertTitle>
             <AlertDescription>
               {missingRateCount} field member{missingRateCount > 1 ? "s" : ""} ha{missingRateCount > 1 ? "ve" : "s"} no hourly cost rate set. Job costing will be incomplete for their time entries.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {mismatchCount > 0 && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Currency Mismatch</AlertTitle>
+            <AlertDescription className="flex items-center justify-between">
+              <span>
+                {mismatchCount} member{mismatchCount > 1 ? "s have" : " has"} rates in a different currency than the org base ({baseCurrency}). Their time entries will not be costed.
+              </span>
+              <Button variant="outline" size="sm" onClick={handleFixAllCurrency} disabled={saving} className="ml-4 shrink-0">
+                <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                Fix all to {baseCurrency}
+              </Button>
             </AlertDescription>
           </Alert>
         )}
@@ -193,44 +268,52 @@ export default function LaborRates() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {members.map((m, idx) => (
-                    <TableRow key={m.membership_id} className={m.dirty ? "bg-primary/5" : ""}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium text-sm">{m.full_name}</p>
-                          <p className="text-xs text-muted-foreground">{m.email}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-xs">{roleLabel(m.role)}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Input
-                          type="number"
-                          min={0}
-                          step={0.01}
-                          value={m.hourly_cost_rate ?? ""}
-                          onChange={(e) => updateRate(idx, "hourly_cost_rate", e.target.value)}
-                          className="w-24 ml-auto text-right"
-                          placeholder="—"
-                        />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Input
-                          type="number"
-                          min={0}
-                          step={0.01}
-                          value={m.hourly_bill_rate ?? ""}
-                          onChange={(e) => updateRate(idx, "hourly_bill_rate", e.target.value)}
-                          className="w-24 ml-auto text-right"
-                          placeholder="—"
-                        />
-                      </TableCell>
-                      <TableCell className="text-right text-sm text-muted-foreground">
-                        {m.rates_currency}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {members.map((m, idx) => {
+                    const isMismatch = m.rates_currency !== baseCurrency;
+                    return (
+                      <TableRow key={m.membership_id} className={isMismatch ? "bg-destructive/5" : m.dirty ? "bg-primary/5" : ""}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium text-sm">{m.full_name}</p>
+                            <p className="text-xs text-muted-foreground">{m.email}</p>
+                            {isMismatch && (
+                              <p className="text-xs text-destructive mt-0.5">⚠ Currency mismatch — time entries will not be costed</p>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-xs">{roleLabel(m.role)}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Input
+                            type="number"
+                            min={0}
+                            step={0.01}
+                            value={m.hourly_cost_rate ?? ""}
+                            onChange={(e) => updateRate(idx, "hourly_cost_rate", e.target.value)}
+                            className="w-24 ml-auto text-right"
+                            placeholder="—"
+                          />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Input
+                            type="number"
+                            min={0}
+                            step={0.01}
+                            value={m.hourly_bill_rate ?? ""}
+                            onChange={(e) => updateRate(idx, "hourly_bill_rate", e.target.value)}
+                            className="w-24 ml-auto text-right"
+                            placeholder="—"
+                          />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Badge variant={isMismatch ? "destructive" : "secondary"} className="text-xs">
+                            {m.rates_currency}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                   {members.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center text-muted-foreground py-8">

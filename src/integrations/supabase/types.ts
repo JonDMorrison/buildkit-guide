@@ -1007,6 +1007,7 @@ export type Database = {
           contract_value: number
           created_at: string
           created_by: string
+          currency: string
           customer_pm_email: string | null
           customer_pm_name: string | null
           customer_pm_phone: string | null
@@ -1046,6 +1047,7 @@ export type Database = {
           contract_value?: number
           created_at?: string
           created_by: string
+          currency?: string
           customer_pm_email?: string | null
           customer_pm_name?: string | null
           customer_pm_phone?: string | null
@@ -1085,6 +1087,7 @@ export type Database = {
           contract_value?: number
           created_at?: string
           created_by?: string
+          currency?: string
           customer_pm_email?: string | null
           customer_pm_name?: string | null
           customer_pm_phone?: string | null
@@ -1760,6 +1763,7 @@ export type Database = {
           created_at: string
           created_by: string
           credit_note_for: string | null
+          currency: string
           deposit_applied_to: string | null
           due_date: string | null
           id: string
@@ -1801,6 +1805,7 @@ export type Database = {
           created_at?: string
           created_by: string
           credit_note_for?: string | null
+          currency?: string
           deposit_applied_to?: string | null
           due_date?: string | null
           id?: string
@@ -1842,6 +1847,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           credit_note_for?: string | null
+          currency?: string
           deposit_applied_to?: string | null
           due_date?: string | null
           id?: string
@@ -2427,6 +2433,7 @@ export type Database = {
       }
       organizations: {
         Row: {
+          base_currency: string
           created_at: string
           id: string
           is_sandbox: boolean
@@ -2435,6 +2442,7 @@ export type Database = {
           slug: string | null
         }
         Insert: {
+          base_currency?: string
           created_at?: string
           id?: string
           is_sandbox?: boolean
@@ -2443,6 +2451,7 @@ export type Database = {
           slug?: string | null
         }
         Update: {
+          base_currency?: string
           created_at?: string
           id?: string
           is_sandbox?: boolean
@@ -3091,6 +3100,7 @@ export type Database = {
           client_id: string | null
           created_at: string
           created_by: string
+          currency: string
           description: string | null
           end_date: string | null
           id: string
@@ -3111,6 +3121,7 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           created_by: string
+          currency?: string
           description?: string | null
           end_date?: string | null
           id?: string
@@ -3131,6 +3142,7 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           created_by?: string
+          currency?: string
           description?: string | null
           end_date?: string | null
           id?: string
@@ -3494,6 +3506,7 @@ export type Database = {
           converted_proposal_id: string | null
           created_at: string
           created_by: string
+          currency: string
           customer_pm_email: string | null
           customer_pm_name: string | null
           customer_pm_phone: string | null
@@ -3525,6 +3538,7 @@ export type Database = {
           converted_proposal_id?: string | null
           created_at?: string
           created_by: string
+          currency?: string
           customer_pm_email?: string | null
           customer_pm_name?: string | null
           customer_pm_phone?: string | null
@@ -3556,6 +3570,7 @@ export type Database = {
           converted_proposal_id?: string | null
           created_at?: string
           created_by?: string
+          currency?: string
           customer_pm_email?: string | null
           customer_pm_name?: string | null
           customer_pm_phone?: string | null
@@ -5766,10 +5781,13 @@ export type Database = {
           actual_other_cost: number
           actual_total_cost: number
           actual_unclassified_cost: number
+          labor_entry_count_currency_mismatch: number
           labor_entry_count_missing_cost_rate: number
           labor_entry_count_missing_membership: number
+          labor_hours_currency_mismatch: number
           labor_hours_missing_cost_rate: number
           labor_hours_missing_membership: number
+          project_currency: string
           unclassified_receipt_count: number
         }[]
       }
