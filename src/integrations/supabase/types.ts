@@ -1186,6 +1186,70 @@ export type Database = {
         }
         Relationships: []
       }
+      financial_integrity_overrides: {
+        Row: {
+          blockers: Json
+          checkpoint: string
+          created_at: string
+          id: string
+          integrity_score: number
+          integrity_status: string
+          organization_id: string
+          override_reason: string
+          project_id: string
+          triggered_at: string
+          triggered_by: string
+        }
+        Insert: {
+          blockers?: Json
+          checkpoint: string
+          created_at?: string
+          id?: string
+          integrity_score: number
+          integrity_status: string
+          organization_id: string
+          override_reason: string
+          project_id: string
+          triggered_at?: string
+          triggered_by: string
+        }
+        Update: {
+          blockers?: Json
+          checkpoint?: string
+          created_at?: string
+          id?: string
+          integrity_score?: number
+          integrity_status?: string
+          organization_id?: string
+          override_reason?: string
+          project_id?: string
+          triggered_at?: string
+          triggered_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_integrity_overrides_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_integrity_overrides_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_integrity_overrides_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_progress"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gc_column_mappings: {
         Row: {
           created_at: string
@@ -6073,6 +6137,14 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      rpc_log_financial_override: {
+        Args: {
+          p_checkpoint: string
+          p_override_reason: string
+          p_project_id: string
+        }
+        Returns: boolean
       }
       rpc_log_quote_event:
         | {
