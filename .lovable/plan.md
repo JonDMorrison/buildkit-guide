@@ -1,132 +1,121 @@
 
-# Estimate Accuracy Learning Engine
 
-## Overview
+## Financial Integrity Override System (Soft Gating)
 
-Two new pages -- **Project Estimate Accuracy** (per-project deep dive) and **Portfolio Insights** (cross-project analysis) -- powered entirely by the existing RPC functions (`project_variance_summary`, `project_actual_costs`, `project_invoicing_summary`, `project_portfolio_report`). No new tables or migrations required.
+This feature adds soft friction modals at three financial checkpoints. When a project's financial integrity is not "clean", users see a warning modal with the option to acknowledge the issues and continue, logging their override reason for audit purposes.
 
-## Navigation
+---
 
-Add a new "Insights" tab to the bottom navigation bar in `useNavigationTabs.tsx`, visible to `all` and `office` tiers (Admin, PM, Foreman, Accounting/HR). Route: `/insights`. Icon: `TrendingUp` from lucide-react.
+### 1. Database Migration
 
-A project-level "Estimate Accuracy" view will be accessible from a secondary route `/insights/project` (with `?projectId=...` param), or navigated to from the portfolio table.
+**New table: `financial_integrity_overrides`**
 
-## New Files
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid PK | default gen_random_uuid() |
+| organization_id | uuid NOT NULL | FK to organizations |
+| project_id | uuid NOT NULL | FK to projects |
+| triggered_at | timestamptz | default now() |
+| triggered_by | uuid NOT NULL | FK to auth.users |
+| checkpoint | text NOT NULL | CHECK IN ('pm_approval','invoice_send','project_close') |
+| integrity_status | text NOT NULL | |
+| integrity_score | integer NOT NULL | |
+| blockers | jsonb NOT NULL | |
+| override_reason | text NOT NULL | |
+| created_at | timestamptz | default now() |
 
-### 1. `src/hooks/useEstimateAccuracy.ts`
+- RLS enabled + FORCE ROW LEVEL SECURITY
+- SELECT policy: org-scoped via `has_org_membership(organization_id)`
+- No INSERT/UPDATE/DELETE policies for authenticated role (writes go through RPC only)
 
-Custom hook that calls the RPC functions:
-- `project_variance_summary(p_project_id)` -- returns planned vs actual for all cost types
-- `project_actual_costs(p_project_id)` -- for detailed actuals
-- `project_invoicing_summary(p_project_id)` -- for contract/invoicing progress
+**New RPC: `rpc_log_financial_override`**
 
-Returns typed data with loading/error states. Uses `useEffect` + `useState` pattern matching `useJobCostReport`.
+SECURITY DEFINER function that:
+1. Validates caller has org membership via `has_project_access`
+2. Validates caller role is admin or project_manager
+3. Validates `p_checkpoint` is one of the three allowed values
+4. Calls `estimate_variance_summary(p_project_id)` to fetch current integrity state
+5. Inserts a row into `financial_integrity_overrides`
+6. Returns `true`
 
-### 2. `src/hooks/usePortfolioInsights.ts`
+---
 
-Calls `project_portfolio_report(p_org_id, p_status_filter)` using the user's current organization ID (from `useOrganization` hook). Supports optional status filter. Returns array of project rows.
+### 2. Frontend: Reusable Modal Component
 
-### 3. `src/pages/Insights.tsx` (Portfolio Insights -- default route)
+**New file: `src/components/FinancialIntegrityGate.tsx`**
 
-**Layout**: Follows existing page patterns (`Layout` wrapper, `SectionHeader`, project selector, loading skeletons, empty states).
+A reusable dialog component that encapsulates the entire soft-friction flow:
 
-**Sections**:
-
-a) **Filters bar**: Organization is automatic. Status filter dropdown (all / awarded / in_progress / completed / potential / didnt_get). Date range filters are visual-only for future snapshot-based filtering (disabled with tooltip "Coming soon with weekly snapshots").
-
-b) **Portfolio KPI cards** (computed from portfolio report data):
-   - Total Contract Value (sum across projects)
-   - Total Actual Cost (sum)  
-   - Average Margin % (weighted average)
-   - Projects Over Budget (count where actual > planned)
-
-c) **Worst Variance Leaderboard**: Table sorted by `total_cost_delta` descending (biggest overruns first). Columns: Job #, Project Name, Status, Planned Cost, Actual Cost, Delta ($), Delta (%), Margin %. Color-coded: red for negative margin, green for positive.
-
-d) **Most Inaccurate Cost Category**: A simple summary showing which cost type (labor/material/machine) has the largest aggregate variance across the portfolio. Computed client-side from the portfolio data.
-
-e) **Trend Chart placeholder**: A card with message "Weekly variance trends will be available once snapshot collection is enabled." This is where `project_financial_snapshots` will plug in later.
-
-f) **Export CSV button**: Exports the full portfolio table as CSV (same pattern as `JobCostExportCSV`).
-
-### 4. `src/pages/ProjectEstimateAccuracy.tsx` (Per-Project Deep Dive)
-
-**Layout**: Same `Layout` + `SectionHeader` pattern. Project selector at top (same as JobCostReport).
-
-**Sections**:
-
-a) **KPI Cards Row** (6 cards, 3-col grid on desktop):
-   - Planned Cost vs Actual Cost (with delta badge showing over/under)
-   - Planned Labor Hours vs Actual Hours
-   - Planned Materials vs Actual Materials
-   - Planned Machine vs Actual Machine
-   - Contract Value and Profit (planned vs actual)
-   - Margin % (planned vs actual)
-
-   Each card shows: planned value, actual value, delta (colored green if under budget, red/amber if over). If contract_value is 0, profit/margin cards show "No contract value set".
-
-b) **Variance Breakdown Table by Cost Type**:
-   | Category | Planned | Actual | Delta ($) | Delta (%) |
-   Rows: Labor Hours, Labor Cost, Material, Machine, Other, Total.
-   Delta % = `(actual - planned) / planned * 100`, guarded against zero.
-
-c) **Missing Cost Rate Warning**: If `actual_labor_hours > 0` but `actual_labor_cost === 0`, show an alert: "Some workers may not have cost rates configured. Labor cost may be understated."
-
-d) **Scope Item Variance Table** (if scope items exist):
-   Fetches `project_scope_items` with their `planned_hours` and `planned_total`, then for each scope item that has a linked task (`scope_item_id`), fetches actual hours from `time_entries` via the task assignments. Columns: Scope Item, Planned Hours, Actual Hours, Delta, Planned Cost, Status.
-
-   This is computed client-side by:
-   1. Fetching scope items for the project
-   2. Fetching tasks with `scope_item_id IS NOT NULL` and their time entries
-   3. Joining them client-side
-
-e) **Export CSV button** for the variance breakdown.
-
-### 5. `src/components/insights/VarianceCard.tsx`
-
-Reusable KPI card component:
-```
-Props: label, planned, actual, unit ('$' | 'h' | '%'), unavailableMessage?
-```
-Shows planned/actual values with a colored delta badge. Uses `formatCurrency` / `formatNumber` from `src/lib/formatters.ts`.
-
-### 6. `src/components/insights/PortfolioExportCSV.tsx`
-
-CSV export for the portfolio report table. Same pattern as `JobCostExportCSV`.
-
-## Modified Files
-
-### `src/hooks/useNavigationTabs.tsx`
-Add after "Invoicing" entry:
-```typescript
-{ name: "Insights", path: "/insights", icon: TrendingUp, tiers: ['all', 'office'] },
+```text
+Props:
+  - projectId: string
+  - checkpoint: 'pm_approval' | 'invoice_send' | 'project_close'
+  - onProceed: () => void          -- called after clean pass or successful override
+  - onCancel: () => void
+  - trigger: () => void            -- imperative open method via ref or state
 ```
 
-### `src/App.tsx`
-Add two new lazy-loaded routes:
-```typescript
-const Insights = lazy(() => import("./pages/Insights"));
-const ProjectEstimateAccuracy = lazy(() => import("./pages/ProjectEstimateAccuracy"));
-```
-With `<ProtectedRoute>` wrappers at `/insights` and `/insights/project`.
+**Modal behavior:**
+1. When triggered, fetches integrity via existing `useProjectIntegrity` hook
+2. If status is `clean` -- calls `onProceed()` immediately (no modal shown)
+3. If `needs_attention` or `blocked` -- shows the warning modal:
+   - Warning icon + "Financial Integrity Warning" title
+   - Status badge (reuses existing `IntegrityBadge`)
+   - Score display
+   - Blockers list
+   - Two buttons: "Fix Issues" (navigates to `/estimates`) and "Continue Anyway"
+   - Clicking "Continue Anyway" reveals a textarea requiring 10+ character reason
+   - Submit calls `rpc_log_financial_override`, then `onProceed()`
 
-## Access Control
+**New hook: `src/hooks/useFinancialOverride.ts`**
 
-- Visible to: Admin, PM, Foreman, Accounting/HR (tiers `all` + `office`)
-- Uses `useAuthRole` + `useOrganizationRole` for access checks (same pattern as HoursTracking page)
-- RPC functions already enforce org membership server-side via `SECURITY DEFINER`
+A small hook wrapping the RPC call with loading/error state via `useMutation`.
 
-## Edge Cases Handled
+---
 
-- **No budget row**: All planned values show as 0; variance = "0 - actual" (shows actual as the overrun)
-- **contract_value = 0**: Profit and margin cards display "No contract value" instead of misleading zeros
-- **Missing cost_rate**: Warning alert shown; labor cost shown as potentially understated
-- **No projects**: Empty state with message
-- **No time entries / receipts**: Zero values shown cleanly
-- **Division by zero**: All percentage calculations guarded with `|| 0` fallback
+### 3. Integration Points
 
-## Technical Notes
+**A. Workflow Phase Advance (PM Approval checkpoint)**
 
-- No new database tables or migrations needed -- everything computed from existing RPC functions
-- The scope-item-level variance view does require a client-side join (scope items + tasks + time_entries), but this is bounded by the number of scope items per project (typically tens, not hundreds)
-- Portfolio report may be slow for orgs with 100+ projects; acceptable for now, mitigated later with the snapshot table
-- Recharts is already installed and can be used for the trend chart when snapshots are added
+File: `src/pages/Workflow.tsx` -- `PhaseCard` component
+
+- Intercept the "Request Approval" and "Mark Complete" button clicks
+- For phases that represent PM approval (specifically the `foreman_approve` and `pm_closeout` phase keys), wrap the action with the integrity gate
+- If integrity is clean, proceed as before; otherwise show the modal
+
+**B. Invoice Send checkpoint**
+
+File: `src/components/invoicing/SendInvoiceModal.tsx`
+
+- Wrap the `handleSend` function with the integrity gate
+- Before executing the existing send logic, check integrity
+- The gate modal appears over the send modal if needed
+
+**C. Project Close checkpoint**
+
+File: `src/components/ProjectStatusDropdown.tsx`
+
+- Intercept status change to `completed` or `archived`
+- Before calling `rpc_update_project_status`, run the integrity gate
+- If clean, proceed; otherwise show the modal with checkpoint `project_close`
+
+---
+
+### 4. Files to Create/Edit
+
+| Action | File |
+|--------|------|
+| Create | `supabase/migrations/[timestamp]_financial_integrity_overrides.sql` |
+| Create | `src/components/FinancialIntegrityGate.tsx` |
+| Create | `src/hooks/useFinancialOverride.ts` |
+| Edit | `src/pages/Workflow.tsx` -- wrap phase advance buttons |
+| Edit | `src/components/invoicing/SendInvoiceModal.tsx` -- wrap send action |
+| Edit | `src/components/ProjectStatusDropdown.tsx` -- wrap close/archive |
+
+### 5. Technical Details
+
+- The modal component uses existing UI primitives: `Dialog`, `AlertTriangle`, `Textarea`, `Button`, `IntegrityBadge`
+- The `useProjectIntegrity` hook is reused as-is for fetching integrity data
+- The override RPC fetches integrity server-side independently (not trusting client values) to ensure the logged snapshot is authentic
+- Minimum reason length (10 chars) is enforced client-side with the submit button disabled until met
+
