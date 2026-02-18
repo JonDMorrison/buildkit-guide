@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Rocket, X, ChevronDown, ChevronUp, RefreshCw, 
   PartyPopper, Settings, MapPin, Users, Clock, 
-  Shield, FileText, Building2 
+  Shield, FileText, Building2, DollarSign, Mail
 } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -57,6 +57,7 @@ export function SetupWizardHub({ forceShow = false }: SetupWizardHubProps) {
   const phase3 = getPhaseProgress(3);
   const phase4 = getPhaseProgress(4);
   const phase5 = getPhaseProgress(5);
+  const phase6 = getPhaseProgress(6);
 
   const stepDefinitions: Record<string, { 
     label: string; 
@@ -159,6 +160,22 @@ export function SetupWizardHub({ forceShow = false }: SetupWizardHubProps) {
       timeEstimate: '~2 min',
       action: () => navigate('/drawings'),
       actionLabel: 'Go to Drawings',
+    },
+    step_labor_rates: {
+      label: 'Set Labor Cost Rates',
+      description: 'Set hourly cost rates so job costing works correctly',
+      timeEstimate: '~3 min',
+      action: () => navigate('/settings/labor-rates'),
+      actionLabel: 'Go to Labor Rates',
+      helpText: 'Each field worker needs a cost rate for accurate job costing.',
+    },
+    step_invoice_permissions: {
+      label: 'Configure Invoice Permissions',
+      description: 'Decide who can send invoices and whether approval is required',
+      timeEstimate: '~2 min',
+      action: () => navigate('/invoicing'),
+      actionLabel: 'Go to Invoicing',
+      helpText: 'Admin-only step. Configure in the Invoicing settings tab.',
     },
   };
 
@@ -327,7 +344,32 @@ export function SetupWizardHub({ forceShow = false }: SetupWizardHubProps) {
                 totalSteps={phase5.total}
                 defaultOpen={phase4.completed === phase4.total && phase5.completed < phase5.total}
               >
-                {['step_first_drawing'].map((key) => {
+              {['step_first_drawing'].map((key) => {
+                  const step = stepDefinitions[key];
+                  return (
+                    <SetupChecklistItem
+                      key={key}
+                      label={step.label}
+                      description={step.description}
+                      isComplete={progress[key as keyof SetupProgress] as boolean}
+                      timeEstimate={step.timeEstimate}
+                      helpText={step.helpText}
+                      actionLabel={step.actionLabel}
+                      onAction={step.action}
+                    />
+                  );
+                })}
+              </SetupPhaseSection>
+
+              {/* Phase 6: Financial Setup */}
+              <SetupPhaseSection
+                phaseNumber={6}
+                phaseName="Financial Setup"
+                completedSteps={phase6.completed}
+                totalSteps={phase6.total}
+                defaultOpen={phase5.completed === phase5.total && phase6.completed < phase6.total}
+              >
+                {['step_labor_rates', 'step_invoice_permissions'].map((key) => {
                   const step = stepDefinitions[key];
                   return (
                     <SetupChecklistItem

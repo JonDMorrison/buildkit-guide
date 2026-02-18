@@ -4261,6 +4261,8 @@ export type Database = {
           step_first_project: boolean | null
           step_first_safety_form: boolean | null
           step_hazard_library: boolean | null
+          step_invoice_permissions: boolean
+          step_labor_rates: boolean
           step_org_created: boolean | null
           step_ppe_reviewed: boolean | null
           step_time_tracking_configured: boolean | null
@@ -4282,6 +4284,8 @@ export type Database = {
           step_first_project?: boolean | null
           step_first_safety_form?: boolean | null
           step_hazard_library?: boolean | null
+          step_invoice_permissions?: boolean
+          step_labor_rates?: boolean
           step_org_created?: boolean | null
           step_ppe_reviewed?: boolean | null
           step_time_tracking_configured?: boolean | null
@@ -4303,6 +4307,8 @@ export type Database = {
           step_first_project?: boolean | null
           step_first_safety_form?: boolean | null
           step_hazard_library?: boolean | null
+          step_invoice_permissions?: boolean
+          step_labor_rates?: boolean
           step_org_created?: boolean | null
           step_ppe_reviewed?: boolean | null
           step_time_tracking_configured?: boolean | null
@@ -6109,6 +6115,10 @@ export type Database = {
       }
       rpc_generate_tasks_from_estimate: {
         Args: { p_estimate_id: string }
+        Returns: Json
+      }
+      rpc_get_org_costing_setup_status: {
+        Args: { p_org_id: string }
         Returns: Json
       }
       rpc_get_project_workflow: {

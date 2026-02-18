@@ -30,6 +30,8 @@ export interface SetupProgress {
   step_first_safety_form: boolean;
   step_hazard_library: boolean;
   step_first_drawing: boolean;
+  step_labor_rates: boolean;
+  step_invoice_permissions: boolean;
   dismissed_at: string | null;
   completed_at: string | null;
 }
@@ -48,6 +50,8 @@ const defaultProgress: SetupProgress = {
   step_first_safety_form: false,
   step_hazard_library: false,
   step_first_drawing: false,
+  step_labor_rates: false,
+  step_invoice_permissions: false,
   dismissed_at: null,
   completed_at: null,
 };
@@ -136,6 +140,29 @@ export function useSetupProgress() {
         detected.step_first_invite = true;
       }
 
+      // Check labor rates via RPC
+      try {
+        const { data: costingStatus } = await supabase.rpc('rpc_get_org_costing_setup_status', {
+          p_org_id: activeOrganizationId,
+        });
+        if (costingStatus && (costingStatus as any).missing_labor_rates_count === 0 && !(costingStatus as any).has_currency_mismatch) {
+          detected.step_labor_rates = true;
+        }
+      } catch {
+        // ignore — step stays incomplete
+      }
+
+      // Check invoice permissions — if org_settings row exists with explicit send roles, consider it configured
+      const { data: invoiceSettings } = await supabase
+        .from('organization_settings')
+        .select('invoice_send_roles')
+        .eq('organization_id', activeOrganizationId)
+        .maybeSingle();
+      
+      if (invoiceSettings?.invoice_send_roles && (invoiceSettings.invoice_send_roles as string[]).length > 0) {
+        detected.step_invoice_permissions = true;
+      }
+
       // Check trades - get projects first, then check trades
       const { data: projects } = await supabase
         .from('projects')
@@ -214,6 +241,8 @@ export function useSetupProgress() {
       step_first_safety_form: base.step_first_safety_form || autoDetectedSteps.step_first_safety_form || false,
       step_hazard_library: base.step_hazard_library || autoDetectedSteps.step_hazard_library || false,
       step_first_drawing: base.step_first_drawing || autoDetectedSteps.step_first_drawing || false,
+      step_labor_rates: base.step_labor_rates || autoDetectedSteps.step_labor_rates || false,
+      step_invoice_permissions: base.step_invoice_permissions || autoDetectedSteps.step_invoice_permissions || false,
     };
   }, [savedProgress, autoDetectedSteps]);
 
@@ -222,7 +251,8 @@ export function useSetupProgress() {
     'step_org_created', 'step_timezone_set', 'step_first_project', 'step_first_job_site',
     'step_first_invite', 'step_trades_configured', 'step_users_assigned',
     'step_time_tracking_enabled', 'step_time_tracking_configured',
-    'step_ppe_reviewed', 'step_first_safety_form', 'step_hazard_library', 'step_first_drawing'
+    'step_ppe_reviewed', 'step_first_safety_form', 'step_hazard_library', 'step_first_drawing',
+    'step_labor_rates', 'step_invoice_permissions',
   ];
 
   const completedSteps = stepKeys.filter(key => progress[key] === true).length;
@@ -292,6 +322,8 @@ export function useSetupProgress() {
       step_first_safety_form: true,
       step_hazard_library: true,
       step_first_drawing: true,
+      step_labor_rates: true,
+      step_invoice_permissions: true,
       completed_at: new Date().toISOString(),
     };
     updateMutation.mutate(allComplete);
@@ -304,6 +336,7 @@ export function useSetupProgress() {
     { id: 3, name: 'Time Tracking', steps: ['step_time_tracking_enabled', 'step_time_tracking_configured'] },
     { id: 4, name: 'Safety & Compliance', steps: ['step_ppe_reviewed', 'step_first_safety_form', 'step_hazard_library'] },
     { id: 5, name: 'Documents', steps: ['step_first_drawing'] },
+    { id: 6, name: 'Financial Setup', steps: ['step_labor_rates', 'step_invoice_permissions'] },
   ];
 
   const getPhaseProgress = (phaseId: number) => {
