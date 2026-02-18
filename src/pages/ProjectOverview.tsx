@@ -35,6 +35,7 @@ import {
 import { ArrowLeft, AlertTriangle, Shield, CheckCircle2, FileText, Users, Calendar, Plus, MoreVertical, Archive, Receipt, Pencil, FileImage, Trash2, Zap } from 'lucide-react';
 import { ProjectScopeTab } from '@/components/scope/ProjectScopeTab';
 import { ProjectBudgetTab } from '@/components/budget/ProjectBudgetTab';
+import { ProjectStatusDropdown } from '@/components/ProjectStatusDropdown';
 import { Switch } from '@/components/ui/switch';
 import { useProjectWorkflow } from '@/hooks/useProjectWorkflow';
 
@@ -204,7 +205,15 @@ const ProjectOverview = () => {
                 </Badge>
               )}
             </div>
-            <p className="text-muted-foreground">{project.location}</p>
+            <div className="flex items-center gap-3">
+              <p className="text-muted-foreground">{project.location}</p>
+              <ProjectStatusDropdown
+                projectId={projectId!}
+                status={project.status}
+                canEdit={canManageProject}
+                onStatusChanged={(newStatus) => setProject(prev => prev ? { ...prev, status: newStatus } : prev)}
+              />
+            </div>
           </div>
           {canManageProject && (
             <DropdownMenu>
