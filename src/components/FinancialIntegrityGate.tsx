@@ -76,6 +76,7 @@ export function FinancialIntegrityGate({
   }
 
   const reasonValid = reason.trim().length >= 10;
+  const isHardBlocked = integrity.enforcementLevel === 'strict_phase_gating' && integrity.status === 'blocked';
 
   return (
     <Dialog open onOpenChange={(v) => { if (!v) onCancel(); }}>
@@ -86,7 +87,9 @@ export function FinancialIntegrityGate({
             <DialogTitle>Financial Integrity Warning</DialogTitle>
           </div>
           <DialogDescription>
-            This project has unresolved financial issues. You can fix them or continue with acknowledgment.
+            {isHardBlocked
+              ? 'This project has blocked financial issues that must be resolved before proceeding. Overrides are not permitted under strict phase gating.'
+              : 'This project has unresolved financial issues. You can fix them or continue with acknowledgment.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -121,7 +124,7 @@ export function FinancialIntegrityGate({
             <div className="flex gap-3 pt-2">
               <Button
                 variant="outline"
-                className="flex-1"
+                className={isHardBlocked ? 'w-full' : 'flex-1'}
                 onClick={() => {
                   onCancel();
                   navigate(`/estimates?projectId=${projectId}`);
@@ -130,14 +133,16 @@ export function FinancialIntegrityGate({
                 <Wrench className="h-4 w-4 mr-1.5" />
                 Fix Issues
               </Button>
-              <Button
-                variant="secondary"
-                className="flex-1"
-                onClick={() => setShowReason(true)}
-              >
-                <ArrowRight className="h-4 w-4 mr-1.5" />
-                Continue Anyway
-              </Button>
+              {!isHardBlocked && (
+                <Button
+                  variant="secondary"
+                  className="flex-1"
+                  onClick={() => setShowReason(true)}
+                >
+                  <ArrowRight className="h-4 w-4 mr-1.5" />
+                  Continue Anyway
+                </Button>
+              )}
             </div>
           ) : (
             <div className="space-y-3 pt-2">

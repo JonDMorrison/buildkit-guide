@@ -2505,6 +2505,7 @@ export type Database = {
         Row: {
           base_currency: string
           created_at: string
+          financial_enforcement_level: string
           id: string
           is_sandbox: boolean
           name: string
@@ -2514,6 +2515,7 @@ export type Database = {
         Insert: {
           base_currency?: string
           created_at?: string
+          financial_enforcement_level?: string
           id?: string
           is_sandbox?: boolean
           name: string
@@ -2523,6 +2525,7 @@ export type Database = {
         Update: {
           base_currency?: string
           created_at?: string
+          financial_enforcement_level?: string
           id?: string
           is_sandbox?: boolean
           name?: string

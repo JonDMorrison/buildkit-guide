@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export type IntegrityStatus = 'clean' | 'needs_attention' | 'blocked';
+export type EnforcementLevel = 'advisory' | 'strict_reporting' | 'strict_phase_gating';
 
 export interface IntegrityData {
   status: IntegrityStatus;
   score: number;
   blockers: string[];
+  enforcementLevel: EnforcementLevel;
 }
 
 export const useProjectIntegrity = (projectId: string | null) => {
@@ -35,6 +37,7 @@ export const useProjectIntegrity = (projectId: string | null) => {
             status: result.integrity.status as IntegrityStatus,
             score: Number(result.integrity.score) || 0,
             blockers: Array.isArray(result.integrity.blockers) ? result.integrity.blockers : [],
+            enforcementLevel: (result.financial_enforcement_level as EnforcementLevel) || 'advisory',
           });
         }
       } catch {
