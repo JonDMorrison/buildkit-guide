@@ -2349,6 +2349,10 @@ export type Database = {
         Row: {
           created_at: string
           default_timezone: string
+          invoice_send_approver_roles: string[]
+          invoice_send_blocked_message: string
+          invoice_send_requires_approval: boolean
+          invoice_send_roles: string[]
           jurisdiction_code: string | null
           organization_id: string
           time_auto_close_enabled: boolean | null
@@ -2368,6 +2372,10 @@ export type Database = {
         Insert: {
           created_at?: string
           default_timezone?: string
+          invoice_send_approver_roles?: string[]
+          invoice_send_blocked_message?: string
+          invoice_send_requires_approval?: boolean
+          invoice_send_roles?: string[]
           jurisdiction_code?: string | null
           organization_id: string
           time_auto_close_enabled?: boolean | null
@@ -2387,6 +2395,10 @@ export type Database = {
         Update: {
           created_at?: string
           default_timezone?: string
+          invoice_send_approver_roles?: string[]
+          invoice_send_blocked_message?: string
+          invoice_send_requires_approval?: boolean
+          invoice_send_roles?: string[]
           jurisdiction_code?: string | null
           organization_id?: string
           time_auto_close_enabled?: boolean | null
@@ -6058,6 +6070,10 @@ export type Database = {
           }
       rpc_recalculate_estimate_totals: {
         Args: { p_estimate_id: string }
+        Returns: undefined
+      }
+      rpc_request_invoice_approval: {
+        Args: { p_invoice_id: string }
         Returns: undefined
       }
       rpc_request_phase_advance: {
