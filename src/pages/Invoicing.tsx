@@ -134,11 +134,27 @@ const Invoicing = () => {
   });
   const settingsSnapshot = useRef("");
 
+  // Invoice send permissions (from organization_settings)
+  const ALL_ROLES = ["admin", "pm", "hr", "foreman", "internal_worker", "external_trade"] as const;
+  const ROLE_LABELS: Record<string, string> = {
+    admin: "Admin", pm: "Project Manager", hr: "Accounting/HR",
+    foreman: "Foreman", internal_worker: "Internal Worker", external_trade: "External Trade",
+  };
+  const [invoiceSendSettings, setInvoiceSendSettings] = useState({
+    invoice_send_roles: ["admin"] as string[],
+    invoice_send_requires_approval: true,
+    invoice_send_approver_roles: ["admin"] as string[],
+    invoice_send_blocked_message: "Invoice requires approval before sending.",
+  });
+  const [sendSettingsLoaded, setSendSettingsLoaded] = useState(false);
+
   // Also check global admin from useUserRole via useAuthRole
   const { isAdmin: isGlobalAdmin } = useAuthRole();
   const canAccess = isGlobalAdmin || orgRole === "admin" || orgRole === "pm";
   const isAdmin = isGlobalAdmin || orgRole === "admin";
-  const canSendInvoice = isGlobalAdmin || orgRole === "admin" || orgRole === "hr";
+  const canSendInvoice = isGlobalAdmin || (orgRole && invoiceSendSettings.invoice_send_roles.includes(orgRole));
+  const canApproveInvoice = isGlobalAdmin || (orgRole && invoiceSendSettings.invoice_send_approver_roles.includes(orgRole));
+  const sendRequiresApproval = invoiceSendSettings.invoice_send_requires_approval;
 
   useEffect(() => {
     if (prefillData?.prefillLineItems) {
@@ -156,7 +172,25 @@ const Invoicing = () => {
         .order("name");
       setProjects((data as any[]) || []);
     };
+    const fetchSendSettings = async () => {
+      const { data } = await supabase
+        .from("organization_settings")
+        .select("invoice_send_roles, invoice_send_requires_approval, invoice_send_approver_roles, invoice_send_blocked_message")
+        .eq("organization_id", activeOrganizationId)
+        .single();
+      if (data) {
+        const d = data as any;
+        setInvoiceSendSettings({
+          invoice_send_roles: d.invoice_send_roles || ["admin"],
+          invoice_send_requires_approval: d.invoice_send_requires_approval ?? true,
+          invoice_send_approver_roles: d.invoice_send_approver_roles || ["admin"],
+          invoice_send_blocked_message: d.invoice_send_blocked_message || "Invoice requires approval before sending.",
+        });
+      }
+      setSendSettingsLoaded(true);
+    };
     fetchProjects();
+    fetchSendSettings();
   }, [activeOrganizationId]);
 
   useEffect(() => {
@@ -237,6 +271,34 @@ const Invoicing = () => {
     } as any);
     settingsSnapshot.current = JSON.stringify(settingsForm);
     toast({ title: "Settings saved" });
+  };
+
+  const handleSaveSendSettings = async () => {
+    if (!activeOrganizationId) return;
+    const { error } = await supabase
+      .from("organization_settings")
+      .update({
+        invoice_send_roles: invoiceSendSettings.invoice_send_roles,
+        invoice_send_requires_approval: invoiceSendSettings.invoice_send_requires_approval,
+        invoice_send_approver_roles: invoiceSendSettings.invoice_send_approver_roles,
+        invoice_send_blocked_message: invoiceSendSettings.invoice_send_blocked_message,
+      } as any)
+      .eq("organization_id", activeOrganizationId);
+    if (error) {
+      toast({ title: "Failed to save permissions", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Invoice sending permissions saved" });
+    }
+  };
+
+  const handleRequestApproval = async (invoice: Invoice) => {
+    const { error } = await supabase.rpc("rpc_request_invoice_approval", { p_invoice_id: invoice.id });
+    if (error) {
+      toast({ title: "Failed to request approval", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Approval requested", description: `Approvers have been notified for ${invoice.invoice_number}.` });
+      await fetchInvoices();
+    }
   };
 
   const loadLineItems = async (invoiceId: string) => {
@@ -373,7 +435,7 @@ const Invoicing = () => {
 
   const handleBulkSend = async () => {
     if (!canSendInvoice) {
-      toast({ title: "Not authorized", description: "Only Admin or Accounting/HR can send invoices.", variant: "destructive" });
+      toast({ title: "Not authorized", description: invoiceSendSettings.invoice_send_blocked_message, variant: "destructive" });
       return;
     }
     const toSend = filteredInvoices.filter(i => selectedInvoices.has(i.id) && (getDisplayStatus(i) === "draft" || getDisplayStatus(i) === "sent"));
@@ -559,7 +621,7 @@ const Invoicing = () => {
                               </Button>
                             </span>
                           </TooltipTrigger>
-                          <TooltipContent>PM can create drafts. Admin/Accounting must send.</TooltipContent>
+                          <TooltipContent>{invoiceSendSettings.invoice_send_blocked_message}</TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
                     )}
@@ -640,7 +702,7 @@ const Invoicing = () => {
                               <TableCell className="text-right">{balance > 0 ? fmt(balance) : "—"}</TableCell>
                               <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                                 <div className="flex gap-1 justify-end flex-wrap">
-                                  {(displayStatus === "draft" || displayStatus === "sent" || displayStatus === "overdue") && canSendInvoice && (
+                                  {(displayStatus === "draft" || displayStatus === "sent" || displayStatus === "overdue") && canSendInvoice && (!sendRequiresApproval || inv.approval_status === "approved" || displayStatus !== "draft") && (
                                     <Button variant="ghost" size="sm" onClick={() => { setSendInvoice(inv); setShowSend(true); }} title="Send via email"><Mail className="h-3.5 w-3.5" /></Button>
                                   )}
                                   {(displayStatus === "draft" || displayStatus === "sent" || displayStatus === "overdue") && !canSendInvoice && (
@@ -649,9 +711,12 @@ const Invoicing = () => {
                                         <TooltipTrigger asChild>
                                           <span><Button variant="ghost" size="sm" disabled><Mail className="h-3.5 w-3.5 text-muted-foreground/40" /></Button></span>
                                         </TooltipTrigger>
-                                        <TooltipContent>PM can create drafts. Admin/Accounting must send.</TooltipContent>
+                                        <TooltipContent>{invoiceSendSettings.invoice_send_blocked_message}</TooltipContent>
                                       </Tooltip>
                                     </TooltipProvider>
+                                  )}
+                                  {displayStatus === "draft" && sendRequiresApproval && inv.approval_status !== "approved" && inv.approval_status !== "pending" && (
+                                    <Button variant="ghost" size="sm" onClick={() => handleRequestApproval(inv)} title="Request approval"><ShieldCheck className="h-3.5 w-3.5" /></Button>
                                   )}
                                   {(displayStatus === "sent" || displayStatus === "overdue") && (
                                     <Button variant="ghost" size="sm" onClick={() => { setPaymentInvoice(inv); setShowPayment(true); }} title="Record payment"><DollarSign className="h-3.5 w-3.5" /></Button>
@@ -711,7 +776,7 @@ const Invoicing = () => {
                             </div>
                           </div>
                           <div className="flex gap-1 mt-2 justify-end" onClick={(e) => e.stopPropagation()}>
-                            {(displayStatus === "draft" || displayStatus === "sent" || displayStatus === "overdue") && canSendInvoice && (
+                            {(displayStatus === "draft" || displayStatus === "sent" || displayStatus === "overdue") && canSendInvoice && (!sendRequiresApproval || inv.approval_status === "approved" || displayStatus !== "draft") && (
                               <Button variant="ghost" size="sm" onClick={() => { setSendInvoice(inv); setShowSend(true); }}><Mail className="h-3.5 w-3.5" /></Button>
                             )}
                             {(displayStatus === "draft" || displayStatus === "sent" || displayStatus === "overdue") && !canSendInvoice && (
@@ -720,9 +785,12 @@ const Invoicing = () => {
                                   <TooltipTrigger asChild>
                                     <span><Button variant="ghost" size="sm" disabled><Mail className="h-3.5 w-3.5 text-muted-foreground/40" /></Button></span>
                                   </TooltipTrigger>
-                                  <TooltipContent>PM can create drafts. Admin/Accounting must send.</TooltipContent>
+                                  <TooltipContent>{invoiceSendSettings.invoice_send_blocked_message}</TooltipContent>
                                 </Tooltip>
                               </TooltipProvider>
+                            )}
+                            {displayStatus === "draft" && sendRequiresApproval && inv.approval_status !== "approved" && inv.approval_status !== "pending" && (
+                              <Button variant="ghost" size="sm" onClick={() => handleRequestApproval(inv)} title="Request approval"><ShieldCheck className="h-3.5 w-3.5" /></Button>
                             )}
                             <Button variant="ghost" size="sm" onClick={() => triggerPDF(inv)}><FileText className="h-3.5 w-3.5" /></Button>
                             {(displayStatus === "sent" || displayStatus === "overdue") && (
@@ -1037,14 +1105,86 @@ const Invoicing = () => {
                   <Input type="number" step="0.5" min="0" max="100" value={settingsForm.default_retainage_percent} onChange={(e) => setSettingsForm((f) => ({ ...f, default_retainage_percent: e.target.value }))} />
                 </div>
 
-                {/* Approval workflow */}
-                <div className="flex items-center gap-3">
-                  <Switch checked={settingsForm.require_approval} onCheckedChange={(v) => setSettingsForm((f) => ({ ...f, require_approval: v }))} />
-                  <div>
-                    <Label>Require Invoice Approval</Label>
-                    <p className="text-xs text-muted-foreground">PMs create → Admin approves → then invoice can be sent.</p>
-                  </div>
-                </div>
+                {/* Invoice Sending Permissions */}
+                {isAdmin && (
+                  <Card className="border-dashed">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm flex items-center gap-2"><ShieldCheck className="h-4 w-4" /> Invoice Sending Permissions</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Who can send invoices?</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {ALL_ROLES.map(role => (
+                            <label key={role} className="flex items-center gap-2 text-sm">
+                              <Checkbox
+                                checked={invoiceSendSettings.invoice_send_roles.includes(role)}
+                                onCheckedChange={(checked) => {
+                                  setInvoiceSendSettings(prev => ({
+                                    ...prev,
+                                    invoice_send_roles: checked
+                                      ? [...prev.invoice_send_roles, role]
+                                      : prev.invoice_send_roles.filter(r => r !== role),
+                                  }));
+                                }}
+                              />
+                              {ROLE_LABELS[role]}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <Switch
+                          checked={invoiceSendSettings.invoice_send_requires_approval}
+                          onCheckedChange={(v) => setInvoiceSendSettings(prev => ({ ...prev, invoice_send_requires_approval: v }))}
+                        />
+                        <div>
+                          <Label>Require approval before sending</Label>
+                          <p className="text-xs text-muted-foreground">When enabled, invoices must be approved before they can be sent.</p>
+                        </div>
+                      </div>
+
+                      {invoiceSendSettings.invoice_send_requires_approval && (
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Who can approve invoices?</Label>
+                          <div className="grid grid-cols-2 gap-2">
+                            {ALL_ROLES.map(role => (
+                              <label key={role} className="flex items-center gap-2 text-sm">
+                                <Checkbox
+                                  checked={invoiceSendSettings.invoice_send_approver_roles.includes(role)}
+                                  onCheckedChange={(checked) => {
+                                    setInvoiceSendSettings(prev => ({
+                                      ...prev,
+                                      invoice_send_approver_roles: checked
+                                        ? [...prev.invoice_send_approver_roles, role]
+                                        : prev.invoice_send_approver_roles.filter(r => r !== role),
+                                    }));
+                                  }}
+                                />
+                                {ROLE_LABELS[role]}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="space-y-2">
+                        <Label>Blocked message</Label>
+                        <Input
+                          value={invoiceSendSettings.invoice_send_blocked_message}
+                          onChange={(e) => setInvoiceSendSettings(prev => ({ ...prev, invoice_send_blocked_message: e.target.value }))}
+                          placeholder="Invoice requires approval before sending."
+                        />
+                        <p className="text-xs text-muted-foreground">Shown to users who cannot send an invoice.</p>
+                      </div>
+
+                      <Button variant="outline" onClick={handleSaveSendSettings}>
+                        Save Permissions
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Late payment reminders */}
                 <div className="flex items-center gap-3">
