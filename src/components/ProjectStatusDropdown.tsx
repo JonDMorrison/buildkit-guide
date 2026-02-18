@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import {
   Select,
@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
+import { FinancialIntegrityGate } from '@/components/FinancialIntegrityGate';
 
 const STATUS_OPTIONS = [
   { value: 'not_started', label: 'Not Started' },
@@ -43,20 +44,13 @@ export function ProjectStatusDropdown({
 }: ProjectStatusDropdownProps) {
   const { toast } = useToast();
   const [updating, setUpdating] = useState(false);
+  const [gateOpen, setGateOpen] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<string | null>(null);
 
   const currentLabel = STATUS_OPTIONS.find(o => o.value === status)?.label ?? status;
   const style = STATUS_STYLES[status] ?? STATUS_STYLES.not_started;
 
-  if (!canEdit) {
-    return (
-      <Badge variant="secondary" className={cn('text-xs font-medium', style)}>
-        {currentLabel}
-      </Badge>
-    );
-  }
-
-  const handleChange = async (newStatus: string) => {
-    if (newStatus === status) return;
+  const executeStatusChange = useCallback(async (newStatus: string) => {
     setUpdating(true);
     try {
       const { error } = await supabase.rpc('rpc_update_project_status', {
@@ -70,6 +64,26 @@ export function ProjectStatusDropdown({
       toast({ title: 'Failed to update status', description: err.message, variant: 'destructive' });
     } finally {
       setUpdating(false);
+      setPendingStatus(null);
+    }
+  }, [projectId, onStatusChanged, toast]);
+
+  if (!canEdit) {
+    return (
+      <Badge variant="secondary" className={cn('text-xs font-medium', style)}>
+        {currentLabel}
+      </Badge>
+    );
+  }
+
+  const handleChange = (newStatus: string) => {
+    if (newStatus === status) return;
+    // Soft gate for completed/archived statuses
+    if (newStatus === 'completed' || newStatus === 'archived') {
+      setPendingStatus(newStatus);
+      setGateOpen(true);
+    } else {
+      executeStatusChange(newStatus);
     }
   };
 
@@ -91,6 +105,22 @@ export function ProjectStatusDropdown({
           ))}
         </SelectContent>
       </Select>
+
+      {gateOpen && pendingStatus && (
+        <FinancialIntegrityGate
+          projectId={projectId}
+          checkpoint="project_close"
+          open={gateOpen}
+          onProceed={() => {
+            setGateOpen(false);
+            executeStatusChange(pendingStatus);
+          }}
+          onCancel={() => {
+            setGateOpen(false);
+            setPendingStatus(null);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { Loader2, Send, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { Invoice, InvoiceSettings, Client } from "@/types/invoicing";
+import { FinancialIntegrityGate } from "@/components/FinancialIntegrityGate";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -40,11 +41,11 @@ export const SendInvoiceModal = ({ open, onOpenChange, invoice, settings, client
   const [recipientName, setRecipientName] = useState("");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
+  const [gateOpen, setGateOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     if (open && invoice) {
-      // Prefer snapshot send_to_emails, fall back to client A/P email
       const snapshotEmails = invoice.send_to_emails;
       const fallbackEmail = client?.ap_email || client?.email || "";
       setEmail(snapshotEmails || fallbackEmail);
@@ -58,18 +59,9 @@ export const SendInvoiceModal = ({ open, onOpenChange, invoice, settings, client
 
   const { valid: validEmails, invalid: invalidEmails } = validateEmails(email);
 
-  const handleSend = async () => {
-    if (!validEmails.length) {
-      toast({ title: "At least one valid email address is required", variant: "destructive" });
-      return;
-    }
-    if (invalidEmails.length) {
-      toast({ title: "Fix invalid email addresses before sending", description: invalidEmails.join(", "), variant: "destructive" });
-      return;
-    }
+  const executeSend = async () => {
     setLoading(true);
     try {
-      // Send to each valid email
       const primaryEmail = validEmails[0];
       const res = await supabase.functions.invoke("send-invoice-email", {
         body: {
@@ -83,13 +75,11 @@ export const SendInvoiceModal = ({ open, onOpenChange, invoice, settings, client
       });
       if (res.error) throw res.error;
 
-      // Server-side status transition with role enforcement
       const { error: rpcError } = await supabase.rpc('rpc_send_invoice', {
         p_invoice_id: invoice.id,
       });
       if (rpcError) throw rpcError;
 
-      // Persist the send_to_emails back to the invoice for future sends
       await supabase
         .from('invoices')
         .update({ send_to_emails: validEmails.join(", ") } as any)
@@ -104,53 +94,84 @@ export const SendInvoiceModal = ({ open, onOpenChange, invoice, settings, client
     setLoading(false);
   };
 
+  const handleSend = () => {
+    if (!validEmails.length) {
+      toast({ title: "At least one valid email address is required", variant: "destructive" });
+      return;
+    }
+    if (invalidEmails.length) {
+      toast({ title: "Fix invalid email addresses before sending", description: invalidEmails.join(", "), variant: "destructive" });
+      return;
+    }
+    // Trigger integrity gate
+    setGateOpen(true);
+  };
+
+  // Derive projectId from invoice
+  const projectId = (invoice as any)?.project_id;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Send Invoice {invoice.invoice_number}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Recipient Email(s) *</Label>
-            <Input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="ap@client.com, billing@client.com"
-              required
-            />
-            <p className="text-xs text-muted-foreground">
-              Separate multiple emails with commas
-            </p>
-            {invalidEmails.length > 0 && (
-              <Alert variant="destructive" className="py-2">
-                <AlertTriangle className="h-3.5 w-3.5" />
-                <AlertDescription className="text-xs">
-                  Invalid: {invalidEmails.join(", ")}
-                </AlertDescription>
-              </Alert>
-            )}
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Send Invoice {invoice.invoice_number}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Recipient Email(s) *</Label>
+              <Input
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="ap@client.com, billing@client.com"
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                Separate multiple emails with commas
+              </p>
+              {invalidEmails.length > 0 && (
+                <Alert variant="destructive" className="py-2">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  <AlertDescription className="text-xs">
+                    Invalid: {invalidEmails.join(", ")}
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label>Recipient Name</Label>
+              <Input value={recipientName} onChange={(e) => setRecipientName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Subject</Label>
+              <Input value={subject} onChange={(e) => setSubject(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Message</Label>
+              <Textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={3} />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1" disabled={loading}>Cancel</Button>
+              <Button onClick={handleSend} className="flex-1" disabled={loading || !validEmails.length}>
+                {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending...</> : <><Send className="mr-2 h-4 w-4" />Send Invoice</>}
+              </Button>
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label>Recipient Name</Label>
-            <Input value={recipientName} onChange={(e) => setRecipientName(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label>Subject</Label>
-            <Input value={subject} onChange={(e) => setSubject(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label>Message</Label>
-            <Textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={3} />
-          </div>
-          <div className="flex gap-3 pt-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1" disabled={loading}>Cancel</Button>
-            <Button onClick={handleSend} className="flex-1" disabled={loading || !validEmails.length}>
-              {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending...</> : <><Send className="mr-2 h-4 w-4" />Send Invoice</>}
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      {projectId && gateOpen && (
+        <FinancialIntegrityGate
+          projectId={projectId}
+          checkpoint="invoice_send"
+          open={gateOpen}
+          onProceed={() => {
+            setGateOpen(false);
+            executeSend();
+          }}
+          onCancel={() => setGateOpen(false)}
+        />
+      )}
+    </>
   );
 };

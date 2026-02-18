@@ -20,10 +20,11 @@ import {
   Bug,
   Zap,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 import { ScopePhaseActions } from '@/components/workflow/ScopePhaseActions';
+import { FinancialIntegrityGate, type IntegrityCheckpoint } from '@/components/FinancialIntegrityGate';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof Circle }> = {
   not_started: { label: 'Not Started', color: 'bg-muted text-muted-foreground', icon: Circle },
@@ -54,12 +55,34 @@ function PhaseCard({
 }) {
   const [notes, setNotes] = useState('');
   const [denyMessage, setDenyMessage] = useState('');
+  const [gateOpen, setGateOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<{ type: 'request' | 'approve'; key: string; notes?: string } | null>(null);
   const statusCfg = STATUS_CONFIG[phase.status] ?? STATUS_CONFIG.not_started;
   const StatusIcon = statusCfg.icon;
 
   const canRequest = userRole && phase.allowed_requester_roles.includes(userRole) && phase.status === 'in_progress';
   const canApprove = userRole && phase.allowed_approver_roles.includes(userRole) && phase.status === 'requested';
   const allReqsPassed = phase.requirements.length === 0 || phase.requirements.every(r => r.passed);
+  const needsIntegrityGate = phase.key === 'foreman_approve' || phase.key === 'pm_closeout';
+
+  const handleGatedRequest = (key: string, actionNotes?: string) => {
+    if (needsIntegrityGate) {
+      setPendingAction({ type: 'request', key, notes: actionNotes });
+      setGateOpen(true);
+    } else {
+      onRequestAdvance(key, actionNotes);
+    }
+  };
+
+  const handleGatedApprove = (key: string) => {
+    if (needsIntegrityGate) {
+      setPendingAction({ type: 'approve', key, notes: denyMessage || undefined });
+      setGateOpen(true);
+    } else {
+      onApprove(key, true, denyMessage || undefined);
+      setDenyMessage('');
+    }
+  };
 
   return (
     <div className="flex gap-4">
@@ -132,7 +155,7 @@ function PhaseCard({
               <Button
                 size="sm"
                 disabled={!allReqsPassed || isRequesting}
-                onClick={() => { onRequestAdvance(phase.key, notes || undefined); setNotes(''); }}
+                onClick={() => { handleGatedRequest(phase.key, notes || undefined); setNotes(''); }}
               >
                 <Send className="h-4 w-4 mr-1.5" />
                 {allReqsPassed ? 'Request Approval' : 'Requirements Not Met'}
@@ -145,7 +168,7 @@ function PhaseCard({
               <Button
                 size="sm"
                 disabled={!allReqsPassed || isRequesting}
-                onClick={() => onRequestAdvance(phase.key)}
+                onClick={() => handleGatedRequest(phase.key)}
               >
                 <Zap className="h-4 w-4 mr-1.5" />
                 {allReqsPassed ? 'Mark Complete' : 'Requirements Not Met'}
@@ -168,7 +191,7 @@ function PhaseCard({
                 <Button
                   size="sm"
                   disabled={isApproving}
-                  onClick={() => { onApprove(phase.key, true, denyMessage || undefined); setDenyMessage(''); }}
+                  onClick={() => handleGatedApprove(phase.key)}
                 >
                   <ThumbsUp className="h-4 w-4 mr-1.5" />
                   Approve
@@ -189,6 +212,29 @@ function PhaseCard({
           {/* Scope phase CTA */}
           {phase.key === 'scope_of_work' && isCurrent && (
             <ScopePhaseActions projectId={projectId} />
+          )}
+
+          {/* Financial Integrity Gate for gated phases */}
+          {gateOpen && pendingAction && (
+            <FinancialIntegrityGate
+              projectId={projectId}
+              checkpoint="pm_approval"
+              open={gateOpen}
+              onProceed={() => {
+                setGateOpen(false);
+                if (pendingAction.type === 'request') {
+                  onRequestAdvance(pendingAction.key, pendingAction.notes);
+                } else {
+                  onApprove(pendingAction.key, true, pendingAction.notes);
+                  setDenyMessage('');
+                }
+                setPendingAction(null);
+              }}
+              onCancel={() => {
+                setGateOpen(false);
+                setPendingAction(null);
+              }}
+            />
           )}
         </CardContent>
       </Card>
