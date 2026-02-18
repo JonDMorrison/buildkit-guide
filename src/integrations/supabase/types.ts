@@ -6125,6 +6125,10 @@ export type Database = {
         Args: { p_project_id: string }
         Returns: Json
       }
+      rpc_get_unrated_labor_summary: {
+        Args: { p_project_id?: string }
+        Returns: Json
+      }
       rpc_lock_timesheet_period: {
         Args: { p_actor_id: string; p_period_id: string }
         Returns: {

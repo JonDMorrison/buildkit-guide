@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { format, parse } from "date-fns";
 import { useProjectRole } from "@/hooks/useProjectRole";
 import { NoAccess } from "@/components/NoAccess";
+import { UnratedLaborBanner } from "@/components/UnratedLaborBanner";
 
 const JobCostReport = () => {
   const navigate = useNavigate();
@@ -87,6 +88,7 @@ const JobCostReport = () => {
     <Layout>
         <div className="container max-w-6xl mx-auto px-4 py-6">
           <SectionHeader title="Job Cost Report" />
+          <UnratedLaborBanner projectId={selectedProject || null} />
 
           {/* Filters */}
           <div className="flex flex-wrap gap-4 mb-6 items-end">
