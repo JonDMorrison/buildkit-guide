@@ -1,121 +1,106 @@
 
 
-## Financial Integrity Override System (Soft Gating)
+## Organization Financial Enforcement Setting
 
-This feature adds soft friction modals at three financial checkpoints. When a project's financial integrity is not "clean", users see a warning modal with the option to acknowledge the issues and continue, logging their override reason for audit purposes.
+This adds a per-organization setting that controls how strictly the financial integrity gate behaves -- from advisory (current default soft friction) up to strict phase gating (hard block, no override allowed).
 
 ---
 
 ### 1. Database Migration
 
-**New table: `financial_integrity_overrides`**
+**A. Add column to `organizations`**
 
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid PK | default gen_random_uuid() |
-| organization_id | uuid NOT NULL | FK to organizations |
-| project_id | uuid NOT NULL | FK to projects |
-| triggered_at | timestamptz | default now() |
-| triggered_by | uuid NOT NULL | FK to auth.users |
-| checkpoint | text NOT NULL | CHECK IN ('pm_approval','invoice_send','project_close') |
-| integrity_status | text NOT NULL | |
-| integrity_score | integer NOT NULL | |
-| blockers | jsonb NOT NULL | |
-| override_reason | text NOT NULL | |
-| created_at | timestamptz | default now() |
-
-- RLS enabled + FORCE ROW LEVEL SECURITY
-- SELECT policy: org-scoped via `has_org_membership(organization_id)`
-- No INSERT/UPDATE/DELETE policies for authenticated role (writes go through RPC only)
-
-**New RPC: `rpc_log_financial_override`**
-
-SECURITY DEFINER function that:
-1. Validates caller has org membership via `has_project_access`
-2. Validates caller role is admin or project_manager
-3. Validates `p_checkpoint` is one of the three allowed values
-4. Calls `estimate_variance_summary(p_project_id)` to fetch current integrity state
-5. Inserts a row into `financial_integrity_overrides`
-6. Returns `true`
-
----
-
-### 2. Frontend: Reusable Modal Component
-
-**New file: `src/components/FinancialIntegrityGate.tsx`**
-
-A reusable dialog component that encapsulates the entire soft-friction flow:
-
-```text
-Props:
-  - projectId: string
-  - checkpoint: 'pm_approval' | 'invoice_send' | 'project_close'
-  - onProceed: () => void          -- called after clean pass or successful override
-  - onCancel: () => void
-  - trigger: () => void            -- imperative open method via ref or state
+```sql
+ALTER TABLE public.organizations
+  ADD COLUMN financial_enforcement_level text NOT NULL DEFAULT 'advisory'
+  CHECK (financial_enforcement_level IN ('advisory', 'strict_reporting', 'strict_phase_gating'));
 ```
 
-**Modal behavior:**
-1. When triggered, fetches integrity via existing `useProjectIntegrity` hook
-2. If status is `clean` -- calls `onProceed()` immediately (no modal shown)
-3. If `needs_attention` or `blocked` -- shows the warning modal:
-   - Warning icon + "Financial Integrity Warning" title
-   - Status badge (reuses existing `IntegrityBadge`)
-   - Score display
-   - Blockers list
-   - Two buttons: "Fix Issues" (navigates to `/estimates`) and "Continue Anyway"
-   - Clicking "Continue Anyway" reveals a textarea requiring 10+ character reason
-   - Submit calls `rpc_log_financial_override`, then `onProceed()`
+**B. Extend `estimate_variance_summary` RPC**
 
-**New hook: `src/hooks/useFinancialOverride.ts`**
+Add the `financial_enforcement_level` to the returned JSON object at the top level so the client can read it:
 
-A small hook wrapping the RPC call with loading/error state via `useMutation`.
+```sql
+-- Inside the RETURN jsonb_build_object(...), add:
+'financial_enforcement_level', v_enforcement_level
+```
 
----
+The function will read the value from `organizations` alongside the existing `base_currency` fetch.
 
-### 3. Integration Points
+**C. Extend `rpc_request_phase_advance` with hard gate**
 
-**A. Workflow Phase Advance (PM Approval checkpoint)**
+Add a block after requirements validation but before the status update:
 
-File: `src/pages/Workflow.tsx` -- `PhaseCard` component
+```text
+IF v_enforcement_level = 'strict_phase_gating' THEN
+  -- Fetch integrity from estimate_variance_summary
+  IF v_integrity_status = 'blocked' THEN
+    RAISE EXCEPTION 'Financial integrity is blocked. Override not allowed under strict gating.'
+      USING ERRCODE = '42501';
+  END IF;
+END IF;
+```
 
-- Intercept the "Request Approval" and "Mark Complete" button clicks
-- For phases that represent PM approval (specifically the `foreman_approve` and `pm_closeout` phase keys), wrap the action with the integrity gate
-- If integrity is clean, proceed as before; otherwise show the modal
+This applies only to phases that are financially gated (`foreman_approve`, `pm_closeout`).
 
-**B. Invoice Send checkpoint**
+**D. Extend `rpc_send_invoice` with hard gate**
 
-File: `src/components/invoicing/SendInvoiceModal.tsx`
+Same check: if enforcement is `strict_phase_gating` and integrity is `blocked`, raise an exception.
 
-- Wrap the `handleSend` function with the integrity gate
-- Before executing the existing send logic, check integrity
-- The gate modal appears over the send modal if needed
+**E. Extend `rpc_log_financial_override`**
 
-**C. Project Close checkpoint**
+Reject override attempts when enforcement is `strict_phase_gating`:
 
-File: `src/components/ProjectStatusDropdown.tsx`
-
-- Intercept status change to `completed` or `archived`
-- Before calling `rpc_update_project_status`, run the integrity gate
-- If clean, proceed; otherwise show the modal with checkpoint `project_close`
+```text
+IF v_enforcement_level = 'strict_phase_gating' AND v_integrity_status = 'blocked' THEN
+  RAISE EXCEPTION 'Override not permitted under strict phase gating' USING ERRCODE = '42501';
+END IF;
+```
 
 ---
 
-### 4. Files to Create/Edit
+### 2. Frontend Changes
+
+**A. `useProjectIntegrity.ts`**
+
+Parse and expose the new `financial_enforcement_level` field from the RPC response alongside the existing integrity data.
+
+Update `IntegrityData` type to include `enforcementLevel: 'advisory' | 'strict_reporting' | 'strict_phase_gating'`.
+
+**B. `FinancialIntegrityGate.tsx`**
+
+Modify behavior based on enforcement level:
+
+| Level | `blocked` status | `needs_attention` status |
+|-------|-----------------|------------------------|
+| `advisory` | Show modal with override option (current behavior) | Show modal with override option |
+| `strict_reporting` | Show modal with override option (same as advisory) | Show modal with override option |
+| `strict_phase_gating` | Show modal with NO override -- only "Fix Issues" button. "Continue Anyway" is hidden. | Show modal with override option |
+
+The key UI difference: when `strict_phase_gating` + `blocked`, the "Continue Anyway" button is removed entirely. The user can only click "Fix Issues" or close the modal (which cancels).
+
+**C. No admin UI for toggling the setting yet**
+
+The column defaults to `advisory`. Changing it requires a direct database update for now. An admin settings UI can be added later without any schema changes.
+
+---
+
+### 3. Files to Create/Edit
 
 | Action | File |
 |--------|------|
-| Create | `supabase/migrations/[timestamp]_financial_integrity_overrides.sql` |
-| Create | `src/components/FinancialIntegrityGate.tsx` |
-| Create | `src/hooks/useFinancialOverride.ts` |
-| Edit | `src/pages/Workflow.tsx` -- wrap phase advance buttons |
-| Edit | `src/components/invoicing/SendInvoiceModal.tsx` -- wrap send action |
-| Edit | `src/components/ProjectStatusDropdown.tsx` -- wrap close/archive |
+| Create | `supabase/migrations/[timestamp]_financial_enforcement_level.sql` |
+| Edit | `src/hooks/useProjectIntegrity.ts` -- expose `enforcementLevel` |
+| Edit | `src/components/FinancialIntegrityGate.tsx` -- conditional override hiding |
 
-### 5. Technical Details
+The three integration points (Workflow.tsx, SendInvoiceModal.tsx, ProjectStatusDropdown.tsx) do NOT need changes -- the gate component handles all enforcement logic internally. Server-side RPCs provide the hard block as a second layer of defense.
 
-- The modal component uses existing UI primitives: `Dialog`, `AlertTriangle`, `Textarea`, `Button`, `IntegrityBadge`
-- The `useProjectIntegrity` hook is reused as-is for fetching integrity data
-- The override RPC fetches integrity server-side independently (not trusting client values) to ensure the logged snapshot is authentic
-- Minimum reason length (10 chars) is enforced client-side with the submit button disabled until met
+---
+
+### 4. Technical Notes
+
+- The server-side hard block in `rpc_request_phase_advance` and `rpc_send_invoice` is the true enforcement layer. The frontend hiding of "Continue Anyway" is a UX convenience -- even if bypassed, the server will reject the action.
+- `strict_reporting` behaves identically to `advisory` in terms of allowed actions. The distinction exists for future reporting/audit features that can filter by enforcement level.
+- Only `foreman_approve` and `pm_closeout` phases are checked in `rpc_request_phase_advance` (matching the existing `needsIntegrityGate` logic). Other phases pass through without financial checks.
+- The column uses TEXT + CHECK constraint (not an enum) as specified, making future values additive without migration complexity.
 
