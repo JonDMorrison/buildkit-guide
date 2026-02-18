@@ -53,6 +53,7 @@ const Setup = lazy(() => import("./pages/Setup"));
 const JobCostReport = lazy(() => import("./pages/JobCostReport"));
 const Invoicing = lazy(() => import("./pages/Invoicing"));
 const Estimates = lazy(() => import("./pages/Estimates"));
+const EstimateDetail = lazy(() => import("./pages/EstimateDetail"));
 const Quotes = lazy(() => import("./pages/Quotes"));
 const Proposals = lazy(() => import("./pages/Proposals"));
 const Insights = lazy(() => import("./pages/Insights"));
@@ -414,6 +415,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <Estimates />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/estimates/:estimateId"
+                  element={
+                    <ProtectedRoute>
+                      <EstimateDetail />
                     </ProtectedRoute>
                   }
                 />
