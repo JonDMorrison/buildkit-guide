@@ -33,6 +33,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { ArrowLeft, AlertTriangle, Shield, CheckCircle2, FileText, Users, Calendar, Plus, MoreVertical, Archive, Receipt, Pencil, FileImage, Trash2, Zap } from 'lucide-react';
+import { IntegrityBadge } from '@/components/IntegrityBadge';
+import { useProjectIntegrity } from '@/hooks/useProjectIntegrity';
 import { ProjectScopeTab } from '@/components/scope/ProjectScopeTab';
 import { ProjectBudgetTab } from '@/components/budget/ProjectBudgetTab';
 import { ProjectStatusDropdown } from '@/components/ProjectStatusDropdown';
@@ -75,6 +77,7 @@ const ProjectOverview = () => {
   const [editModalOpen, setEditModalOpen] = useState(false);
 
   const canManageProject = projectId ? can('manage_project', projectId) : false;
+  const { integrity } = useProjectIntegrity(projectId ?? null);
 
   useEffect(() => {
     if (!projectId) return;
@@ -207,6 +210,13 @@ const ProjectOverview = () => {
                 <Badge variant="outline" className="text-sm font-mono">
                   #{project.job_number}
                 </Badge>
+              )}
+              {integrity && (
+                <IntegrityBadge
+                  status={integrity.status}
+                  score={integrity.score}
+                  blockers={integrity.blockers}
+                />
               )}
             </div>
             <div className="flex items-center gap-3">

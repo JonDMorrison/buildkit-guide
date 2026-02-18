@@ -2,6 +2,8 @@ import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Progress } from "./ui/progress";
 import { ChevronRight } from "lucide-react";
+import { IntegrityBadge } from "./IntegrityBadge";
+import type { IntegrityStatus } from "@/hooks/useProjectIntegrity";
 
 interface ProjectCardProps {
   name: string;
@@ -14,6 +16,11 @@ interface ProjectCardProps {
   };
   blockedTasks: number;
   safetyCompliance: number;
+  integrity?: {
+    status: IntegrityStatus;
+    score: number;
+    blockers: string[];
+  } | null;
 }
 
 const statusConfig = {
@@ -31,7 +38,7 @@ const statusConfig = {
   },
 };
 
-export const ProjectCard = ({ name, jobNumber, location, status, tasks, blockedTasks, safetyCompliance }: ProjectCardProps) => {
+export const ProjectCard = ({ name, jobNumber, location, status, tasks, blockedTasks, safetyCompliance, integrity }: ProjectCardProps) => {
   const statusInfo = statusConfig[status];
   const completion = tasks.total > 0 ? Math.round((tasks.completed / tasks.total) * 100) : 0;
 
@@ -67,9 +74,19 @@ export const ProjectCard = ({ name, jobNumber, location, status, tasks, blockedT
           <span className="text-muted-foreground">
             Blocked: <span className={blockedTasks > 0 ? "text-status-issue font-medium" : ""}>{blockedTasks}</span>
           </span>
-          <span className="text-muted-foreground">
-            Safety: <span className="text-status-complete font-medium">{safetyCompliance}%</span>
-          </span>
+          <div className="flex items-center gap-3">
+            {integrity && (
+              <IntegrityBadge
+                status={integrity.status}
+                score={integrity.score}
+                blockers={integrity.blockers}
+                compact
+              />
+            )}
+            <span className="text-muted-foreground">
+              Safety: <span className="text-status-complete font-medium">{safetyCompliance}%</span>
+            </span>
+          </div>
         </div>
       </div>
     </Card>
