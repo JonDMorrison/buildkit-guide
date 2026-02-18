@@ -3310,6 +3310,44 @@ export type Database = {
           },
         ]
       }
+      quote_events: {
+        Row: {
+          actor_user_id: string
+          created_at: string
+          event_type: string
+          id: string
+          message: string | null
+          metadata: Json | null
+          quote_id: string
+        }
+        Insert: {
+          actor_user_id: string
+          created_at?: string
+          event_type: string
+          id?: string
+          message?: string | null
+          metadata?: Json | null
+          quote_id: string
+        }
+        Update: {
+          actor_user_id?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          message?: string | null
+          metadata?: Json | null
+          quote_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_events_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_line_items: {
         Row: {
           amount: number
@@ -5905,15 +5943,24 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      rpc_log_quote_event: {
-        Args: {
-          p_event_type: string
-          p_message?: string
-          p_metadata?: Json
-          p_quote_id: string
-        }
-        Returns: undefined
-      }
+      rpc_log_quote_event:
+        | {
+            Args: {
+              p_event_type: string
+              p_message?: string
+              p_metadata?: Json
+              p_quote_id: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_event_type: string
+              p_metadata?: Json
+              p_quote_id: string
+            }
+            Returns: undefined
+          }
       rpc_request_phase_advance: {
         Args: { p_notes?: string; p_phase_key: string; p_project_id: string }
         Returns: {
