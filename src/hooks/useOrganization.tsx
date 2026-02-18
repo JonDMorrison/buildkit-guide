@@ -6,6 +6,8 @@ interface Organization {
   id: string;
   name: string;
   slug: string | null;
+  is_sandbox: boolean;
+  sandbox_label: string | null;
 }
 
 interface OrganizationContextType {
@@ -49,7 +51,9 @@ export const OrganizationProvider = ({ children }: { children: ReactNode }) => {
             organizations (
               id,
               name,
-              slug
+              slug,
+              is_sandbox,
+              sandbox_label
             )
           `)
           .eq('user_id', user.id)
@@ -63,6 +67,8 @@ export const OrganizationProvider = ({ children }: { children: ReactNode }) => {
             id: (m.organizations as any).id,
             name: (m.organizations as any).name,
             slug: (m.organizations as any).slug,
+            is_sandbox: (m.organizations as any).is_sandbox ?? false,
+            sandbox_label: (m.organizations as any).sandbox_label ?? null,
           })) || [];
 
         setOrganizations(orgs);
