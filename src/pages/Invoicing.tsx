@@ -41,7 +41,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
-  Plus, Users, FileText, Settings, Send, CheckCircle2, Ban,
+  Plus, Users, FileText, Settings, Send, CheckCircle2, Ban, Clock,
   Copy, DollarSign, BarChart3, RefreshCw, CreditCard, Mail,
   Trash2, Pencil, Search, Download, ShieldCheck, Activity,
   CheckSquare, XCircle, AlertTriangle, ChevronDown, ChevronRight, ArrowRightLeft,
@@ -96,6 +96,7 @@ const Invoicing = () => {
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [showCreateInvoice, setShowCreateInvoice] = useState(!!prefillData?.prefillLineItems);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [approvalFilter, setApprovalFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [lineItemsCache, setLineItemsCache] = useState<Record<string, InvoiceLineItem[]>>({});
   const [selectedInvoices, setSelectedInvoices] = useState<Set<string>>(new Set());
@@ -227,6 +228,10 @@ const Invoicing = () => {
     return invoices.filter((inv) => {
       const displayStatus = getDisplayStatus(inv);
       if (statusFilter !== "all" && displayStatus !== statusFilter) return false;
+      if (approvalFilter !== "all") {
+        const as = (inv.approval_status || "none") as string;
+        if (approvalFilter !== as) return false;
+      }
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
         const matchNum = inv.invoice_number?.toLowerCase().includes(q);
@@ -237,7 +242,7 @@ const Invoicing = () => {
       }
       return true;
     });
-  }, [invoices, statusFilter, searchQuery]);
+  }, [invoices, statusFilter, approvalFilter, searchQuery]);
 
   const handleStatusChange = async (invoice: Invoice, newStatus: string) => {
     const updates: Partial<Invoice> = { status: newStatus as any };
@@ -600,6 +605,16 @@ const Invoicing = () => {
                     <SelectItem value="void">Void</SelectItem>
                   </SelectContent>
                 </Select>
+                <Select value={approvalFilter} onValueChange={setApprovalFilter}>
+                  <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Approvals</SelectItem>
+                    <SelectItem value="none">No Approval</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="approved">Approved</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="flex gap-2">
                 {selectedInvoices.size > 0 && (
@@ -664,6 +679,7 @@ const Invoicing = () => {
                           <TableHead>Type</TableHead>
                           <TableHead>Date</TableHead>
                           <TableHead>Status</TableHead>
+                          <TableHead>Approval</TableHead>
                           <TableHead className="text-right">Total</TableHead>
                           <TableHead className="text-right">Balance</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
@@ -692,12 +708,15 @@ const Invoicing = () => {
                                 {invType !== "standard" && (
                                   <Badge variant="outline" className="text-xs">{invoiceTypeLabels[invType] || invType}</Badge>
                                 )}
-                                {approvalStatus === "pending" && <Badge variant="secondary" className="text-xs ml-1">⏳</Badge>}
-                                {approvalStatus === "approved" && <Badge variant="outline" className="text-xs ml-1">✓</Badge>}
-                                {approvalStatus === "rejected" && <Badge variant="destructive" className="text-xs ml-1">✗</Badge>}
                               </TableCell>
                               <TableCell>{format(new Date(inv.issue_date), "MMM d, yyyy")}</TableCell>
                               <TableCell><Badge variant={sc.variant}>{sc.label}</Badge></TableCell>
+                              <TableCell>
+                                {approvalStatus === "none" && <span className="text-xs text-muted-foreground">—</span>}
+                                {approvalStatus === "pending" && <Badge variant="warning" className="text-xs gap-1"><Clock className="h-3 w-3" />Pending</Badge>}
+                                {approvalStatus === "approved" && <Badge variant="success" className="text-xs gap-1"><CheckCircle2 className="h-3 w-3" />Approved</Badge>}
+                                {approvalStatus === "rejected" && <Badge variant="error" className="text-xs gap-1"><XCircle className="h-3 w-3" />Rejected</Badge>}
+                              </TableCell>
                               <TableCell className="text-right font-medium">{fmt(Number(inv.total))}</TableCell>
                               <TableCell className="text-right">{balance > 0 ? fmt(balance) : "—"}</TableCell>
                               <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
@@ -766,7 +785,12 @@ const Invoicing = () => {
                               <p className="text-xs text-muted-foreground">{inv.client?.name || "No client"}</p>
                               {inv.po_number && <p className="text-xs text-muted-foreground">PO: {inv.po_number}</p>}
                             </div>
-                            <Badge variant={sc.variant} className="text-xs">{sc.label}</Badge>
+                            <div className="flex items-center gap-1">
+                              <Badge variant={sc.variant} className="text-xs">{sc.label}</Badge>
+                              {((inv.approval_status || "none") === "pending") && <Badge variant="warning" className="text-xs">Pending</Badge>}
+                              {((inv.approval_status || "none") === "approved") && <Badge variant="success" className="text-xs">Approved</Badge>}
+                              {((inv.approval_status || "none") === "rejected") && <Badge variant="error" className="text-xs">Rejected</Badge>}
+                            </div>
                           </div>
                           <div className="flex justify-between items-end">
                             <span className="text-xs text-muted-foreground">{format(new Date(inv.issue_date), "MMM d, yyyy")}</span>
