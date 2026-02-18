@@ -1012,8 +1012,10 @@ export type Database = {
           customer_pm_phone: string | null
           customer_po_number: string | null
           estimate_number: string
+          gst_total: number | null
           id: string
           internal_notes: string | null
+          labor_cost_rate: number | null
           memo_on_statement: string | null
           note_for_customer: string | null
           organization_id: string
@@ -1028,9 +1030,11 @@ export type Database = {
           planned_profit: number
           planned_total_cost: number
           project_id: string
+          pst_total: number | null
           ship_to_address: string | null
           ship_to_name: string | null
           status: string
+          subtotal: number | null
           updated_at: string
         }
         Insert: {
@@ -1047,8 +1051,10 @@ export type Database = {
           customer_pm_phone?: string | null
           customer_po_number?: string | null
           estimate_number: string
+          gst_total?: number | null
           id?: string
           internal_notes?: string | null
+          labor_cost_rate?: number | null
           memo_on_statement?: string | null
           note_for_customer?: string | null
           organization_id: string
@@ -1063,9 +1069,11 @@ export type Database = {
           planned_profit?: number
           planned_total_cost?: number
           project_id: string
+          pst_total?: number | null
           ship_to_address?: string | null
           ship_to_name?: string | null
           status?: string
+          subtotal?: number | null
           updated_at?: string
         }
         Update: {
@@ -1082,8 +1090,10 @@ export type Database = {
           customer_pm_phone?: string | null
           customer_po_number?: string | null
           estimate_number?: string
+          gst_total?: number | null
           id?: string
           internal_notes?: string | null
+          labor_cost_rate?: number | null
           memo_on_statement?: string | null
           note_for_customer?: string | null
           organization_id?: string
@@ -1098,9 +1108,11 @@ export type Database = {
           planned_profit?: number
           planned_total_cost?: number
           project_id?: string
+          pst_total?: number | null
           ship_to_address?: string | null
           ship_to_name?: string | null
           status?: string
+          subtotal?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -2794,6 +2806,7 @@ export type Database = {
           archived_at: string | null
           created_at: string
           description: string | null
+          estimate_line_item_id: string | null
           id: string
           is_archived: boolean
           item_type: string
@@ -2819,6 +2832,7 @@ export type Database = {
           archived_at?: string | null
           created_at?: string
           description?: string | null
+          estimate_line_item_id?: string | null
           id?: string
           is_archived?: boolean
           item_type?: string
@@ -2844,6 +2858,7 @@ export type Database = {
           archived_at?: string | null
           created_at?: string
           description?: string | null
+          estimate_line_item_id?: string | null
           id?: string
           is_archived?: boolean
           item_type?: string
@@ -2866,6 +2881,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "project_scope_items_estimate_line_item_id_fkey"
+            columns: ["estimate_line_item_id"]
+            isOneToOne: false
+            referencedRelation: "estimate_line_items"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "project_scope_items_organization_id_fkey"
             columns: ["organization_id"]
@@ -5816,6 +5838,7 @@ export type Database = {
           total_cost_delta: number
         }[]
       }
+      rpc_approve_estimate: { Args: { p_estimate_id: string }; Returns: Json }
       rpc_approve_phase: {
         Args: {
           p_approve: boolean
@@ -5907,6 +5930,16 @@ export type Database = {
         Args: { p_org_id: string }
         Returns: Json
       }
+      rpc_create_estimate: { Args: { p_project_id: string }; Returns: Json }
+      rpc_delete_estimate: {
+        Args: { p_estimate_id: string }
+        Returns: undefined
+      }
+      rpc_delete_estimate_line_item: {
+        Args: { p_line_item_id: string }
+        Returns: undefined
+      }
+      rpc_duplicate_estimate: { Args: { p_estimate_id: string }; Returns: Json }
       rpc_ensure_timesheet_period: {
         Args: {
           p_period_end: string
@@ -5936,6 +5969,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      rpc_generate_tasks_from_estimate: {
+        Args: { p_estimate_id: string }
+        Returns: Json
       }
       rpc_get_project_workflow: {
         Args: { p_project_id: string }
@@ -5985,6 +6022,10 @@ export type Database = {
             }
             Returns: undefined
           }
+      rpc_recalculate_estimate_totals: {
+        Args: { p_estimate_id: string }
+        Returns: undefined
+      }
       rpc_request_phase_advance: {
         Args: { p_notes?: string; p_phase_key: string; p_project_id: string }
         Returns: {
@@ -6074,9 +6115,21 @@ export type Database = {
         Args: { p_org_id: string }
         Returns: Json
       }
+      rpc_update_estimate_header: {
+        Args: { p_estimate_id: string; p_patch: Json }
+        Returns: Json
+      }
       rpc_update_project_status: {
         Args: { p_project_id: string; p_status: string }
         Returns: undefined
+      }
+      rpc_upsert_estimate_line_item: {
+        Args: {
+          p_estimate_id: string
+          p_line_item_id?: string
+          p_payload?: Json
+        }
+        Returns: Json
       }
       shares_any_project: {
         Args: { p_actor_id: string; p_org_id: string; p_target_id: string }
