@@ -5,9 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useEstimates } from "@/hooks/useEstimates";
-import { AlertTriangle, TrendingDown, TrendingUp } from "lucide-react";
+import { AlertTriangle, TrendingDown, TrendingUp, Globe } from "lucide-react";
 import type { EstimateVarianceSummary } from "@/types/estimates";
 
 interface Props {
@@ -15,10 +15,9 @@ interface Props {
   onClose: () => void;
 }
 
-const fmt = (v: number) =>
-  new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD" }).format(v);
-
-const DeltaCell = ({ value }: { value: number }) => {
+const DeltaCell = ({ value, currency }: { value: number; currency: string }) => {
+  const fmt = (v: number) =>
+    new Intl.NumberFormat("en-CA", { style: "currency", currency }).format(v);
   const isNeg = value < 0;
   const isPos = value > 0;
   return (
@@ -44,11 +43,23 @@ export const EstimateVarianceView = ({ projectId, onClose }: Props) => {
     load();
   }, [projectId]);
 
+  const cur = data?.currency || "CAD";
+  const fmt = (v: number) =>
+    new Intl.NumberFormat("en-CA", { style: "currency", currency: cur }).format(v);
+
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Estimate vs Actual — Variance Report</DialogTitle>
+          <div className="flex items-center gap-3">
+            <DialogTitle>Estimate vs Actual — Variance Report</DialogTitle>
+            {data?.currency && (
+              <Badge variant="outline" className="text-xs">
+                <Globe className="h-3 w-3 mr-1" />
+                {data.currency}
+              </Badge>
+            )}
+          </div>
         </DialogHeader>
 
         {loading ? (
@@ -57,8 +68,8 @@ export const EstimateVarianceView = ({ projectId, onClose }: Props) => {
           </div>
         ) : !data?.has_estimate ? (
           <div className="text-center py-8 text-muted-foreground">
-            <p>No approved estimate found for this project.</p>
-            <p className="text-sm mt-1">Create and approve an estimate to see the variance report.</p>
+            <p>No estimate found for this project.</p>
+            <p className="text-sm mt-1">Create an estimate (approved or draft) to see the variance report.</p>
           </div>
         ) : (
           <div className="space-y-6">
@@ -98,8 +109,8 @@ export const EstimateVarianceView = ({ projectId, onClose }: Props) => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Category</TableHead>
-                      <TableHead className="text-right">Planned</TableHead>
-                      <TableHead className="text-right">Actual</TableHead>
+                      <TableHead className="text-right">Planned ({cur})</TableHead>
+                      <TableHead className="text-right">Actual ({cur})</TableHead>
                       <TableHead className="text-right">Delta</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -109,32 +120,32 @@ export const EstimateVarianceView = ({ projectId, onClose }: Props) => {
                       <TableCell className="text-right">{data.planned.labor_hours}h</TableCell>
                       <TableCell className="text-right">{data.actual.labor_hours}h</TableCell>
                       <TableCell className="text-right">
-                        <DeltaCell value={data.deltas.labor_hours} />
+                        <DeltaCell value={data.deltas.labor_hours} currency={cur} />
                       </TableCell>
                     </TableRow>
                     <TableRow>
                       <TableCell className="font-medium">Labor Cost</TableCell>
                       <TableCell className="text-right">{fmt(data.planned.labor_bill_amount)}</TableCell>
                       <TableCell className="text-right">{fmt(data.actual.labor_cost)}</TableCell>
-                      <TableCell className="text-right"><DeltaCell value={data.deltas.labor_cost} /></TableCell>
+                      <TableCell className="text-right"><DeltaCell value={data.deltas.labor_cost} currency={cur} /></TableCell>
                     </TableRow>
                     <TableRow>
                       <TableCell className="font-medium">Materials</TableCell>
                       <TableCell className="text-right">{fmt(data.planned.material_cost)}</TableCell>
                       <TableCell className="text-right">{fmt(data.actual.material_cost)}</TableCell>
-                      <TableCell className="text-right"><DeltaCell value={data.deltas.material} /></TableCell>
+                      <TableCell className="text-right"><DeltaCell value={data.deltas.material} currency={cur} /></TableCell>
                     </TableRow>
                     <TableRow>
                       <TableCell className="font-medium">Machine</TableCell>
                       <TableCell className="text-right">{fmt(data.planned.machine_cost)}</TableCell>
                       <TableCell className="text-right">{fmt(data.actual.machine_cost)}</TableCell>
-                      <TableCell className="text-right"><DeltaCell value={data.deltas.machine} /></TableCell>
+                      <TableCell className="text-right"><DeltaCell value={data.deltas.machine} currency={cur} /></TableCell>
                     </TableRow>
                     <TableRow>
                       <TableCell className="font-medium">Other</TableCell>
                       <TableCell className="text-right">{fmt(data.planned.other_cost)}</TableCell>
                       <TableCell className="text-right">{fmt(data.actual.other_cost)}</TableCell>
-                      <TableCell className="text-right"><DeltaCell value={data.deltas.other} /></TableCell>
+                      <TableCell className="text-right"><DeltaCell value={data.deltas.other} currency={cur} /></TableCell>
                     </TableRow>
                     {data.actual.unclassified_cost > 0 && (
                       <TableRow className="bg-yellow-500/5">
@@ -150,15 +161,16 @@ export const EstimateVarianceView = ({ projectId, onClose }: Props) => {
                       <TableCell>Total Cost</TableCell>
                       <TableCell className="text-right">{fmt(data.planned.total_cost)}</TableCell>
                       <TableCell className="text-right">{fmt(data.actual.total_cost)}</TableCell>
-                      <TableCell className="text-right"><DeltaCell value={data.deltas.total_cost} /></TableCell>
+                      <TableCell className="text-right"><DeltaCell value={data.deltas.total_cost} currency={cur} /></TableCell>
                     </TableRow>
                   </TableBody>
                 </Table>
               </div>
             </Card>
 
-            {/* Diagnostics */}
+            {/* Diagnostics / Flags */}
             {(data.diagnostics.missing_cost_rates_hours > 0 ||
+              data.diagnostics.currency_mismatch_detected ||
               data.diagnostics.unassigned_time_hours > 0 ||
               data.diagnostics.unclassified_receipts_amount > 0) && (
               <div className="space-y-2">
@@ -167,8 +179,19 @@ export const EstimateVarianceView = ({ projectId, onClose }: Props) => {
                 </p>
                 {data.diagnostics.missing_cost_rates_hours > 0 && (
                   <Alert variant="default">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Unrated Labor Hours</AlertTitle>
                     <AlertDescription>
-                      <strong>{data.diagnostics.missing_cost_rates_hours}h</strong> of time entries have no cost rate assigned.
+                      <strong>{data.diagnostics.missing_cost_rates_hours}h</strong> ({data.diagnostics.missing_cost_rates_count} entries) have no cost rate — labor cost is understated.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                {data.diagnostics.currency_mismatch_detected && (
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Currency Mismatch</AlertTitle>
+                    <AlertDescription>
+                      <strong>{data.diagnostics.currency_mismatch_hours}h</strong> ({data.diagnostics.currency_mismatch_count} entries) excluded — member rate currency doesn't match org base currency.
                     </AlertDescription>
                   </Alert>
                 )}

@@ -32,8 +32,8 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
   archived: { label: "Archived", variant: "outline" },
 };
 
-const formatCurrency = (v: number) =>
-  new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD" }).format(v);
+const fmtCurrency = (v: number, currency = "CAD") =>
+  new Intl.NumberFormat("en-CA", { style: "currency", currency }).format(v);
 
 const Estimates = () => {
   const { currentProjectId } = useCurrentProject();
@@ -131,15 +131,15 @@ const Estimates = () => {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <Card><CardContent className="p-4">
                   <p className="text-xs text-muted-foreground">Contract Value</p>
-                  <p className="text-lg font-bold">{formatCurrency(approvedEstimate.contract_value)}</p>
+                  <p className="text-lg font-bold">{fmtCurrency(approvedEstimate.contract_value, (approvedEstimate as any).currency)}</p>
                 </CardContent></Card>
                 <Card><CardContent className="p-4">
                   <p className="text-xs text-muted-foreground">Planned Cost</p>
-                  <p className="text-lg font-bold">{formatCurrency(approvedEstimate.planned_total_cost)}</p>
+                  <p className="text-lg font-bold">{fmtCurrency(approvedEstimate.planned_total_cost, (approvedEstimate as any).currency)}</p>
                 </CardContent></Card>
                 <Card><CardContent className="p-4">
                   <p className="text-xs text-muted-foreground">Planned Profit</p>
-                  <p className="text-lg font-bold">{formatCurrency(approvedEstimate.planned_profit)}</p>
+                  <p className="text-lg font-bold">{fmtCurrency(approvedEstimate.planned_profit, (approvedEstimate as any).currency)}</p>
                 </CardContent></Card>
                 <Card><CardContent className="p-4">
                   <p className="text-xs text-muted-foreground">Margin</p>
@@ -192,8 +192,8 @@ const Estimates = () => {
                             >
                               <TableCell className="font-medium">{est.estimate_number}</TableCell>
                               <TableCell><Badge variant={sc.variant}>{sc.label}</Badge></TableCell>
-                              <TableCell className="text-right">{formatCurrency(est.contract_value)}</TableCell>
-                              <TableCell className="text-right">{formatCurrency(est.planned_total_cost)}</TableCell>
+                              <TableCell className="text-right">{fmtCurrency(est.contract_value, (est as any).currency)}</TableCell>
+                              <TableCell className="text-right">{fmtCurrency(est.planned_total_cost, (est as any).currency)}</TableCell>
                               <TableCell className="text-right">{est.planned_margin_percent}%</TableCell>
                               <TableCell>{format(new Date(est.created_at), "MMM d, yyyy")}</TableCell>
                               <TableCell className="text-right">
