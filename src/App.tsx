@@ -33,6 +33,7 @@ const AcceptInvite = lazy(() => import("./pages/AcceptInvite"));
 const Welcome = lazy(() => import("./pages/Welcome"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
+const LaborRates = lazy(() => import("./pages/LaborRates"));
 const Documents = lazy(() => import("./pages/Documents"));
 const UserManagement = lazy(() => import("./pages/UserManagement"));
 const AuditLog = lazy(() => import("./pages/AuditLog"));
@@ -266,6 +267,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <NotificationSettings />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/settings/labor-rates"
+                  element={
+                    <ProtectedRoute>
+                      <LaborRates />
                     </ProtectedRoute>
                   }
                 />
