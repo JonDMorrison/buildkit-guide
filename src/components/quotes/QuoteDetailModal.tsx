@@ -34,6 +34,7 @@ interface QuoteEvent {
   created_at: string;
   actor_user_id: string;
   metadata: any;
+  actor_name?: string;
 }
 
 const fmt = (v: number) =>
@@ -66,13 +67,29 @@ export const QuoteDetailModal = ({ quote, canEdit, onClose, onUpdated }: Props) 
       setLineItems(items);
       setConversion(conv);
 
-      // Load events
+      // Load events with actor profiles
       const { data: evts } = await (supabase as any)
         .from('quote_events')
         .select('*')
         .eq('quote_id', quote.id)
         .order('created_at', { ascending: false });
-      setEvents((evts as any[]) || []);
+
+      const rawEvents = (evts as any[]) || [];
+
+      // Fetch actor names
+      const actorIds = [...new Set(rawEvents.map(e => e.actor_user_id).filter(Boolean))];
+      let profileMap: Record<string, string> = {};
+      if (actorIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, full_name')
+          .in('id', actorIds);
+        if (profiles) {
+          profileMap = Object.fromEntries(profiles.map(p => [p.id, p.full_name || 'Unknown']));
+        }
+      }
+
+      setEvents(rawEvents.map(e => ({ ...e, actor_name: profileMap[e.actor_user_id] || 'System' })));
 
       setLoading(false);
     };
@@ -273,15 +290,47 @@ export const QuoteDetailModal = ({ quote, canEdit, onClose, onUpdated }: Props) 
             {events.length > 0 && (
               <div>
                 <p className="text-sm font-semibold mb-2">Activity</p>
-                <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
-                  {events.map(evt => (
-                    <div key={evt.id} className="flex items-start gap-2 text-xs">
-                      <Clock className="h-3 w-3 text-muted-foreground mt-0.5 shrink-0" />
-                      <span className="text-muted-foreground">{format(new Date(evt.created_at), "MMM d, HH:mm")}</span>
-                      <Badge variant="outline" className="text-[10px] h-4 px-1">{evt.event_type}</Badge>
-                      {evt.message && <span>{evt.message}</span>}
-                    </div>
-                  ))}
+                <div className="space-y-2 max-h-[280px] overflow-y-auto">
+                  {events.map(evt => {
+                    const hasMetadata = evt.metadata && Object.keys(evt.metadata).length > 0;
+                    const eventColor =
+                      evt.event_type === 'approved' ? 'text-emerald-600 dark:text-emerald-400' :
+                      evt.event_type === 'rejected' ? 'text-destructive' :
+                      evt.event_type === 'converted' ? 'text-primary' :
+                      'text-muted-foreground';
+
+                    return (
+                      <div key={evt.id} className="border-l-2 border-border pl-3 py-1">
+                        <div className="flex items-center gap-2 text-xs">
+                          <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
+                          <span className="text-muted-foreground">
+                            {format(new Date(evt.created_at), "MMM d, yyyy · HH:mm")}
+                          </span>
+                          <Badge variant="outline" className={cn("text-[10px] h-4 px-1.5", eventColor)}>
+                            {evt.event_type}
+                          </Badge>
+                        </div>
+                        <div className="mt-0.5 ml-5 text-xs">
+                          <span className="font-medium text-foreground">{evt.actor_name}</span>
+                          {evt.message && (
+                            <span className="text-muted-foreground"> — {evt.message}</span>
+                          )}
+                        </div>
+                        {hasMetadata && showDebug && (
+                          <Collapsible>
+                            <CollapsibleTrigger className="ml-5 mt-1 text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1">
+                              <ChevronDown className="h-3 w-3" /> Raw metadata
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                              <pre className="ml-5 mt-1 text-[10px] bg-muted/50 rounded p-2 overflow-auto max-h-[100px] whitespace-pre-wrap break-all">
+                                {JSON.stringify(evt.metadata, null, 2)}
+                              </pre>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

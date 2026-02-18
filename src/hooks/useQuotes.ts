@@ -5,6 +5,19 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import type { Quote, QuoteLineItem, QuoteConversion } from '@/types/quotes';
 
+const logQuoteEvent = async (quoteId: string, eventType: string, metadata: Record<string, any> = {}) => {
+  try {
+    await supabase.rpc('rpc_log_quote_event', {
+      p_quote_id: quoteId,
+      p_event_type: eventType,
+      p_metadata: metadata,
+    });
+  } catch {
+    // Non-blocking — don't fail the main operation
+    console.warn('Failed to log quote event', eventType);
+  }
+};
+
 export const useQuotes = () => {
   const { activeOrganizationId } = useOrganization();
   const { user } = useAuth();
@@ -17,7 +30,7 @@ export const useQuotes = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('quotes')
-      .select('*, projects(name, job_number), clients(name)')
+      .select('*, projects(name, job_number), clients!quotes_client_id_fkey(name)')
       .eq('organization_id', activeOrganizationId)
       .order('created_at', { ascending: false });
     if (error) {
@@ -42,7 +55,6 @@ export const useQuotes = () => {
 
     const { data: qteNum } = await supabase.rpc('get_next_quote_number', { p_org_id: activeOrganizationId });
 
-    // Compute line items
     const computed = lineItems.map((li, i) => {
       const qty = Number(li.quantity) || 0;
       const rate = Number(li.rate) || 0;
@@ -86,6 +98,14 @@ export const useQuotes = () => {
       await supabase.from('quote_line_items').insert(rows as any);
     }
 
+    if (data) {
+      await logQuoteEvent((data as any).id, 'created', {
+        quote_number: (data as any).quote_number,
+        line_item_count: computed.length,
+        total,
+      });
+    }
+
     await fetchQuotes();
     return data;
   };
@@ -99,6 +119,11 @@ export const useQuotes = () => {
       toast({ title: 'Error updating quote', description: error.message, variant: 'destructive' });
       return false;
     }
+
+    // Build diff summary of changed fields
+    const changedFields = Object.keys(updates).filter(k => k !== 'updated_at');
+    await logQuoteEvent(id, 'updated', { changed_fields: changedFields });
+
     await fetchQuotes();
     return true;
   };
@@ -112,6 +137,7 @@ export const useQuotes = () => {
       toast({ title: 'Error approving quote', description: error.message, variant: 'destructive' });
       return false;
     }
+    await logQuoteEvent(id, 'approved');
     toast({ title: 'Quote approved' });
     await fetchQuotes();
     return true;
@@ -126,11 +152,12 @@ export const useQuotes = () => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
       return false;
     }
+    await logQuoteEvent(id, 'sent');
     await fetchQuotes();
     return true;
   };
 
-  const rejectQuote = async (id: string) => {
+  const rejectQuote = async (id: string, reason?: string) => {
     const { error } = await supabase
       .from('quotes')
       .update({ status: 'rejected' } as any)
@@ -139,6 +166,21 @@ export const useQuotes = () => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
       return false;
     }
+    await logQuoteEvent(id, 'rejected', { reason: reason || 'No reason provided' });
+    await fetchQuotes();
+    return true;
+  };
+
+  const archiveQuote = async (id: string) => {
+    const { error } = await supabase
+      .from('quotes')
+      .update({ status: 'archived' } as any)
+      .eq('id', id);
+    if (error) {
+      toast({ title: 'Error archiving quote', description: error.message, variant: 'destructive' });
+      return false;
+    }
+    await logQuoteEvent(id, 'archived');
     await fetchQuotes();
     return true;
   };
@@ -173,6 +215,7 @@ export const useQuotes = () => {
       toast({ title: 'Conversion failed', description: error.message, variant: 'destructive' });
       return null;
     }
+    await logQuoteEvent(quoteId, 'converted', { invoice_id: data });
     toast({ title: 'Quote converted to invoice' });
     await fetchQuotes();
     return data as string;
@@ -190,7 +233,7 @@ export const useQuotes = () => {
   return {
     quotes, loading,
     fetchQuotes, createQuote, updateQuote,
-    approveQuote, markSent, rejectQuote, deleteQuote,
+    approveQuote, markSent, rejectQuote, archiveQuote, deleteQuote,
     fetchLineItems, convertToInvoice, getConversion,
   };
 };
