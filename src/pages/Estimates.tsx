@@ -1,29 +1,34 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { SectionHeader } from "@/components/SectionHeader";
 import { useEstimates } from "@/hooks/useEstimates";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
+import { useOrganization } from "@/hooks/useOrganization";
 import { useOrganizationRole } from "@/hooks/useOrganizationRole";
 import { useToast } from "@/hooks/use-toast";
 import { NoAccess } from "@/components/NoAccess";
 import { CreateEstimateModal } from "@/components/estimates/CreateEstimateModal";
-import { EstimateDetailModal } from "@/components/estimates/EstimateDetailModal";
 import { EstimateVarianceView } from "@/components/estimates/EstimateVarianceView";
+import { supabase } from "@/integrations/supabase/client";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Plus, FileText, CheckCircle2, Copy, Trash2, BarChart3,
+  Plus, FileText, CheckCircle2, Copy, Trash2, BarChart3, Search, Filter,
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, isAfter, isBefore, parseISO, startOfDay, endOfDay } from "date-fns";
 import type { Estimate } from "@/types/estimates";
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -36,7 +41,9 @@ const fmtCurrency = (v: number, currency = "CAD") =>
   `${new Intl.NumberFormat("en-CA", { style: "currency", currency }).format(v)} ${currency}`;
 
 const Estimates = () => {
+  const navigate = useNavigate();
   const { currentProjectId } = useCurrentProject();
+  const { activeOrganizationId } = useOrganization();
   const { role: orgRole, isLoading: orgRoleLoading } = useOrganizationRole();
   const { toast } = useToast();
 
@@ -47,15 +54,51 @@ const Estimates = () => {
 
   const canEdit = orgRole === 'admin' || orgRole === 'pm';
   const [createOpen, setCreateOpen] = useState(false);
-  const [selectedEstimate, setSelectedEstimate] = useState<Estimate | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Estimate | null>(null);
   const [tab, setTab] = useState("all");
   const [varianceProjectId, setVarianceProjectId] = useState<string | null>(null);
 
+  // Filters
+  const [searchQuery, setSearchQuery] = useState("");
+  const [projectFilter, setProjectFilter] = useState<string>("all");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
+  const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
+
+  // Load projects for filter
+  useEffect(() => {
+    if (!activeOrganizationId) return;
+    supabase
+      .from("projects")
+      .select("id, name")
+      .eq("organization_id", activeOrganizationId)
+      .eq("is_deleted", false)
+      .order("name")
+      .then(({ data }) => setProjects((data as any[]) || []));
+  }, [activeOrganizationId]);
+
   const filtered = useMemo(() => {
-    if (tab === "all") return estimates;
-    return estimates.filter(e => e.status === tab);
-  }, [estimates, tab]);
+    let result = estimates;
+    if (tab !== "all") result = result.filter(e => e.status === tab);
+    if (projectFilter !== "all") result = result.filter(e => e.project_id === projectFilter);
+    if (dateFrom) {
+      const from = startOfDay(parseISO(dateFrom));
+      result = result.filter(e => !isBefore(parseISO(e.created_at), from));
+    }
+    if (dateTo) {
+      const to = endOfDay(parseISO(dateTo));
+      result = result.filter(e => !isAfter(parseISO(e.created_at), to));
+    }
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(e =>
+        e.estimate_number.toLowerCase().includes(q) ||
+        e.project?.name?.toLowerCase().includes(q) ||
+        e.client?.name?.toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [estimates, tab, projectFilter, dateFrom, dateTo, searchQuery]);
 
   const approvedEstimate = estimates.find(e => e.status === 'approved');
 
@@ -148,6 +191,37 @@ const Estimates = () => {
               </div>
             )}
 
+            {/* Filters */}
+            <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+              <div className="relative flex-1 sm:max-w-xs">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search estimates..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              {!currentProjectId && (
+                <Select value={projectFilter} onValueChange={setProjectFilter}>
+                  <SelectTrigger className="w-44"><SelectValue placeholder="All Projects" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Projects</SelectItem>
+                    {projects.map(p => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <DatePicker value={dateFrom} onChange={setDateFrom} placeholder="From date" />
+              <DatePicker value={dateTo} onChange={setDateTo} placeholder="To date" />
+              {(searchQuery || projectFilter !== "all" || dateFrom || dateTo) && (
+                <Button variant="ghost" size="sm" onClick={() => { setSearchQuery(""); setProjectFilter("all"); setDateFrom(""); setDateTo(""); }}>
+                  Clear
+                </Button>
+              )}
+            </div>
+
             <Tabs value={tab} onValueChange={setTab}>
               <TabsList>
                 <TabsTrigger value="all">All ({estimates.length})</TabsTrigger>
@@ -173,6 +247,7 @@ const Estimates = () => {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Number</TableHead>
+                          <TableHead>Project</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead className="text-right">Contract</TableHead>
                           <TableHead className="text-right">Planned Cost</TableHead>
@@ -188,9 +263,10 @@ const Estimates = () => {
                             <TableRow
                               key={est.id}
                               className="cursor-pointer hover:bg-muted/50"
-                              onClick={() => setSelectedEstimate(est)}
+                              onClick={() => navigate(`/estimates/${est.id}`)}
                             >
                               <TableCell className="font-medium">{est.estimate_number}</TableCell>
+                              <TableCell className="text-sm text-muted-foreground">{est.project?.name || "—"}</TableCell>
                               <TableCell><Badge variant={sc.variant}>{sc.label}</Badge></TableCell>
                               <TableCell className="text-right">{fmtCurrency(est.contract_value, (est as any).currency)}</TableCell>
                               <TableCell className="text-right">{fmtCurrency(est.planned_total_cost, (est as any).currency)}</TableCell>
@@ -200,7 +276,7 @@ const Estimates = () => {
                                 <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                                   {est.status === 'draft' && canEdit && (
                                     <Button variant="ghost" size="icon" onClick={() => handleApprove(est)} title="Approve">
-                                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                      <CheckCircle2 className="h-4 w-4 text-status-complete" />
                                     </Button>
                                   )}
                                   <Button variant="ghost" size="icon" onClick={() => handleDuplicate(est)} title="Duplicate">
@@ -231,15 +307,6 @@ const Estimates = () => {
           projectId={currentProjectId}
           onClose={() => setCreateOpen(false)}
           onCreated={() => { setCreateOpen(false); fetchEstimates(); }}
-        />
-      )}
-
-      {selectedEstimate && (
-        <EstimateDetailModal
-          estimate={selectedEstimate}
-          canEdit={canEdit}
-          onClose={() => setSelectedEstimate(null)}
-          onUpdated={() => { setSelectedEstimate(null); fetchEstimates(); }}
         />
       )}
 

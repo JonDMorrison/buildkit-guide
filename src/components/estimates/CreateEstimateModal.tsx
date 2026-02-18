@@ -11,6 +11,7 @@ import { useClients } from "@/hooks/useClients";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface Props {
   projectId: string;
@@ -94,17 +95,19 @@ export const CreateEstimateModal = ({ projectId, onClose, onCreated }: Props) =>
     setCustomerPmPhone(client.pm_phone || "");
   }, [clientId, clients]);
 
-  // Auto-populate ship-to from project
+  // Auto-populate ship-to from project + get currency
+  const [projectCurrency, setProjectCurrency] = useState("CAD");
   useEffect(() => {
     const loadProject = async () => {
       const { data } = await supabase
         .from('projects')
-        .select('name, location, billing_address')
+        .select('name, location, billing_address, currency')
         .eq('id', projectId)
         .single();
       if (data) {
         setShipToName((data as any).name || "");
         setShipToAddress((data as any).location || (data as any).billing_address || "");
+        setProjectCurrency((data as any).currency || "CAD");
       }
     };
     loadProject();
@@ -175,14 +178,17 @@ export const CreateEstimateModal = ({ projectId, onClose, onCreated }: Props) =>
     onCreated();
   };
 
-  const formatCurrency = (v: number, currency = "CAD") =>
-    `${new Intl.NumberFormat("en-CA", { style: "currency", currency }).format(v)} ${currency}`;
+  const formatCurrency = (v: number) =>
+    `${new Intl.NumberFormat("en-CA", { style: "currency", currency: projectCurrency }).format(v)} ${projectCurrency}`;
 
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create Estimate</DialogTitle>
+          <div className="flex items-center gap-3">
+            <DialogTitle>Create Estimate</DialogTitle>
+            <Badge variant="outline" className="text-xs">{projectCurrency}</Badge>
+          </div>
         </DialogHeader>
 
         <div className="space-y-6">

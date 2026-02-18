@@ -775,6 +775,47 @@ async function checkEstimateTaskGeneration(): Promise<AuditCheck> {
   );
 }
 
+async function checkEstimateLineItemsRls(): Promise<AuditCheck> {
+  const id = 'estimate_line_items_rls';
+  const name = 'Estimate Line Items RLS + Write Deny';
+  const area = 'Security';
+  const severity: 'P0' = 'P0';
+  const expected = 'Direct INSERT denied on estimate_line_items';
+  try {
+    const { error } = await (supabase as any)
+      .from('estimate_line_items')
+      .insert({ estimate_id: '00000000-0000-0000-0000-000000000000', organization_id: '00000000-0000-0000-0000-000000000000', name: 'TEST' });
+    if (!error) return makeCheck(id, name, area, severity, expected, 'INSERT succeeded (VULNERABILITY)', 'FAIL', 'Direct INSERT was NOT denied.');
+    const denied = error.code === '42501' || (error.message || '').toLowerCase().includes('row-level security');
+    if (!denied) return makeCheck(id, name, area, severity, expected, `Error but not RLS: ${error.message}`, 'FAIL', error.message);
+    return makeCheck(id, name, area, severity, expected, 'Write denied by RLS', 'PASS', `INSERT denied: ${error.message}`);
+  } catch (e: any) {
+    return makeCheck(id, name, area, severity, expected, `Exception: ${e.message}`, 'FAIL', e.message);
+  }
+}
+
+async function checkEstimateCurrencyMatch(): Promise<AuditCheck> {
+  const id = 'estimate_currency_match';
+  const name = 'Estimate Currency = Project Currency';
+  const area = 'Finance';
+  const severity: 'P1' = 'P1';
+  const expected = 'All active estimates have currency matching their project currency';
+  try {
+    const { data, error } = await supabase.rpc('estimate_currency_mismatch_count' as any);
+    if (error) {
+      return makeCheck(id, name, area, severity, expected,
+        'Cannot auto-verify (RPC not found)', 'NEEDS_MANUAL',
+        'Manual: SELECT count(*) FROM estimates e JOIN projects p ON e.project_id=p.id WHERE e.status!=\'archived\' AND COALESCE(e.currency,\'CAD\')!=COALESCE(p.currency,\'CAD\')');
+    }
+    const count = Number(data) || 0;
+    if (count > 0) return makeCheck(id, name, area, severity, expected, `${count} mismatched estimate(s)`, 'FAIL', `${count} estimates have currency != project currency`);
+    return makeCheck(id, name, area, severity, expected, 'All match', 'PASS', '0 mismatches');
+  } catch {
+    return makeCheck(id, name, area, severity, expected, 'Cannot auto-verify', 'NEEDS_MANUAL',
+      'Manual check: compare estimates.currency vs projects.currency for active estimates');
+  }
+}
+
 // -- Main Runner --
 
 export async function runPromptsAudit(projectId: string): Promise<PromptsAuditResult> {
@@ -795,6 +836,8 @@ export async function runPromptsAudit(projectId: string): Promise<PromptsAuditRe
     checkNotificationsHooked(projectId),
     checkEstimatesRls(),
     checkEstimateTaskGeneration(),
+    checkEstimateLineItemsRls(),
+    checkEstimateCurrencyMatch(),
   ]);
 
   const checks: AuditCheck[] = [];
