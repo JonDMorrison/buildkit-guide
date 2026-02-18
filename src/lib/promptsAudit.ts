@@ -1,13 +1,17 @@
 import { supabase } from '@/integrations/supabase/client';
 
-/* ── Types ── */
+// -- Types --
+
+export type AuditStatus = 'PASS' | 'FAIL' | 'NEEDS_MANUAL';
+
 export interface AuditCheck {
   id: string;
   name: string;
   area: string;
   expected: string;
   actual: string;
-  pass: boolean;
+  status: AuditStatus;
+  pass: boolean; // derived: status === 'PASS'
   evidence: string;
   severity: 'P0' | 'P1' | 'P2';
 }
@@ -20,18 +24,26 @@ export interface PromptsAuditResult {
     total: number;
     pass: number;
     fail: number;
+    needs_manual: number;
     blockers: AuditCheck[];
   };
 }
 
-/* ── Helpers ── */
-const q = async (sql: string): Promise<any[]> => {
-  const { data, error } = await (supabase as any).rpc('execute_readonly_sql', { p_sql: sql });
-  if (error) throw error;
-  return data ?? [];
-};
+// -- Helpers --
 
-// Safe single-value query using the supabase client directly
+function makeCheck(
+  id: string,
+  name: string,
+  area: string,
+  severity: 'P0' | 'P1' | 'P2',
+  expected: string,
+  actual: string,
+  status: AuditStatus,
+  evidence: string,
+): AuditCheck {
+  return { id, name, area, severity, expected, actual, status, pass: status === 'PASS', evidence };
+}
+
 const tableExists = async (tableName: string): Promise<{ exists: boolean; count: number }> => {
   try {
     const { count, error } = await (supabase as any)
@@ -44,29 +56,24 @@ const tableExists = async (tableName: string): Promise<{ exists: boolean; count:
   }
 };
 
-/* ── Individual Check Functions ── */
+// -- Individual Checks --
 
 async function checkWorkflowTablesExist(): Promise<AuditCheck> {
   const tables = ['workflow_phases', 'workflow_phase_requirements', 'project_workflows', 'project_workflow_steps'];
   const results: Record<string, { exists: boolean; count: number }> = {};
-
   for (const t of tables) {
     results[t] = await tableExists(t);
   }
-
   const allExist = tables.every(t => results[t].exists);
   const evidence = tables.map(t => `${t}: ${results[t].exists ? `exists (${results[t].count} rows)` : 'NOT FOUND'}`).join('\n');
 
-  return {
-    id: 'workflow_tables',
-    name: 'Workflow Tables Exist',
-    area: 'Schema',
-    expected: 'All 4 workflow tables exist',
-    actual: allExist ? 'All found' : `Missing: ${tables.filter(t => !results[t].exists).join(', ')}`,
-    pass: allExist,
+  return makeCheck(
+    'workflow_tables', 'Workflow Tables Exist', 'Schema', 'P0',
+    'All 4 workflow tables exist',
+    allExist ? 'All found' : `Missing: ${tables.filter(t => !results[t].exists).join(', ')}`,
+    allExist ? 'PASS' : 'FAIL',
     evidence,
-    severity: 'P0',
-  };
+  );
 }
 
 async function checkWorkflowRls(): Promise<AuditCheck> {
@@ -81,7 +88,6 @@ async function checkWorkflowRls(): Promise<AuditCheck> {
       results[t] = { rls: !!row?.rls_enabled, force: !!row?.force_rls };
       if (!row?.rls_enabled || !row?.force_rls) allPass = false;
     } catch {
-      // Try alternative: use the pg_class query via functions
       results[t] = { rls: false, force: false };
       allPass = false;
     }
@@ -91,54 +97,73 @@ async function checkWorkflowRls(): Promise<AuditCheck> {
     `${t}: rls=${results[t]?.rls ?? 'unknown'}, force=${results[t]?.force ?? 'unknown'}`
   ).join('\n');
 
-  return {
-    id: 'workflow_rls',
-    name: 'Workflow RLS + FORCE RLS Enabled',
-    area: 'Security',
-    expected: 'RLS enabled + forced on all workflow tables',
-    actual: allPass ? 'All enabled & forced' : 'Some tables missing RLS/FORCE',
-    pass: allPass,
+  return makeCheck(
+    'workflow_rls', 'Workflow RLS + FORCE RLS Enabled', 'Security', 'P0',
+    'RLS enabled + forced on all workflow tables',
+    allPass ? 'All enabled & forced' : 'Some tables missing RLS/FORCE',
+    allPass ? 'PASS' : 'FAIL',
     evidence,
-    severity: 'P0',
-  };
+  );
 }
 
+// B) Fixed: only PASS on genuine RLS denial (42501 or 'row-level security')
 async function checkWorkflowWriteDeny(): Promise<AuditCheck> {
+  const id = 'workflow_write_deny';
+  const name = 'Workflow Write Deny (Client)';
+  const area = 'Security';
+  const severity: 'P0' = 'P0';
+  const expected = 'UPDATE on project_workflow_steps denied by RLS (code 42501)';
+
   try {
+    // 1. Get a real row
+    const { data: rows, error: fetchErr } = await (supabase as any)
+      .from('project_workflow_steps')
+      .select('id')
+      .limit(1);
+
+    if (fetchErr || !rows || rows.length === 0) {
+      return makeCheck(id, name, area, severity, expected,
+        'No rows in project_workflow_steps to test against',
+        'NEEDS_MANUAL', 'Insert workflow steps via rpc_set_project_flow_mode first, then rerun.');
+    }
+
+    const rowId = rows[0].id;
+
+    // 2. Attempt UPDATE on that row
     const { error } = await (supabase as any)
       .from('project_workflow_steps')
-      .insert({
-        project_id: '00000000-0000-0000-0000-000000000000',
-        phase_key: 'test',
-        sort_order: 999,
-        status: 'not_started',
-      });
+      .update({ sort_order: 999 })
+      .eq('id', rowId);
 
-    const denied = !!error;
-    return {
-      id: 'workflow_write_deny',
-      name: 'Workflow Write Deny (Client)',
-      area: 'Security',
-      expected: 'INSERT into project_workflow_steps denied by RLS',
-      actual: denied ? `Denied: ${error.code}` : 'INSERT succeeded (VULNERABILITY)',
-      pass: denied,
-      evidence: denied ? `Error: ${error.message}` : 'No error — direct write allowed',
-      severity: 'P0',
-    };
+    if (!error) {
+      // Update succeeded -- vulnerability
+      return makeCheck(id, name, area, severity, expected,
+        'UPDATE succeeded (VULNERABILITY)', 'FAIL',
+        `Row ${rowId} was updated without RLS denial.`);
+    }
+
+    // 3. Check for RLS-specific denial
+    const code = error.code;
+    const msg = (error.message || '').toLowerCase();
+    const isRlsDenial = code === '42501' || msg.includes('row-level security');
+
+    if (isRlsDenial) {
+      return makeCheck(id, name, area, severity, expected,
+        `Denied: code=${code}`, 'PASS',
+        `Error: ${error.message}`);
+    }
+
+    // 4. Some other error -- not proof of RLS
+    return makeCheck(id, name, area, severity, expected,
+      `Error but not RLS denial: code=${code}`, 'FAIL',
+      `Error: ${error.message} (code: ${code}). This is NOT proof of RLS enforcement.`);
   } catch (e: any) {
-    return {
-      id: 'workflow_write_deny',
-      name: 'Workflow Write Deny (Client)',
-      area: 'Security',
-      expected: 'INSERT denied',
-      actual: 'Exception thrown (treated as deny)',
-      pass: true,
-      evidence: e.message,
-      severity: 'P0',
-    };
+    return makeCheck(id, name, area, severity, expected,
+      `Exception: ${e.message}`, 'FAIL', e.message);
   }
 }
 
+// H) Fixed: use pg_proc query via execute_readonly_sql
 async function checkRpcInventory(): Promise<AuditCheck> {
   const rpcs = [
     'rpc_set_project_flow_mode',
@@ -150,14 +175,37 @@ async function checkRpcInventory(): Promise<AuditCheck> {
     'rpc_update_project_status',
   ];
 
+  try {
+    const sql = `SELECT p.proname FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = 'public' AND p.proname = ANY(ARRAY[${rpcs.map(r => `'${r}'`).join(',')}])`;
+    const { data, error } = await (supabase as any).rpc('execute_readonly_sql', { p_sql: sql });
+
+    if (error) {
+      // Fallback: try calling each RPC with empty args and check if function exists
+      return await checkRpcInventoryFallback(rpcs);
+    }
+
+    const foundNames = (data || []).map((r: any) => r.proname);
+    const missing = rpcs.filter(r => !foundNames.includes(r));
+
+    return makeCheck(
+      'rpc_inventory', 'RPC Inventory Exists', 'Schema', 'P1',
+      `All ${rpcs.length} RPCs exist in pg_proc`,
+      `${foundNames.length}/${rpcs.length} found`,
+      missing.length === 0 ? 'PASS' : 'FAIL',
+      `Found: ${foundNames.join(', ')}\nMissing: ${missing.length ? missing.join(', ') : 'none'}`,
+    );
+  } catch {
+    return await checkRpcInventoryFallback(rpcs);
+  }
+}
+
+async function checkRpcInventoryFallback(rpcs: string[]): Promise<AuditCheck> {
   const found: string[] = [];
   const missing: string[] = [];
 
   for (const rpc of rpcs) {
     try {
-      // Try calling with bogus args — if function exists we get param error, not "function does not exist"
       const { error } = await (supabase as any).rpc(rpc, {});
-      // If no error or error is NOT "function does not exist", it exists
       if (!error || !error.message?.includes('does not exist')) {
         found.push(rpc);
       } else {
@@ -168,41 +216,34 @@ async function checkRpcInventory(): Promise<AuditCheck> {
     }
   }
 
-  return {
-    id: 'rpc_inventory',
-    name: 'RPC Inventory Exists',
-    area: 'Schema',
-    expected: `All ${rpcs.length} RPCs exist`,
-    actual: `${found.length}/${rpcs.length} found`,
-    pass: missing.length === 0,
-    evidence: `Found: ${found.join(', ')}\nMissing: ${missing.length ? missing.join(', ') : 'none'}`,
-    severity: 'P1',
-  };
+  return makeCheck(
+    'rpc_inventory', 'RPC Inventory Exists', 'Schema', 'P1',
+    `All ${rpcs.length} RPCs exist`,
+    `${found.length}/${rpcs.length} found (fallback method)`,
+    missing.length === 0 ? 'PASS' : 'FAIL',
+    `Found: ${found.join(', ')}\nMissing: ${missing.length ? missing.join(', ') : 'none'}\nNote: Used fallback method (pg_proc query unavailable).`,
+  );
 }
 
 async function checkFlowModeToggle(projectId: string): Promise<AuditCheck> {
+  const id = 'flow_mode_toggle';
+  const name = 'Flow Mode Toggle Works';
+  const area = 'Workflow';
+  const severity: 'P1' = 'P1';
+
   if (!projectId) {
-    return {
-      id: 'flow_mode_toggle',
-      name: 'Flow Mode Toggle Works',
-      area: 'Workflow',
-      expected: 'Toggle flow mode and verify',
-      actual: 'No project selected',
-      pass: false,
-      evidence: 'Select a project to run this check',
-      severity: 'P1',
-    };
+    return makeCheck(id, name, area, severity,
+      'Toggle flow mode and verify',
+      'No project selected',
+      'NEEDS_MANUAL', 'Select a project to run this check.');
   }
 
   try {
-    // Set to ai_optimized
     const { error: setErr } = await (supabase as any).rpc('rpc_set_project_flow_mode', {
-      p_project_id: projectId,
-      p_flow_mode: 'ai_optimized',
+      p_project_id: projectId, p_flow_mode: 'ai_optimized',
     });
     if (setErr) throw setErr;
 
-    // Read back
     const { data: wf, error: getErr } = await (supabase as any).rpc('rpc_get_project_workflow', {
       p_project_id: projectId,
     });
@@ -211,46 +252,40 @@ async function checkFlowModeToggle(projectId: string): Promise<AuditCheck> {
     const mode = wf?.flow_mode;
     const hasPhases = Array.isArray(wf?.phases) && wf.phases.length > 0;
     const currentPhase = wf?.current_phase;
-
     const pass = mode === 'ai_optimized' && hasPhases;
 
-    // Restore to standard
+    // Restore
     await (supabase as any).rpc('rpc_set_project_flow_mode', {
-      p_project_id: projectId,
-      p_flow_mode: 'standard',
+      p_project_id: projectId, p_flow_mode: 'standard',
     });
 
-    return {
-      id: 'flow_mode_toggle',
-      name: 'Flow Mode Toggle Works',
-      area: 'Workflow',
-      expected: 'mode=ai_optimized, phases initialized, current_phase set',
-      actual: `mode=${mode}, phases=${wf?.phases?.length ?? 0}, current_phase=${currentPhase}`,
-      pass,
-      evidence: JSON.stringify({ mode, phase_count: wf?.phases?.length, current_phase: currentPhase }),
-      severity: 'P1',
-    };
+    return makeCheck(id, name, area, severity,
+      'mode=ai_optimized, phases initialized, current_phase set',
+      `mode=${mode}, phases=${wf?.phases?.length ?? 0}, current_phase=${currentPhase}`,
+      pass ? 'PASS' : 'FAIL',
+      JSON.stringify({ mode, phase_count: wf?.phases?.length, current_phase: currentPhase }),
+    );
   } catch (e: any) {
-    return {
-      id: 'flow_mode_toggle',
-      name: 'Flow Mode Toggle Works',
-      area: 'Workflow',
-      expected: 'Toggle succeeds',
-      actual: `Error: ${e.message}`,
-      pass: false,
-      evidence: e.message,
-      severity: 'P1',
-    };
+    return makeCheck(id, name, area, severity,
+      'Toggle succeeds', `Error: ${e.message}`, 'FAIL', e.message);
   }
 }
 
-async function checkQuoteStatusAndEvents(): Promise<AuditCheck> {
-  const expectedStatuses = ['draft', 'sent', 'approved', 'rejected', 'archived'];
+// F) Fixed: never hard-code PASS
+async function checkSidebarGating(): Promise<AuditCheck> {
+  return makeCheck(
+    'sidebar_gating', 'Sidebar "Workflow" Nav Gating', 'UI', 'P2',
+    'Workflow nav only visible when ai_optimized enabled',
+    'Cannot be verified automatically from audit runner',
+    'NEEDS_MANUAL',
+    'Manual test: Enable ai_optimized for a project, confirm "Workflow" appears in sidebar. Disable and confirm it disappears.',
+  );
+}
 
-  // Check quote_events table exists
+// 7) Quote Status + Events
+async function checkQuoteStatusAndEvents(): Promise<AuditCheck> {
   const eventsTable = await tableExists('quote_events');
 
-  // Check write-deny on quote_events
   let writeDenied = false;
   try {
     const { error } = await (supabase as any)
@@ -265,33 +300,29 @@ async function checkQuoteStatusAndEvents(): Promise<AuditCheck> {
     writeDenied = true;
   }
 
-  // Check if any quote_events exist
-  const { count: eventCount } = await (supabase as any)
-    .from('quote_events')
-    .select('*', { count: 'exact', head: true });
-
-  // Check quotes statuses via a sample query
   const { data: statusSample } = await (supabase as any)
     .from('quotes')
     .select('status')
     .limit(100);
   const foundStatuses = [...new Set((statusSample || []).map((r: any) => r.status))];
-
   const pass = eventsTable.exists && writeDenied;
 
-  return {
-    id: 'quote_status_events',
-    name: 'Quote Status Enum + Events',
-    area: 'Quotes',
-    expected: `quote_events exists, write-denied to client, statuses: ${expectedStatuses.join(',')}`,
-    actual: `table=${eventsTable.exists}, write_denied=${writeDenied}, events_count=${eventCount ?? 0}, found_statuses=[${foundStatuses.join(',')}]`,
-    pass,
-    evidence: `Expected statuses: ${expectedStatuses.join(',')}\nFound statuses in data: ${foundStatuses.join(',') || 'no quotes'}\nEvents table rows: ${eventCount ?? 0}\nWrite denied: ${writeDenied}`,
-    severity: 'P0',
-  };
+  return makeCheck(
+    'quote_status_events', 'Quote Status Enum + Events', 'Quotes', 'P0',
+    'quote_events exists and is write-denied to client',
+    `table=${eventsTable.exists}, write_denied=${writeDenied}, found_statuses=[${foundStatuses.join(',')}]`,
+    pass ? 'PASS' : 'FAIL',
+    `Events table rows: ${eventsTable.count}\nWrite denied: ${writeDenied}\nFound statuses: ${foundStatuses.join(',') || 'no quotes'}`,
+  );
 }
 
+// C) Fixed: use quote_conversions properly, no auto-conversion
 async function checkQuoteConversion(): Promise<AuditCheck> {
+  const id = 'quote_conversion';
+  const name = 'Quote -> Invoice Conversion';
+  const area = 'Conversion';
+  const severity: 'P0' = 'P0';
+
   // Find an approved quote
   const { data: approvedQuotes } = await (supabase as any)
     .from('quotes')
@@ -300,93 +331,70 @@ async function checkQuoteConversion(): Promise<AuditCheck> {
     .limit(1);
 
   if (!approvedQuotes || approvedQuotes.length === 0) {
-    return {
-      id: 'quote_conversion',
-      name: 'Quote → Invoice Conversion',
-      area: 'Conversion',
-      expected: 'Convert approved quote to invoice, idempotent',
-      actual: 'No approved quotes found to test',
-      pass: false,
-      evidence: 'No approved quotes exist. Create and approve a quote first.',
-      severity: 'P0',
-    };
+    return makeCheck(id, name, area, severity,
+      'Convert approved quote to invoice, verify idempotency',
+      'No approved quotes found',
+      'NEEDS_MANUAL',
+      'Create and approve a quote, then rerun audit to test conversion.');
   }
 
   const quoteId = approvedQuotes[0].id;
 
-  // Check if already converted
+  // Check if already converted via quote_conversions
   const { data: existingConversion } = await (supabase as any)
     .from('quote_conversions')
     .select('invoice_id')
     .eq('quote_id', quoteId)
     .maybeSingle();
 
-  if (existingConversion) {
-    // Already converted — test idempotency by trying again
-    try {
-      const { data: session } = await supabase.auth.getSession();
-      const userId = session?.session?.user?.id;
-      const { data: secondResult, error } = await (supabase as any).rpc('convert_quote_to_invoice', {
-        p_quote_id: quoteId,
-        p_actor_id: userId,
-      });
-
-      const idempotent = !error && secondResult === existingConversion.invoice_id;
-
-      return {
-        id: 'quote_conversion',
-        name: 'Quote → Invoice Conversion',
-        area: 'Conversion',
-        expected: 'Second conversion returns same invoice_id',
-        actual: idempotent ? `Same invoice_id: ${secondResult}` : `Different: ${secondResult} vs ${existingConversion.invoice_id}`,
-        pass: idempotent,
-        evidence: `First: ${existingConversion.invoice_id}, Second: ${secondResult}, Error: ${error?.message ?? 'none'}`,
-        severity: 'P0',
-      };
-    } catch (e: any) {
-      return {
-        id: 'quote_conversion',
-        name: 'Quote → Invoice Conversion',
-        area: 'Conversion',
-        expected: 'Idempotent conversion',
-        actual: `Error: ${e.message}`,
-        pass: false,
-        evidence: e.message,
-        severity: 'P0',
-      };
-    }
+  if (!existingConversion) {
+    return makeCheck(id, name, area, severity,
+      'Approved quote convertible and idempotent',
+      `Quote ${approvedQuotes[0].quote_number} is approved but not yet converted`,
+      'NEEDS_MANUAL',
+      'Click Convert in the Quote Detail UI, then rerun audit to verify idempotency.');
   }
 
-  // Not yet converted — skip actual conversion to avoid side effects
-  return {
-    id: 'quote_conversion',
-    name: 'Quote → Invoice Conversion',
-    area: 'Conversion',
-    expected: 'Approved quote convertible',
-    actual: 'Approved quote found but not yet converted. Run manually to test.',
-    pass: false,
-    evidence: `Quote ${approvedQuotes[0].quote_number} (${quoteId}) is approved but not converted. Use Convert button to test.`,
-    severity: 'P0',
-  };
+  // Already converted -- test idempotency
+  try {
+    const { data: session } = await supabase.auth.getSession();
+    const userId = session?.session?.user?.id;
+    const { data: secondResult, error } = await (supabase as any).rpc('convert_quote_to_invoice', {
+      p_quote_id: quoteId,
+      p_actor_id: userId,
+    });
+
+    const idempotent = !error && secondResult === existingConversion.invoice_id;
+
+    return makeCheck(id, name, area, severity,
+      'Second conversion returns same invoice_id (idempotent)',
+      idempotent ? `Same invoice_id: ${secondResult}` : `Mismatch: got=${secondResult}, expected=${existingConversion.invoice_id}`,
+      idempotent ? 'PASS' : 'FAIL',
+      `First: ${existingConversion.invoice_id}, Second: ${secondResult}, Error: ${error?.message ?? 'none'}`);
+  } catch (e: any) {
+    return makeCheck(id, name, area, severity,
+      'Idempotent conversion', `Error: ${e.message}`, 'FAIL', e.message);
+  }
 }
 
+// D) Fixed: use quote_conversions, require all snapshot fields
 async function checkConversionSnapshots(): Promise<AuditCheck> {
+  const id = 'conversion_snapshots';
+  const name = 'Conversion Snapshots';
+  const area = 'Conversion';
+  const severity: 'P0' = 'P0';
+
   const { data: conversions } = await (supabase as any)
     .from('quote_conversions')
     .select('quote_id, invoice_id')
     .limit(1);
 
   if (!conversions || conversions.length === 0) {
-    return {
-      id: 'conversion_snapshots',
-      name: 'Conversion Snapshots',
-      area: 'Conversion',
-      expected: 'Invoice has bill_to from parent client, ship_to from project',
-      actual: 'No conversions exist',
-      pass: false,
-      evidence: 'No quote_conversions rows found.',
-      severity: 'P0',
-    };
+    return makeCheck(id, name, area, severity,
+      'Invoice has bill_to, ship_to, send_to_emails from conversion',
+      'No conversions exist',
+      'NEEDS_MANUAL',
+      'Convert a quote to invoice first, then rerun audit.');
   }
 
   const invoiceId = conversions[0].invoice_id;
@@ -397,45 +405,33 @@ async function checkConversionSnapshots(): Promise<AuditCheck> {
     .maybeSingle();
 
   if (!invoice) {
-    return {
-      id: 'conversion_snapshots',
-      name: 'Conversion Snapshots',
-      area: 'Conversion',
-      expected: 'Invoice exists with snapshot data',
-      actual: 'Invoice not found',
-      pass: false,
-      evidence: `Invoice ${invoiceId} not found`,
-      severity: 'P0',
-    };
+    return makeCheck(id, name, area, severity,
+      'Invoice exists with snapshot data',
+      `Invoice ${invoiceId} not found`, 'FAIL', `Invoice ${invoiceId} missing from invoices table.`);
   }
 
-  const hasBillTo = !!invoice.bill_to_name || !!invoice.bill_to_address;
-  const hasShipTo = !!invoice.ship_to_name || !!invoice.ship_to_address;
+  const hasBillTo = !!(invoice.bill_to_name || invoice.bill_to_address);
+  const hasShipTo = !!(invoice.ship_to_name || invoice.ship_to_address);
+  const hasSendTo = Array.isArray(invoice.send_to_emails) ? invoice.send_to_emails.length > 0 : !!invoice.send_to_emails;
+  const allPresent = hasBillTo && hasShipTo && hasSendTo;
 
-  return {
-    id: 'conversion_snapshots',
-    name: 'Conversion Snapshots',
-    area: 'Conversion',
-    expected: 'bill_to from parent client, ship_to from project, send_to_emails = AP',
-    actual: `bill_to=${hasBillTo}, ship_to=${hasShipTo}, send_to=${invoice.send_to_emails ?? 'null'}`,
-    pass: hasBillTo,
-    evidence: JSON.stringify(invoice, null, 2),
-    severity: 'P0',
-  };
+  return makeCheck(id, name, area, severity,
+    'bill_to, ship_to, and send_to_emails all populated',
+    `bill_to=${hasBillTo}, ship_to=${hasShipTo}, send_to=${hasSendTo}`,
+    allPresent ? 'PASS' : 'FAIL',
+    JSON.stringify(invoice, null, 2));
 }
 
 async function checkWorkflowRequirement(projectId: string): Promise<AuditCheck> {
+  const id = 'workflow_requirement';
+  const name = 'Workflow Requirement "require_quote_approved"';
+  const area = 'Workflow';
+  const severity: 'P1' = 'P1';
+
   if (!projectId) {
-    return {
-      id: 'workflow_requirement',
-      name: 'Workflow Requirement "require_quote_approved"',
-      area: 'Workflow',
-      expected: 'Server-side evaluation',
-      actual: 'No project selected',
-      pass: false,
-      evidence: 'Select a project to test.',
-      severity: 'P1',
-    };
+    return makeCheck(id, name, area, severity,
+      'Server-side evaluation', 'No project selected',
+      'NEEDS_MANUAL', 'Select a project to test.');
   }
 
   try {
@@ -444,7 +440,6 @@ async function checkWorkflowRequirement(projectId: string): Promise<AuditCheck> 
     });
     if (error) throw error;
 
-    // Look for require_quote_approved in any phase requirements
     const phases = wf?.phases ?? [];
     let found = false;
     let reqPassed: boolean | null = null;
@@ -457,32 +452,18 @@ async function checkWorkflowRequirement(projectId: string): Promise<AuditCheck> 
       }
     }
 
-    return {
-      id: 'workflow_requirement',
-      name: 'Workflow Requirement "require_quote_approved"',
-      area: 'Workflow',
-      expected: 'Requirement exists and is evaluated server-side',
-      actual: found ? `Found. passed=${reqPassed}` : 'Not found in any phase',
-      pass: found,
-      evidence: JSON.stringify(phases.map((p: any) => ({ key: p.key, requirements: p.requirements?.map((r: any) => r.type) }))),
-      severity: 'P1',
-    };
+    return makeCheck(id, name, area, severity,
+      'Requirement exists and is evaluated server-side',
+      found ? `Found. passed=${reqPassed}` : 'Not found in any phase',
+      found ? 'PASS' : 'FAIL',
+      JSON.stringify(phases.map((p: any) => ({ key: p.key, requirements: p.requirements?.map((r: any) => r.type) }))));
   } catch (e: any) {
-    return {
-      id: 'workflow_requirement',
-      name: 'Workflow Requirement "require_quote_approved"',
-      area: 'Workflow',
-      expected: 'Evaluated server-side',
-      actual: `Error: ${e.message}`,
-      pass: false,
-      evidence: e.message,
-      severity: 'P1',
-    };
+    return makeCheck(id, name, area, severity,
+      'Evaluated server-side', `Error: ${e.message}`, 'FAIL', e.message);
   }
 }
 
 async function checkProjectStatusConstraint(): Promise<AuditCheck> {
-  // Check if rpc_update_project_status exists
   let rpcExists = false;
   try {
     const { error } = await (supabase as any).rpc('rpc_update_project_status', {});
@@ -491,92 +472,74 @@ async function checkProjectStatusConstraint(): Promise<AuditCheck> {
     rpcExists = false;
   }
 
-  // Check constraint by looking at distinct statuses
   const { data: statuses } = await (supabase as any)
     .from('projects')
     .select('status')
     .limit(500);
   const found = [...new Set((statuses || []).map((r: any) => r.status))];
   const allowed = ['not_started', 'in_progress', 'completed', 'archived', 'deleted'];
-
   const unexpected = found.filter((s: string) => !allowed.includes(s));
 
-  return {
-    id: 'project_status',
-    name: 'Project Status Constraint + UI',
-    area: 'Projects',
-    expected: `Constraint: ${allowed.join(',')}, RPC exists with role enforcement`,
-    actual: `RPC exists=${rpcExists}, found_statuses=[${found.join(',')}], unexpected=[${unexpected.join(',')}]`,
-    pass: rpcExists && unexpected.length === 0,
-    evidence: `Allowed: ${allowed.join(',')}\nFound: ${found.join(',') || 'no projects'}\nRPC: ${rpcExists}`,
-    severity: 'P0',
-  };
+  return makeCheck(
+    'project_status', 'Project Status Constraint + UI', 'Projects', 'P0',
+    `Constraint: ${allowed.join(',')}, RPC exists with role enforcement`,
+    `RPC exists=${rpcExists}, found_statuses=[${found.join(',')}], unexpected=[${unexpected.join(',')}]`,
+    rpcExists && unexpected.length === 0 ? 'PASS' : 'FAIL',
+    `Allowed: ${allowed.join(',')}\nFound: ${found.join(',') || 'no projects'}\nRPC: ${rpcExists}`);
 }
 
+// E) Fixed: scoped by projectId
 async function checkNotificationsHooked(projectId: string): Promise<AuditCheck> {
+  const id = 'notifications_hooked';
+  const name = 'Notifications Hooked';
+  const area = 'Notifications';
+  const severity: 'P1' = 'P1';
+
   if (!projectId) {
-    return {
-      id: 'notifications_hooked',
-      name: 'Notifications Hooked',
-      area: 'Notifications',
-      expected: 'Notifications created for key events',
-      actual: 'No project selected',
-      pass: false,
-      evidence: 'Select a project.',
-      severity: 'P1',
-    };
+    return makeCheck(id, name, area, severity,
+      'Notifications created for key events',
+      'No project selected',
+      'NEEDS_MANUAL', 'Select a project to run this check.');
   }
 
   try {
     const { data: notifications, count } = await (supabase as any)
       .from('notifications')
       .select('id, type, link_url, created_at', { count: 'exact' })
-      .limit(20)
-      .order('created_at', { ascending: false });
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false })
+      .limit(20);
 
-    const hasNotifications = (count ?? 0) > 0;
+    const total = count ?? 0;
     const hasLinks = (notifications || []).some((n: any) => n.link_url);
 
-    return {
-      id: 'notifications_hooked',
-      name: 'Notifications Hooked',
-      area: 'Notifications',
-      expected: 'Notifications created for workflow/conversion events with valid link_url',
-      actual: `${count ?? 0} total notifications, links present=${hasLinks}`,
-      pass: hasNotifications,
-      evidence: `Recent: ${JSON.stringify((notifications || []).slice(0, 3).map((n: any) => ({ type: n.type, link_url: n.link_url })))}`,
-      severity: 'P1',
-    };
+    if (total === 0) {
+      return makeCheck(id, name, area, severity,
+        'At least 1 project-scoped notification with valid link_url',
+        'No notifications found for this project',
+        'NEEDS_MANUAL',
+        'Trigger a workflow phase request/approval or quote conversion for this project, then rerun.');
+    }
+
+    const pass = total > 0 && hasLinks;
+    return makeCheck(id, name, area, severity,
+      'At least 1 project-scoped notification with valid link_url',
+      `${total} notifications, links_present=${hasLinks}`,
+      pass ? 'PASS' : 'FAIL',
+      `Recent: ${JSON.stringify((notifications || []).slice(0, 3).map((n: any) => ({ type: n.type, link_url: n.link_url })))}`);
   } catch (e: any) {
-    return {
-      id: 'notifications_hooked',
-      name: 'Notifications Hooked',
-      area: 'Notifications',
-      expected: 'Notifications exist',
-      actual: `Error: ${e.message}`,
-      pass: false,
-      evidence: e.message,
-      severity: 'P1',
-    };
+    return makeCheck(id, name, area, severity,
+      'Notifications exist', `Error: ${e.message}`, 'FAIL', e.message);
   }
 }
 
-async function checkSidebarGating(): Promise<AuditCheck> {
-  // This is a UI state check — we can only report what's expected
-  return {
-    id: 'sidebar_gating',
-    name: 'Sidebar "Workflow" Nav Gating',
-    area: 'UI',
-    expected: 'Workflow nav only visible when ai_optimized enabled',
-    actual: 'Requires manual visual verification — nav gating implemented in useNavigationTabs',
-    pass: true, // Structural check: route exists and is gated
-    evidence: 'Route /workflow exists in App.tsx behind ProtectedRoute. Sidebar visibility controlled by useNavigationTabs based on flow_mode.',
-    severity: 'P2',
-  };
-}
-
+// G) Fixed: never hard-code PASS
 async function checkInvoiceSendGuardrail(): Promise<AuditCheck> {
-  // Check if rpc_send_invoice or send-invoice-email edge function exists
+  const id = 'invoice_send_guardrail';
+  const name = 'Invoice Send Guardrail';
+  const area = 'Invoicing';
+  const severity: 'P1' = 'P1';
+
   let rpcExists = false;
   try {
     const { error } = await (supabase as any).rpc('rpc_send_invoice', {});
@@ -585,37 +548,25 @@ async function checkInvoiceSendGuardrail(): Promise<AuditCheck> {
     rpcExists = false;
   }
 
-  if (!rpcExists) {
-    // Check edge function approach
-    return {
-      id: 'invoice_send_guardrail',
-      name: 'Invoice Send Guardrail',
-      area: 'Invoicing',
-      expected: 'Server-side role enforcement on invoice send',
-      actual: 'rpc_send_invoice not found — send may use edge function (send-invoice-email)',
-      pass: false,
-      evidence: 'RPC does not exist. If using edge function, role check must happen there.',
-      severity: 'P1',
-    };
+  if (rpcExists) {
+    return makeCheck(id, name, area, severity,
+      'Server-side role enforcement on invoice send',
+      'rpc_send_invoice exists but role enforcement not auto-testable',
+      'NEEDS_MANUAL',
+      'Test manually: call rpc_send_invoice as PM (should fail) and as Admin (should succeed).');
   }
 
-  return {
-    id: 'invoice_send_guardrail',
-    name: 'Invoice Send Guardrail',
-    area: 'Invoicing',
-    expected: 'PM denied, Admin succeeds',
-    actual: 'RPC exists — role enforcement assumed server-side',
-    pass: true,
-    evidence: 'rpc_send_invoice found. Manual test needed for role enforcement.',
-    severity: 'P1',
-  };
+  // Check for edge function approach
+  return makeCheck(id, name, area, severity,
+    'Server-side role enforcement on invoice send',
+    'rpc_send_invoice not found; send-invoice-email edge function likely in use',
+    'NEEDS_MANUAL',
+    'Verify that the send-invoice-email edge function enforces role checks before sending. Test as PM vs Admin.');
 }
 
-/* ── Main Runner ── */
-export async function runPromptsAudit(projectId: string): Promise<PromptsAuditResult> {
-  const checks: AuditCheck[] = [];
+// -- Main Runner --
 
-  // Run all checks
+export async function runPromptsAudit(projectId: string): Promise<PromptsAuditResult> {
   const results = await Promise.allSettled([
     checkWorkflowTablesExist(),
     checkWorkflowRls(),
@@ -632,35 +583,28 @@ export async function runPromptsAudit(projectId: string): Promise<PromptsAuditRe
     checkNotificationsHooked(projectId),
   ]);
 
+  const checks: AuditCheck[] = [];
   for (const r of results) {
     if (r.status === 'fulfilled') {
       checks.push(r.value);
     } else {
-      checks.push({
-        id: 'unknown_error',
-        name: 'Check Failed',
-        area: 'System',
-        expected: 'Check completes',
-        actual: `Exception: ${r.reason?.message ?? 'unknown'}`,
-        pass: false,
-        evidence: String(r.reason),
-        severity: 'P0',
-      });
+      checks.push(makeCheck(
+        'unknown_error', 'Check Failed', 'System', 'P0',
+        'Check completes', `Exception: ${r.reason?.message ?? 'unknown'}`,
+        'FAIL', String(r.reason)));
     }
   }
 
-  const failures = checks.filter(c => !c.pass);
-  const blockers = failures.filter(c => c.severity === 'P0');
+  const pass = checks.filter(c => c.status === 'PASS').length;
+  const fail = checks.filter(c => c.status === 'FAIL').length;
+  const needs_manual = checks.filter(c => c.status === 'NEEDS_MANUAL').length;
+  const blockers = checks.filter(c => c.status !== 'PASS' && c.severity === 'P0');
 
   return {
     ran_at: new Date().toISOString(),
-    environment: window.location.hostname.includes('localhost') ? 'local' : window.location.hostname.includes('preview') ? 'staging' : 'production',
+    environment: window.location.hostname.includes('localhost') ? 'local'
+      : window.location.hostname.includes('preview') ? 'staging' : 'production',
     checks,
-    summary: {
-      total: checks.length,
-      pass: checks.filter(c => c.pass).length,
-      fail: failures.length,
-      blockers,
-    },
+    summary: { total: checks.length, pass, fail, needs_manual, blockers },
   };
 }
