@@ -21,7 +21,7 @@ interface SectionDef {
 const SECTIONS: SectionDef[] = [
   {
     title: "Operations",
-    paths: ["/dashboard", "/tasks", "/time", "/hours-tracking", "/lookahead", "/manpower"],
+    paths: ["/dashboard", "/workflow", "/tasks", "/time", "/hours-tracking", "/lookahead", "/manpower"],
   },
   {
     title: "Financial",

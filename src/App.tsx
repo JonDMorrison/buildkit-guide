@@ -60,6 +60,7 @@ const Snapshots = lazy(() => import("./pages/Snapshots"));
 const DocsViewer = lazy(() => import("./pages/DocsViewer"));
 const SystemAudit = lazy(() => import("./pages/SystemAudit"));
 const SecurityIsolationReport = lazy(() => import("./pages/SecurityIsolationReport"));
+const Workflow = lazy(() => import("./pages/Workflow"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -447,6 +448,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <SecurityIsolationReport />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/workflow"
+                  element={
+                    <ProtectedRoute>
+                      <Workflow />
                     </ProtectedRoute>
                   }
                 />

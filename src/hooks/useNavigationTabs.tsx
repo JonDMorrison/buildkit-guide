@@ -1,9 +1,12 @@
 import { useMemo } from "react";
-import { Home, CheckSquare, Calendar, Users, AlertCircle, Shield, Receipt, Clock, Layers, BarChart3, DollarSign, FileText, TrendingUp } from "lucide-react";
+import { Home, CheckSquare, Calendar, Users, AlertCircle, Shield, Receipt, Clock, Layers, BarChart3, DollarSign, FileText, TrendingUp, Workflow } from "lucide-react";
 import { useProjectRole } from "@/hooks/useProjectRole";
 import { useOrganizationRole } from "@/hooks/useOrganizationRole";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useTimeTrackingEnabled } from "@/hooks/useTimeTrackingEnabled";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useCurrentProject } from "@/hooks/useCurrentProject";
 
 /**
  * Navigation tiers:
@@ -20,10 +23,12 @@ export interface TabConfig {
   icon: React.ComponentType<{ className?: string }>;
   tiers: NavTier[];
   requiresTimeTracking?: boolean;
+  requiresWorkflow?: boolean;
 }
 
 export const tabs: TabConfig[] = [
   { name: "Dashboard", path: "/dashboard", icon: Home, tiers: ['all', 'office'] },
+  { name: "Workflow", path: "/workflow", icon: Workflow, tiers: ['all'], requiresWorkflow: true },
   { name: "Tasks", path: "/tasks", icon: CheckSquare, tiers: ['all', 'field', 'minimal'] },
   { name: "Time", path: "/time", icon: Clock, tiers: ['all', 'field', 'minimal'], requiresTimeTracking: true },
   { name: "Hours", path: "/hours-tracking", icon: BarChart3, tiers: ['all', 'office'] },
@@ -45,6 +50,21 @@ export const useNavigationTabs = () => {
   const { role: orgRole, isLoading: orgRoleLoading } = useOrganizationRole();
   const { hasRole, loading: userRoleLoading } = useUserRole();
   const { enabled: timeTrackingEnabled, loading: timeTrackingLoading } = useTimeTrackingEnabled();
+  const { currentProjectId } = useCurrentProject();
+
+  // Lightweight check for workflow mode
+  const { data: workflowEnabled } = useQuery({
+    queryKey: ['project-workflow-mode', currentProjectId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('project_workflows')
+        .select('flow_mode')
+        .eq('project_id', currentProjectId!)
+        .maybeSingle();
+      return data?.flow_mode === 'ai_optimized';
+    },
+    enabled: !!currentProjectId,
+  });
 
   const isLoading = roleLoading || timeTrackingLoading || orgRoleLoading || userRoleLoading;
 
@@ -75,9 +95,10 @@ export const useNavigationTabs = () => {
     return tabs.filter(tab => {
       if (!tab.tiers.includes(navTier)) return false;
       if (tab.requiresTimeTracking && !timeTrackingEnabled) return false;
+      if (tab.requiresWorkflow && !workflowEnabled) return false;
       return true;
     });
-  }, [navTier, timeTrackingEnabled, isLoading]);
+  }, [navTier, timeTrackingEnabled, workflowEnabled, isLoading]);
 
   return { tabs, visibleTabs, isLoading };
 };

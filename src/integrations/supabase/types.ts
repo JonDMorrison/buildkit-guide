@@ -2889,6 +2889,153 @@ export type Database = {
           },
         ]
       }
+      project_workflow_steps: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          organization_id: string
+          phase_key: string
+          project_id: string
+          requested_at: string | null
+          requested_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          organization_id: string
+          phase_key: string
+          project_id: string
+          requested_at?: string | null
+          requested_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          phase_key?: string
+          project_id?: string
+          requested_at?: string | null
+          requested_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_workflow_steps_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_workflow_steps_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_workflow_steps_phase_key_fkey"
+            columns: ["phase_key"]
+            isOneToOne: false
+            referencedRelation: "workflow_phases"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "project_workflow_steps_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_workflow_steps_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_progress"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_workflow_steps_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_workflows: {
+        Row: {
+          created_at: string
+          current_phase: string
+          flow_mode: string
+          id: string
+          organization_id: string
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_phase?: string
+          flow_mode?: string
+          id?: string
+          organization_id: string
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_phase?: string
+          flow_mode?: string
+          id?: string
+          organization_id?: string
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_workflows_current_phase_fkey"
+            columns: ["current_phase"]
+            isOneToOne: false
+            referencedRelation: "workflow_phases"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "project_workflows_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_workflows_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_workflows_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "v_project_progress"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           billing_address: string | null
@@ -4886,6 +5033,68 @@ export type Database = {
           },
         ]
       }
+      workflow_phase_requirements: {
+        Row: {
+          id: string
+          meta: Json
+          phase_key: string
+          requirement_label: string
+          requirement_type: string
+        }
+        Insert: {
+          id?: string
+          meta?: Json
+          phase_key: string
+          requirement_label: string
+          requirement_type: string
+        }
+        Update: {
+          id?: string
+          meta?: Json
+          phase_key?: string
+          requirement_label?: string
+          requirement_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_phase_requirements_phase_key_fkey"
+            columns: ["phase_key"]
+            isOneToOne: false
+            referencedRelation: "workflow_phases"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
+      workflow_phases: {
+        Row: {
+          allowed_approver_roles: string[]
+          allowed_requester_roles: string[]
+          description: string | null
+          is_approval_required: boolean
+          key: string
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          allowed_approver_roles?: string[]
+          allowed_requester_roles?: string[]
+          description?: string | null
+          is_approval_required?: boolean
+          key: string
+          label: string
+          sort_order: number
+        }
+        Update: {
+          allowed_approver_roles?: string[]
+          allowed_requester_roles?: string[]
+          description?: string | null
+          is_approval_required?: boolean
+          key?: string
+          label?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       v_project_progress: {
@@ -5380,6 +5589,34 @@ export type Database = {
           total_cost_delta: number
         }[]
       }
+      rpc_approve_phase: {
+        Args: {
+          p_approve: boolean
+          p_message?: string
+          p_phase_key: string
+          p_project_id: string
+        }
+        Returns: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          organization_id: string
+          phase_key: string
+          project_id: string
+          requested_at: string | null
+          requested_by: string | null
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "project_workflow_steps"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       rpc_approve_timesheet_period: {
         Args: { p_actor_id: string; p_period_id: string }
         Returns: {
@@ -5465,6 +5702,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      rpc_get_project_workflow: {
+        Args: { p_project_id: string }
+        Returns: Json
+      }
       rpc_lock_timesheet_period: {
         Args: { p_actor_id: string; p_period_id: string }
         Returns: {
@@ -5491,6 +5732,29 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      rpc_request_phase_advance: {
+        Args: { p_notes?: string; p_phase_key: string; p_project_id: string }
+        Returns: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          organization_id: string
+          phase_key: string
+          project_id: string
+          requested_at: string | null
+          requested_by: string | null
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "project_workflow_steps"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       rpc_review_time_adjustment_request: {
         Args: {
           p_actor_id: string
@@ -5499,6 +5763,24 @@ export type Database = {
           p_review_note: string
         }
         Returns: Json
+      }
+      rpc_set_project_flow_mode: {
+        Args: { p_flow_mode: string; p_project_id: string }
+        Returns: {
+          created_at: string
+          current_phase: string
+          flow_mode: string
+          id: string
+          organization_id: string
+          project_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "project_workflows"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       rpc_submit_timesheet_period: {
         Args: {
