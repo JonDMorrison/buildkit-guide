@@ -5,14 +5,19 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useQuotes } from "@/hooks/useQuotes";
+import { useOrganizationRole } from "@/hooks/useOrganizationRole";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle2, Send, XCircle, Lock, ArrowRightLeft, Mail, AlertTriangle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { CheckCircle2, Send, XCircle, Lock, ArrowRightLeft, Mail, AlertTriangle, ChevronDown, Bug, Clock } from "lucide-react";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import type { Quote, QuoteLineItem, QuoteConversion } from "@/types/quotes";
 
 interface Props {
@@ -20,6 +25,15 @@ interface Props {
   canEdit: boolean;
   onClose: () => void;
   onUpdated: () => void;
+}
+
+interface QuoteEvent {
+  id: string;
+  event_type: string;
+  message: string | null;
+  created_at: string;
+  actor_user_id: string;
+  metadata: any;
 }
 
 const fmt = (v: number) =>
@@ -30,6 +44,7 @@ export const QuoteDetailModal = ({ quote, canEdit, onClose, onUpdated }: Props) 
     fetchLineItems, approveQuote, markSent, rejectQuote,
     convertToInvoice, getConversion,
   } = useQuotes();
+  const { role: orgRole } = useOrganizationRole();
   const navigate = useNavigate();
 
   const [lineItems, setLineItems] = useState<QuoteLineItem[]>([]);
@@ -37,6 +52,10 @@ export const QuoteDetailModal = ({ quote, canEdit, onClose, onUpdated }: Props) 
   const [conversion, setConversion] = useState<QuoteConversion | null>(null);
   const [showConvertDialog, setShowConvertDialog] = useState(false);
   const [converting, setConverting] = useState(false);
+  const [events, setEvents] = useState<QuoteEvent[]>([]);
+  const [debugOpen, setDebugOpen] = useState(false);
+
+  const showDebug = orgRole === 'admin' || orgRole === 'pm';
 
   useEffect(() => {
     const load = async () => {
@@ -46,6 +65,15 @@ export const QuoteDetailModal = ({ quote, canEdit, onClose, onUpdated }: Props) 
       ]);
       setLineItems(items);
       setConversion(conv);
+
+      // Load events
+      const { data: evts } = await (supabase as any)
+        .from('quote_events')
+        .select('*')
+        .eq('quote_id', quote.id)
+        .order('created_at', { ascending: false });
+      setEvents((evts as any[]) || []);
+
       setLoading(false);
     };
     load();
@@ -64,6 +92,21 @@ export const QuoteDetailModal = ({ quote, canEdit, onClose, onUpdated }: Props) 
       onUpdated();
       navigate("/invoicing");
     }
+  };
+
+  // Debug: conversion readiness
+  const conversionReadiness = {
+    approved: quote.status === 'approved',
+    hasLineItems: lineItems.length > 0,
+    hasProject: !!quote.project_id,
+    pmEmail: quote.customer_pm_email || null,
+    apEmail: quote.bill_to_ap_email || null,
+    billToName: quote.bill_to_name || null,
+    billToAddress: quote.bill_to_address || null,
+    shipToAddress: quote.ship_to_address || null,
+    parentClientId: quote.parent_client_id || null,
+    clientId: quote.client_id || null,
+    convertedInvoiceId: (quote as any).converted_invoice_id || conversion?.invoice_id || null,
   };
 
   return (
@@ -97,7 +140,9 @@ export const QuoteDetailModal = ({ quote, canEdit, onClose, onUpdated }: Props) 
               </div>
               <div>
                 <p className="text-muted-foreground text-xs">Project</p>
-                <p className="font-semibold">{quote.project?.name || "—"}</p>
+                <p className="font-semibold">
+                  {quote.project ? `${quote.project.job_number ? quote.project.job_number + " — " : ""}${quote.project.name}` : "—"}
+                </p>
               </div>
               <div>
                 <p className="text-muted-foreground text-xs">Total</p>
@@ -115,14 +160,12 @@ export const QuoteDetailModal = ({ quote, canEdit, onClose, onUpdated }: Props) 
                   <p>{quote.customer_pm_name}</p>
                 </div>
               )}
-              {quote.customer_pm_email && (
-                <div>
-                  <p className="text-muted-foreground text-xs">PM Email (quote recipient)</p>
-                  <p className="flex items-center gap-1">
-                    <Mail className="h-3 w-3" /> {quote.customer_pm_email}
-                  </p>
-                </div>
-              )}
+              <div>
+                <p className="text-muted-foreground text-xs">Quote Recipient (PM)</p>
+                <p className="flex items-center gap-1 text-sm">
+                  <Mail className="h-3 w-3 text-primary" /> {quote.customer_pm_email || "—"}
+                </p>
+              </div>
             </div>
 
             {/* Addresses */}
@@ -132,8 +175,9 @@ export const QuoteDetailModal = ({ quote, canEdit, onClose, onUpdated }: Props) 
                 <p>{quote.bill_to_name || "—"}</p>
                 <p className="text-muted-foreground">{quote.bill_to_address || ""}</p>
                 {quote.bill_to_ap_email && (
-                  <p className="text-muted-foreground text-xs mt-1">
-                    AP Email (invoice recipient): {quote.bill_to_ap_email}
+                  <p className="text-xs mt-1 flex items-center gap-1">
+                    <Mail className="h-3 w-3 text-amber-500" />
+                    <span className="text-muted-foreground">Invoice Recipient (AP):</span> {quote.bill_to_ap_email}
                   </p>
                 )}
               </div>
@@ -223,6 +267,95 @@ export const QuoteDetailModal = ({ quote, canEdit, onClose, onUpdated }: Props) 
                   </Button>
                 </AlertDescription>
               </Alert>
+            )}
+
+            {/* Audit Trail */}
+            {events.length > 0 && (
+              <div>
+                <p className="text-sm font-semibold mb-2">Activity</p>
+                <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
+                  {events.map(evt => (
+                    <div key={evt.id} className="flex items-start gap-2 text-xs">
+                      <Clock className="h-3 w-3 text-muted-foreground mt-0.5 shrink-0" />
+                      <span className="text-muted-foreground">{format(new Date(evt.created_at), "MMM d, HH:mm")}</span>
+                      <Badge variant="outline" className="text-[10px] h-4 px-1">{evt.event_type}</Badge>
+                      {evt.message && <span>{evt.message}</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Debug Panel */}
+            {showDebug && (
+              <Collapsible open={debugOpen} onOpenChange={setDebugOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="text-muted-foreground gap-2">
+                    <Bug className="h-4 w-4" />
+                    Conversion Check
+                    <ChevronDown className={cn('h-4 w-4 transition-transform', debugOpen && 'rotate-180')} />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <Card className="mt-2">
+                    <CardContent className="pt-4 space-y-3">
+                      <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Status = approved?</span>
+                          <span className={conversionReadiness.approved ? "text-emerald-500" : "text-destructive"}>
+                            {conversionReadiness.approved ? "✓ Yes" : "✗ No"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Has line items?</span>
+                          <span className={conversionReadiness.hasLineItems ? "text-emerald-500" : "text-destructive"}>
+                            {conversionReadiness.hasLineItems ? `✓ ${lineItems.length}` : "✗ No"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Has project?</span>
+                          <span className={conversionReadiness.hasProject ? "text-emerald-500" : "text-destructive"}>
+                            {conversionReadiness.hasProject ? "✓ Yes" : "✗ No"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Quote PM Email</span>
+                          <span>{conversionReadiness.pmEmail || "—"}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Invoice AP Email</span>
+                          <span>{conversionReadiness.apEmail || "—"}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Bill-to client</span>
+                          <span>{conversionReadiness.parentClientId ? "parent" : conversionReadiness.clientId ? "direct" : "—"}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Ship-to source</span>
+                          <span>{conversionReadiness.shipToAddress ? "project.location" : "—"}</span>
+                        </div>
+                      </div>
+                      {conversionReadiness.convertedInvoiceId && (
+                        <div className="text-xs pt-2 border-t">
+                          <span className="text-muted-foreground">Converted Invoice ID: </span>
+                          <Button variant="link" className="p-0 h-auto text-xs" onClick={() => { onClose(); navigate("/invoicing"); }}>
+                            {conversionReadiness.convertedInvoiceId}
+                          </Button>
+                        </div>
+                      )}
+                      <div className="pt-2 border-t">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigator.clipboard.writeText(JSON.stringify(conversionReadiness, null, 2))}
+                        >
+                          Copy JSON
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </CollapsibleContent>
+              </Collapsible>
             )}
 
             {/* Actions */}
