@@ -38,6 +38,9 @@ export interface ActualCosts {
   labor_hours_missing_membership: number;
   labor_entry_count_missing_cost_rate: number;
   labor_entry_count_missing_membership: number;
+  labor_hours_currency_mismatch: number;
+  labor_entry_count_currency_mismatch: number;
+  project_currency: string;
 }
 
 export interface VarianceSummary {

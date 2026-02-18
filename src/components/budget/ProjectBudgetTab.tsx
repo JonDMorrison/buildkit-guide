@@ -403,6 +403,14 @@ function BudgetWarnings({
       });
     }
 
+    if ((actuals as any).labor_hours_currency_mismatch > 0) {
+      warnings.push({
+        title: `${(actuals as any).labor_entry_count_currency_mismatch} entries with currency mismatch`,
+        description: `${Number((actuals as any).labor_hours_currency_mismatch).toFixed(1)}h excluded from costing — member rate currency doesn't match org base currency.`,
+        icon: <AlertCircle className="h-4 w-4" />,
+      });
+    }
+
     if (actuals.unclassified_receipt_count > 0) {
       warnings.push({
         title: `${actuals.unclassified_receipt_count} unclassified receipts`,
