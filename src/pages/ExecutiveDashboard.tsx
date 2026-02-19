@@ -9,7 +9,7 @@ import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip';
 import {
-  RefreshCw, AlertTriangle, TrendingUp, TrendingDown, Minus,
+  RefreshCw, AlertTriangle,
   Shield, Award, Crown, Gem, ExternalLink, BarChart3, Zap, Target,
   HelpCircle, Activity, Copy, Check,
 } from 'lucide-react';
@@ -119,11 +119,6 @@ function RiskBar({ score }: { score: number }) {
   );
 }
 
-function MarginArrow({ margin }: { margin: number }) {
-  if (margin > 15) return <TrendingUp className="h-4 w-4 text-primary inline-block ml-1" />;
-  if (margin > 0)  return <Minus className="h-4 w-4 text-muted-foreground inline-block ml-1" />;
-  return <TrendingDown className="h-4 w-4 text-destructive inline-block ml-1" />;
-}
 
 // ── Cause row with tooltip ────────────────────────────────────────────────
 
@@ -377,7 +372,6 @@ export default function ExecutiveDashboard() {
                       <span className="text-xs text-muted-foreground">Avg projected margin at completion</span>
                       <span className="text-sm font-semibold ml-auto tabular-nums">
                         {margin.toFixed(1)}%
-                        <MarginArrow margin={margin} />
                       </span>
                     </div>
 

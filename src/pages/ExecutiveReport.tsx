@@ -9,7 +9,7 @@ import { useOrganization } from '@/hooks/useOrganization';
 import { Link } from 'react-router-dom';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
-  RefreshCw, AlertTriangle, TrendingUp, TrendingDown, Minus,
+  RefreshCw, AlertTriangle,
   Shield, Award, Crown, Gem, ExternalLink, BarChart3, Zap,
   Copy, Check, Printer, FileText, Target, ShieldAlert, HelpCircle,
 } from 'lucide-react';
@@ -441,23 +441,15 @@ export default function ExecutiveReport() {
               </div>
 
               {/* Avg margin */}
-              <div className="mt-4 rounded-lg border bg-muted/20 p-4 flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Avg Projected Margin at Completion</p>
-                  <p className={`text-2xl font-bold tabular-nums mt-0.5 ${
-                    data.avg_projected_margin_at_completion_percent > 15 ? 'text-primary' :
-                    data.avg_projected_margin_at_completion_percent > 0  ? 'text-accent-foreground' :
-                    'text-destructive'
-                  }`}>
-                    {fmt(data.avg_projected_margin_at_completion_percent)}%
-                  </p>
-                </div>
-                {data.avg_projected_margin_at_completion_percent > 15
-                  ? <TrendingUp  className="h-8 w-8 text-primary opacity-40" />
-                  : data.avg_projected_margin_at_completion_percent > 0
-                  ? <Minus       className="h-8 w-8 text-accent-foreground opacity-40" />
-                  : <TrendingDown className="h-8 w-8 text-destructive opacity-40" />
-                }
+              <div className="mt-4 rounded-lg border bg-muted/20 p-4">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Avg Projected Margin at Completion</p>
+                <p className={`text-2xl font-bold tabular-nums mt-0.5 ${
+                  data.avg_projected_margin_at_completion_percent > 15 ? 'text-primary' :
+                  data.avg_projected_margin_at_completion_percent > 0  ? 'text-accent-foreground' :
+                  'text-destructive'
+                }`}>
+                  {fmt(data.avg_projected_margin_at_completion_percent)}%
+                </p>
               </div>
             </div>
 
