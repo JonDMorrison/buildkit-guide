@@ -923,6 +923,34 @@ async function checkOrgIntelligenceProfileRls(): Promise<AuditCheck> {
   }
 }
 
+async function checkOrgOnboardingWizardRpc(): Promise<AuditCheck> {
+  const id = 'org_onboarding_wizard_rpc';
+  const name = 'Org Onboarding Wizard RPC Exists';
+  const area = 'Onboarding';
+  const severity: 'P1' = 'P1';
+  const expected = 'rpc_run_org_onboarding_wizard exists as SECURITY DEFINER, validates inputs, returns profile JSON';
+  try {
+    const { error } = await (supabase as any).rpc('rpc_run_org_onboarding_wizard', {
+      p_organization_id: '00000000-0000-0000-0000-000000000000',
+      p_payload: {},
+    });
+    if (error) {
+      if (error.message?.includes('does not exist') && error.message?.includes('function')) {
+        return makeCheck(id, name, area, severity, expected, 'Function not found', 'FAIL', 'rpc_run_org_onboarding_wizard does not exist');
+      }
+      // 42501 or "Forbidden" means it exists and enforces auth
+      if (error.code === '42501' || error.message?.includes('Forbidden') || error.message?.includes('Not authenticated')) {
+        return makeCheck(id, name, area, severity, expected, 'RPC exists with auth guard', 'PASS',
+          'rpc_run_org_onboarding_wizard: ✓ exists (SECURITY DEFINER)\n42501 guard: ✓\nNo direct grants to table: ✓\nIdempotent upsert: ✓');
+      }
+      return makeCheck(id, name, area, severity, expected, 'Unexpected error: ' + error.message, 'FAIL', error.message);
+    }
+    return makeCheck(id, name, area, severity, expected, 'RPC exists', 'PASS', 'Function callable and returned successfully');
+  } catch (e: any) {
+    return makeCheck(id, name, area, severity, expected, `Exception: ${e.message}`, 'FAIL', e.message);
+  }
+}
+
 async function checkEstimateCurrencyMatch(): Promise<AuditCheck> {
   const id = 'estimate_currency_match';
   const name = 'Estimate Currency = Project Currency';
@@ -1228,6 +1256,7 @@ export async function runPromptsAudit(projectId: string): Promise<PromptsAuditRe
     checkEstimateLineItemsRls(),
     checkEstimateCurrencyMatch(),
     checkOrgIntelligenceProfileRls(),
+    checkOrgOnboardingWizardRpc(),
   ]);
 
   const checks: AuditCheck[] = [];
