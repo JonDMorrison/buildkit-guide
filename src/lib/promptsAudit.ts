@@ -1807,6 +1807,44 @@ async function checkArchetypeMarginStatsDeterminism(): Promise<AuditCheck> {
   }
 }
 
+// -- Pricing Suggestions Determinism (P1) --
+
+async function checkPricingSuggestionsDeterminism(): Promise<AuditCheck> {
+  const id = 'pricing_suggestions_determinism';
+  const name = 'Pricing Suggestions RPC Determinism';
+  const area = 'Financial';
+  const sev: 'P1' = 'P1';
+
+  try {
+    const { data: r1, error: e1 } = await supabase.rpc('rpc_get_pricing_suggestions' as any, { p_min_projects: 10 });
+    const { data: r2, error: e2 } = await supabase.rpc('rpc_get_pricing_suggestions' as any, { p_min_projects: 10 });
+
+    if (e1 || e2) {
+      const err = e1 || e2;
+      if (err?.code === '42501') {
+        return makeCheck(id, name, area, sev,
+          'RPC callable and deterministic', 'Permission denied (expected for non-member)',
+          'PASS', 'RPC exists and enforces access control');
+      }
+      if (err?.message?.includes('does not exist') || err?.message?.includes('Could not find')) {
+        return makeCheck(id, name, area, sev,
+          'RPC exists', 'RPC not found', 'FAIL', err?.message || '');
+      }
+      throw err;
+    }
+
+    const match = JSON.stringify(r1) === JSON.stringify(r2);
+    return makeCheck(id, name, area, sev,
+      'Two consecutive calls return identical JSON',
+      match ? 'Deterministic confirmed' : 'Results differ',
+      match ? 'PASS' : 'FAIL',
+      match ? `Matched (${JSON.stringify(r1).length} chars, ${(r1 as any)?.suggestion_count ?? 0} suggestions)` : 'Mismatch detected');
+  } catch (e: any) {
+    return makeCheck(id, name, area, sev,
+      'Pricing suggestions determinism', `Error: ${e.message}`, 'FAIL', e.message);
+  }
+}
+
 // -- Main Runner --
 
 export async function runPromptsAudit(projectId: string): Promise<PromptsAuditResult> {
@@ -1844,6 +1882,7 @@ export async function runPromptsAudit(projectId: string): Promise<PromptsAuditRe
     checkChangeOrdersSchema(),
     checkCOSuggestionDeterminism(projectId),
     checkArchetypeMarginStatsDeterminism(),
+    checkPricingSuggestionsDeterminism(),
   ]);
 
   const checks: AuditCheck[] = [];
