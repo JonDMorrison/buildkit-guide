@@ -8135,6 +8135,10 @@ export type Database = {
         Args: { p_data: Json; p_organization_id: string }
         Returns: Json
       }
+      rpc_verify_ai_brain_build: {
+        Args: { p_org_id: string; p_project_id: string }
+        Returns: Json
+      }
       shares_any_project: {
         Args: { p_actor_id: string; p_org_id: string; p_target_id: string }
         Returns: boolean
