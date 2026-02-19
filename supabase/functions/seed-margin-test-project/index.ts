@@ -73,6 +73,7 @@ serve(async (req: Request) => {
         status: "active",
         organization_id: organizationId,
         created_by: user.id,
+        location: "Stress Test Site, Vancouver BC",
         description:
           "Deterministic margin stress project — burn exceeds estimate to verify intervention flags.",
         job_number: "STRESS-001",
