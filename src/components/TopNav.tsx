@@ -3,7 +3,7 @@ import { Search } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { UserMenu } from "./UserMenu";
-import { NotificationsDropdown } from "./notifications/NotificationsDropdown";
+import { ControlCenterDropdown } from "./control-center/ControlCenterDropdown";
 import { SidebarTrigger } from "./ui/sidebar";
 import { GlobalSearchModal } from "./GlobalSearchModal";
 import { useOrganization } from "@/hooks/useOrganization";
@@ -62,7 +62,7 @@ export const TopNav = () => {
               </>
             )}
           </Button>
-          <NotificationsDropdown />
+          <ControlCenterDropdown />
           <UserMenu />
         </div>
       </nav>

@@ -6677,6 +6677,10 @@ export type Database = {
         Args: { p_project_id: string }
         Returns: Json
       }
+      rpc_get_system_integrity_issues: {
+        Args: { p_project_id: string }
+        Returns: Json
+      }
       rpc_get_unrated_labor_summary: {
         Args: { p_project_id?: string }
         Returns: Json

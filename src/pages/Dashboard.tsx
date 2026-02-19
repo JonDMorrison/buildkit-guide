@@ -36,7 +36,6 @@ import {
 import { CertificationBadge } from "@/components/CertificationBadge";
 import { useCertificationTier } from "@/hooks/useCertificationTier";
 import { QuickAddModal } from "@/components/dashboard/QuickAddModal";
-import { UnratedLaborBanner } from "@/components/UnratedLaborBanner";
 import { format, isAfter, isBefore, addDays, startOfDay, subDays } from "date-fns";
 import { Responsive, WidthProvider, Layout as GridLayout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
@@ -456,8 +455,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Unrated Labor Warning */}
-          <UnratedLaborBanner projectId={currentProjectId} />
+          {/* Unrated labor issues now live in Control Center Issues tab */}
 
           {/* Daily Snapshot Strip */}
           <DailySnapshotStrip

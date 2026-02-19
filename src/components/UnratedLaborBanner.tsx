@@ -27,10 +27,10 @@ export function UnratedLaborBanner({ projectId }: UnratedLaborBannerProps) {
       <Alert variant="destructive" className="flex items-start gap-3" data-testid="unrated-labor-banner">
         <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
-          <AlertTitle className="text-sm font-semibold">Job costing is incomplete</AlertTitle>
+          <AlertTitle className="text-sm font-semibold">Labor cost data missing</AlertTitle>
           <AlertDescription className="text-sm mt-1 space-y-1">
             <p>
-              <strong>{totalIssueHours}h</strong> across <strong>{totalIssueEntries}</strong> entries cannot be costed — margins and totals are understated.
+              <strong>{totalIssueEntries}</strong> time {totalIssueEntries === 1 ? 'entry has' : 'entries have'} no rate. Financial totals may be understated.
             </p>
             {summary.currency_mismatch_hours > 0 && (
               <p className="text-xs opacity-80">
