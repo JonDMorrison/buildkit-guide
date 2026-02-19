@@ -1314,6 +1314,64 @@ async function runServerAuditSuite(projectId: string | null): Promise<AuditCheck
   }
 }
 
+// -- Operational Profile Scoring Determinism (P1) --
+
+async function checkScoringDeterminism(): Promise<AuditCheck> {
+  try {
+    // Get current user's org
+    const { data: memberships } = await supabase
+      .from('organization_memberships')
+      .select('organization_id')
+      .eq('is_active', true)
+      .limit(1);
+
+    if (!memberships || memberships.length === 0) {
+      return makeCheck(
+        'scoring_determinism', 'Operational Profile Scoring Determinism', 'Finance', 'P1',
+        'Scoring RPC returns deterministic results', 'No org membership found',
+        'NEEDS_MANUAL', 'Cannot test without an active org membership',
+      );
+    }
+
+    const orgId = memberships[0].organization_id;
+
+    // Call scoring RPC twice
+    const { data: run1, error: err1 } = await supabase.rpc('rpc_calculate_operational_profile_score', {
+      p_organization_id: orgId,
+    });
+    if (err1) throw err1;
+
+    const { data: run2, error: err2 } = await supabase.rpc('rpc_calculate_operational_profile_score', {
+      p_organization_id: orgId,
+    });
+    if (err2) throw err2;
+
+    // Compare scores (exclude computed_at which will differ)
+    const r1 = { ...(run1 as any) };
+    const r2 = { ...(run2 as any) };
+    delete r1.computed_at;
+    delete r2.computed_at;
+
+    const deterministic = JSON.stringify(r1) === JSON.stringify(r2);
+
+    return makeCheck(
+      'scoring_determinism', 'Operational Profile Scoring Determinism', 'Finance', 'P1',
+      'Two consecutive calls return identical scores',
+      deterministic
+        ? `Deterministic — maturity:${r1.maturity_score} risk:${r1.risk_score} auto:${r1.automation_readiness} profit:${r1.profit_visibility_score} control:${r1.control_index}`
+        : `Non-deterministic: run1=${JSON.stringify(r1)}, run2=${JSON.stringify(r2)}`,
+      deterministic ? 'PASS' : 'FAIL',
+      JSON.stringify({ run1: r1, run2: r2 }),
+    );
+  } catch (e: any) {
+    return makeCheck(
+      'scoring_determinism', 'Operational Profile Scoring Determinism', 'Finance', 'P1',
+      'Scoring RPC executes', `Error: ${e.message}`,
+      'FAIL', e.message,
+    );
+  }
+}
+
 // -- Main Runner --
 
 export async function runPromptsAudit(projectId: string): Promise<PromptsAuditResult> {
@@ -1342,6 +1400,7 @@ export async function runPromptsAudit(projectId: string): Promise<PromptsAuditRe
     checkOrgOnboardingWizardRpc(),
     checkWorkflowOrgIntelligence(),
     checkStressTestSimulation(projectId),
+    checkScoringDeterminism(),
   ]);
 
   const checks: AuditCheck[] = [];
