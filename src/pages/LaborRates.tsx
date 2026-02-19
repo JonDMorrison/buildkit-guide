@@ -36,7 +36,8 @@ export default function LaborRates() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const isAdmin = orgRole === "admin" || orgRole === "hr";
+  const canEdit = orgRole === "admin" || orgRole === "hr" || orgRole === "pm";
+  const canView = canEdit || orgRole === "foreman";
   const baseCurrency = activeOrganization?.base_currency || "CAD";
 
   useEffect(() => {
@@ -83,7 +84,7 @@ export default function LaborRates() {
     );
   }
 
-  if (!isAdmin) {
+  if (!canView) {
     return (
       <Layout>
         <NoAccess />
@@ -183,7 +184,7 @@ export default function LaborRates() {
               Set default hourly cost and bill rates for your team. These are used when project-level rates aren't set.
             </p>
           </div>
-          {dirtyMembers.length > 0 && (
+          {canEdit && dirtyMembers.length > 0 && (
             <Button onClick={handleSave} disabled={saving}>
               <Save className="h-4 w-4 mr-2" />
               {saving ? "Saving..." : `Save ${dirtyMembers.length} Change${dirtyMembers.length > 1 ? "s" : ""}`}
@@ -191,31 +192,40 @@ export default function LaborRates() {
           )}
         </div>
 
-        {/* Base Currency Setting */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Organization Currency</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-4">
-              <div className="space-y-1">
-                <Label className="text-sm">Base Currency</Label>
-                <Select value={baseCurrency} onValueChange={handleSaveBaseCurrency}>
-                  <SelectTrigger className="w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="CAD">CAD ($)</SelectItem>
-                    <SelectItem value="USD">USD ($)</SelectItem>
-                  </SelectContent>
-                </Select>
+        {!canEdit && (
+          <Alert>
+            <AlertDescription>
+              Only Admins and PMs can edit labor rates.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {canEdit && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Organization Currency</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-4">
+                <div className="space-y-1">
+                  <Label className="text-sm">Base Currency</Label>
+                  <Select value={baseCurrency} onValueChange={handleSaveBaseCurrency}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CAD">CAD ($)</SelectItem>
+                      <SelectItem value="USD">USD ($)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <p className="text-xs text-muted-foreground mt-5">
+                  Changing base currency does not convert existing values. All rates and financials should match this currency.
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground mt-5">
-                Changing base currency does not convert existing values. All rates and financials should match this currency.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         {missingRateCount > 0 && (
           <Alert variant="destructive">
