@@ -6430,6 +6430,7 @@ export type Database = {
       }
     }
     Functions: {
+      _audit_playbook_checks: { Args: { p_project_id?: string }; Returns: Json }
       _playbook_snapshot: { Args: { p_playbook_id: string }; Returns: Json }
       assign_time_entry_task: {
         Args: { p_task_id: string; p_time_entry_id: string }
