@@ -6352,6 +6352,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      rpc_generate_org_operational_summary: {
+        Args: { p_organization_id: string }
+        Returns: Json
+      }
       rpc_generate_tasks_from_estimate: {
         Args: { p_estimate_id: string }
         Returns: Json
