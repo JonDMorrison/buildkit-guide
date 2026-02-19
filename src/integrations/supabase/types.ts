@@ -397,6 +397,50 @@ export type Database = {
           },
         ]
       }
+      audit_run_history: {
+        Row: {
+          created_at: string
+          fail_count: number
+          id: string
+          json_result: Json
+          manual_count: number
+          organization_id: string
+          p0_blockers: number
+          pass_count: number
+          run_id: string
+        }
+        Insert: {
+          created_at?: string
+          fail_count?: number
+          id?: string
+          json_result?: Json
+          manual_count?: number
+          organization_id: string
+          p0_blockers?: number
+          pass_count?: number
+          run_id?: string
+        }
+        Update: {
+          created_at?: string
+          fail_count?: number
+          id?: string
+          json_result?: Json
+          manual_count?: number
+          organization_id?: string
+          p0_blockers?: number
+          pass_count?: number
+          run_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_run_history_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blockers: {
         Row: {
           blocking_trade_id: string | null
