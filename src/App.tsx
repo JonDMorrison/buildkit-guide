@@ -69,6 +69,8 @@ const InsightsAudit = lazy(() => import("./pages/InsightsAudit"));
 const ConversionTestHarness = lazy(() => import("./pages/ConversionTestHarness"));
 const OrgSettings = lazy(() => import("./pages/OrgSettings"));
 const Intelligence = lazy(() => import("./pages/Intelligence"));
+const ChangeOrders = lazy(() => import("./pages/ChangeOrders"));
+const ChangeOrderDetail = lazy(() => import("./pages/ChangeOrderDetail"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -440,6 +442,22 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <Proposals />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/change-orders"
+                  element={
+                    <ProtectedRoute>
+                      <ChangeOrders />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/change-orders/:id"
+                  element={
+                    <ProtectedRoute>
+                      <ChangeOrderDetail />
                     </ProtectedRoute>
                   }
                 />
