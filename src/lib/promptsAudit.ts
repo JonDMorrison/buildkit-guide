@@ -1763,10 +1763,21 @@ async function checkChangeOrdersSchema(): Promise<AuditCheck> {
       const { error } = await supabase.rpc(rpc as any, {} as any);
       // We expect an error (missing params), but NOT "function does not exist"
       const missing = error?.message?.includes('does not exist') ||
-                      error?.message?.includes('Could not find');
+                      error?.message?.includes('Could not find') ||
+                      error?.code === 'PGRST202';
       if (missing) {
-        checks.push(`RPC ${rpc} MISSING`);
-        allPass = false;
+        // Fallback: check v_rpc_metadata view (survives stale PostgREST cache)
+        const { data: metaRow } = await supabase
+          .from('v_rpc_metadata' as any)
+          .select('proname')
+          .eq('proname', rpc)
+          .maybeSingle();
+        if (metaRow) {
+          checks.push(`RPC ${rpc} exists (via metadata)`);
+        } else {
+          checks.push(`RPC ${rpc} MISSING`);
+          allPass = false;
+        }
       } else {
         checks.push(`RPC ${rpc} exists`);
       }
