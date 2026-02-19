@@ -6,7 +6,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Play, Download, ChevronDown, CheckCircle2, XCircle, AlertTriangle, Copy, Brain, Shield, Eye, Zap, Lock, RefreshCw, User, FlaskConical, ExternalLink } from 'lucide-react';
+import { Play, Download, ChevronDown, CheckCircle2, XCircle, AlertTriangle, Copy, Brain, Shield, Eye, Zap, Lock, RefreshCw, User, FlaskConical, ExternalLink, Microscope } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from '@/hooks/useOrganization';
 
@@ -153,7 +154,7 @@ function DbAuthCard({ data, loading, error, onRefresh }: {
   );
 }
 
-// --- Scenario Runner ---
+// --- Scenario Runner (existing suite) ---
 
 interface ScenarioItem {
   scenario: string;
@@ -244,6 +245,149 @@ function ScenarioCard({ s }: { s: ScenarioItem }) {
   );
 }
 
+// --- Margin Edge-Case Suite ---
+
+interface EdgeCaseRow {
+  scenario: string;
+  found: boolean;
+  reason?: string;           // only when found === false
+  project_id?: string;
+  success?: boolean;
+  payload?: any;
+  error?: { sqlstate: string; message: string };
+}
+
+interface EdgeCaseResult {
+  ok: boolean;
+  org_id: string;
+  user_id: string;
+  results: EdgeCaseRow[];
+}
+
+const EDGE_CASE_LABELS: Record<string, string> = {
+  no_estimate_selected:              'A — No Estimate Selected',
+  estimate_selected_no_time_entries: 'B — Estimate Selected, No Time Entries',
+  zero_projected_revenue:            'C — Zero Projected Revenue',
+  has_change_orders:                 'D — Has Approved Change Orders',
+};
+
+function EdgeCaseRow({ row }: { row: EdgeCaseRow }) {
+  const label = EDGE_CASE_LABELS[row.scenario] ?? row.scenario;
+
+  // Not found → neutral/muted
+  if (!row.found) {
+    return (
+      <Card className="border-muted border">
+        <CardContent className="p-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 min-w-0">
+            <Microscope className="h-4 w-4 text-muted-foreground shrink-0" />
+            <span className="font-medium text-sm text-muted-foreground truncate">{label}</span>
+          </div>
+          <Badge className="bg-muted text-muted-foreground border border-border text-xs shrink-0">
+            Not found
+          </Badge>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const ok = row.success === true;
+
+  return (
+    <Card className={`border ${ok ? 'border-primary/30' : 'border-destructive/30'}`}>
+      <Collapsible>
+        <CollapsibleTrigger className="w-full text-left">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="flex items-center gap-2 min-w-0">
+              <Microscope className="h-4 w-4 text-muted-foreground shrink-0" />
+              <div className="min-w-0">
+                <span className="font-medium text-sm truncate block">{label}</span>
+                {row.project_id && (
+                  <span className="text-[11px] text-muted-foreground font-mono">
+                    {row.project_id.slice(0, 8)}…
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 ml-2">
+              <Badge className="bg-primary/10 text-primary border-primary/20 border text-[10px] px-1.5 py-0">
+                Found
+              </Badge>
+              <StatusBadge ok={ok} />
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </CardContent>
+        </CollapsibleTrigger>
+
+        <CollapsibleContent>
+          <div className="px-4 pb-4 space-y-2">
+            {/* Meta row */}
+            <div className="flex items-center gap-3 text-xs flex-wrap">
+              {row.project_id && (
+                <Link
+                  to={`/projects/${row.project_id}`}
+                  className="flex items-center gap-1 text-primary hover:underline"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <ExternalLink className="h-3 w-3" /> Open Project
+                </Link>
+              )}
+              <span className={row.success ? 'text-primary' : 'text-destructive'}>
+                RPC: {row.success ? 'succeeded' : 'failed'}
+              </span>
+              {row.success && row.payload && (
+                <span className="text-muted-foreground">
+                  Position:{' '}
+                  <span className="font-medium text-foreground">
+                    {row.payload.economic_position ?? '—'}
+                  </span>
+                </span>
+              )}
+              {row.success && row.payload?.risk_score != null && (
+                <span className="text-muted-foreground">
+                  Risk score:{' '}
+                  <span className="font-mono font-semibold text-foreground">
+                    {row.payload.risk_score}
+                  </span>
+                </span>
+              )}
+              {row.success && row.payload?.projected_margin_at_completion_percent != null && (
+                <span className="text-muted-foreground">
+                  Margin:{' '}
+                  <span className="font-mono font-semibold text-foreground">
+                    {Number(row.payload.projected_margin_at_completion_percent).toFixed(1)}%
+                  </span>
+                </span>
+              )}
+            </div>
+
+            {/* Error */}
+            {row.error && (
+              <div className="text-xs text-destructive bg-destructive/5 border border-destructive/15 rounded p-2 font-mono">
+                [{row.error.sqlstate}] {row.error.message}
+              </div>
+            )}
+
+            {/* Payload preview (collapsed) */}
+            {row.payload && (
+              <Collapsible>
+                <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mt-1">
+                  <ChevronDown className="h-3 w-3" /> Payload preview
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <pre className="mt-1 p-3 bg-muted rounded text-xs whitespace-pre-wrap max-h-64 overflow-auto font-mono">
+                    {JSON.stringify(row.payload, null, 2)}
+                  </pre>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    </Card>
+  );
+}
+
 // --- Main Page ---
 
 export default function AIBrainDiagnostics() {
@@ -268,6 +412,12 @@ export default function AIBrainDiagnostics() {
   const [scenarioRunning, setScenarioRunning] = useState(false);
   const [scenarioResult, setScenarioResult] = useState<ScenarioResult | null>(null);
   const [scenarioError, setScenarioError] = useState<string | null>(null);
+
+  // Margin edge-case suite state
+  const [edgeRunning, setEdgeRunning] = useState(false);
+  const [edgeResult, setEdgeResult] = useState<EdgeCaseResult | null>(null);
+  const [edgeError, setEdgeError] = useState<string | null>(null);
+  const [edgeCopied, setEdgeCopied] = useState(false);
 
   // Fetch projects
   useEffect(() => {
@@ -366,6 +516,31 @@ export default function AIBrainDiagnostics() {
 
   const handleCopyScenario = () => {
     if (scenarioResult) navigator.clipboard.writeText(JSON.stringify(scenarioResult, null, 2));
+  };
+
+  // Margin edge-case suite handler
+  const handleRunEdgeCases = async () => {
+    if (!activeOrganizationId || !session) return;
+    setEdgeRunning(true);
+    setEdgeError(null);
+    setEdgeResult(null);
+    try {
+      const { data, error: rpcError } = await (supabase as any).rpc(
+        'rpc_run_margin_control_edge_cases',
+        { p_org_id: activeOrganizationId }
+      );
+      if (rpcError) setEdgeError(rpcError.message);
+      else if (data?.ok === false) setEdgeError(data.reason ?? 'RPC returned ok: false');
+      else setEdgeResult(data as EdgeCaseResult);
+    } catch (e: any) { setEdgeError(e.message); }
+    finally { setEdgeRunning(false); }
+  };
+
+  const handleCopyEdge = () => {
+    if (!edgeResult) return;
+    navigator.clipboard.writeText(JSON.stringify(edgeResult, null, 2));
+    setEdgeCopied(true);
+    setTimeout(() => setEdgeCopied(false), 2000);
   };
 
   const handleCopy = () => { if (result) navigator.clipboard.writeText(JSON.stringify(result, null, 2)); };
@@ -644,6 +819,96 @@ export default function AIBrainDiagnostics() {
                   </CardContent>
                 </Card>
               )}
+            </>
+          )}
+        </div>
+
+        {/* ─── Margin Edge-Case Suite ───────────────────────────── */}
+        <div className="border-t pt-6 space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <Microscope className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-semibold">Margin Edge-Case Suite</h2>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Calls <code className="font-mono">rpc_run_margin_control_edge_cases</code> — runs the margin
+                control engine against four deterministic edge-case project archetypes.
+                Requires an active session.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {edgeResult && (
+                <Button variant="outline" size="sm" onClick={handleCopyEdge}>
+                  <Copy className="h-4 w-4 mr-1.5" />
+                  {edgeCopied ? 'Copied!' : 'Copy JSON'}
+                </Button>
+              )}
+              <Button
+                size="sm"
+                onClick={handleRunEdgeCases}
+                disabled={edgeRunning || !dbAuthOk || !activeOrganizationId || !session}
+              >
+                <Play className="h-4 w-4 mr-1.5" />
+                {edgeRunning ? 'Running…' : 'Run Edge-Case Suite'}
+              </Button>
+            </div>
+          </div>
+
+          {/* Session guard notice */}
+          {!session && (
+            <Card className="border-destructive bg-destructive/5">
+              <CardContent className="p-3 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+                <span className="text-sm text-destructive">Active session required — please log in first.</span>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Error */}
+          {edgeError && (
+            <Card className="border-destructive bg-destructive/5">
+              <CardContent className="p-3 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+                <span className="text-sm text-destructive">{edgeError}</span>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Results */}
+          {edgeResult && (
+            <>
+              {/* Summary bar */}
+              <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
+                <span className="font-mono text-[11px]">
+                  org: {edgeResult.org_id.slice(0, 8)}…
+                </span>
+                <span className="font-mono text-[11px]">
+                  uid: {edgeResult.user_id.slice(0, 8)}…
+                </span>
+                {(() => {
+                  const found   = edgeResult.results.filter(r => r.found).length;
+                  const success = edgeResult.results.filter(r => r.found && r.success).length;
+                  const fail    = edgeResult.results.filter(r => r.found && !r.success).length;
+                  const notFound= edgeResult.results.filter(r => !r.found).length;
+                  return (
+                    <>
+                      <span>{edgeResult.results.length} scenarios</span>
+                      <span className="text-primary">{found} found</span>
+                      {success > 0 && <span className="text-primary font-semibold">{success} pass</span>}
+                      {fail    > 0 && <span className="text-destructive font-semibold">{fail} fail</span>}
+                      {notFound > 0 && <span className="text-muted-foreground">{notFound} no match</span>}
+                    </>
+                  );
+                })()}
+              </div>
+
+              {/* Per-scenario rows */}
+              <div className="space-y-2">
+                {edgeResult.results.map(row => (
+                  <EdgeCaseRow key={row.scenario} row={row} />
+                ))}
+              </div>
             </>
           )}
         </div>
