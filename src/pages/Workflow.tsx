@@ -1,6 +1,6 @@
 import { Layout } from '@/components/Layout';
 import { useCurrentProject } from '@/hooks/useCurrentProject';
-import { useProjectWorkflow, WorkflowPhase } from '@/hooks/useProjectWorkflow';
+import { useProjectWorkflow, WorkflowPhase, EconomicRequirementPreview } from '@/hooks/useProjectWorkflow';
 import { useAuthRole } from '@/hooks/useAuthRole';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,8 +19,9 @@ import {
   ChevronDown,
   Bug,
   Zap,
+  ShieldAlert,
 } from 'lucide-react';
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 import { ScopePhaseActions } from '@/components/workflow/ScopePhaseActions';
@@ -30,9 +31,51 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof
   not_started: { label: 'Not Started', color: 'bg-muted text-muted-foreground', icon: Circle },
   in_progress: { label: 'In Progress', color: 'bg-primary/15 text-primary', icon: Clock },
   blocked: { label: 'Sent Back', color: 'bg-destructive/15 text-destructive', icon: AlertTriangle },
-  requested: { label: 'Awaiting Approval', color: 'bg-amber-500/15 text-amber-600 dark:text-amber-400', icon: Send },
-  approved: { label: 'Approved', color: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400', icon: CheckCircle2 },
+  requested: { label: 'Awaiting Approval', color: 'bg-secondary text-secondary-foreground', icon: Send },
+  approved: { label: 'Approved', color: 'bg-primary/15 text-primary', icon: CheckCircle2 },
 };
+
+// ── Economic Requirements Preview ────────────────────────────────────────────
+function EconomicRequirementsPreview({ items }: { items: EconomicRequirementPreview[] }) {
+  if (items.length === 0) return null;
+  return (
+    <Card className="border-destructive/30 bg-destructive/5">
+      <CardHeader className="pb-3">
+        <div className="flex items-center gap-2">
+          <ShieldAlert className="h-4 w-4 text-destructive" />
+          <CardTitle className="text-sm font-semibold text-destructive">
+            Economic Requirements
+          </CardTitle>
+          <Badge variant="secondary" className="ml-auto text-xs bg-destructive/10 text-destructive border-destructive/20 border">
+            Preview
+          </Badge>
+        </div>
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          These requirements are injected by the Margin Control Engine and will be enforced in relevant workflow phases.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {items.map(req => (
+          <div key={req.key} className="flex items-start gap-2.5 rounded-md border border-destructive/20 bg-background p-3">
+            <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm font-medium text-foreground">{req.label}</span>
+                {req.required && (
+                  <Badge variant="outline" className="text-xs border-destructive/30 text-destructive">Required</Badge>
+                )}
+                <Badge variant="outline" className="text-xs text-muted-foreground">{req.status}</Badge>
+              </div>
+              {req.details && (
+                <p className="text-xs text-muted-foreground leading-relaxed">{req.details}</p>
+              )}
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
 
 function PhaseCard({
   phase,
@@ -90,13 +133,13 @@ function PhaseCard({
       <div className="flex flex-col items-center pt-1">
         <div className={cn(
           'h-8 w-8 rounded-full flex items-center justify-center shrink-0 border-2 transition-colors',
-          phase.status === 'approved' ? 'border-emerald-500 bg-emerald-500/20' :
+          phase.status === 'approved' ? 'border-primary bg-primary/20' :
           isCurrent ? 'border-primary bg-primary/20' :
           'border-muted-foreground/30 bg-muted/50'
         )}>
           <StatusIcon className={cn(
             'h-4 w-4',
-            phase.status === 'approved' ? 'text-emerald-500' :
+            phase.status === 'approved' ? 'text-primary' :
             isCurrent ? 'text-primary' : 'text-muted-foreground/50'
           )} />
         </div>
@@ -128,7 +171,7 @@ function PhaseCard({
               {phase.requirements.map(req => (
                 <div key={req.id} className="flex items-start gap-2 text-sm">
                   {req.status === 'met' ? (
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                    <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                   ) : (
                     <Circle className="h-4 w-4 text-muted-foreground/40 shrink-0 mt-0.5" />
                   )}
@@ -312,6 +355,11 @@ export default function Workflow() {
                 />
               ))}
             </div>
+
+            {/* Economic Requirements Preview */}
+            {workflow.economic_requirements_preview?.length > 0 && (
+              <EconomicRequirementsPreview items={workflow.economic_requirements_preview} />
+            )}
 
             {/* Debug panel */}
             {showDebug && (
