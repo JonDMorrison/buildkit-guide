@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Download, ChevronDown, AlertTriangle, CheckCircle2, HelpCircle, Server, Monitor, Wrench } from 'lucide-react';
+import { Play, Download, ChevronDown, AlertTriangle, CheckCircle2, HelpCircle, Server, Monitor, Wrench, ShieldAlert, Copy, Ban } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { runPromptsAudit, type PromptsAuditResult, type AuditCheck, type AuditStatus } from '@/lib/promptsAudit';
 import { useOrganization } from '@/hooks/useOrganization';
@@ -129,6 +129,11 @@ export default function InsightsAudit() {
     }
   };
 
+  const handleCopyBundle = () => {
+    if (!result) return;
+    navigator.clipboard.writeText(JSON.stringify(result, null, 2));
+  };
+
   const handleDownload = () => {
     if (!result) return;
     const blob = new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' });
@@ -139,6 +144,9 @@ export default function InsightsAudit() {
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  const p0Failures = result ? result.checks.filter(c => c.severity === 'P0' && c.status === 'FAIL') : [];
+  const releaseBlocked = p0Failures.length > 0;
 
   const grouped = result ? {
     P0: result.checks.filter(c => c.severity === 'P0'),
@@ -184,9 +192,14 @@ export default function InsightsAudit() {
               {running ? 'Running...' : 'Run Audit'}
             </Button>
             {result && (
-              <Button variant="outline" onClick={handleDownload}>
-                <Download className="h-4 w-4 mr-2" /> JSON
-              </Button>
+              <>
+                <Button variant="outline" onClick={handleDownload}>
+                  <Download className="h-4 w-4 mr-2" /> JSON
+                </Button>
+                <Button variant="outline" onClick={handleCopyBundle}>
+                  <Copy className="h-4 w-4 mr-2" /> Copy Debug Bundle
+                </Button>
+              </>
             )}
           </CardContent>
         </Card>
@@ -217,13 +230,46 @@ export default function InsightsAudit() {
               </CardContent></Card>
             </div>
 
-            {/* Blockers banner */}
-            {result.summary.blockers.length > 0 && (
-              <Card className="border-destructive bg-destructive/5">
+            {/* Release gate banner */}
+            {releaseBlocked && (
+              <Card className="border-2 border-destructive bg-destructive/10">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <Ban className="h-6 w-6 text-destructive shrink-0" />
+                    <div>
+                      <h2 className="text-lg font-bold text-destructive">Release Blocked: Fix P0 issues before shipping.</h2>
+                      <p className="text-sm text-destructive/80">{p0Failures.length} critical check{p0Failures.length > 1 ? 's' : ''} failed. Resolve all items below to unblock.</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {p0Failures.map(c => (
+                      <div key={c.id} className="border border-destructive/30 rounded-md p-3 bg-background space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <ShieldAlert className="h-4 w-4 text-destructive shrink-0" />
+                          <span className="font-semibold text-sm">{c.name}</span>
+                          <Badge variant="outline" className="text-xs">{c.area}</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground"><strong>Actual:</strong> {c.actual}</p>
+                        {c.remediation && (
+                          <div className="flex items-start gap-1.5 p-2 rounded bg-muted text-xs">
+                            <Wrench className="h-3 w-3 mt-0.5 shrink-0 text-muted-foreground" />
+                            <span className="whitespace-pre-wrap">{c.remediation}</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Non-blocking blockers banner (P0 NEEDS_MANUAL) */}
+            {!releaseBlocked && result.summary.blockers.length > 0 && (
+              <Card className="border-destructive/50 bg-destructive/5">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm text-destructive flex items-center gap-2">
                     <AlertTriangle className="h-4 w-4" />
-                    {result.summary.blockers.length} P0 Blocker(s) — Must Fix Before Release
+                    {result.summary.blockers.length} P0 item(s) need manual verification
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0">
