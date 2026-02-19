@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import type { Estimate, EstimateLineItem } from "@/types/estimates";
+import { UnratedLaborBanner } from "@/components/UnratedLaborBanner";
 
 const ITEM_TYPES = [
   { value: "labor", label: "Labor" },
@@ -177,6 +178,7 @@ const EstimateDetail = () => {
   return (
     <Layout>
       <div className="p-4 md:p-6">
+        <UnratedLaborBanner projectId={estimate.project_id} />
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
           <Button variant="ghost" size="icon" onClick={() => navigate("/estimates")}>
