@@ -7879,6 +7879,7 @@ export type Database = {
         Returns: Json
       }
       rpc_get_guardrails: { Args: never; Returns: Json }
+      rpc_get_margin_flag_dictionary: { Args: never; Returns: Json }
       rpc_get_operating_system_score: {
         Args: { p_org_id: string }
         Returns: Json
