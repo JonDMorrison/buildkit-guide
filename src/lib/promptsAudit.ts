@@ -947,7 +947,7 @@ export async function runPromptsAudit(projectId: string): Promise<PromptsAuditRe
   const [serverChecksResult, ...clientResults] = await Promise.allSettled([
     runServerAuditSuite(projectId || null),
     checkWorkflowTablesExist(),
-    checkWorkflowRls(),
+    // checkWorkflowRls() removed — now handled server-side by rpc_run_audit_suite (workflow_rls_force)
     checkWorkflowWriteDeny(),
     checkRpcInventory(),
     checkFlowModeToggle(projectId),
