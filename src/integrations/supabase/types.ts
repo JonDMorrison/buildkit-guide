@@ -6606,6 +6606,10 @@ export type Database = {
         Args: { p_org_id: string }
         Returns: Json
       }
+      rpc_get_pricing_suggestions: {
+        Args: { p_min_projects?: number }
+        Returns: Json
+      }
       rpc_get_project_cost_rollup: {
         Args: { p_project_id: string }
         Returns: Json
