@@ -20,13 +20,15 @@ import { ListItem } from '../ListItem';
 import { StatusBadge } from '../StatusBadge';
 import { TradeBadge } from '../TradeBadge';
 import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { GripVertical } from 'lucide-react';
+import { GripVertical, ChevronDown, Layers } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '../ui/checkbox';
 import { useNavigate } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 
 interface AssignedWorker {
   id: string;
@@ -50,6 +52,8 @@ interface Task {
   is_generated?: boolean;
   scope_item_id?: string | null;
   project_id?: string;
+  playbook_collapsed?: boolean;
+  playbook_required?: boolean | null;
   trades?: {
     name: string;
     trade_type: string;
@@ -68,6 +72,7 @@ interface SortableTaskItemProps {
   task: Task;
   onTaskClick: (taskId: string) => void;
   canReorder: boolean;
+  isOptional?: boolean;
 }
 
 const getInitials = (name: string | null, email: string) => {
@@ -121,7 +126,7 @@ const AssignedWorkersAvatars = ({ assignments }: { assignments?: AssignedWorker[
   );
 };
 
-const SortableTaskItem = ({ task, onTaskClick, canReorder }: SortableTaskItemProps) => {
+const SortableTaskItem = ({ task, onTaskClick, canReorder, isOptional = false }: SortableTaskItemProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const {
@@ -196,7 +201,7 @@ const SortableTaskItem = ({ task, onTaskClick, canReorder }: SortableTaskItemPro
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="flex items-center gap-2">
+    <div ref={setNodeRef} style={style} className={cn("flex items-center gap-2", isOptional && "opacity-50")}>
       {canReorder && (
         <button
           {...attributes}
@@ -250,14 +255,30 @@ const SortableTaskItem = ({ task, onTaskClick, canReorder }: SortableTaskItemPro
     </div>
   );
 };
+const DENSITY_THRESHOLD = 40;
+
 export const TaskListView = ({ tasks, onTaskClick, canReorder = false, onTasksReordered }: TaskListViewProps) => {
   const { toast } = useToast();
   const [localTasks, setLocalTasks] = useState(tasks);
+  const [optionalExpanded, setOptionalExpanded] = useState(false);
 
   // Update local tasks when prop changes
   if (tasks !== localTasks && !canReorder) {
     setLocalTasks(tasks);
   }
+
+  const displayTasks = canReorder ? localTasks : tasks;
+
+  // Density governor: split core vs optional when above threshold
+  const hasPlaybookTasks = displayTasks.some(t => t.playbook_collapsed != null);
+  const shouldGovernDensity = hasPlaybookTasks && displayTasks.length > DENSITY_THRESHOLD;
+
+  const coreTasks = shouldGovernDensity
+    ? displayTasks.filter(t => !t.playbook_collapsed)
+    : displayTasks;
+  const optionalTasks = shouldGovernDensity
+    ? displayTasks.filter(t => t.playbook_collapsed)
+    : [];
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -280,14 +301,12 @@ export const TaskListView = ({ tasks, onTaskClick, canReorder = false, onTasksRe
       const newTasks = arrayMove(localTasks, oldIndex, newIndex);
       setLocalTasks(newTasks);
       
-      // Update sort_order in database with batch operation to prevent race conditions
       try {
         const updates = newTasks.map((task, index) => ({
           id: task.id,
           sort_order: index,
         }));
 
-        // Batch update using Promise.all for atomicity
         const updatePromises = updates.map((update) =>
           supabase
             .from('tasks')
@@ -314,26 +333,62 @@ export const TaskListView = ({ tasks, onTaskClick, canReorder = false, onTasksRe
           description: error.message,
           variant: 'destructive',
         });
-        // Revert on error
         setLocalTasks(tasks);
       }
     }
   };
 
-  const displayTasks = canReorder ? localTasks : tasks;
+  const renderTaskItem = (task: Task, isOptional: boolean) => (
+    <SortableTaskItem
+      key={task.id}
+      task={task}
+      onTaskClick={onTaskClick}
+      canReorder={canReorder}
+      isOptional={isOptional}
+    />
+  );
+
+  const densityGovernorSection = shouldGovernDensity && optionalTasks.length > 0 ? (
+    <div className="space-y-2">
+      {/* Density summary bar */}
+      <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/40 border border-border/40">
+        <div className="flex items-center gap-2">
+          <Layers className="h-4 w-4 text-primary" />
+          <span className="text-sm font-medium text-foreground">
+            {coreTasks.length} Core Tasks Loaded
+          </span>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setOptionalExpanded(!optionalExpanded)}
+          className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+        >
+          <ChevronDown className={cn(
+            "h-3.5 w-3.5 transition-transform",
+            optionalExpanded && "rotate-180"
+          )} />
+          +{optionalTasks.length} Optional ({optionalExpanded ? 'Collapse' : 'Expand'})
+        </Button>
+      </div>
+
+      {/* Optional tasks (collapsed by default) */}
+      {optionalExpanded && (
+        <div className="space-y-3 pl-2 border-l-2 border-border/30">
+          <p className="text-[11px] text-muted-foreground px-2">
+            Optional tasks are not assigned by default and do not trigger workflow blocks.
+          </p>
+          {optionalTasks.map(task => renderTaskItem(task, true))}
+        </div>
+      )}
+    </div>
+  ) : null;
 
   if (!canReorder) {
-    // Simple non-draggable list
     return (
       <div className="space-y-3">
-        {displayTasks.map((task) => (
-          <SortableTaskItem
-            key={task.id}
-            task={task}
-            onTaskClick={onTaskClick}
-            canReorder={false}
-          />
-        ))}
+        {coreTasks.map(task => renderTaskItem(task, false))}
+        {densityGovernorSection}
       </div>
     );
   }
@@ -349,14 +404,8 @@ export const TaskListView = ({ tasks, onTaskClick, canReorder = false, onTasksRe
         strategy={verticalListSortingStrategy}
       >
         <div className="space-y-3">
-          {displayTasks.map((task) => (
-            <SortableTaskItem
-              key={task.id}
-              task={task}
-              onTaskClick={onTaskClick}
-              canReorder={true}
-            />
-          ))}
+          {coreTasks.map(task => renderTaskItem(task, false))}
+          {densityGovernorSection}
         </div>
       </SortableContext>
     </DndContext>
