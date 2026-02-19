@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { SectionHeader } from "@/components/SectionHeader";
 import { usePortfolioInsights, PortfolioRow } from "@/hooks/usePortfolioInsights";
+import { useOrganization } from "@/hooks/useOrganization";
 import { useProjectRole } from "@/hooks/useProjectRole";
 import { useOrgSnapshots } from "@/hooks/useOrgSnapshots";
 import { useOrgScopeAccuracy } from "@/hooks/useOrgScopeAccuracy";
@@ -14,6 +15,7 @@ import { RecommendationsPanel } from "@/components/insights/RecommendationsPanel
 import { OrgScopeLearningPanel } from "@/components/insights/OrgScopeLearningPanel";
 import { WeeklyInsightCard } from "@/components/insights/WeeklyInsightCard";
 import { getPortfolioRecommendations } from "@/lib/recommendations/rules";
+import { OperationalPatternsPanel } from "@/components/insights/OperationalPatternsPanel";
 import { NoAccess } from "@/components/NoAccess";
 import { UnratedLaborBanner } from "@/components/UnratedLaborBanner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -57,6 +59,7 @@ const dataQualityFilterOptions = [
 const Insights = () => {
   const navigate = useNavigate();
   const { isGlobalAdmin, loading: roleLoading } = useProjectRole();
+  const { activeOrganizationId } = useOrganization();
   const [statusFilter, setStatusFilter] = useState("active");
   const [qualityFilters, setQualityFilters] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(0);
@@ -398,6 +401,13 @@ const Insights = () => {
             <div className="mb-6">
               <OrgScopeLearningPanel rows={orgScopeRows} loading={orgScopeLoading} />
             </div>
+
+            {/* Operational Patterns */}
+            {activeOrganizationId && (
+              <div className="mb-6">
+                <OperationalPatternsPanel organizationId={activeOrganizationId} />
+              </div>
+            )}
 
             {/* Variance Leaderboard */}
             <Card className="mb-6">
