@@ -1644,6 +1644,75 @@ async function checkGuardrailEnforcementInEdge(): Promise<AuditCheck> {
   }
 }
 
+// -- Change Orders Audit (P1) --
+
+async function checkChangeOrdersSchema(): Promise<AuditCheck> {
+  const id = 'change_orders_schema';
+  const name = 'Change Orders Schema & Security';
+  const area = 'Financial';
+  const sev: 'P1' = 'P1';
+
+  try {
+    const checks: string[] = [];
+    let allPass = true;
+
+    // 1. Tables exist via SELECT
+    const { error: coErr } = await supabase.from('change_orders').select('id').limit(0);
+    const { error: liErr } = await supabase.from('change_order_line_items').select('id').limit(0);
+    if (coErr) { checks.push('change_orders table missing/inaccessible'); allPass = false; }
+    else checks.push('change_orders table exists');
+    if (liErr) { checks.push('change_order_line_items table missing/inaccessible'); allPass = false; }
+    else checks.push('change_order_line_items table exists');
+
+    // 2. Direct write denied (INSERT should fail with RLS)
+    const { error: insertErr } = await supabase.from('change_orders').insert({
+      organization_id: '00000000-0000-0000-0000-000000000000',
+      project_id: '00000000-0000-0000-0000-000000000000',
+      title: '__audit_probe__',
+      created_by: '00000000-0000-0000-0000-000000000000',
+    } as any);
+    if (insertErr) {
+      checks.push('Direct INSERT denied (RLS enforced)');
+    } else {
+      checks.push('CRITICAL: Direct INSERT succeeded — RLS not enforced');
+      allPass = false;
+    }
+
+    // 3. RPC inventory check
+    const requiredRpcs = [
+      'rpc_create_change_order',
+      'rpc_update_change_order',
+      'rpc_add_change_order_line_item',
+      'rpc_update_change_order_line_item',
+      'rpc_delete_change_order_line_item',
+      'rpc_send_change_order',
+      'rpc_approve_change_order',
+    ];
+    for (const rpc of requiredRpcs) {
+      const { error } = await supabase.rpc(rpc as any, {} as any);
+      // We expect an error (missing params), but NOT "function does not exist"
+      const missing = error?.message?.includes('does not exist') ||
+                      error?.message?.includes('Could not find');
+      if (missing) {
+        checks.push(`RPC ${rpc} MISSING`);
+        allPass = false;
+      } else {
+        checks.push(`RPC ${rpc} exists`);
+      }
+    }
+
+    const evidence = JSON.stringify(checks, null, 2);
+    return makeCheck(id, name, area, sev,
+      'Change orders tables, RLS deny-writes, and RPCs all present',
+      allPass ? 'All checks passed' : 'Some checks failed — see evidence',
+      allPass ? 'PASS' : 'FAIL',
+      evidence);
+  } catch (e: any) {
+    return makeCheck(id, name, area, sev,
+      'Change orders audit runs', `Error: ${e.message}`, 'FAIL', e.message);
+  }
+}
+
 // -- Main Runner --
 
 export async function runPromptsAudit(projectId: string): Promise<PromptsAuditResult> {
@@ -1678,6 +1747,7 @@ export async function runPromptsAudit(projectId: string): Promise<PromptsAuditRe
     checkProfitRiskDeterminism(projectId),
     checkGuardrailsRls(),
     checkGuardrailEnforcementInEdge(),
+    checkChangeOrdersSchema(),
   ]);
 
   const checks: AuditCheck[] = [];
