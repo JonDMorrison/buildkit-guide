@@ -78,6 +78,10 @@ serve(async (req) => {
     const ttResult = await assertTimeTrackingEnabled(orgId);
     if (ttResult instanceof Response) return ttResult;
 
+    // 6b. Guardrail: block_time_before_estimate
+    const guardrailResult = await checkEstimateGuardrail(orgId, project_id, userId);
+    if (guardrailResult instanceof Response) return guardrailResult;
+
     // 7. Assert project membership
     const projResult = await assertProjectMember(project_id, userId);
     if (projResult instanceof Response) return projResult;
@@ -255,3 +259,78 @@ serve(async (req) => {
     return serverError('INTERNAL_ERROR', message);
   }
 });
+
+// ============================================
+// Guardrail: block_time_before_estimate
+// Checks org guardrail and enforces warn/block
+// ============================================
+async function checkEstimateGuardrail(
+  orgId: string,
+  projectId: string,
+  userId: string,
+): Promise<Response | null> {
+  const supabase = serviceClient();
+
+  // 1. Read guardrail setting
+  const { data: guardrail } = await supabase
+    .from('organization_guardrails')
+    .select('mode')
+    .eq('organization_id', orgId)
+    .eq('key', 'block_time_before_estimate')
+    .maybeSingle();
+
+  const mode = guardrail?.mode ?? 'off';
+  if (mode === 'off') return null;
+
+  // 2. Check for approved estimate on this project
+  const { data: estimate } = await supabase
+    .from('estimates')
+    .select('id')
+    .eq('project_id', projectId)
+    .eq('status', 'approved')
+    .limit(1)
+    .maybeSingle();
+
+  if (estimate) return null; // Has approved estimate — allow
+
+  console.log(`[time-check-in] Guardrail block_time_before_estimate triggered (mode=${mode}) for project ${projectId}`);
+
+  if (mode === 'block') {
+    return forbidden(
+      'ESTIMATE_REQUIRED',
+      'Estimate required before logging time. An approved estimate must exist for this project.',
+      { guardrail_key: 'block_time_before_estimate' },
+    );
+  }
+
+  // mode === 'warn': allow but create notification + flag
+  // Create notification for project admins/PMs
+  const { data: projectMembers } = await supabase
+    .from('project_members')
+    .select('user_id, role')
+    .eq('project_id', projectId)
+    .in('role', ['admin', 'pm']);
+
+  const notifyUserIds = [
+    ...new Set([
+      userId,
+      ...(projectMembers || []).map((m: { user_id: string }) => m.user_id),
+    ]),
+  ];
+
+  // Batch insert notifications (best-effort, don't block check-in)
+  const notifications = notifyUserIds.map((uid: string) => ({
+    user_id: uid,
+    title: 'Time logged without approved estimate',
+    message: `Time was logged on a project without an approved estimate. Review estimates to ensure cost tracking accuracy.`,
+    type: 'guardrail_warning' as const,
+    project_id: projectId,
+    link_url: `/estimates?projectId=${projectId}`,
+  }));
+
+  await supabase.from('notifications').insert(notifications).throwOnError().catch((err: unknown) => {
+    console.error('[time-check-in] Failed to create guardrail notifications:', err);
+  });
+
+  return null; // Allow check-in to proceed
+}

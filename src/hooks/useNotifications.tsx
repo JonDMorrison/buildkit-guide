@@ -14,6 +14,7 @@ export type NotificationType =
   | 'deficiency_created' 
   | 'document_uploaded' 
   | 'incident_report' 
+  | 'guardrail_warning'
   | 'general';
 
 export interface Notification {
