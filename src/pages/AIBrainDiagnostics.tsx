@@ -79,7 +79,8 @@ export default function AIBrainDiagnostics() {
     setError(null);
     try {
       const params: Record<string, string> = {};
-      if (selectedProject) params.p_project_id = selectedProject;
+      if (selectedProject && selectedProject !== '__auto__') params.p_project_id = selectedProject;
+      if (activeOrganizationId) params.p_org_id = activeOrganizationId;
 
       const { data, error: rpcError } = await (supabase as any).rpc('rpc_run_ai_brain_test_runner', params);
 
