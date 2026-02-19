@@ -427,6 +427,22 @@ export default function AIBrainDiagnostics() {
   const [inspectorCopied, setInspectorCopied] = useState(false);
   const [inspectorOpen, setInspectorOpen] = useState(false);
 
+  // Quick Probe state
+  type ProbeRow = {
+    project_id: string;
+    project_name: string;
+    risk_score: unknown;
+    economic_position: unknown;
+    intervention_flags_type: string;
+    intervention_flags_value: unknown[];
+    raw: unknown;
+    open: boolean;
+    error?: string;
+  };
+  const [probeRunning, setProbeRunning] = useState(false);
+  const [probeRows, setProbeRows] = useState<ProbeRow[]>([]);
+  const [probeError, setProbeError] = useState<string | null>(null);
+
   // Determinism Re-scan state
   const [detRunning, setDetRunning] = useState(false);
   const [detResult, setDetResult] = useState<{ violation_count: number; suspect_functions: { function_name: string; issue: string }[] } | null>(null);
@@ -573,6 +589,96 @@ export default function AIBrainDiagnostics() {
     } catch (e: any) { setInspectorError(e.message); }
     finally { setInspectorRunning(false); }
   };
+
+  // Quick Probe handler — deterministically picks 3 projects, calls RPC for each
+  const handleQuickProbe = async () => {
+    if (!activeOrganizationId || !dbAuthOk) return;
+    setProbeRunning(true);
+    setProbeError(null);
+    setProbeRows([]);
+
+    try {
+      // 1. Fetch all active projects ordered by id ASC (deterministic)
+      const { data: allProjects, error: projErr } = await supabase
+        .from('projects')
+        .select('id, name')
+        .eq('organization_id', activeOrganizationId)
+        .eq('status', 'active')
+        .order('id', { ascending: true });
+
+      if (projErr) throw new Error(projErr.message);
+      const active = allProjects ?? [];
+
+      // 2. First with any time_entries (id ASC)
+      const { data: teRows } = await supabase
+        .from('time_entries')
+        .select('project_id')
+        .eq('organization_id', activeOrganizationId)
+        .order('project_id', { ascending: true })
+        .limit(50);
+
+      const projectsWithEntries = new Set((teRows ?? []).map((r: any) => r.project_id));
+
+      // Build deterministic trio
+      const slot0 = active[0] ?? null;                       // 1st active by id ASC
+      const slot1 = active.find(p => projectsWithEntries.has(p.id)) ?? null; // 1st with entries
+      const slot2 = active[2] ?? active[1] ?? null;          // 3rd (index 2) by id ASC
+
+      // Deduplicate while preserving label order
+      const seen = new Set<string>();
+      const trio: { project: { id: string; name: string }; label: string }[] = [];
+      for (const [proj, label] of [
+        [slot0, 'first_active'],
+        [slot1, 'first_with_entries'],
+        [slot2, 'third_by_id'],
+      ] as [({ id: string; name: string } | null), string][]) {
+        if (!proj || seen.has(proj.id)) continue;
+        seen.add(proj.id);
+        trio.push({ project: proj, label });
+      }
+
+      if (trio.length === 0) {
+        setProbeError('No active projects found in this org.');
+        return;
+      }
+
+      // 3. Call RPC for each in parallel
+      const results = await Promise.all(
+        trio.map(async ({ project, label }) => {
+          try {
+            const { data, error: rpcErr } = await (supabase as any).rpc(
+              'rpc_debug_margin_control_payload',
+              { p_project_id: project.id }
+            );
+            if (rpcErr) return { project_id: project.id, project_name: project.name, label, error: rpcErr.message, open: false } as any;
+            const payload = data?.margin_control_payload ?? {};
+            return {
+              project_id: project.id,
+              project_name: project.name,
+              label,
+              risk_score: payload.risk_score ?? payload.composite_risk_score ?? '—',
+              economic_position: payload.economic_position ?? payload.margin_position ?? '—',
+              intervention_flags_type: data?.intervention_flags_type ?? 'null',
+              intervention_flags_value: Array.isArray(data?.intervention_flags_value) ? data.intervention_flags_value : [],
+              raw: data,
+              open: false,
+            };
+          } catch (e: any) {
+            return { project_id: project.id, project_name: project.name, label, error: e.message, open: false };
+          }
+        })
+      );
+
+      setProbeRows(results);
+    } catch (e: any) {
+      setProbeError(e.message);
+    } finally {
+      setProbeRunning(false);
+    }
+  };
+
+  const toggleProbeRow = (idx: number) =>
+    setProbeRows(rows => rows.map((r, i) => i === idx ? { ...r, open: !r.open } : r));
 
   // Determinism re-scan handler
   const handleDetRescan = async () => {
@@ -1118,7 +1224,136 @@ export default function AIBrainDiagnostics() {
           )}
         </div>
 
-        {/* ─── Determinism Patch Runner ─────────────────────────────── */}
+        {/* ─── Quick Probe (3 Projects) ────────────────────────────────── */}
+        <div className="border-t pt-6 space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <Zap className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-semibold">Quick Probe (3 Projects)</h2>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Deterministically selects 3 projects (1st active · 1st with entries · 3rd by ID) and calls{' '}
+                <code className="font-mono">rpc_debug_margin_control_payload</code> for each in parallel.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleQuickProbe}
+              disabled={probeRunning || !dbAuthOk || !activeOrganizationId}
+            >
+              <Zap className={`h-4 w-4 mr-1.5 ${probeRunning ? 'animate-pulse' : ''}`} />
+              {probeRunning ? 'Probing…' : 'Quick Probe (3 Projects)'}
+            </Button>
+          </div>
+
+          {!dbAuthOk && !dbAuthLoading && (
+            <Card className="border-destructive bg-destructive/5">
+              <CardContent className="p-3 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+                <span className="text-sm text-destructive">DB auth required — please refresh or log in first.</span>
+              </CardContent>
+            </Card>
+          )}
+
+          {probeError && (
+            <Card className="border-destructive bg-destructive/5">
+              <CardContent className="p-3 flex items-center gap-2">
+                <XCircle className="h-4 w-4 text-destructive shrink-0" />
+                <span className="text-sm text-destructive font-mono">{probeError}</span>
+              </CardContent>
+            </Card>
+          )}
+
+          {probeRows.length > 0 && (
+            <div className="space-y-2">
+              {/* Header row */}
+              <div className="grid grid-cols-[1fr_1fr_1fr_80px_auto] gap-x-3 px-3 py-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide border-b border-border">
+                <span>Project</span>
+                <span>Risk Score</span>
+                <span>Economic Position</span>
+                <span>Flags Type</span>
+                <span>Flags</span>
+              </div>
+
+              {probeRows.map((row, i) => (
+                <div key={row.project_id} className="rounded-lg border border-border bg-card overflow-hidden">
+                  {/* Main row */}
+                  <div className="grid grid-cols-[1fr_1fr_1fr_80px_auto] gap-x-3 items-center px-3 py-2.5 text-xs">
+                    {/* Project */}
+                    <div className="min-w-0">
+                      <div className="font-mono text-[11px] text-muted-foreground truncate">
+                        {row.project_id.slice(0, 8)}…
+                      </div>
+                      <div className="text-[11px] text-foreground truncate font-medium">{row.project_name}</div>
+                      <div className="text-[10px] text-muted-foreground">{(row as any).label}</div>
+                    </div>
+
+                    {/* Risk score */}
+                    <div className="font-mono text-xs">
+                      {(row as any).error
+                        ? <span className="text-destructive text-[10px]">ERR</span>
+                        : String(row.risk_score ?? '—')}
+                    </div>
+
+                    {/* Economic position */}
+                    <div className="font-mono text-xs truncate">
+                      {(row as any).error
+                        ? <span className="text-destructive text-[10px] font-mono">{(row as any).error}</span>
+                        : String(row.economic_position ?? '—')}
+                    </div>
+
+                    {/* Flags type */}
+                    <div>
+                      <code className={`text-[10px] px-1.5 py-0.5 rounded border font-mono ${
+                        row.intervention_flags_type === 'array'
+                          ? 'bg-primary/10 text-primary border-primary/30'
+                          : 'bg-muted text-muted-foreground border-border'
+                      }`}>
+                        {row.intervention_flags_type ?? 'null'}
+                      </code>
+                    </div>
+
+                    {/* Flags value + expander */}
+                    <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap gap-1">
+                        {row.intervention_flags_value?.length > 0
+                          ? row.intervention_flags_value.map((f, fi) => (
+                              <Badge key={fi} className="bg-destructive/10 text-destructive border-destructive/20 border text-[10px] font-mono px-1.5 py-0">
+                                {String(f)}
+                              </Badge>
+                            ))
+                          : <span className="text-[10px] text-muted-foreground italic">none</span>
+                        }
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-[11px] shrink-0"
+                        onClick={() => toggleProbeRow(i)}
+                      >
+                        <ChevronDown className={`h-3 w-3 mr-0.5 transition-transform ${row.open ? 'rotate-180' : ''}`} />
+                        {row.open ? 'Hide' : 'View JSON'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Expanded JSON */}
+                  {row.open && (
+                    <div className="border-t border-border bg-muted/40 px-3 py-2">
+                      <pre className="text-[11px] font-mono whitespace-pre-wrap max-h-64 overflow-auto leading-relaxed">
+                        {JSON.stringify(row.raw, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+
         <div className="border-t pt-6 space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
