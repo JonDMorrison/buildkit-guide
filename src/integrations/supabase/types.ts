@@ -2377,6 +2377,65 @@ export type Database = {
           },
         ]
       }
+      organization_intelligence_profile: {
+        Row: {
+          ai_style: string
+          allow_currency_mismatch: boolean
+          base_currency: string
+          created_at: string
+          invoice_permission_model: string
+          labor_cost_model: string
+          labor_rate_source: string
+          organization_id: string
+          quote_required_before_tasks: boolean
+          region: string | null
+          require_quote_approved: boolean
+          tax_model: string
+          updated_at: string
+          workflow_mode_default: string
+        }
+        Insert: {
+          ai_style?: string
+          allow_currency_mismatch?: boolean
+          base_currency?: string
+          created_at?: string
+          invoice_permission_model?: string
+          labor_cost_model?: string
+          labor_rate_source?: string
+          organization_id: string
+          quote_required_before_tasks?: boolean
+          region?: string | null
+          require_quote_approved?: boolean
+          tax_model?: string
+          updated_at?: string
+          workflow_mode_default?: string
+        }
+        Update: {
+          ai_style?: string
+          allow_currency_mismatch?: boolean
+          base_currency?: string
+          created_at?: string
+          invoice_permission_model?: string
+          labor_cost_model?: string
+          labor_rate_source?: string
+          organization_id?: string
+          quote_required_before_tasks?: boolean
+          region?: string | null
+          require_quote_approved?: boolean
+          tax_model?: string
+          updated_at?: string
+          workflow_mode_default?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_intelligence_profile_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_memberships: {
         Row: {
           created_at: string
@@ -6330,6 +6389,10 @@ export type Database = {
       rpc_update_org_base_currency: {
         Args: { p_currency: string; p_org_id: string }
         Returns: undefined
+      }
+      rpc_update_org_intelligence_profile: {
+        Args: { p_organization_id: string; p_patch: Json }
+        Returns: Json
       }
       rpc_update_project_currency: {
         Args: { p_currency: string; p_project_id: string }

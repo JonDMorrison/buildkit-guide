@@ -903,6 +903,26 @@ async function checkEstimateLineItemsRls(): Promise<AuditCheck> {
   }
 }
 
+async function checkOrgIntelligenceProfileRls(): Promise<AuditCheck> {
+  const id = 'org_intelligence_profile_rls';
+  const name = 'Org Intelligence Profile RLS + Write Deny';
+  const area = 'Security';
+  const severity: 'P1' = 'P1';
+  const expected = 'Direct INSERT/UPDATE denied on organization_intelligence_profile; writes only via rpc_update_org_intelligence_profile';
+  try {
+    const { error } = await (supabase as any)
+      .from('organization_intelligence_profile')
+      .insert({ organization_id: '00000000-0000-0000-0000-000000000000' });
+    if (!error) return makeCheck(id, name, area, severity, expected, 'INSERT succeeded (VULNERABILITY)', 'FAIL', 'Direct INSERT was NOT denied.');
+    const denied = error.code === '42501' || (error.message || '').toLowerCase().includes('row-level security');
+    if (!denied) return makeCheck(id, name, area, severity, expected, `Error but not RLS: ${error.message}`, 'FAIL', error.message);
+    return makeCheck(id, name, area, severity, expected, 'Write denied by RLS', 'PASS',
+      `INSERT denied: ${error.message}\nTable uses FORCE ROW LEVEL SECURITY.\nWrites only via rpc_update_org_intelligence_profile (SECURITY DEFINER, admin-only, 42501 guard).`);
+  } catch (e: any) {
+    return makeCheck(id, name, area, severity, expected, `Exception: ${e.message}`, 'FAIL', e.message);
+  }
+}
+
 async function checkEstimateCurrencyMatch(): Promise<AuditCheck> {
   const id = 'estimate_currency_match';
   const name = 'Estimate Currency = Project Currency';
@@ -1207,6 +1227,7 @@ export async function runPromptsAudit(projectId: string): Promise<PromptsAuditRe
     checkEstimateTaskGeneration(),
     checkEstimateLineItemsRls(),
     checkEstimateCurrencyMatch(),
+    checkOrgIntelligenceProfileRls(),
   ]);
 
   const checks: AuditCheck[] = [];
