@@ -49,10 +49,19 @@ export interface WorkflowPhase {
   requirements: WorkflowRequirement[];
 }
 
+export interface EconomicRequirementPreview {
+  key: string;
+  label: string;
+  status: 'pending' | 'met' | 'unmet';
+  required: boolean;
+  details: string | null;
+}
+
 export interface ProjectWorkflowData {
   flow_mode: 'standard' | 'ai_optimized';
   current_phase: string | null;
   phases: WorkflowPhase[];
+  economic_requirements_preview: EconomicRequirementPreview[];
 }
 
 export function useProjectWorkflow(projectId?: string) {
@@ -83,7 +92,12 @@ export function useProjectWorkflow(projectId?: string) {
           required: r.required ?? true,
         })),
       }));
-      return { flow_mode: raw.flow_mode, current_phase: raw.current_phase, phases };
+      return {
+        flow_mode: raw.flow_mode,
+        current_phase: raw.current_phase,
+        phases,
+        economic_requirements_preview: (raw?.economic_requirements_preview ?? []) as EconomicRequirementPreview[],
+      };
     },
     enabled: !!projectId,
   });
