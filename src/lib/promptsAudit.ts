@@ -1769,8 +1769,8 @@ async function checkChangeOrdersSchema(): Promise<AuditCheck> {
         // Fallback: check v_rpc_metadata view (survives stale PostgREST cache)
         const { data: metaRow } = await supabase
           .from('v_rpc_metadata' as any)
-          .select('proname')
-          .eq('proname', rpc)
+          .select('function_name')
+          .eq('function_name', rpc)
           .maybeSingle();
         if (metaRow) {
           checks.push(`RPC ${rpc} exists (via metadata)`);
