@@ -1529,6 +1529,68 @@ async function checkProfitRiskDeterminism(projectId: string): Promise<AuditCheck
   }
 }
 
+// -- Guardrails RLS + Write-Deny (P1) --
+
+async function checkGuardrailsRls(): Promise<AuditCheck> {
+  const id = 'guardrails_rls_write_deny';
+  const name = 'Guardrails RLS + Write Deny';
+  const area = 'Security';
+  const sev: 'P1' = 'P1';
+
+  try {
+    // Test 1: Direct insert should fail with 42501
+    const { error: insertErr } = await supabase
+      .from('organization_guardrails')
+      .insert({ organization_id: '00000000-0000-0000-0000-000000000000', key: 'test_probe', mode: 'off' } as any);
+
+    const insertBlocked = insertErr?.code === '42501' || insertErr?.message?.includes('row-level security');
+
+    // Test 2: Direct update should fail
+    const { error: updateErr } = await supabase
+      .from('organization_guardrails')
+      .update({ mode: 'off' } as any)
+      .eq('key', 'test_probe');
+
+    const updateBlocked = updateErr?.code === '42501' || updateErr?.message?.includes('row-level security');
+
+    // Test 3: Direct delete should fail
+    const { error: deleteErr } = await supabase
+      .from('organization_guardrails')
+      .delete()
+      .eq('key', 'test_probe');
+
+    const deleteBlocked = deleteErr?.code === '42501' || deleteErr?.message?.includes('row-level security');
+
+    // Test 4: SELECT should work (if user has org membership)
+    const { error: selectErr } = await supabase
+      .from('organization_guardrails')
+      .select('id')
+      .limit(1);
+
+    const selectWorks = !selectErr;
+
+    const allBlocked = insertBlocked && updateBlocked && deleteBlocked;
+    const evidence = JSON.stringify({
+      insert: { blocked: insertBlocked, code: insertErr?.code },
+      update: { blocked: updateBlocked, code: updateErr?.code },
+      delete: { blocked: deleteBlocked, code: deleteErr?.code },
+      select: { works: selectWorks, error: selectErr?.message ?? null },
+    }, null, 2);
+
+    return makeCheck(id, name, area, sev,
+      'All direct writes denied, SELECT allowed',
+      allBlocked && selectWorks
+        ? 'All writes blocked (42501), SELECT OK'
+        : `Insert=${insertBlocked}, Update=${updateBlocked}, Delete=${deleteBlocked}, Select=${selectWorks}`,
+      allBlocked && selectWorks ? 'PASS' : 'FAIL',
+      evidence);
+  } catch (e: any) {
+    return makeCheck(id, name, area, sev,
+      'Guardrails RLS check executes', `Error: ${e.message}`,
+      'FAIL', e.message);
+  }
+}
+
 // -- Main Runner --
 
 export async function runPromptsAudit(projectId: string): Promise<PromptsAuditResult> {
@@ -1561,6 +1623,7 @@ export async function runPromptsAudit(projectId: string): Promise<PromptsAuditRe
     checkCertificationTierDeterminism(),
     checkCostRollupDeterminism(projectId),
     checkProfitRiskDeterminism(projectId),
+    checkGuardrailsRls(),
   ]);
 
   const checks: AuditCheck[] = [];

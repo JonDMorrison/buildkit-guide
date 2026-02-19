@@ -2421,6 +2421,44 @@ export type Database = {
           },
         ]
       }
+      organization_guardrails: {
+        Row: {
+          created_at: string
+          id: string
+          key: string
+          mode: string
+          organization_id: string
+          threshold_numeric: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key: string
+          mode?: string
+          organization_id: string
+          threshold_numeric?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key?: string
+          mode?: string
+          organization_id?: string
+          threshold_numeric?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_guardrails_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_intelligence_profile: {
         Row: {
           ai_style: string
@@ -6370,6 +6408,7 @@ export type Database = {
         Args: { p_estimate_id: string }
         Returns: Json
       }
+      rpc_get_guardrails: { Args: never; Returns: Json }
       rpc_get_org_costing_setup_status: {
         Args: { p_org_id: string }
         Returns: Json
@@ -6492,6 +6531,10 @@ export type Database = {
         Returns: Json
       }
       rpc_send_invoice: { Args: { p_invoice_id: string }; Returns: undefined }
+      rpc_set_guardrail: {
+        Args: { p_key: string; p_mode: string; p_threshold?: number }
+        Returns: Json
+      }
       rpc_set_org_sandbox_mode: {
         Args: { p_is_sandbox: boolean; p_org_id: string }
         Returns: boolean
