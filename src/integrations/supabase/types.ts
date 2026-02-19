@@ -512,6 +512,127 @@ export type Database = {
           },
         ]
       }
+      change_order_line_items: {
+        Row: {
+          amount: number
+          change_order_id: string
+          created_at: string
+          description: string
+          id: string
+          name: string
+          quantity: number
+          rate: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          change_order_id: string
+          created_at?: string
+          description?: string
+          id?: string
+          name: string
+          quantity?: number
+          rate?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          change_order_id?: string
+          created_at?: string
+          description?: string
+          id?: string
+          name?: string
+          quantity?: number
+          rate?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "change_order_line_items_change_order_id_fkey"
+            columns: ["change_order_id"]
+            isOneToOne: false
+            referencedRelation: "change_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      change_orders: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string
+          currency: string
+          estimate_id: string | null
+          id: string
+          organization_id: string
+          project_id: string
+          reason: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          created_by: string
+          currency?: string
+          estimate_id?: string | null
+          id?: string
+          organization_id: string
+          project_id: string
+          reason?: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string
+          currency?: string
+          estimate_id?: string | null
+          id?: string
+          organization_id?: string
+          project_id?: string
+          reason?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "change_orders_estimate_id_fkey"
+            columns: ["estimate_id"]
+            isOneToOne: false
+            referencedRelation: "estimates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "change_orders_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "change_orders_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "change_orders_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_progress"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           ap_contact_name: string | null
@@ -6259,6 +6380,21 @@ export type Database = {
           total_cost_delta: number
         }[]
       }
+      rpc_add_change_order_line_item: {
+        Args: {
+          p_change_order_id: string
+          p_description?: string
+          p_name: string
+          p_quantity?: number
+          p_rate?: number
+          p_sort_order?: number
+        }
+        Returns: Json
+      }
+      rpc_approve_change_order: {
+        Args: { p_approved?: boolean; p_change_order_id: string }
+        Returns: Json
+      }
       rpc_approve_estimate: { Args: { p_estimate_id: string }; Returns: Json }
       rpc_approve_phase: {
         Args: {
@@ -6356,11 +6492,19 @@ export type Database = {
         Args: { p_include_estimate_lines?: boolean; p_proposal_id: string }
         Returns: string
       }
+      rpc_create_change_order: {
+        Args: { p_payload_json: Json; p_project_id: string }
+        Returns: Json
+      }
       rpc_create_conversion_test_fixture: {
         Args: { p_org_id: string }
         Returns: Json
       }
       rpc_create_estimate: { Args: { p_project_id: string }; Returns: Json }
+      rpc_delete_change_order_line_item: {
+        Args: { p_line_item_id: string }
+        Returns: Json
+      }
       rpc_delete_estimate: {
         Args: { p_estimate_id: string }
         Returns: undefined
@@ -6530,6 +6674,10 @@ export type Database = {
         Args: { p_project_id: string }
         Returns: Json
       }
+      rpc_send_change_order: {
+        Args: { p_change_order_id: string }
+        Returns: Json
+      }
       rpc_send_invoice: { Args: { p_invoice_id: string }; Returns: undefined }
       rpc_set_guardrail: {
         Args: { p_key: string; p_mode: string; p_threshold?: number }
@@ -6593,6 +6741,14 @@ export type Database = {
       }
       rpc_time_diagnostics_summary: {
         Args: { p_org_id: string }
+        Returns: Json
+      }
+      rpc_update_change_order: {
+        Args: { p_change_order_id: string; p_payload_json: Json }
+        Returns: Json
+      }
+      rpc_update_change_order_line_item: {
+        Args: { p_line_item_id: string; p_payload_json: Json }
         Returns: Json
       }
       rpc_update_estimate_header: {
