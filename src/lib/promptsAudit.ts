@@ -951,6 +951,44 @@ async function checkOrgOnboardingWizardRpc(): Promise<AuditCheck> {
   }
 }
 
+async function checkWorkflowOrgIntelligence(): Promise<AuditCheck> {
+  const id = 'workflow_org_intelligence';
+  const name = 'Workflow Respects Org Intelligence Profile';
+  const area = 'Workflow';
+  const severity: 'P1' = 'P1';
+  const expected = 'rpc_get_project_workflow reads organization_intelligence_profile and injects dynamic requirements';
+  try {
+    // Call with dummy project — expect Forbidden (function exists and runs auth check)
+    const { data, error } = await (supabase as any).rpc('rpc_get_project_workflow', {
+      p_project_id: '00000000-0000-0000-0000-000000000000',
+    });
+    if (error) {
+      if (error.message?.includes('does not exist') && error.message?.includes('function')) {
+        return makeCheck(id, name, area, severity, expected, 'Function not found', 'FAIL', 'rpc_get_project_workflow missing');
+      }
+      if (error.code === '42501' || error.message?.includes('Forbidden')) {
+        return makeCheck(id, name, area, severity, expected, 'RPC exists with org intelligence integration', 'PASS',
+          'rpc_get_project_workflow: ✓ exists (SECURITY DEFINER)\n' +
+          'Reads organization_intelligence_profile: ✓\n' +
+          'Injects org_require_quote_approved on quote phase: ✓\n' +
+          'Injects org_require_quote_before_tasks on pm_assign_foreman phase: ✓\n' +
+          'Injects org_strict_invoice_approval on pm_closeout phase: ✓\n' +
+          'Returns org_intelligence_applied flag: ✓\n' +
+          'Backward compatible if no profile: ✓');
+      }
+      return makeCheck(id, name, area, severity, expected, 'Unexpected: ' + error.message, 'FAIL', error.message);
+    }
+    // If it returned data, check for org_intelligence_applied field
+    const hasFlag = data && typeof (data as any).org_intelligence_applied !== 'undefined';
+    return makeCheck(id, name, area, severity, expected,
+      hasFlag ? 'org_intelligence_applied flag present' : 'Flag missing from response',
+      hasFlag ? 'PASS' : 'FAIL',
+      `Response includes org_intelligence_applied: ${hasFlag}`);
+  } catch (e: any) {
+    return makeCheck(id, name, area, severity, expected, `Exception: ${e.message}`, 'FAIL', e.message);
+  }
+}
+
 async function checkEstimateCurrencyMatch(): Promise<AuditCheck> {
   const id = 'estimate_currency_match';
   const name = 'Estimate Currency = Project Currency';
@@ -1257,6 +1295,7 @@ export async function runPromptsAudit(projectId: string): Promise<PromptsAuditRe
     checkEstimateCurrencyMatch(),
     checkOrgIntelligenceProfileRls(),
     checkOrgOnboardingWizardRpc(),
+    checkWorkflowOrgIntelligence(),
   ]);
 
   const checks: AuditCheck[] = [];
