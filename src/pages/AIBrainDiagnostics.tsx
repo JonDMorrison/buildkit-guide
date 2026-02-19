@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Play, Download, ChevronDown, CheckCircle2, XCircle, AlertTriangle, Copy, Brain, Shield, Eye, Zap, Lock, RefreshCw, User, FlaskConical, ExternalLink, Microscope } from 'lucide-react';
+import { Play, Download, ChevronDown, CheckCircle2, XCircle, AlertTriangle, Copy, Brain, Shield, Eye, Zap, Lock, RefreshCw, User, FlaskConical, ExternalLink, Microscope, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from '@/hooks/useOrganization';
@@ -419,6 +419,14 @@ export default function AIBrainDiagnostics() {
   const [edgeError, setEdgeError] = useState<string | null>(null);
   const [edgeCopied, setEdgeCopied] = useState(false);
 
+  // Margin Payload Inspector state
+  const [inspectorProject, setInspectorProject] = useState<string>('');
+  const [inspectorRunning, setInspectorRunning] = useState(false);
+  const [inspectorResult, setInspectorResult] = useState<any>(null);
+  const [inspectorError, setInspectorError] = useState<string | null>(null);
+  const [inspectorCopied, setInspectorCopied] = useState(false);
+  const [inspectorOpen, setInspectorOpen] = useState(false);
+
   // Fetch projects
   useEffect(() => {
     if (!activeOrganizationId) return;
@@ -541,6 +549,31 @@ export default function AIBrainDiagnostics() {
     navigator.clipboard.writeText(JSON.stringify(edgeResult, null, 2));
     setEdgeCopied(true);
     setTimeout(() => setEdgeCopied(false), 2000);
+  };
+
+  // Margin Payload Inspector handler
+  const handleInspect = async () => {
+    if (!inspectorProject || !dbAuthOk) return;
+    setInspectorRunning(true);
+    setInspectorError(null);
+    setInspectorResult(null);
+    setInspectorOpen(false);
+    try {
+      const { data, error: rpcError } = await (supabase as any).rpc(
+        'rpc_debug_margin_control_payload',
+        { p_project_id: inspectorProject }
+      );
+      if (rpcError) setInspectorError(rpcError.message);
+      else setInspectorResult(data);
+    } catch (e: any) { setInspectorError(e.message); }
+    finally { setInspectorRunning(false); }
+  };
+
+  const handleCopyInspector = () => {
+    if (!inspectorResult) return;
+    navigator.clipboard.writeText(JSON.stringify(inspectorResult, null, 2));
+    setInspectorCopied(true);
+    setTimeout(() => setInspectorCopied(false), 2000);
   };
 
   const handleCopy = () => { if (result) navigator.clipboard.writeText(JSON.stringify(result, null, 2)); };
@@ -910,6 +943,155 @@ export default function AIBrainDiagnostics() {
                 ))}
               </div>
             </>
+          )}
+        </div>
+
+        {/* ─── Margin Payload Inspector ─────────────────────────────── */}
+        <div className="border-t pt-6 space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <Search className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-semibold">Margin Payload Inspector</h2>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Calls <code className="font-mono">rpc_debug_margin_control_payload</code> for any project —
+                shows exact live output including <code className="font-mono">intervention_flags</code> key shape.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {inspectorResult && (
+                <Button variant="outline" size="sm" onClick={handleCopyInspector}>
+                  <Copy className="h-4 w-4 mr-1.5" />
+                  {inspectorCopied ? 'Copied!' : 'Copy JSON'}
+                </Button>
+              )}
+              <Button
+                size="sm"
+                onClick={handleInspect}
+                disabled={inspectorRunning || !dbAuthOk || !inspectorProject}
+              >
+                <Play className="h-4 w-4 mr-1.5" />
+                {inspectorRunning ? 'Inspecting…' : 'Inspect Margin Payload'}
+              </Button>
+            </div>
+          </div>
+
+          {/* Project selector */}
+          <div className="max-w-sm">
+            <label className="text-sm font-medium mb-1 block">Project (required)</label>
+            <Select value={inspectorProject} onValueChange={setInspectorProject}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a project to inspect" />
+              </SelectTrigger>
+              <SelectContent>
+                {projects.map(p => (
+                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* DB auth guard */}
+          {!dbAuthOk && !dbAuthLoading && (
+            <Card className="border-destructive bg-destructive/5">
+              <CardContent className="p-3 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+                <span className="text-sm text-destructive">DB auth required — please refresh or log in first.</span>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Error */}
+          {inspectorError && (
+            <Card className="border-destructive bg-destructive/5">
+              <CardContent className="p-3 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+                <span className="text-sm text-destructive font-mono">{inspectorError}</span>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Results */}
+          {inspectorResult && (
+            <div className="space-y-3">
+              {/* Meta row */}
+              <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground font-mono">
+                <span>project: {inspectorResult.project_id?.slice(0, 8)}…</span>
+                <span>org: {inspectorResult.org_id?.slice(0, 8)}…</span>
+              </div>
+
+              {/* keys_present */}
+              <Card className="border-primary/20">
+                <CardContent className="p-4 space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    keys_present ({Array.isArray(inspectorResult.keys_present) ? inspectorResult.keys_present.length : 0})
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(inspectorResult.keys_present ?? []).map((k: string) => (
+                      <code
+                        key={k}
+                        className={`text-[11px] px-2 py-0.5 rounded font-mono border ${
+                          k === 'intervention_flags'
+                            ? 'bg-primary/10 text-primary border-primary/30'
+                            : 'bg-muted text-muted-foreground border-border'
+                        }`}
+                      >
+                        {k}
+                      </code>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* intervention_flags */}
+              <Card className={
+                inspectorResult.intervention_flags_type === 'array' ? 'border-primary/30' : 'border-amber-500/30'
+              }>
+                <CardContent className="p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      intervention_flags
+                    </p>
+                    <code className={`text-[11px] px-2 py-0.5 rounded font-mono border ${
+                      inspectorResult.intervention_flags_type === 'array'
+                        ? 'bg-primary/10 text-primary border-primary/30'
+                        : 'bg-amber-500/10 text-amber-600 border-amber-500/30'
+                    }`}>
+                      type: {inspectorResult.intervention_flags_type ?? 'null'}
+                    </code>
+                  </div>
+                  {Array.isArray(inspectorResult.intervention_flags_value) && inspectorResult.intervention_flags_value.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {inspectorResult.intervention_flags_value.map((flag: string, i: number) => (
+                        <Badge key={i} className="bg-destructive/10 text-destructive border-destructive/20 border text-[11px] font-mono">
+                          {flag}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground italic">
+                      {inspectorResult.intervention_flags_type === 'array'
+                        ? 'Empty array — no flags active'
+                        : 'Not an array — check key shape above'}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Full payload collapsible */}
+              <Collapsible open={inspectorOpen} onOpenChange={setInspectorOpen}>
+                <CollapsibleTrigger className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground w-full">
+                  <ChevronDown className={`h-3.5 w-3.5 transition-transform ${inspectorOpen ? 'rotate-180' : ''}`} />
+                  <span>{inspectorOpen ? 'Hide' : 'Show'} full margin_control_payload</span>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <pre className="mt-2 p-3 bg-muted rounded text-[11px] whitespace-pre-wrap max-h-96 overflow-auto font-mono leading-relaxed">
+                    {JSON.stringify(inspectorResult.margin_control_payload, null, 2)}
+                  </pre>
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
           )}
         </div>
       </div>

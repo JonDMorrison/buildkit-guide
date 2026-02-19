@@ -7806,6 +7806,10 @@ export type Database = {
         }
         Returns: Json
       }
+      rpc_debug_margin_control_payload: {
+        Args: { p_project_id: string }
+        Returns: Json
+      }
       rpc_delete_change_order_line_item: {
         Args: { p_line_item_id: string }
         Returns: Json
