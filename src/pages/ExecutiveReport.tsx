@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,11 +7,13 @@ import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from '@/hooks/useOrganization';
 import { Link } from 'react-router-dom';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   RefreshCw, AlertTriangle, TrendingUp, TrendingDown, Minus,
   Shield, Award, Crown, Gem, ExternalLink, BarChart3, Zap,
-  Copy, Check, Printer, FileText, Target, ShieldAlert,
+  Copy, Check, Printer, FileText, Target, ShieldAlert, HelpCircle,
 } from 'lucide-react';
+import { getCause } from '@/lib/causesDictionary';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -48,16 +50,8 @@ interface RiskSummary {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-const CAUSE_LABELS: Record<string, string> = {
-  margin_declining:               'Margin Declining',
-  labor_burn_high:                'Labor Burn Exceeding Benchmark',
-  below_low_band:                 'Below Historical Low Band',
-  low_historical_data:            'Low Historical Data',
-  labor_burn_exceeding_benchmark: 'Labor Burn Exceeding Benchmark',
-};
-
 function humanCause(cause: string) {
-  return CAUSE_LABELS[cause] ?? cause.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  return getCause(cause).label;
 }
 
 function fmt(n: number, decimals = 1) {
@@ -317,6 +311,7 @@ export default function ExecutiveReport() {
   }, [activeOrganizationId]);
 
   return (
+    <TooltipProvider>
     <Layout>
       {/* Print-specific styles */}
       <style>{`
@@ -474,15 +469,30 @@ export default function ExecutiveReport() {
                 <SectionLabel icon={<AlertTriangle className="h-4 w-4" />} title="Top Risk Causes" />
                 <div className="mt-3 space-y-2">
                   {data.top_causes.slice(0, 5).map((c, i) => {
+                    const def = getCause(c.cause);
                     const max = data.top_causes[0]?.count ?? 1;
                     const pct = Math.round((c.count / max) * 100);
                     return (
                       <div key={c.cause} className="flex items-center gap-3">
                         <span className="text-xs text-muted-foreground font-mono w-4 shrink-0">{i + 1}</span>
                         <div className="flex-1">
-                          <div className="flex justify-between text-xs mb-1">
-                            <span>{humanCause(c.cause)}</span>
-                            <span className="font-mono font-semibold text-destructive">{c.count}</span>
+                          <div className="flex items-center justify-between text-xs mb-1 gap-1.5">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="truncate">{def.label}</span>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <HelpCircle className="h-3 w-3 text-muted-foreground/50 shrink-0 cursor-help" />
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-xs space-y-1.5 p-3">
+                                  <p className="font-semibold text-xs">{def.label}</p>
+                                  <p className="text-xs leading-relaxed">{def.whyItMatters}</p>
+                                  <p className="text-xs text-muted-foreground border-t pt-1.5 leading-relaxed">
+                                    <span className="font-medium">Margin impact:</span> {def.marginImpact}
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
+                            <span className="font-mono font-semibold text-destructive shrink-0">{c.count}</span>
                           </div>
                           <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                             <div
@@ -552,6 +562,7 @@ export default function ExecutiveReport() {
         )}
       </div>
     </Layout>
+    </TooltipProvider>
   );
 }
 
