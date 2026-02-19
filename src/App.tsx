@@ -72,6 +72,7 @@ const Intelligence = lazy(() => import("./pages/Intelligence"));
 const ChangeOrders = lazy(() => import("./pages/ChangeOrders"));
 const ChangeOrderDetail = lazy(() => import("./pages/ChangeOrderDetail"));
 const Release = lazy(() => import("./pages/Release"));
+const Playbooks = lazy(() => import("./pages/Playbooks"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -555,6 +556,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <Release />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/playbooks"
+                  element={
+                    <ProtectedRoute>
+                      <Playbooks />
                     </ProtectedRoute>
                   }
                 />
