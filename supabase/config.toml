@@ -125,3 +125,6 @@ verify_jwt = false
 
 [functions.weekly-digest]
 verify_jwt = false
+
+[functions.generate-playbook]
+verify_jwt = false
