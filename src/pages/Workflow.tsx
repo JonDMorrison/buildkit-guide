@@ -127,15 +127,18 @@ function PhaseCard({
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Requirements</p>
               {phase.requirements.map(req => (
                 <div key={req.id} className="flex items-start gap-2 text-sm">
-                  {req.passed ? (
+                  {req.status === 'met' ? (
                     <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
                   ) : (
                     <Circle className="h-4 w-4 text-muted-foreground/40 shrink-0 mt-0.5" />
                   )}
-                  <span className={cn(req.passed ? 'text-foreground' : 'text-muted-foreground')}>
+                  <span className={cn(req.status === 'met' ? 'text-foreground' : 'text-muted-foreground')}>
                     {req.label}
-                    {!req.passed && req.message && (
-                      <span className="text-xs ml-1 text-destructive">— {req.message}</span>
+                    {req.status !== 'met' && req.details && (
+                      <span className="text-xs ml-1 text-destructive">— {req.details}</span>
+                    )}
+                    {!req.required && (
+                      <span className="text-xs ml-1 text-muted-foreground">(optional)</span>
                     )}
                   </span>
                 </div>
