@@ -42,6 +42,7 @@ import { ProjectBudgetTab } from '@/components/budget/ProjectBudgetTab';
 import { ProjectStatusDropdown } from '@/components/ProjectStatusDropdown';
 import { Switch } from '@/components/ui/switch';
 import { useProjectWorkflow } from '@/hooks/useProjectWorkflow';
+import { EconomicControlPanel } from '@/components/project/EconomicControlPanel';
 
 interface Project {
   id: string;
@@ -698,6 +699,9 @@ const ProjectOverviewTab = ({ projectId, stats }: { projectId: string; stats: Pr
 
   return (
     <div className="space-y-6">
+      {/* Economic Control Panel */}
+      <EconomicControlPanel projectId={projectId} />
+
       {/* Customer Hierarchy */}
       <CustomerHierarchyCard projectId={projectId} />
 
