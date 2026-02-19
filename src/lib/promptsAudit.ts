@@ -1437,6 +1437,52 @@ async function checkCertificationTierDeterminism(): Promise<AuditCheck> {
   }
 }
 
+// -- Cost Rollup Determinism (P1) --
+
+async function checkCostRollupDeterminism(projectId: string): Promise<AuditCheck> {
+  const id = 'cost_rollup_determinism';
+  const name = 'Cost Rollup Determinism';
+  const area = 'Finance';
+  const sev: 'P1' = 'P1';
+
+  try {
+    if (!projectId) {
+      return makeCheck(id, name, area, sev,
+        'RPC returns identical results on consecutive calls', 'No project selected',
+        'NEEDS_MANUAL', 'Select a project first');
+    }
+
+    const { data: run1, error: err1 } = await supabase.rpc('rpc_get_project_cost_rollup', {
+      p_project_id: projectId,
+    });
+    if (err1) throw err1;
+
+    const { data: run2, error: err2 } = await supabase.rpc('rpc_get_project_cost_rollup', {
+      p_project_id: projectId,
+    });
+    if (err2) throw err2;
+
+    const s1 = JSON.stringify(run1);
+    const s2 = JSON.stringify(run2);
+    const deterministic = s1 === s2;
+
+    const r = run1 as any;
+    const summary = deterministic
+      ? `Deterministic — labor=$${r?.actual_labor_cost ?? 0}, mat=$${r?.actual_material_cost ?? 0}, score=${r?.data_completeness_score ?? '?'}`
+      : 'Non-deterministic: outputs differ between calls';
+
+    return makeCheck(id, name, area, sev,
+      'Two consecutive calls return identical JSON',
+      summary,
+      deterministic ? 'PASS' : 'FAIL',
+      JSON.stringify({ run1, run2 }, null, 2));
+  } catch (e: any) {
+    return makeCheck(id, name, area, sev,
+      'Cost rollup RPC executes', `Error: ${e.message}`,
+      'FAIL', e.message);
+  }
+}
+
 // -- Main Runner --
 
 export async function runPromptsAudit(projectId: string): Promise<PromptsAuditResult> {
@@ -1467,6 +1513,7 @@ export async function runPromptsAudit(projectId: string): Promise<PromptsAuditRe
     checkStressTestSimulation(projectId),
     checkScoringDeterminism(),
     checkCertificationTierDeterminism(),
+    checkCostRollupDeterminism(projectId),
   ]);
 
   const checks: AuditCheck[] = [];
