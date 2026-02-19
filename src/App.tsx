@@ -76,6 +76,7 @@ const ChangeOrders = lazy(() => import("./pages/ChangeOrders"));
 const ChangeOrderDetail = lazy(() => import("./pages/ChangeOrderDetail"));
 const Release = lazy(() => import("./pages/Release"));
 const Playbooks = lazy(() => import("./pages/Playbooks"));
+const AdminReleaseChecklist = lazy(() => import("./pages/AdminReleaseChecklist"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -575,6 +576,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <Playbooks />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/release-checklist"
+                  element={
+                    <ProtectedRoute>
+                      <AdminReleaseChecklist />
                     </ProtectedRoute>
                   }
                 />
