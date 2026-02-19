@@ -1315,6 +1315,59 @@ async function runServerAuditSuite(projectId: string | null): Promise<AuditCheck
   }
 }
 
+// -- Playbook Safety Audit Checks (P1) via server helper --
+
+async function runPlaybookAuditChecks(projectId: string | null): Promise<AuditCheck[]> {
+  try {
+    const params: any = {};
+    if (projectId) params.p_project_id = projectId;
+
+    const { data, error } = await (supabase as any).rpc('_audit_playbook_checks', params);
+    if (error) {
+      return [makeCheck(
+        'playbook_audit_error', 'Playbook Audit Checks', 'System', 'P1',
+        '_audit_playbook_checks executes successfully',
+        `RPC error: ${error.message}`,
+        'FAIL',
+        `Error: ${error.message}`,
+      )];
+    }
+
+    const checks: AuditCheck[] = [];
+    const items = Array.isArray(data) ? data : [];
+
+    for (const item of items) {
+      const evidence = typeof item.evidence === 'object' ? JSON.stringify(item.evidence, null, 2) : String(item.evidence || '');
+      const check = makeCheck(
+        item.id || 'unknown',
+        item.name || 'Unknown Check',
+        item.area || 'Playbook',
+        (item.severity === 'P1' ? 'P1' : 'P0') as 'P0' | 'P1',
+        item.expected || '',
+        item.actual || '',
+        (item.status === 'PASS' ? 'PASS' : item.status === 'NEEDS_MANUAL' ? 'NEEDS_MANUAL' : 'FAIL') as AuditStatus,
+        evidence,
+      );
+      check.remediation = item.remediation || undefined;
+      check.source = 'server';
+      try {
+        if (Array.isArray(item.offenders) && item.offenders.length > 0) {
+          check.offenders = item.offenders;
+        }
+      } catch { /* ignore */ }
+      checks.push(check);
+    }
+
+    return checks;
+  } catch (e: any) {
+    return [makeCheck(
+      'playbook_audit_error', 'Playbook Audit Checks', 'System', 'P1',
+      '_audit_playbook_checks executes', `Exception: ${e.message}`,
+      'FAIL', e.message,
+    )];
+  }
+}
+
 // -- Operational Profile Scoring Determinism (P1) --
 
 async function checkScoringDeterminism(): Promise<AuditCheck> {
@@ -1888,8 +1941,9 @@ function checkUiCurrencyLabels(): AuditCheck {
 
 export async function runPromptsAudit(projectId: string): Promise<PromptsAuditResult> {
   // Run server-side and client-side checks in parallel
-  const [serverChecksResult, ...clientResults] = await Promise.allSettled([
+  const [serverChecksResult, playbookChecksResult, ...clientResults] = await Promise.allSettled([
     runServerAuditSuite(projectId || null),
+    runPlaybookAuditChecks(projectId || null),
     checkWorkflowTablesExist(),
     // checkWorkflowRls() removed — now handled server-side by rpc_run_audit_suite (workflow_rls_force)
     checkWorkflowWriteDeny(),
@@ -1937,6 +1991,18 @@ export async function runPromptsAudit(projectId: string): Promise<PromptsAuditRe
       'server_audit_error', 'Server Audit Suite', 'System', 'P0',
       'Server suite runs', `Failed: ${serverChecksResult.reason?.message ?? 'unknown'}`,
       'FAIL', String(serverChecksResult.reason)));
+  }
+
+  // Add playbook audit checks (array)
+  if (playbookChecksResult.status === 'fulfilled') {
+    for (const c of playbookChecksResult.value) {
+      checks.push(c);
+    }
+  } else {
+    checks.push(makeCheck(
+      'playbook_audit_error', 'Playbook Audit Suite', 'System', 'P1',
+      'Playbook checks run', `Failed: ${playbookChecksResult.reason?.message ?? 'unknown'}`,
+      'FAIL', String(playbookChecksResult.reason)));
   }
 
   // Add client-side checks
