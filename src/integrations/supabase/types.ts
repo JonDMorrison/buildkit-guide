@@ -2531,6 +2531,8 @@ export type Database = {
           ai_recommend_pricing: boolean | null
           ai_risk_mode: string | null
           base_currency: string
+          certification_tier: string
+          certification_updated_at: string | null
           created_at: string
           id: string
           invoice_approver: string | null
@@ -2558,6 +2560,8 @@ export type Database = {
           ai_recommend_pricing?: boolean | null
           ai_risk_mode?: string | null
           base_currency?: string
+          certification_tier?: string
+          certification_updated_at?: string | null
           created_at?: string
           id?: string
           invoice_approver?: string | null
@@ -2585,6 +2589,8 @@ export type Database = {
           ai_recommend_pricing?: boolean | null
           ai_risk_mode?: string | null
           base_currency?: string
+          certification_tier?: string
+          certification_updated_at?: string | null
           created_at?: string
           id?: string
           invoice_approver?: string | null
@@ -6269,6 +6275,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      rpc_calculate_certification_tier: {
+        Args: { p_organization_id: string }
+        Returns: Json
       }
       rpc_calculate_operational_profile_score: {
         Args: { p_organization_id: string }

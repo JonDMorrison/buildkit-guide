@@ -33,6 +33,8 @@ import {
   MoveIcon,
   Plus,
 } from "lucide-react";
+import { CertificationBadge } from "@/components/CertificationBadge";
+import { useCertificationTier } from "@/hooks/useCertificationTier";
 import { QuickAddModal } from "@/components/dashboard/QuickAddModal";
 import { UnratedLaborBanner } from "@/components/UnratedLaborBanner";
 import { format, isAfter, isBefore, addDays, startOfDay, subDays } from "date-fns";
@@ -47,6 +49,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { currentProjectId, setCurrentProject } = useCurrentProject();
   const { isPM, isForeman, isAdmin, isInternalWorker, isExternalTrade, loading: roleLoading } = useAuthRole(currentProjectId || undefined);
+  const { tier, certification } = useCertificationTier();
   const [currentBreakpoint, setCurrentBreakpoint] = useState("lg");
   // projectSearchOpen/Query removed — now handled by SidebarProjectSwitcher
   
@@ -408,7 +411,15 @@ export default function Dashboard() {
           <div className="widget-card !bg-gradient-to-br !from-card !via-primary/5 !to-secondary/5">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-foreground">Today on Site</h1>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl md:text-3xl font-bold text-foreground">Today on Site</h1>
+                  {tier !== 'none' && (
+                    <CertificationBadge
+                      tier={tier}
+                      reasons={certification?.reasons}
+                    />
+                  )}
+                </div>
                 <p className="text-sm text-muted-foreground">Project status and priorities</p>
               </div>
 

@@ -5,6 +5,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { NavItem } from "./sidebar/NavItem";
 import { NavSection } from "./sidebar/NavSection";
 import { SidebarProjectSwitcher } from "./sidebar/SidebarProjectSwitcher";
+import { CertificationBadge } from "@/components/CertificationBadge";
+import { useCertificationTier } from "@/hooks/useCertificationTier";
 import {
   Sidebar,
   SidebarContent,
@@ -41,6 +43,7 @@ export const AppSidebar = () => {
   const { visibleTabs, isLoading } = useNavigationTabs();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
+  const { tier } = useCertificationTier();
 
   /* Build sections from visible tabs */
   const sections = useMemo(() => {
@@ -106,6 +109,20 @@ export const AppSidebar = () => {
               ))}
             </NavSection>
           ))
+        )}
+
+        {/* Certification Badge */}
+        {tier !== 'none' && !collapsed && (
+          <div className="px-4 mt-auto pt-3 pb-2">
+            <div className="flex items-center justify-center">
+              <CertificationBadge tier={tier} />
+            </div>
+          </div>
+        )}
+        {tier !== 'none' && collapsed && (
+          <div className="flex justify-center mt-auto pt-3 pb-2">
+            <CertificationBadge tier={tier} compact />
+          </div>
         )}
       </SidebarContent>
     </Sidebar>
