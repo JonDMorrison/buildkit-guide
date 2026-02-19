@@ -3,14 +3,18 @@ import { Layout } from '@/components/Layout';
 import { PlaybookList } from '@/components/playbooks/PlaybookList';
 import { PlaybookEditor } from '@/components/playbooks/PlaybookEditor';
 import { CreatePlaybookDialog } from '@/components/playbooks/CreatePlaybookDialog';
+import { GeneratePlaybookDialog } from '@/components/playbooks/GeneratePlaybookDialog';
 import {
   usePlaybookList, usePlaybookDetail, usePlaybookPerformance, usePlaybookMutations,
 } from '@/hooks/usePlaybooks';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function Playbooks() {
+  const queryClient = useQueryClient();
   const { data: playbooks, isLoading: listLoading } = usePlaybookList();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [generateOpen, setGenerateOpen] = useState(false);
 
   const { data: detail, isLoading: detailLoading } = usePlaybookDetail(selectedId);
   const { data: performance } = usePlaybookPerformance(selectedId);
@@ -43,6 +47,7 @@ export default function Playbooks() {
             selectedId={selectedId}
             onSelect={setSelectedId}
             onCreateNew={() => setCreateOpen(true)}
+            onGenerateAI={() => setGenerateOpen(true)}
             performance={perfMap}
           />
         </div>
@@ -85,6 +90,15 @@ export default function Playbooks() {
           });
         }}
         isCreating={createPlaybook.isPending}
+      />
+
+      <GeneratePlaybookDialog
+        open={generateOpen}
+        onOpenChange={setGenerateOpen}
+        onCreated={(id) => {
+          queryClient.invalidateQueries({ queryKey: ['playbooks'] });
+          setSelectedId(id);
+        }}
       />
     </Layout>
   );

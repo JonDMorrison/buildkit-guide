@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Archive, Layers } from 'lucide-react';
+import { Plus, Archive, Layers, Sparkles } from 'lucide-react';
 import type { PlaybookSummary } from '@/hooks/usePlaybooks';
 
 interface PlaybookListProps {
@@ -13,6 +13,7 @@ interface PlaybookListProps {
   selectedId?: string | null;
   onSelect: (id: string) => void;
   onCreateNew: () => void;
+  onGenerateAI?: () => void;
   performance: Record<string, { variance_percent: number; projects_using: number }>;
 }
 
@@ -23,7 +24,7 @@ function varianceColor(v: number) {
 }
 
 export function PlaybookList({
-  playbooks, isLoading, selectedId, onSelect, onCreateNew, performance,
+  playbooks, isLoading, selectedId, onSelect, onCreateNew, onGenerateAI, performance,
 }: PlaybookListProps) {
   if (isLoading) {
     return (
@@ -42,10 +43,18 @@ export function PlaybookList({
           <h2 className="text-sm font-semibold text-foreground">Playbooks</h2>
           <p className="text-[11px] text-muted-foreground">{playbooks.length} templates</p>
         </div>
-        <Button size="sm" onClick={onCreateNew} className="h-8 gap-1.5">
-          <Plus className="h-3.5 w-3.5" />
-          New
-        </Button>
+        <div className="flex gap-1.5">
+          {onGenerateAI && (
+            <Button size="sm" variant="outline" onClick={onGenerateAI} className="h-8 gap-1.5">
+              <Sparkles className="h-3.5 w-3.5" />
+              AI
+            </Button>
+          )}
+          <Button size="sm" onClick={onCreateNew} className="h-8 gap-1.5">
+            <Plus className="h-3.5 w-3.5" />
+            New
+          </Button>
+        </div>
       </div>
 
       <ScrollArea className="flex-1">

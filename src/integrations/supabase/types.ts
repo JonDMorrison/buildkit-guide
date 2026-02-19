@@ -3783,6 +3783,7 @@ export type Database = {
           id: string
           is_deleted: boolean
           job_number: string | null
+          job_type: string | null
           location: string
           name: string
           organization_id: string
@@ -3811,6 +3812,7 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           job_number?: string | null
+          job_type?: string | null
           location: string
           name: string
           organization_id: string
@@ -3839,6 +3841,7 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           job_number?: string | null
+          job_type?: string | null
           location?: string
           name?: string
           organization_id?: string
