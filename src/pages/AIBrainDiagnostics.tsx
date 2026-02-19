@@ -620,7 +620,8 @@ export default function AIBrainDiagnostics() {
         .from('projects')
         .select('id, name')
         .eq('organization_id', activeOrganizationId)
-        .eq('status', 'active')
+        .not('status', 'in', '("completed","archived","deleted","cancelled")')
+        .eq('is_deleted', false)
         .order('id', { ascending: true });
 
       if (projErr) throw new Error(projErr.message);
