@@ -6476,6 +6476,25 @@ export type Database = {
       }
     }
     Views: {
+      v_org_margin_performance: {
+        Row: {
+          completed_projects_count: number | null
+          historical_avg_margin_ratio: number | null
+          historical_margin_high_band: number | null
+          historical_margin_low_band: number | null
+          historical_margin_stddev: number | null
+          org_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_organization_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_project_economic_snapshot: {
         Row: {
           actual_cost: number | null
