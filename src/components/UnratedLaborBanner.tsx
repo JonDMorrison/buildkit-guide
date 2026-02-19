@@ -24,7 +24,7 @@ export function UnratedLaborBanner({ projectId }: UnratedLaborBannerProps) {
 
   return (
     <>
-      <Alert variant="destructive" className="flex items-start gap-3">
+      <Alert variant="destructive" className="flex items-start gap-3" data-testid="unrated-labor-banner">
         <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
           <AlertTitle className="text-sm font-semibold">Job costing is incomplete</AlertTitle>
