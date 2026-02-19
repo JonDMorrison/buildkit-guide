@@ -524,9 +524,9 @@ async function checkWorkflowRequirement(projectId: string): Promise<AuditCheck> 
     let reqPassed: boolean | null = null;
     for (const phase of phases) {
       for (const req of phase.requirements ?? []) {
-        if (req.type === 'require_quote_approved') {
+        if (req.key === 'require_quote_approved' || req.requirement_type === 'require_quote_approved') {
           found = true;
-          reqPassed = req.passed;
+          reqPassed = req.status === 'met' || req.passed;
         }
       }
     }
