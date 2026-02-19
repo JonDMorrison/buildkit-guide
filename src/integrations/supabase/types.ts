@@ -6735,6 +6735,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      rpc_suggest_change_order_from_risk: {
+        Args: { p_project_id: string }
+        Returns: Json
+      }
       rpc_time_diagnostics_rls_probe: {
         Args: { p_org_id: string }
         Returns: Json

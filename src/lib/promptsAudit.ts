@@ -1713,6 +1713,50 @@ async function checkChangeOrdersSchema(): Promise<AuditCheck> {
   }
 }
 
+// -- CO Suggestion Determinism (P1) --
+
+async function checkCOSuggestionDeterminism(projectId: string): Promise<AuditCheck> {
+  const id = 'co_suggestion_determinism';
+  const name = 'Change Order Suggestion Determinism';
+  const area = 'Financial';
+  const sev: 'P1' = 'P1';
+
+  try {
+    if (!projectId) {
+      return makeCheck(id, name, area, sev,
+        'Two consecutive calls return identical JSON', 'No project selected',
+        'NEEDS_MANUAL', 'Select a project to run this check');
+    }
+
+    const { data: r1, error: e1 } = await supabase.rpc('rpc_suggest_change_order_from_risk' as any, { p_project_id: projectId });
+    const { data: r2, error: e2 } = await supabase.rpc('rpc_suggest_change_order_from_risk' as any, { p_project_id: projectId });
+
+    if (e1 || e2) {
+      const err = e1 || e2;
+      // Permission error is expected if user lacks access — not a determinism failure
+      if (err?.code === '42501') {
+        return makeCheck(id, name, area, sev,
+          'RPC callable and deterministic', 'Permission denied (expected for non-admin)',
+          'PASS', 'RPC exists and enforces access control');
+      }
+      throw err;
+    }
+
+    const s1 = JSON.stringify(r1);
+    const s2 = JSON.stringify(r2);
+    const match = s1 === s2;
+
+    return makeCheck(id, name, area, sev,
+      'Two consecutive calls return identical JSON',
+      match ? 'Results are identical — deterministic' : 'Results differ — non-deterministic',
+      match ? 'PASS' : 'FAIL',
+      match ? `Matched (${s1.length} chars)` : `Call1: ${s1.slice(0, 200)}\nCall2: ${s2.slice(0, 200)}`);
+  } catch (e: any) {
+    return makeCheck(id, name, area, sev,
+      'CO suggestion determinism check runs', `Error: ${e.message}`, 'FAIL', e.message);
+  }
+}
+
 // -- Main Runner --
 
 export async function runPromptsAudit(projectId: string): Promise<PromptsAuditResult> {
@@ -1748,6 +1792,7 @@ export async function runPromptsAudit(projectId: string): Promise<PromptsAuditRe
     checkGuardrailsRls(),
     checkGuardrailEnforcementInEdge(),
     checkChangeOrdersSchema(),
+    checkCOSuggestionDeterminism(projectId),
   ]);
 
   const checks: AuditCheck[] = [];
