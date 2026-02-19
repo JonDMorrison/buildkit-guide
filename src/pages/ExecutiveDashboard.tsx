@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +11,7 @@ import {
 import {
   RefreshCw, AlertTriangle, TrendingUp, TrendingDown, Minus,
   Shield, Award, Crown, Gem, ExternalLink, BarChart3, Zap, Target,
-  HelpCircle, Activity,
+  HelpCircle, Activity, Copy, Check,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getCause } from '@/lib/causesDictionary';
@@ -221,6 +221,7 @@ export default function ExecutiveDashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ranAt, setRanAt] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!activeOrganizationId) return;
@@ -240,6 +241,18 @@ export default function ExecutiveDashboard() {
       setLoading(false);
     }
   }, [activeOrganizationId]);
+
+  const copySummary = useCallback(() => {
+    if (!data) return;
+    const tier   = data.os_score?.tier ?? 'Unknown';
+    const score  = data.os_score?.score ?? '—';
+    const causes = data.top_causes.slice(0, 3).map(c => getCause(c.cause).label).join(', ') || 'None';
+    const text = `OS Health: ${tier} (${score}). Active: ${data.projects_active_count}. At risk: ${data.at_risk_count}. Avg projected margin: ${data.avg_projected_margin_at_completion_percent.toFixed(1)}%. Top causes: ${causes}.`;
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, [data]);
 
   const osScore = data?.os_score?.score ?? null;
   const tier    = data?.os_score?.tier;
@@ -264,10 +277,20 @@ export default function ExecutiveDashboard() {
                 </p>
               )}
             </div>
-            <Button onClick={refresh} disabled={loading || !activeOrganizationId} size="sm">
-              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              {loading ? 'Loading…' : data ? 'Refresh' : 'Load Dashboard'}
-            </Button>
+            <div className="flex items-center gap-2">
+              {data && (
+                <Button variant="outline" size="sm" onClick={copySummary}>
+                  {copied
+                    ? <><Check className="h-4 w-4 mr-1.5 text-primary" />Copied!</>
+                    : <><Copy className="h-4 w-4 mr-1.5" />Copy Summary</>
+                  }
+                </Button>
+              )}
+              <Button onClick={refresh} disabled={loading || !activeOrganizationId} size="sm">
+                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                {loading ? 'Loading…' : data ? 'Refresh' : 'Load Dashboard'}
+              </Button>
+            </div>
           </div>
 
           {/* ── Error ───────────────────────────────────────────── */}
