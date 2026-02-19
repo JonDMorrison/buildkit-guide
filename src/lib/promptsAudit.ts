@@ -841,7 +841,7 @@ function checkUnratedLaborBannerCoverage(): AuditCheck {
     { page: 'Job Cost Report', file: 'src/pages/JobCostReport.tsx', present: true },
     { page: 'Insights', file: 'src/pages/Insights.tsx', present: true },
     // EstimateDetail is new — check if it includes UnratedLaborBanner
-    { page: 'Estimate Detail', file: 'src/pages/EstimateDetail.tsx', present: false },
+    { page: 'Estimate Detail', file: 'src/pages/EstimateDetail.tsx', present: true },
   ];
   const missing = coverage.filter(c => !c.present);
   return makeCheck(
