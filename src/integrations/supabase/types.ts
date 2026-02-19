@@ -6852,6 +6852,10 @@ export type Database = {
         Args: { p_include_estimate_lines?: boolean; p_proposal_id: string }
         Returns: string
       }
+      rpc_convert_quote_to_invoice: {
+        Args: { p_quote_id: string }
+        Returns: Json
+      }
       rpc_create_change_order: {
         Args: { p_payload_json: Json; p_project_id: string }
         Returns: Json
