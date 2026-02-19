@@ -3770,6 +3770,8 @@ export type Database = {
       }
       projects: {
         Row: {
+          applied_playbook_id: string | null
+          applied_playbook_version: number | null
           archetype_id: string | null
           billing_address: string | null
           client_id: string | null
@@ -3784,14 +3786,20 @@ export type Database = {
           location: string
           name: string
           organization_id: string
+          playbook_applied_at: string | null
+          playbook_applied_by: string | null
           pm_contact_name: string | null
           pm_email: string | null
           pm_phone: string | null
           start_date: string | null
           status: string
+          total_expected_hours_high: number | null
+          total_expected_hours_low: number | null
           updated_at: string
         }
         Insert: {
+          applied_playbook_id?: string | null
+          applied_playbook_version?: number | null
           archetype_id?: string | null
           billing_address?: string | null
           client_id?: string | null
@@ -3806,14 +3814,20 @@ export type Database = {
           location: string
           name: string
           organization_id: string
+          playbook_applied_at?: string | null
+          playbook_applied_by?: string | null
           pm_contact_name?: string | null
           pm_email?: string | null
           pm_phone?: string | null
           start_date?: string | null
           status?: string
+          total_expected_hours_high?: number | null
+          total_expected_hours_low?: number | null
           updated_at?: string
         }
         Update: {
+          applied_playbook_id?: string | null
+          applied_playbook_version?: number | null
           archetype_id?: string | null
           billing_address?: string | null
           client_id?: string | null
@@ -3828,14 +3842,25 @@ export type Database = {
           location?: string
           name?: string
           organization_id?: string
+          playbook_applied_at?: string | null
+          playbook_applied_by?: string | null
           pm_contact_name?: string | null
           pm_email?: string | null
           pm_phone?: string | null
           start_date?: string | null
           status?: string
+          total_expected_hours_high?: number | null
+          total_expected_hours_low?: number | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "projects_applied_playbook_id_fkey"
+            columns: ["applied_playbook_id"]
+            isOneToOne: false
+            referencedRelation: "playbooks"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "projects_archetype_id_fkey"
             columns: ["archetype_id"]
@@ -5242,6 +5267,10 @@ export type Database = {
       tasks: {
         Row: {
           assigned_trade_id: string | null
+          baseline_density_weight: number | null
+          baseline_high_hours: number | null
+          baseline_low_hours: number | null
+          baseline_role_type: string | null
           budgeted_hours: number | null
           created_at: string
           created_by: string
@@ -5254,12 +5283,16 @@ export type Database = {
           is_generated: boolean
           location: string | null
           planned_hours: number | null
+          playbook_collapsed: boolean
+          playbook_required: boolean | null
           priority: number
           project_id: string
           review_requested_at: string | null
           review_requested_by: string | null
           scope_item_id: string | null
           sort_order: number | null
+          source_playbook_id: string | null
+          source_playbook_version: number | null
           start_date: string | null
           status: Database["public"]["Enums"]["task_status"]
           title: string
@@ -5267,6 +5300,10 @@ export type Database = {
         }
         Insert: {
           assigned_trade_id?: string | null
+          baseline_density_weight?: number | null
+          baseline_high_hours?: number | null
+          baseline_low_hours?: number | null
+          baseline_role_type?: string | null
           budgeted_hours?: number | null
           created_at?: string
           created_by: string
@@ -5279,12 +5316,16 @@ export type Database = {
           is_generated?: boolean
           location?: string | null
           planned_hours?: number | null
+          playbook_collapsed?: boolean
+          playbook_required?: boolean | null
           priority?: number
           project_id: string
           review_requested_at?: string | null
           review_requested_by?: string | null
           scope_item_id?: string | null
           sort_order?: number | null
+          source_playbook_id?: string | null
+          source_playbook_version?: number | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           title: string
@@ -5292,6 +5333,10 @@ export type Database = {
         }
         Update: {
           assigned_trade_id?: string | null
+          baseline_density_weight?: number | null
+          baseline_high_hours?: number | null
+          baseline_low_hours?: number | null
+          baseline_role_type?: string | null
           budgeted_hours?: number | null
           created_at?: string
           created_by?: string
@@ -5304,12 +5349,16 @@ export type Database = {
           is_generated?: boolean
           location?: string | null
           planned_hours?: number | null
+          playbook_collapsed?: boolean
+          playbook_required?: boolean | null
           priority?: number
           project_id?: string
           review_requested_at?: string | null
           review_requested_by?: string | null
           scope_item_id?: string | null
           sort_order?: number | null
+          source_playbook_id?: string | null
+          source_playbook_version?: number | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           title?: string
@@ -5356,6 +5405,13 @@ export type Database = {
             columns: ["scope_item_id"]
             isOneToOne: false
             referencedRelation: "project_scope_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_source_playbook_id_fkey"
+            columns: ["source_playbook_id"]
+            isOneToOne: false
+            referencedRelation: "playbooks"
             referencedColumns: ["id"]
           },
         ]
@@ -6655,10 +6711,19 @@ export type Database = {
         }
         Returns: Json
       }
-      rpc_apply_playbook_to_project: {
-        Args: { p_playbook_id: string; p_project_id: string }
-        Returns: Json
-      }
+      rpc_apply_playbook_to_project:
+        | {
+            Args: { p_playbook_id: string; p_project_id: string }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_force_reapply?: boolean
+              p_playbook_id: string
+              p_project_id: string
+            }
+            Returns: Json
+          }
       rpc_approve_change_order: {
         Args: { p_approved?: boolean; p_change_order_id: string }
         Returns: Json
