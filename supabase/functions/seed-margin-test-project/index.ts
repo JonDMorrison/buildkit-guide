@@ -147,10 +147,10 @@ serve(async (req: Request) => {
         check_in_at: checkIn.toISOString(),
         check_out_at: checkOut.toISOString(),
         duration_hours: 10,
+        duration_minutes: 600,
         status: "closed",
-        cost_rate: COST_RATE,
-        currency: "CAD",
         notes: `Stress seed entry ${i + 1}/10`,
+        source: "manual",
       });
     }
 
