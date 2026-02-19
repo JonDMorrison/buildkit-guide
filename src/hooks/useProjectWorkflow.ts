@@ -2,11 +2,33 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+/**
+ * Standardized workflow requirement object returned by rpc_get_project_workflow.
+ *
+ * Contract:
+ *  - key:      requirement_type identifier (e.g. "require_estimate_exists")
+ *  - label:    human-readable description
+ *  - status:   "met" | "unmet" | "blocked"
+ *  - details:  optional failure/context message (null when met)
+ *  - required: whether this requirement blocks phase advancement
+ *
+ * Legacy aliases kept for backward compatibility:
+ *  - id, type (= key), passed (= status === 'met'), message (= details)
+ */
 export interface WorkflowRequirement {
   id: string;
-  type: string;
+  /** Canonical requirement key, e.g. "require_quote_approved" */
+  key: string;
   label: string;
+  status: 'met' | 'unmet' | 'blocked';
+  details: string | null;
+  required: boolean;
+  // Legacy aliases — prefer key/status/details above
+  /** @deprecated Use `key` instead */
+  type: string;
+  /** @deprecated Use `status === 'met'` instead */
   passed: boolean;
+  /** @deprecated Use `details` instead */
   message: string;
 }
 
