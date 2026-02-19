@@ -18,6 +18,7 @@ export interface Estimate {
   ship_to_name: string | null;
   ship_to_address: string | null;
   contract_value: number;
+  currency: string;
   planned_labor_hours: number;
   planned_labor_bill_rate: number;
   planned_labor_bill_amount: number;

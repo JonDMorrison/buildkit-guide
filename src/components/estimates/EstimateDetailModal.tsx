@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { useEstimates } from "@/hooks/useEstimates";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle2, Copy, Lock, Plus, Trash2, Wand2, Save, Loader2 } from "lucide-react";
+import { formatCurrency } from "@/lib/formatters";
 import { format } from "date-fns";
 import type { Estimate, EstimateLineItem } from "@/types/estimates";
 
@@ -29,8 +30,7 @@ const ITEM_TYPES = [
   { value: "other", label: "Other" },
 ];
 
-const formatCurrency = (v: number, currency = "CAD") =>
-  `${new Intl.NumberFormat("en-CA", { style: "currency", currency }).format(v)} ${currency}`;
+// formatCurrency imported from @/lib/formatters — currency bound per-estimate via fc() below
 
 export const EstimateDetailModal = ({ estimate, canEdit, onClose, onUpdated }: Props) => {
   const {
@@ -39,6 +39,7 @@ export const EstimateDetailModal = ({ estimate, canEdit, onClose, onUpdated }: P
     generateTasksFromEstimate,
   } = useEstimates(estimate.project_id);
   const { toast } = useToast();
+  const fc = (v: number) => formatCurrency(v, estimate.currency);
 
   const [lineItems, setLineItems] = useState<EstimateLineItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -141,12 +142,12 @@ export const EstimateDetailModal = ({ estimate, canEdit, onClose, onUpdated }: P
               {isDraft && canEdit ? (
                 <Input type="number" value={contractValue} onChange={e => setContractValue(e.target.value)} className="h-8 text-sm" />
               ) : (
-                <p className="font-semibold">{formatCurrency(estimate.contract_value)}</p>
+                <p className="font-semibold">{fc(estimate.contract_value)}</p>
               )}
             </div>
             <div>
               <p className="text-muted-foreground text-xs">Planned Total Cost</p>
-              <p className="font-semibold">{formatCurrency(estimate.planned_total_cost)}</p>
+              <p className="font-semibold">{fc(estimate.planned_total_cost)}</p>
             </div>
             <div>
               <p className="text-muted-foreground text-xs">Planned Margin</p>
@@ -154,15 +155,15 @@ export const EstimateDetailModal = ({ estimate, canEdit, onClose, onUpdated }: P
             </div>
             <div>
               <p className="text-muted-foreground text-xs">Labor Hours</p>
-              <p className="font-semibold">{estimate.planned_labor_hours}h @ {formatCurrency(estimate.planned_labor_bill_rate)}/hr</p>
+              <p className="font-semibold">{estimate.planned_labor_hours}h @ {fc(estimate.planned_labor_bill_rate)}/hr</p>
             </div>
             <div>
               <p className="text-muted-foreground text-xs">Material Cost</p>
-              <p className="font-semibold">{formatCurrency(estimate.planned_material_cost)}</p>
+              <p className="font-semibold">{fc(estimate.planned_material_cost)}</p>
             </div>
             <div>
               <p className="text-muted-foreground text-xs">Machine Cost</p>
-              <p className="font-semibold">{formatCurrency(estimate.planned_machine_cost)}</p>
+              <p className="font-semibold">{fc(estimate.planned_machine_cost)}</p>
             </div>
           </div>
 
@@ -219,9 +220,9 @@ export const EstimateDetailModal = ({ estimate, canEdit, onClose, onUpdated }: P
                         <TableCell>{li.name}</TableCell>
                         <TableCell className="text-right">{li.quantity}</TableCell>
                         <TableCell>{li.unit || "—"}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(li.rate)}</TableCell>
-                        <TableCell className="text-right font-medium">{formatCurrency(li.amount)}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(li.sales_tax_amount)}</TableCell>
+                        <TableCell className="text-right">{fc(li.rate)}</TableCell>
+                        <TableCell className="text-right font-medium">{fc(li.amount)}</TableCell>
+                        <TableCell className="text-right">{fc(li.sales_tax_amount)}</TableCell>
                         {isDraft && canEdit && (
                           <TableCell>
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteLine(li.id)}>
@@ -254,7 +255,7 @@ export const EstimateDetailModal = ({ estimate, canEdit, onClose, onUpdated }: P
                         <TableCell>
                           <Input className="h-8 text-sm w-20" type="number" value={nl.rate} onChange={e => setNewLines(prev => prev.map((l, i) => i === idx ? { ...l, rate: Number(e.target.value) } : l))} />
                         </TableCell>
-                        <TableCell className="text-right text-sm">{formatCurrency(nl.quantity * nl.rate)}</TableCell>
+                        <TableCell className="text-right text-sm">{fc(nl.quantity * nl.rate)}</TableCell>
                         <TableCell>
                           <Input className="h-8 text-sm w-16" type="number" value={nl.sales_tax_rate} onChange={e => setNewLines(prev => prev.map((l, i) => i === idx ? { ...l, sales_tax_rate: Number(e.target.value) } : l))} />
                         </TableCell>
@@ -270,9 +271,9 @@ export const EstimateDetailModal = ({ estimate, canEdit, onClose, onUpdated }: P
               </div>
             )}
             <div className="flex justify-end mt-2 space-x-6 text-sm">
-              <span>Subtotal: <strong>{formatCurrency(subtotal)}</strong></span>
-              <span>Tax: <strong>{formatCurrency(totalTax)}</strong></span>
-              <span>Total: <strong>{formatCurrency(subtotal + totalTax)}</strong></span>
+              <span>Subtotal: <strong>{fc(subtotal)}</strong></span>
+              <span>Tax: <strong>{fc(totalTax)}</strong></span>
+              <span>Total: <strong>{fc(subtotal + totalTax)}</strong></span>
             </div>
           </div>
 

@@ -11,6 +11,7 @@ import { useClients } from "@/hooks/useClients";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Trash2 } from "lucide-react";
+import { formatCurrency as sharedFmtCurrency } from "@/lib/formatters";
 import { Badge } from "@/components/ui/badge";
 
 interface Props {
@@ -178,8 +179,7 @@ export const CreateEstimateModal = ({ projectId, onClose, onCreated }: Props) =>
     onCreated();
   };
 
-  const formatCurrency = (v: number) =>
-    `${new Intl.NumberFormat("en-CA", { style: "currency", currency: projectCurrency }).format(v)} ${projectCurrency}`;
+  const formatCurrency = (v: number) => sharedFmtCurrency(v, projectCurrency);
 
   return (
     <Dialog open onOpenChange={onClose}>

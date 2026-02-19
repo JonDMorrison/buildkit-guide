@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
+import { formatCurrency } from "@/lib/formatters";
 import { SectionHeader } from "@/components/SectionHeader";
 import { useEstimates } from "@/hooks/useEstimates";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
@@ -37,8 +38,7 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
   archived: { label: "Archived", variant: "outline" },
 };
 
-const fmtCurrency = (v: number, currency = "CAD") =>
-  `${new Intl.NumberFormat("en-CA", { style: "currency", currency }).format(v)} ${currency}`;
+const fmtCurrency = (v: number, currency = "CAD") => formatCurrency(v, currency);
 
 const Estimates = () => {
   const navigate = useNavigate();
@@ -174,15 +174,15 @@ const Estimates = () => {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <Card><CardContent className="p-4">
                   <p className="text-xs text-muted-foreground">Contract Value</p>
-                  <p className="text-lg font-bold">{fmtCurrency(approvedEstimate.contract_value, (approvedEstimate as any).currency)}</p>
+                  <p className="text-lg font-bold">{fmtCurrency(approvedEstimate.contract_value, approvedEstimate.currency)}</p>
                 </CardContent></Card>
                 <Card><CardContent className="p-4">
                   <p className="text-xs text-muted-foreground">Planned Cost</p>
-                  <p className="text-lg font-bold">{fmtCurrency(approvedEstimate.planned_total_cost, (approvedEstimate as any).currency)}</p>
+                  <p className="text-lg font-bold">{fmtCurrency(approvedEstimate.planned_total_cost, approvedEstimate.currency)}</p>
                 </CardContent></Card>
                 <Card><CardContent className="p-4">
                   <p className="text-xs text-muted-foreground">Planned Profit</p>
-                  <p className="text-lg font-bold">{fmtCurrency(approvedEstimate.planned_profit, (approvedEstimate as any).currency)}</p>
+                  <p className="text-lg font-bold">{fmtCurrency(approvedEstimate.planned_profit, approvedEstimate.currency)}</p>
                 </CardContent></Card>
                 <Card><CardContent className="p-4">
                   <p className="text-xs text-muted-foreground">Margin</p>
@@ -268,8 +268,8 @@ const Estimates = () => {
                               <TableCell className="font-medium">{est.estimate_number}</TableCell>
                               <TableCell className="text-sm text-muted-foreground">{est.project?.name || "—"}</TableCell>
                               <TableCell><Badge variant={sc.variant}>{sc.label}</Badge></TableCell>
-                              <TableCell className="text-right">{fmtCurrency(est.contract_value, (est as any).currency)}</TableCell>
-                              <TableCell className="text-right">{fmtCurrency(est.planned_total_cost, (est as any).currency)}</TableCell>
+                              <TableCell className="text-right">{fmtCurrency(est.contract_value, est.currency)}</TableCell>
+                              <TableCell className="text-right">{fmtCurrency(est.planned_total_cost, est.currency)}</TableCell>
                               <TableCell className="text-right">{est.planned_margin_percent}%</TableCell>
                               <TableCell>{format(new Date(est.created_at), "MMM d, yyyy")}</TableCell>
                               <TableCell className="text-right">
