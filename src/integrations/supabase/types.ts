@@ -6476,6 +6476,10 @@ export type Database = {
       get_next_estimate_number: { Args: { p_org_id: string }; Returns: string }
       get_next_invoice_number: { Args: { org_id: string }; Returns: string }
       get_next_quote_number: { Args: { p_org_id: string }; Returns: string }
+      get_operational_patterns: {
+        Args: { p_organization_id: string }
+        Returns: Json
+      }
       get_playbook_baseline: { Args: { p_project_id: string }; Returns: Json }
       get_task_project_id: { Args: { _task_id: string }; Returns: string }
       get_time_cron_secret: { Args: never; Returns: string }
