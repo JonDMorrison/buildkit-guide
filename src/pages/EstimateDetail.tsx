@@ -30,8 +30,9 @@ const ITEM_TYPES = [
   { value: "other", label: "Other" },
 ];
 
-const fmtCurrency = (v: number, currency = "CAD") =>
-  `${new Intl.NumberFormat("en-CA", { style: "currency", currency }).format(v)} ${currency}`;
+import { formatCurrency } from "@/lib/formatters";
+
+const fmtCurrency = (v: number, currency = "CAD") => formatCurrency(v, currency);
 
 const EstimateDetail = () => {
   const { estimateId } = useParams<{ estimateId: string }>();
@@ -45,6 +46,8 @@ const EstimateDetail = () => {
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [showVariance, setShowVariance] = useState(false);
+  const [varianceKey, setVarianceKey] = useState(0);
+  const refreshVariance = () => setVarianceKey(k => k + 1);
 
   // Editable header fields
   const [contractValue, setContractValue] = useState("");
@@ -120,7 +123,8 @@ const EstimateDetail = () => {
   const subtotal = lineItems.reduce((s, li) => s + li.amount, 0);
   const totalTax = lineItems.reduce((s, li) => s + li.sales_tax_amount, 0);
   const laborCount = lineItems.filter(li => li.item_type === "labor").length;
-  const cur = (estimate as any).currency || "CAD";
+  const cur = estimate.currency || "CAD";
+
 
   const handleSaveHeader = async () => {
     setSaving(true);
@@ -132,7 +136,7 @@ const EstimateDetail = () => {
     setSaving(false);
     toast({ title: "Estimate saved" });
     await fetchEstimates();
-    if (showVariance) setShowVariance(false); // trigger re-open to refresh
+    refreshVariance();
   };
 
   const handleAddLine = () => {
@@ -155,11 +159,13 @@ const EstimateDetail = () => {
     setNewLines(prev => prev.filter((_, i) => i !== idx));
     await loadLineItems();
     setSaving(false);
+    refreshVariance();
   };
 
   const handleDeleteLine = async (id: string) => {
     await deleteLineItem(id);
     await loadLineItems();
+    refreshVariance();
   };
 
   const handleGenerate = async () => {
@@ -433,7 +439,7 @@ const EstimateDetail = () => {
             <VariancePanel
               projectId={estimate.project_id}
               fetchVariance={fetchVariance}
-              key={`variance-${lineItems.length}`}
+              key={`variance-${varianceKey}`}
             />
           </div>
         </div>
@@ -471,8 +477,7 @@ const VariancePanel = ({ projectId, fetchVariance }: {
   }, [projectId, fetchVariance]);
 
   const cur = data?.currency || "CAD";
-  const fmt = (v: number) =>
-    `${new Intl.NumberFormat("en-CA", { style: "currency", currency: cur }).format(v)} ${cur}`;
+  const fmt = (v: number) => formatCurrency(v, cur);
 
   if (loading) {
     return (
