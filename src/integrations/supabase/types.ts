@@ -6227,7 +6227,7 @@ export type Database = {
       }
       rpc_request_invoice_approval: {
         Args: { p_invoice_id: string }
-        Returns: undefined
+        Returns: Json
       }
       rpc_request_phase_advance: {
         Args: { p_notes?: string; p_phase_key: string; p_project_id: string }
