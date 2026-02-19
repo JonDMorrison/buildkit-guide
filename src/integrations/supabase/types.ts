@@ -2542,6 +2542,7 @@ export type Database = {
           quote_standardization: string | null
           rate_source: string
           require_safety_before_work: boolean | null
+          score_snapshot: Json | null
           tasks_before_quote: boolean | null
           tax_model: string
           time_audit_frequency: string | null
@@ -2568,6 +2569,7 @@ export type Database = {
           quote_standardization?: string | null
           rate_source?: string
           require_safety_before_work?: boolean | null
+          score_snapshot?: Json | null
           tasks_before_quote?: boolean | null
           tax_model?: string
           time_audit_frequency?: string | null
@@ -2594,6 +2596,7 @@ export type Database = {
           quote_standardization?: string | null
           rate_source?: string
           require_safety_before_work?: boolean | null
+          score_snapshot?: Json | null
           tasks_before_quote?: boolean | null
           tax_model?: string
           time_audit_frequency?: string | null
@@ -6266,6 +6269,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      rpc_calculate_operational_profile_score: {
+        Args: { p_organization_id: string }
+        Returns: Json
       }
       rpc_cancel_time_adjustment_request: {
         Args: { p_actor_id: string; p_request_id: string }
