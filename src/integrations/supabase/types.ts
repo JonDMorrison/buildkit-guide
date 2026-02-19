@@ -6065,6 +6065,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      rpc_check_workflow_write_deny: { Args: never; Returns: Json }
       rpc_convert_proposal_to_quote: {
         Args: { p_include_estimate_lines?: boolean; p_proposal_id: string }
         Returns: string

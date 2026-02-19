@@ -126,57 +126,30 @@ async function checkWorkflowRls(): Promise<AuditCheck> {
   );
 }
 
-// B) Fixed: only PASS on genuine RLS denial (42501 or 'row-level security')
+// B) Structural check: verify RLS enabled + forced + no permissive write policies
 async function checkWorkflowWriteDeny(): Promise<AuditCheck> {
   const id = 'workflow_write_deny';
   const name = 'Workflow Write Deny (Client)';
   const area = 'Security';
   const severity: 'P0' = 'P0';
-  const expected = 'UPDATE on project_workflow_steps denied by RLS (code 42501)';
+  const expected = 'RLS enabled+forced, no permissive INSERT/UPDATE/DELETE policies on workflow tables';
 
   try {
-    // 1. Get a real row
-    const { data: rows, error: fetchErr } = await (supabase as any)
-      .from('project_workflow_steps')
-      .select('id')
-      .limit(1);
+    // Structural inspection via pg_catalog — read-only, deterministic
+    const { data, error } = await supabase.rpc('rpc_check_workflow_write_deny' as any);
 
-    if (fetchErr || !rows || rows.length === 0) {
+    if (error) {
       return makeCheck(id, name, area, severity, expected,
-        'No rows in project_workflow_steps to test against',
-        'NEEDS_MANUAL', 'Insert workflow steps via rpc_set_project_flow_mode first, then rerun.');
+        `RPC error: ${error.message}`, 'FAIL',
+        'Ensure rpc_check_workflow_write_deny exists. Run the migration first.');
     }
 
-    const rowId = rows[0].id;
+    const result = data as { pass: boolean; details: Record<string, any> };
 
-    // 2. Attempt UPDATE on that row
-    const { error } = await (supabase as any)
-      .from('project_workflow_steps')
-      .update({ sort_order: 999 })
-      .eq('id', rowId);
-
-    if (!error) {
-      // Update succeeded -- vulnerability
-      return makeCheck(id, name, area, severity, expected,
-        'UPDATE succeeded (VULNERABILITY)', 'FAIL',
-        `Row ${rowId} was updated without RLS denial.`);
-    }
-
-    // 3. Check for RLS-specific denial
-    const code = error.code;
-    const msg = (error.message || '').toLowerCase();
-    const isRlsDenial = code === '42501' || msg.includes('row-level security');
-
-    if (isRlsDenial) {
-      return makeCheck(id, name, area, severity, expected,
-        `Denied: code=${code}`, 'PASS',
-        `Error: ${error.message}`);
-    }
-
-    // 4. Some other error -- not proof of RLS
     return makeCheck(id, name, area, severity, expected,
-      `Error but not RLS denial: code=${code}`, 'FAIL',
-      `Error: ${error.message} (code: ${code}). This is NOT proof of RLS enforcement.`);
+      result.pass ? 'All workflow tables deny direct writes' : 'Some tables have permissive write policies',
+      result.pass ? 'PASS' : 'FAIL',
+      JSON.stringify(result.details));
   } catch (e: any) {
     return makeCheck(id, name, area, severity, expected,
       `Exception: ${e.message}`, 'FAIL', e.message);
