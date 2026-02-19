@@ -1372,6 +1372,71 @@ async function checkScoringDeterminism(): Promise<AuditCheck> {
   }
 }
 
+async function checkCertificationTierDeterminism(): Promise<AuditCheck> {
+  try {
+    // Get org from user context
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return makeCheck(
+        'cert_tier_determinism', 'Certification Tier Determinism', 'Finance', 'P1',
+        'Tier RPC is deterministic', 'No authenticated user',
+        'NEEDS_MANUAL', 'Login required',
+      );
+    }
+
+    const { data: membership } = await (supabase as any)
+      .from('organization_members')
+      .select('organization_id')
+      .eq('user_id', user.id)
+      .limit(1)
+      .maybeSingle();
+
+    if (!membership) {
+      return makeCheck(
+        'cert_tier_determinism', 'Certification Tier Determinism', 'Finance', 'P1',
+        'Tier RPC executes', 'No org membership found',
+        'NEEDS_MANUAL', 'User must be in an org',
+      );
+    }
+
+    const orgId = membership.organization_id;
+
+    // Run twice — must be identical
+    const { data: run1, error: err1 } = await supabase.rpc('rpc_calculate_certification_tier', {
+      p_organization_id: orgId,
+    });
+    if (err1) throw err1;
+
+    const { data: run2, error: err2 } = await supabase.rpc('rpc_calculate_certification_tier', {
+      p_organization_id: orgId,
+    });
+    if (err2) throw err2;
+
+    const r1 = { ...(run1 as any) };
+    const r2 = { ...(run2 as any) };
+    delete r1.calculated_at;
+    delete r2.calculated_at;
+
+    const deterministic = JSON.stringify(r1) === JSON.stringify(r2);
+
+    return makeCheck(
+      'cert_tier_determinism', 'Certification Tier Determinism', 'Finance', 'P1',
+      'Two consecutive calls return identical tier',
+      deterministic
+        ? `Deterministic — tier: ${r1.tier}`
+        : `Non-deterministic: run1=${r1.tier}, run2=${r2.tier}`,
+      deterministic ? 'PASS' : 'FAIL',
+      JSON.stringify({ run1: r1, run2: r2 }),
+    );
+  } catch (e: any) {
+    return makeCheck(
+      'cert_tier_determinism', 'Certification Tier Determinism', 'Finance', 'P1',
+      'Tier RPC executes', `Error: ${e.message}`,
+      'FAIL', e.message,
+    );
+  }
+}
+
 // -- Main Runner --
 
 export async function runPromptsAudit(projectId: string): Promise<PromptsAuditResult> {
@@ -1401,6 +1466,7 @@ export async function runPromptsAudit(projectId: string): Promise<PromptsAuditRe
     checkWorkflowOrgIntelligence(),
     checkStressTestSimulation(projectId),
     checkScoringDeterminism(),
+    checkCertificationTierDeterminism(),
   ]);
 
   const checks: AuditCheck[] = [];
