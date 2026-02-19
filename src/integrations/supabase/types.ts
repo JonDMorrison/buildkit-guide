@@ -8148,6 +8148,10 @@ export type Database = {
         Args: { p_data: Json; p_organization_id: string }
         Returns: Json
       }
+      rpc_verify_ai_brain_access_control: {
+        Args: { p_org_id: string; p_project_id: string }
+        Returns: Json
+      }
       rpc_verify_ai_brain_build: {
         Args: { p_org_id: string; p_project_id: string }
         Returns: Json
