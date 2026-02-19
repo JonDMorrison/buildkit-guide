@@ -8161,6 +8161,7 @@ export type Database = {
         Args: { p_org_id: string; p_project_id: string }
         Returns: Json
       }
+      rpc_whoami: { Args: never; Returns: Json }
       shares_any_project: {
         Args: { p_actor_id: string; p_org_id: string; p_target_id: string }
         Returns: boolean
