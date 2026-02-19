@@ -910,11 +910,20 @@ async function runServerAuditSuite(projectId: string | null): Promise<AuditCheck
       check.remediation = item.remediation || undefined;
       check.source = 'server';
       
-      // Extract offenders from evidence
+      // Extract offenders from top-level offenders key or evidence.samples
       try {
-        const ev = typeof item.evidence === 'object' ? item.evidence : JSON.parse(evidence);
-        if (ev?.samples && Array.isArray(ev.samples) && ev.samples.length > 0) {
-          check.offenders = ev.samples;
+        if (Array.isArray(item.offenders) && item.offenders.length > 0) {
+          check.offenders = item.offenders;
+        } else {
+          const ev = typeof item.evidence === 'object' ? item.evidence : JSON.parse(evidence);
+          if (ev?.offenders && Array.isArray(ev.offenders) && ev.offenders.length > 0) {
+            check.offenders = ev.offenders;
+          } else if (ev?.samples && Array.isArray(ev.samples) && ev.samples.length > 0) {
+            check.offenders = ev.samples;
+          } else if (Array.isArray(ev) && ev.length > 0 && typeof ev[0] === 'object') {
+            // evidence itself is an array of offender objects (e.g. grant offenders)
+            check.offenders = ev;
+          }
         }
       } catch { /* ignore */ }
       
