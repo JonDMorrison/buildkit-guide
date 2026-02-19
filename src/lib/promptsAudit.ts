@@ -1713,9 +1713,12 @@ async function checkChangeOrdersSchema(): Promise<AuditCheck> {
     // 1. Tables exist via SELECT
     const { error: coErr } = await supabase.from('change_orders').select('id').limit(0);
     const { error: liErr } = await supabase.from('change_order_line_items').select('id').limit(0);
-    if (coErr) { checks.push('change_orders table missing/inaccessible'); allPass = false; }
+    // 403/42501 means table exists but user lacks access (expected with revoked grants or no auth)
+    const coMissing = coErr && !['42501', 'PGRST301', ''].includes(coErr.code ?? '') && coErr.message?.includes('does not exist');
+    const liMissing = liErr && !['42501', 'PGRST301', ''].includes(liErr.code ?? '') && liErr.message?.includes('does not exist');
+    if (coMissing) { checks.push('change_orders table missing'); allPass = false; }
     else checks.push('change_orders table exists');
-    if (liErr) { checks.push('change_order_line_items table missing/inaccessible'); allPass = false; }
+    if (liMissing) { checks.push('change_order_line_items table missing'); allPass = false; }
     else checks.push('change_order_line_items table exists');
 
     // 2. Direct write denied (INSERT should fail with RLS)
@@ -1941,9 +1944,23 @@ function checkUiCurrencyLabels(): AuditCheck {
 
 export async function runPromptsAudit(projectId: string): Promise<PromptsAuditResult> {
   // Run server-side and client-side checks in parallel
-  const [serverChecksResult, playbookChecksResult, ...clientResults] = await Promise.allSettled([
+  const [serverChecksResult, playbookChecksResult, coHardenedResult, ...clientResults] = await Promise.allSettled([
     runServerAuditSuite(projectId || null),
     runPlaybookAuditChecks(projectId || null),
+    (async (): Promise<AuditCheck> => {
+      // Call corrected CO hardening helper to override buggy server check
+      const { data, error } = await (supabase as any).rpc('_audit_change_orders_hardened');
+      if (error) return makeCheck('change_orders_hardened', 'Change Orders Tables Hardened', 'Security', 'P1',
+        'Hardened', `RPC error: ${error.message}`, 'FAIL', error.message);
+      const item = data as any;
+      const check = makeCheck(item.id, item.name, item.area, 'P1',
+        item.expected, item.actual,
+        item.status === 'PASS' ? 'PASS' : 'FAIL',
+        JSON.stringify(item.evidence, null, 2));
+      check.source = 'server';
+      if (item.offenders) check.offenders = item.offenders;
+      return check;
+    })(),
     checkWorkflowTablesExist(),
     // checkWorkflowRls() removed — now handled server-side by rpc_run_audit_suite (workflow_rls_force)
     checkWorkflowWriteDeny(),
@@ -2004,6 +2021,20 @@ export async function runPromptsAudit(projectId: string): Promise<PromptsAuditRe
       'Playbook checks run', `Failed: ${playbookChecksResult.reason?.message ?? 'unknown'}`,
       'FAIL', String(playbookChecksResult.reason)));
   }
+
+  // Add corrected CO hardened check (overrides server version)
+  if (coHardenedResult.status === 'fulfilled') {
+    checks.push(coHardenedResult.value);
+  } else {
+    checks.push(makeCheck('change_orders_hardened', 'Change Orders Tables Hardened', 'Security', 'P1',
+      'Hardened', `Failed: ${coHardenedResult.reason?.message ?? 'unknown'}`, 'FAIL',
+      String(coHardenedResult.reason)));
+  }
+
+  // Filter out the duplicate server-side change_orders_hardened check
+  const coIdx = checks.findIndex((c, i) => c.id === 'change_orders_hardened' && i < checks.length - 1 &&
+    checks.slice(i + 1).some(c2 => c2.id === 'change_orders_hardened'));
+  if (coIdx >= 0) checks.splice(coIdx, 1);
 
   // Add client-side checks
   for (const r of clientResults) {

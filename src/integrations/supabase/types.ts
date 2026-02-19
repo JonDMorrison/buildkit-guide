@@ -6433,6 +6433,7 @@ export type Database = {
       }
     }
     Functions: {
+      _audit_change_orders_hardened: { Args: never; Returns: Json }
       _audit_playbook_checks: { Args: { p_project_id?: string }; Returns: Json }
       _playbook_snapshot: { Args: { p_playbook_id: string }; Returns: Json }
       assign_time_entry_task: {
@@ -7007,6 +7008,10 @@ export type Database = {
             }
             Returns: undefined
           }
+      rpc_recalculate_change_order_totals: {
+        Args: { p_change_order_id: string }
+        Returns: undefined
+      }
       rpc_recalculate_estimate_totals: {
         Args: { p_estimate_id: string }
         Returns: undefined
