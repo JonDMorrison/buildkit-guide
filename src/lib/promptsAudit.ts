@@ -989,6 +989,51 @@ async function checkWorkflowOrgIntelligence(): Promise<AuditCheck> {
   }
 }
 
+async function checkStressTestSimulation(projectId: string | null): Promise<AuditCheck> {
+  const id = 'stress_test_simulation';
+  const name = 'Stress Test Simulation';
+  const area = 'Security';
+  const severity: 'P1' = 'P1';
+  const expected = 'rpc_run_project_stress_test executes and all sub-tests pass';
+
+  if (!projectId) {
+    return makeCheck(id, name, area, severity, expected, 'No project selected', 'NEEDS_MANUAL', 'Select a project to run stress tests');
+  }
+
+  try {
+    const { data, error } = await (supabase as any).rpc('rpc_run_project_stress_test', {
+      p_project_id: projectId,
+    });
+    if (error) {
+      if (error.message?.includes('does not exist') && error.message?.includes('function')) {
+        return makeCheck(id, name, area, severity, expected, 'RPC not found', 'FAIL', 'rpc_run_project_stress_test missing');
+      }
+      if (error.code === '42501' || error.message?.includes('Forbidden')) {
+        return makeCheck(id, name, area, severity, expected, 'RPC exists but access denied for current user', 'NEEDS_MANUAL',
+          'Function exists (SECURITY DEFINER). Current user lacks project access to run. Test manually with a project member.');
+      }
+      return makeCheck(id, name, area, severity, expected, 'Error: ' + error.message, 'FAIL', error.message);
+    }
+
+    const result = data as any;
+    const allPassed = result?.all_passed === true;
+    const testsRun = result?.tests_run || 0;
+    const results = (result?.results || []) as any[];
+    const failedTests = results.filter((r: any) => !r.passed);
+
+    const evidence = results.map((r: any) =>
+      `${r.passed ? '✓' : '✗'} ${r.test_name}: ${r.actual}`
+    ).join('\n');
+
+    return makeCheck(id, name, area, severity, expected,
+      allPassed ? `All ${testsRun} tests passed` : `${failedTests.length}/${testsRun} tests failed`,
+      allPassed ? 'PASS' : 'FAIL',
+      evidence);
+  } catch (e: any) {
+    return makeCheck(id, name, area, severity, expected, `Exception: ${e.message}`, 'FAIL', e.message);
+  }
+}
+
 async function checkEstimateCurrencyMatch(): Promise<AuditCheck> {
   const id = 'estimate_currency_match';
   const name = 'Estimate Currency = Project Currency';
@@ -1296,6 +1341,7 @@ export async function runPromptsAudit(projectId: string): Promise<PromptsAuditRe
     checkOrgIntelligenceProfileRls(),
     checkOrgOnboardingWizardRpc(),
     checkWorkflowOrgIntelligence(),
+    checkStressTestSimulation(projectId),
   ]);
 
   const checks: AuditCheck[] = [];

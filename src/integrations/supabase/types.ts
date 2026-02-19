@@ -6325,6 +6325,10 @@ export type Database = {
         Args: { p_organization_id: string; p_payload: Json }
         Returns: Json
       }
+      rpc_run_project_stress_test: {
+        Args: { p_project_id: string }
+        Returns: Json
+      }
       rpc_send_invoice: { Args: { p_invoice_id: string }; Returns: undefined }
       rpc_set_org_sandbox_mode: {
         Args: { p_is_sandbox: boolean; p_org_id: string }
