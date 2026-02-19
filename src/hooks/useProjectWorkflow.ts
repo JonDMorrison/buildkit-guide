@@ -66,7 +66,24 @@ export function useProjectWorkflow(projectId?: string) {
         p_project_id: projectId!,
       });
       if (error) throw error;
-      return data as unknown as ProjectWorkflowData;
+      const raw = data as any;
+      // Normalize RPC JSON to match WorkflowRequirement interface
+      const phases = (raw?.phases ?? []).map((p: any) => ({
+        ...p,
+        ...(p.step ?? {}),
+        requirements: (p.requirements ?? []).map((r: any) => ({
+          id: r.id,
+          key: r.key ?? r.requirement_type,
+          type: r.key ?? r.requirement_type,
+          label: r.label,
+          status: r.status ?? (r.passed ? 'met' : 'unmet'),
+          passed: r.passed ?? r.status === 'met',
+          details: r.details ?? r.message ?? null,
+          message: r.message ?? r.details ?? '',
+          required: r.required ?? true,
+        })),
+      }));
+      return { flow_mode: raw.flow_mode, current_phase: raw.current_phase, phases };
     },
     enabled: !!projectId,
   });
