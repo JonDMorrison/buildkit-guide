@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -60,6 +61,7 @@ function SectionCard({ section }: { section: SectionResult }) {
 }
 
 export default function AIBrainDiagnostics() {
+  const { session } = useAuth();
   const { activeOrganizationId } = useOrganization();
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('');
@@ -77,6 +79,11 @@ export default function AIBrainDiagnostics() {
   const handleRun = async () => {
     setRunning(true);
     setError(null);
+    if (!session) {
+      setError('No active session — please log in first.');
+      setRunning(false);
+      return;
+    }
     try {
       const params: Record<string, string> = {};
       if (selectedProject && selectedProject !== '__auto__') params.p_project_id = selectedProject;
