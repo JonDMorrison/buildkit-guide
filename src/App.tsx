@@ -69,6 +69,7 @@ const InsightsAudit = lazy(() => import("./pages/InsightsAudit"));
 const ConversionTestHarness = lazy(() => import("./pages/ConversionTestHarness"));
 const AIBrainDiagnostics = lazy(() => import("./pages/AIBrainDiagnostics"));
 const ExecutiveDashboard = lazy(() => import("./pages/ExecutiveDashboard"));
+const ExecutiveReport = lazy(() => import("./pages/ExecutiveReport"));
 const OrgSettings = lazy(() => import("./pages/OrgSettings"));
 const Intelligence = lazy(() => import("./pages/Intelligence"));
 const ChangeOrders = lazy(() => import("./pages/ChangeOrders"));
@@ -591,6 +592,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <ExecutiveDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/executive-report"
+                  element={
+                    <ProtectedRoute>
+                      <ExecutiveReport />
                     </ProtectedRoute>
                   }
                 />
