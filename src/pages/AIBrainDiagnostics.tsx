@@ -195,6 +195,16 @@ export default function AIBrainDiagnostics() {
     })();
   }, []);
 
+  // Restore last result from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem('ai_brain_diagnostics_last_result');
+    const storedAt = localStorage.getItem('ai_brain_diagnostics_last_ran_at');
+    if (stored) {
+      try { setResult(JSON.parse(stored)); } catch {}
+    }
+    if (storedAt) setRanAt(storedAt);
+  }, []);
+
   // DB auth probe
   const fetchDbAuth = async () => {
     setDbAuthLoading(true);
@@ -228,7 +238,15 @@ export default function AIBrainDiagnostics() {
       const { data, error: rpcError } = await (supabase as any).rpc('rpc_run_ai_brain_test_runner', params);
 
       if (rpcError) { setError(rpcError.message); setResult(null); }
-      else { setResult(data); setRanAt(new Date().toISOString()); }
+      else {
+        const ts = new Date().toISOString();
+        setResult(data);
+        setRanAt(ts);
+        try {
+          localStorage.setItem('ai_brain_diagnostics_last_result', JSON.stringify(data));
+          localStorage.setItem('ai_brain_diagnostics_last_ran_at', ts);
+        } catch {}
+      }
     } catch (e: any) { setError(e.message); }
     finally { setRunning(false); }
   };
