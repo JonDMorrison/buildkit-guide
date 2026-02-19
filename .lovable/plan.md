@@ -1,106 +1,88 @@
 
 
-## Organization Financial Enforcement Setting
+# OS-Grade Diagnostics Upgrade
 
-This adds a per-organization setting that controls how strictly the financial integrity gate behaves -- from advisory (current default soft friction) up to strict phase gating (hard block, no override allowed).
+Two parts: a new database function and a major UI upgrade to the diagnostics page.
 
 ---
 
-### 1. Database Migration
+## Part 1: Create `rpc_whoami()` Database Function
 
-**A. Add column to `organizations`**
+A new migration to create a minimal, read-only RPC that proves the JWT is reaching the database layer.
 
 ```sql
-ALTER TABLE public.organizations
-  ADD COLUMN financial_enforcement_level text NOT NULL DEFAULT 'advisory'
-  CHECK (financial_enforcement_level IN ('advisory', 'strict_reporting', 'strict_phase_gating'));
+CREATE OR REPLACE FUNCTION public.rpc_whoami()
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT jsonb_build_object(
+    'uid', auth.uid(),
+    'role', auth.role()
+  );
+$$;
+
+REVOKE ALL ON FUNCTION public.rpc_whoami() FROM public, anon;
+GRANT EXECUTE ON FUNCTION public.rpc_whoami() TO authenticated;
 ```
 
-**B. Extend `estimate_variance_summary` RPC**
+---
 
-Add the `financial_enforcement_level` to the returned JSON object at the top level so the client can read it:
+## Part 2: Upgrade `AIBrainDiagnostics.tsx`
 
-```sql
--- Inside the RETURN jsonb_build_object(...), add:
-'financial_enforcement_level', v_enforcement_level
-```
+### New state variables
+- `authProbe`: stores client-side session/user info (session exists, uid prefix, expires_at, user exists, user id prefix)
+- `dbAuth`: stores `rpc_whoami()` result (`uid`, `role`)
+- `dbAuthLoading`: loading flag for the whoami call
+- `dbAuthError`: error from whoami call
 
-The function will read the value from `organizations` alongside the existing `base_currency` fetch.
+### On-mount behavior
+1. Call `supabase.auth.getSession()` and `supabase.auth.getUser()` to populate `authProbe`.
+2. Call `supabase.rpc('rpc_whoami')` to populate `dbAuth`.
+3. Both run automatically when the page loads.
 
-**C. Extend `rpc_request_phase_advance` with hard gate**
+### New UI sections (inserted before the controls card)
 
-Add a block after requirements validation but before the status update:
+**Auth Probe Card** -- displays:
+- `sessionExists`: boolean
+- `uid` (first 8 chars)
+- `expires_at`
+- `userExists`: boolean
+- `user.id` (first 8 chars)
+
+**DB Auth Card** -- displays:
+- `uid` from `rpc_whoami()`
+- `role` from `rpc_whoami()`
+- A "Verify DB Auth" refresh button
+- Status badge (PASS if uid is non-null, FAIL otherwise)
+- Error message if the call fails
+
+### Button gating
+- "Run AI Brain Tests" is `disabled` unless `dbAuth?.uid` is truthy (server-side proof).
+- If `dbAuth` is null/missing uid, show inline message: "DB auth missing -- please refresh or log in."
+
+### Flow summary
 
 ```text
-IF v_enforcement_level = 'strict_phase_gating' THEN
-  -- Fetch integrity from estimate_variance_summary
-  IF v_integrity_status = 'blocked' THEN
-    RAISE EXCEPTION 'Financial integrity is blocked. Override not allowed under strict gating.'
-      USING ERRCODE = '42501';
-  END IF;
-END IF;
-```
-
-This applies only to phases that are financially gated (`foreman_approve`, `pm_closeout`).
-
-**D. Extend `rpc_send_invoice` with hard gate**
-
-Same check: if enforcement is `strict_phase_gating` and integrity is `blocked`, raise an exception.
-
-**E. Extend `rpc_log_financial_override`**
-
-Reject override attempts when enforcement is `strict_phase_gating`:
-
-```text
-IF v_enforcement_level = 'strict_phase_gating' AND v_integrity_status = 'blocked' THEN
-  RAISE EXCEPTION 'Override not permitted under strict phase gating' USING ERRCODE = '42501';
-END IF;
+Page mounts
+  |
+  +---> getSession() + getUser() --> populate Auth Probe card
+  |
+  +---> rpc_whoami() --> populate DB Auth card
+              |
+              +-- uid present? --> Enable "Run AI Brain Tests"
+              +-- uid null?    --> Disable button, show warning
 ```
 
 ---
 
-### 2. Frontend Changes
+## Technical Details
 
-**A. `useProjectIntegrity.ts`**
+### Files modified
+- **New migration**: `rpc_whoami()` function with SECURITY DEFINER, pinned search_path, grant/revoke
+- **`src/pages/AIBrainDiagnostics.tsx`**: Add auth probe state, db auth state, on-mount effects, two new UI cards, button gating logic
 
-Parse and expose the new `financial_enforcement_level` field from the RPC response alongside the existing integrity data.
-
-Update `IntegrityData` type to include `enforcementLevel: 'advisory' | 'strict_reporting' | 'strict_phase_gating'`.
-
-**B. `FinancialIntegrityGate.tsx`**
-
-Modify behavior based on enforcement level:
-
-| Level | `blocked` status | `needs_attention` status |
-|-------|-----------------|------------------------|
-| `advisory` | Show modal with override option (current behavior) | Show modal with override option |
-| `strict_reporting` | Show modal with override option (same as advisory) | Show modal with override option |
-| `strict_phase_gating` | Show modal with NO override -- only "Fix Issues" button. "Continue Anyway" is hidden. | Show modal with override option |
-
-The key UI difference: when `strict_phase_gating` + `blocked`, the "Continue Anyway" button is removed entirely. The user can only click "Fix Issues" or close the modal (which cancels).
-
-**C. No admin UI for toggling the setting yet**
-
-The column defaults to `advisory`. Changing it requires a direct database update for now. An admin settings UI can be added later without any schema changes.
-
----
-
-### 3. Files to Create/Edit
-
-| Action | File |
-|--------|------|
-| Create | `supabase/migrations/[timestamp]_financial_enforcement_level.sql` |
-| Edit | `src/hooks/useProjectIntegrity.ts` -- expose `enforcementLevel` |
-| Edit | `src/components/FinancialIntegrityGate.tsx` -- conditional override hiding |
-
-The three integration points (Workflow.tsx, SendInvoiceModal.tsx, ProjectStatusDropdown.tsx) do NOT need changes -- the gate component handles all enforcement logic internally. Server-side RPCs provide the hard block as a second layer of defense.
-
----
-
-### 4. Technical Notes
-
-- The server-side hard block in `rpc_request_phase_advance` and `rpc_send_invoice` is the true enforcement layer. The frontend hiding of "Continue Anyway" is a UX convenience -- even if bypassed, the server will reject the action.
-- `strict_reporting` behaves identically to `advisory` in terms of allowed actions. The distinction exists for future reporting/audit features that can filter by enforcement level.
-- Only `foreman_approve` and `pm_closeout` phases are checked in `rpc_request_phase_advance` (matching the existing `needsIntegrityGate` logic). Other phases pass through without financial checks.
-- The column uses TEXT + CHECK constraint (not an enum) as specified, making future values additive without migration complexity.
+### No other files change. Existing test runner logic, section cards, and result rendering remain untouched.
 
