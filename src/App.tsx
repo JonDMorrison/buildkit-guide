@@ -67,6 +67,7 @@ const Workflow = lazy(() => import("./pages/Workflow"));
 const PromptsAudit = lazy(() => import("./pages/PromptsAudit"));
 const InsightsAudit = lazy(() => import("./pages/InsightsAudit"));
 const ConversionTestHarness = lazy(() => import("./pages/ConversionTestHarness"));
+const AIBrainDiagnostics = lazy(() => import("./pages/AIBrainDiagnostics"));
 const OrgSettings = lazy(() => import("./pages/OrgSettings"));
 const Intelligence = lazy(() => import("./pages/Intelligence"));
 const ChangeOrders = lazy(() => import("./pages/ChangeOrders"));
@@ -548,6 +549,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <ConversionTestHarness />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/insights/ai-brain"
+                  element={
+                    <ProtectedRoute>
+                      <AIBrainDiagnostics />
                     </ProtectedRoute>
                   }
                 />
