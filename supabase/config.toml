@@ -128,3 +128,6 @@ verify_jwt = false
 
 [functions.generate-playbook]
 verify_jwt = false
+
+[functions.seed-margin-test-project]
+verify_jwt = true

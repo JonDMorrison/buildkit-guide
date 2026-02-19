@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Play, Download, ChevronDown, CheckCircle2, XCircle, AlertTriangle, Copy, Brain, Shield, Eye, Zap, Lock, RefreshCw, User, FlaskConical, ExternalLink, Microscope, Search } from 'lucide-react';
+import { Play, Download, ChevronDown, CheckCircle2, XCircle, AlertTriangle, Copy, Brain, Shield, Eye, Zap, Lock, RefreshCw, User, FlaskConical, ExternalLink, Microscope, Search, Beaker } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from '@/hooks/useOrganization';
@@ -448,6 +448,23 @@ export default function AIBrainDiagnostics() {
   const [detResult, setDetResult] = useState<{ violation_count: number; suspect_functions: { function_name: string; issue: string }[] } | null>(null);
   const [detError, setDetError] = useState<string | null>(null);
 
+  // Seed Margin Test Project state
+  type SeedResult = {
+    success: boolean;
+    already_existed: boolean;
+    project_id: string;
+    estimate_id?: string;
+    time_entries_count?: number;
+    total_labor_hours?: number;
+    total_labor_cost?: number;
+    planned_total_cost?: number;
+    contract_value?: number;
+    message: string;
+  };
+  const [seedRunning, setSeedRunning] = useState(false);
+  const [seedResult, setSeedResult] = useState<SeedResult | null>(null);
+  const [seedError, setSeedError] = useState<string | null>(null);
+
   // Fetch projects
   useEffect(() => {
     if (!activeOrganizationId) return;
@@ -713,6 +730,24 @@ export default function AIBrainDiagnostics() {
     const a = document.createElement('a'); a.href = url;
     a.download = `ai-brain-diagnostics-${(ranAt || new Date().toISOString()).slice(0, 10)}.json`;
     a.click(); URL.revokeObjectURL(url);
+  };
+
+  // Seed Margin Test Project handler
+  const handleSeed = async () => {
+    if (!activeOrganizationId || !session) return;
+    setSeedRunning(true);
+    setSeedError(null);
+    setSeedResult(null);
+    try {
+      const { data, error: fnErr } = await supabase.functions.invoke(
+        'seed-margin-test-project',
+        { body: { organizationId: activeOrganizationId } }
+      );
+      if (fnErr) { setSeedError(fnErr.message); return; }
+      if (data?.error) { setSeedError(data.error); return; }
+      setSeedResult(data as SeedResult);
+    } catch (e: any) { setSeedError(e.message); }
+    finally { setSeedRunning(false); }
   };
 
   // Parse result into sections
@@ -1353,7 +1388,111 @@ export default function AIBrainDiagnostics() {
           )}
         </div>
 
+        {/* ─── Seed Margin Test Project ─────────────────────────────── */}
+        <div className="border-t pt-6 space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <Beaker className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-semibold">Seed Margin Test Project</h2>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Creates one deterministic project in this org with burn ($8 500) exceeding estimate ($7 000)
+                — guaranteed <code className="font-mono">risk_score &gt; 0</code> and at least one intervention flag.
+                Idempotent: re-running returns the existing project id.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleSeed}
+              disabled={seedRunning || !dbAuthOk || !activeOrganizationId || !session}
+            >
+              <Beaker className={`h-4 w-4 mr-1.5 ${seedRunning ? 'animate-pulse' : ''}`} />
+              {seedRunning ? 'Seeding…' : 'Seed Test Project'}
+            </Button>
+          </div>
 
+          {(!session || !dbAuthOk) && !seedRunning && (
+            <Card className="border-destructive bg-destructive/5">
+              <CardContent className="p-3 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+                <span className="text-sm text-destructive">
+                  {!session ? 'Active session required — please log in first.' : 'DB auth required — please refresh or log in.'}
+                </span>
+              </CardContent>
+            </Card>
+          )}
+
+          {seedError && (
+            <Card className="border-destructive bg-destructive/5">
+              <CardContent className="p-3 flex items-center gap-2">
+                <XCircle className="h-4 w-4 text-destructive shrink-0" />
+                <span className="text-sm text-destructive font-mono">{seedError}</span>
+              </CardContent>
+            </Card>
+          )}
+
+          {seedResult && (
+            <Card className={seedResult.already_existed ? 'border-amber-500/30' : 'border-primary/30'}>
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  {seedResult.already_existed
+                    ? <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/30 border text-xs">Already Existed</Badge>
+                    : <Badge className="bg-primary/10 text-primary border-primary/30 border text-xs"><CheckCircle2 className="h-3 w-3 mr-1" />Created</Badge>}
+                  <p className="text-xs text-muted-foreground">{seedResult.message}</p>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div className="space-y-0.5">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">Project ID</p>
+                    <code className="text-xs font-mono text-foreground block">{seedResult.project_id.slice(0, 8)}…</code>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(seedResult.project_id)}
+                      className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5"
+                    >
+                      <Copy className="h-3 w-3" /> Copy full ID
+                    </button>
+                  </div>
+                  {!seedResult.already_existed && (
+                    <>
+                      <div className="space-y-0.5">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">Contract Value</p>
+                        <span className="text-xs font-mono">${(seedResult.contract_value ?? 0).toLocaleString()}</span>
+                      </div>
+                      <div className="space-y-0.5">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">Planned Cost</p>
+                        <span className="text-xs font-mono">${(seedResult.planned_total_cost ?? 0).toLocaleString()}</span>
+                      </div>
+                      <div className="space-y-0.5">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">Actual Labor Cost</p>
+                        <span className="text-xs font-mono text-destructive font-bold">${(seedResult.total_labor_cost ?? 0).toLocaleString()}</span>
+                      </div>
+                      <div className="space-y-0.5">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">Labor Hours</p>
+                        <span className="text-xs font-mono">{seedResult.total_labor_hours}h ({seedResult.time_entries_count} entries)</span>
+                      </div>
+                      <div className="space-y-0.5">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">Cost Overrun</p>
+                        <span className="text-xs font-mono text-destructive font-bold">
+                          +${((seedResult.total_labor_cost ?? 0) - (seedResult.planned_total_cost ?? 0)).toLocaleString()}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 pt-1 border-t border-border">
+                  <Zap className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <p className="text-[11px] text-muted-foreground">
+                    Run <span className="font-semibold">Quick Probe</span> above or paste the project ID into{' '}
+                    <span className="font-semibold">Margin Payload Inspector</span> to verify flags fired.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* ─── Determinism Patch Runner ─────────────────────────────── */}
         <div className="border-t pt-6 space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
