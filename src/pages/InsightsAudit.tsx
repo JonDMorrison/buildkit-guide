@@ -105,12 +105,7 @@ export default function InsightsAudit() {
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [running, setRunning] = useState(false);
-  const [result, setResult] = useState<PromptsAuditResult | null>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      return stored ? JSON.parse(stored) : null;
-    } catch { return null; }
-  });
+  const [result, setResult] = useState<PromptsAuditResult | null>(null);
 
   useEffect(() => {
     if (!activeOrganizationId) return;
@@ -123,7 +118,7 @@ export default function InsightsAudit() {
     try {
       const r = await runPromptsAudit(selectedProject);
       setResult(r);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(r));
+      // No localStorage caching — always show fresh results
     } finally {
       setRunning(false);
     }
@@ -167,7 +162,7 @@ export default function InsightsAudit() {
           </p>
           {result && (
             <p className="text-xs text-muted-foreground mt-1">
-              Last run: {new Date(result.ran_at).toLocaleString()} | Env: {result.environment} | 
+              Run ID: <span className="font-mono">{result.ran_at}</span> | Env: {result.environment} | 
               <Server className="inline h-3 w-3 mx-1" />{serverChecks.length} server • 
               <Monitor className="inline h-3 w-3 mx-1" />{clientChecks.length} client
             </p>
