@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { Layout } from "@/components/Layout";
+import { formatCurrency } from "@/lib/formatters";
 import { SectionHeader } from "@/components/SectionHeader";
 import { useQuotes } from "@/hooks/useQuotes";
 import { useOrganizationRole } from "@/hooks/useOrganizationRole";
@@ -34,8 +35,7 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
   archived: { label: "Archived", variant: "outline" },
 };
 
-const fmtCurrency = (v: number, currency = "CAD") =>
-  `${new Intl.NumberFormat("en-CA", { style: "currency", currency }).format(v)} ${currency}`;
+const fmtCurrency = (v: number, currency = "CAD") => formatCurrency(v, currency);
 
 const Quotes = () => {
   const { role: orgRole, isLoading: orgRoleLoading } = useOrganizationRole();
