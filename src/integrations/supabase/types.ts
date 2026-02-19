@@ -7848,6 +7848,10 @@ export type Database = {
         Args: { p_organization_id: string }
         Returns: Json
       }
+      rpc_generate_project_margin_control: {
+        Args: { p_project_id: string }
+        Returns: Json
+      }
       rpc_generate_tasks_from_estimate: {
         Args: { p_estimate_id: string }
         Returns: Json
