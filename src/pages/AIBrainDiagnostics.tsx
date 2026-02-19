@@ -303,6 +303,25 @@ export default function AIBrainDiagnostics() {
           )}
         </div>
 
+        {/* Failure Banner */}
+        {result && !result.ok && !result.skipped && (
+          <Card className="border-destructive bg-destructive/10 border-2">
+            <CardContent className="p-4 flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-destructive text-sm">Release Blocked — Failing Sections</p>
+                <ul className="mt-1 space-y-0.5">
+                  {sections.filter(s => s.status === 'fail').map(s => (
+                    <li key={s.label} className="text-xs text-destructive flex items-center gap-1">
+                      <XCircle className="h-3 w-3" /> {s.label}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Auth Probe + DB Auth */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <AuthProbeCard data={authProbe} />
