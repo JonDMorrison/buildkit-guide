@@ -2524,6 +2524,95 @@ export type Database = {
           },
         ]
       }
+      organization_operational_profile: {
+        Row: {
+          ai_auto_change_orders: boolean | null
+          ai_flag_profit_risk: boolean | null
+          ai_recommend_pricing: boolean | null
+          ai_risk_mode: string | null
+          base_currency: string
+          created_at: string
+          id: string
+          invoice_approver: string | null
+          invoice_permission_model: string
+          labor_cost_model: string
+          organization_id: string
+          over_estimate_action: string | null
+          profit_leakage_source: string | null
+          quote_standardization: string | null
+          rate_source: string
+          require_safety_before_work: boolean | null
+          tasks_before_quote: boolean | null
+          tax_model: string
+          time_audit_frequency: string | null
+          track_variance_per_trade: boolean | null
+          updated_at: string
+          wizard_completed_at: string | null
+          wizard_phase_completed: number
+          workflow_mode_default: string
+        }
+        Insert: {
+          ai_auto_change_orders?: boolean | null
+          ai_flag_profit_risk?: boolean | null
+          ai_recommend_pricing?: boolean | null
+          ai_risk_mode?: string | null
+          base_currency?: string
+          created_at?: string
+          id?: string
+          invoice_approver?: string | null
+          invoice_permission_model?: string
+          labor_cost_model?: string
+          organization_id: string
+          over_estimate_action?: string | null
+          profit_leakage_source?: string | null
+          quote_standardization?: string | null
+          rate_source?: string
+          require_safety_before_work?: boolean | null
+          tasks_before_quote?: boolean | null
+          tax_model?: string
+          time_audit_frequency?: string | null
+          track_variance_per_trade?: boolean | null
+          updated_at?: string
+          wizard_completed_at?: string | null
+          wizard_phase_completed?: number
+          workflow_mode_default?: string
+        }
+        Update: {
+          ai_auto_change_orders?: boolean | null
+          ai_flag_profit_risk?: boolean | null
+          ai_recommend_pricing?: boolean | null
+          ai_risk_mode?: string | null
+          base_currency?: string
+          created_at?: string
+          id?: string
+          invoice_approver?: string | null
+          invoice_permission_model?: string
+          labor_cost_model?: string
+          organization_id?: string
+          over_estimate_action?: string | null
+          profit_leakage_source?: string | null
+          quote_standardization?: string | null
+          rate_source?: string
+          require_safety_before_work?: boolean | null
+          tasks_before_quote?: boolean | null
+          tax_model?: string
+          time_audit_frequency?: string | null
+          track_variance_per_trade?: boolean | null
+          updated_at?: string
+          wizard_completed_at?: string | null
+          wizard_phase_completed?: number
+          workflow_mode_default?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_operational_profile_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_settings: {
         Row: {
           created_at: string
@@ -6460,6 +6549,10 @@ export type Database = {
           p_line_item_id?: string
           p_payload?: Json
         }
+        Returns: Json
+      }
+      rpc_upsert_operational_profile: {
+        Args: { p_data: Json; p_organization_id: string }
         Returns: Json
       }
       shares_any_project: {

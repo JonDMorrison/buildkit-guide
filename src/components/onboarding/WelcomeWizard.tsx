@@ -24,6 +24,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import projectPathLogo from '@/assets/project-path-logo.png';
+import OrgOnboardingWizard from './OrgOnboardingWizard';
 
 interface WelcomeWizardProps {
   onComplete: () => void;
@@ -91,8 +92,12 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [sampleError, setSampleError] = useState<string | null>(null);
   const [orgCreated, setOrgCreated] = useState<{ id: string; name: string } | null>(null);
+  // New: show diagnostic wizard after org creation for admins
+  const [showDiagnosticWizard, setShowDiagnosticWizard] = useState(false);
 
-  const totalSteps = 4;
+  // Steps: 1=Welcome, 2=Role, 3=Org Setup, 4=Diagnostic Engine (admin only), 5=Feature Tour
+  const isAdmin = selectedRole === 'admin' || selectedRole === 'project_manager';
+  const totalSteps = isAdmin ? 5 : 4;
 
   const handleNext = () => {
     if (step < totalSteps) {
@@ -139,74 +144,70 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
     onComplete();
   };
 
-  const handleFinish = async () => {
+  const handleOrgCreate = async () => {
+    if (!orgName.trim()) {
+      // Skip org creation, go to feature tour
+      handleNext();
+      return;
+    }
+
     setIsLoading(true);
     setSampleError(null);
     
     try {
-      // Create organization if name provided
-      if (orgName.trim()) {
-        const { data: org, error: orgError } = await supabase
-          .from('organizations')
-          .insert({ 
-            name: orgName.trim(),
-            slug: orgName.trim().toLowerCase().replace(/\s+/g, '-')
-          })
-          .select()
-          .single();
+      const { data: org, error: orgError } = await supabase
+        .from('organizations')
+        .insert({ 
+          name: orgName.trim(),
+          slug: orgName.trim().toLowerCase().replace(/\s+/g, '-')
+        })
+        .select()
+        .single();
 
-        if (orgError) throw orgError;
+      if (orgError) throw orgError;
 
-        // Add user as admin of the organization
-        if (org) {
-          await supabase
-            .from('organization_memberships')
-            .insert({
-              organization_id: org.id,
-              user_id: user!.id,
-              role: 'admin',
-              is_active: true,
+      if (org) {
+        await supabase
+          .from('organization_memberships')
+          .insert({
+            organization_id: org.id,
+            user_id: user!.id,
+            role: 'admin',
+            is_active: true,
+          });
+
+        setOrgCreated({ id: org.id, name: org.name });
+
+        if (createSample) {
+          try {
+            const { data, error } = await supabase.functions.invoke('create-sample-project', {
+              body: { organizationId: org.id }
             });
-
-          setOrgCreated({ id: org.id, name: org.name });
-
-          // Create sample project if requested
-          if (createSample) {
-            try {
-              const { data, error } = await supabase.functions.invoke('create-sample-project', {
-                body: { organizationId: org.id }
-              });
-              
-              if (error) throw error;
-              if (data?.error) throw new Error(data.error);
-              
-              // Success - complete onboarding
-              onComplete();
-            } catch (sampleError: any) {
-              console.error('Sample project creation failed:', sampleError);
-              // Show error with retry option instead of silently failing
-              setSampleError(sampleError.message || 'Failed to create sample project');
-              setIsLoading(false);
-              return; // Don't complete - show error state
-            }
-          } else {
-            onComplete();
+            if (error) throw error;
+            if (data?.error) throw new Error(data.error);
+          } catch (sampleError: any) {
+            console.error('Sample project creation failed:', sampleError);
+            // Non-blocking — continue to diagnostic wizard
           }
         }
-      } else {
-        onComplete();
+
+        // Move to next step (diagnostic wizard or feature tour)
+        handleNext();
       }
     } catch (error: any) {
       console.error('Error during onboarding:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Something went wrong. You can set up your organization later.',
+        description: error.message || 'Something went wrong.',
         variant: 'destructive',
       });
-      onComplete();
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleFinish = () => {
+    onComplete();
   };
 
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'there';
@@ -268,6 +269,18 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
       </div>
     );
   }
+
+  // Step 4 for admins: Show 3-phase diagnostic wizard
+  if (step === 4 && isAdmin) {
+    return (
+      <OrgOnboardingWizard 
+        onComplete={() => setStep(5)}
+      />
+    );
+  }
+
+  // Adjust step display for non-admin users
+  const featureTourStep = isAdmin ? 5 : 4;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/50 flex items-center justify-center p-4">
@@ -433,17 +446,26 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back
                 </Button>
-                <Button onClick={handleNext} className="flex-1">
-                  Continue
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                <Button onClick={handleOrgCreate} className="flex-1" disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      Continue
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </>
+                  )}
                 </Button>
               </div>
             </CardContent>
           </>
         )}
 
-        {/* Step 4: Quick Tour */}
-        {step === 4 && (
+        {/* Feature Tour (last step) */}
+        {step === featureTourStep && (
           <>
             <CardHeader className="text-center pt-6 pb-2">
               <CardTitle className="text-2xl font-bold">Here's what you can do</CardTitle>
@@ -473,19 +495,9 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
                 <Button 
                   onClick={handleFinish} 
                   className="flex-1 bg-secondary hover:bg-secondary/90 text-secondary-foreground"
-                  disabled={isLoading}
                 >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Setting up...
-                    </>
-                  ) : (
-                    <>
-                      Go to Dashboard
-                      <Rocket className="ml-2 h-4 w-4" />
-                    </>
-                  )}
+                  Go to Dashboard
+                  <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
             </CardContent>
