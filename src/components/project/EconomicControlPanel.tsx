@@ -86,11 +86,12 @@ function GuardrailBadge({ mode }: { mode: string }) {
 
 const PRIORITY_LABELS = ['', 'Low', 'Low-Med', 'Medium', 'High', 'Critical'];
 
+// Canonical flag labels — must stay in sync with rpc_get_margin_flag_dictionary()
 const FLAG_LABELS: Record<string, string> = {
-  below_low_band:     'Below historical margin band',
-  labor_burn_high:    'Labor burn exceeding benchmark',
-  low_historical_data: 'Low historical data',
-  margin_declining:   'Margin declining',
+  labor_burn_exceeding_benchmark: 'Labor Burn Exceeding Benchmark',
+  low_historical_data:            'Low Historical Data',
+  margin_declining:               'Margin Declining',
+  quote_approval_misses:          'Quote Approval Misses',
 };
 
 function humanFlag(f: string) {
