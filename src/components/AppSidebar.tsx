@@ -35,7 +35,7 @@ const SECTIONS: SectionDef[] = [
   },
   {
     title: "Settings",
-    paths: ["/settings/labor-rates"],
+    paths: ["/settings/labor-rates", "/release"],
   },
 ];
 

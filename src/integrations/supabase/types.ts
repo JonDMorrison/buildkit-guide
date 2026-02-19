@@ -4337,6 +4337,57 @@ export type Database = {
           },
         ]
       }
+      release_manual_checks: {
+        Row: {
+          check_key: string
+          checked_at: string | null
+          checked_by: string | null
+          created_at: string
+          id: string
+          is_checked: boolean
+          label: string
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          check_key: string
+          checked_at?: string | null
+          checked_by?: string | null
+          created_at?: string
+          id?: string
+          is_checked?: boolean
+          label: string
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          check_key?: string
+          checked_at?: string | null
+          checked_by?: string | null
+          created_at?: string
+          id?: string
+          is_checked?: boolean
+          label?: string
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "release_manual_checks_checked_by_fkey"
+            columns: ["checked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "release_manual_checks_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       safety_entries: {
         Row: {
           created_at: string
@@ -6559,6 +6610,10 @@ export type Database = {
         Returns: undefined
       }
       rpc_duplicate_estimate: { Args: { p_estimate_id: string }; Returns: Json }
+      rpc_ensure_release_checks: {
+        Args: { p_org_id: string }
+        Returns: undefined
+      }
       rpc_ensure_timesheet_period: {
         Args: {
           p_period_end: string
