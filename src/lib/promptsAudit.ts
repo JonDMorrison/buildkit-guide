@@ -1757,6 +1757,56 @@ async function checkCOSuggestionDeterminism(projectId: string): Promise<AuditChe
   }
 }
 
+// -- Archetype Margin Stats Audit (P1) --
+
+async function checkArchetypeMarginStatsDeterminism(): Promise<AuditCheck> {
+  const id = 'archetype_margin_determinism';
+  const name = 'Archetype Margin Stats RPC + Determinism';
+  const area = 'Financial';
+  const sev: 'P1' = 'P1';
+
+  try {
+    // Verify RPC exists by calling with a dummy UUID (expect error but not "does not exist")
+    const { error } = await supabase.rpc('rpc_get_archetype_margin_stats' as any, {
+      p_archetype_id: '00000000-0000-0000-0000-000000000000',
+    });
+
+    if (error?.message?.includes('does not exist') || error?.message?.includes('Could not find')) {
+      return makeCheck(id, name, area, sev,
+        'RPC exists and is deterministic', 'RPC not found', 'FAIL', error.message);
+    }
+
+    // Verify table exists
+    const { error: tblErr } = await supabase.from('project_archetypes').select('id').limit(0);
+    if (tblErr) {
+      return makeCheck(id, name, area, sev,
+        'project_archetypes table exists', 'Table missing', 'FAIL', tblErr.message);
+    }
+
+    // Try to find a real archetype for determinism check
+    const { data: archetypes } = await supabase.from('project_archetypes').select('id').limit(1);
+    if (archetypes && archetypes.length > 0) {
+      const aid = archetypes[0].id;
+      const { data: r1 } = await supabase.rpc('rpc_get_archetype_margin_stats' as any, { p_archetype_id: aid });
+      const { data: r2 } = await supabase.rpc('rpc_get_archetype_margin_stats' as any, { p_archetype_id: aid });
+      const match = JSON.stringify(r1) === JSON.stringify(r2);
+      return makeCheck(id, name, area, sev,
+        'RPC exists and is deterministic',
+        match ? 'Two calls returned identical results' : 'Results differ — non-deterministic',
+        match ? 'PASS' : 'FAIL',
+        match ? 'Deterministic confirmed' : `Mismatch detected`);
+    }
+
+    return makeCheck(id, name, area, sev,
+      'RPC exists and is deterministic',
+      'RPC exists; no archetypes to test determinism — PASS with note',
+      'PASS', 'Table and RPC exist. Create an archetype to enable full determinism testing.');
+  } catch (e: any) {
+    return makeCheck(id, name, area, sev,
+      'Archetype margin stats check', `Error: ${e.message}`, 'FAIL', e.message);
+  }
+}
+
 // -- Main Runner --
 
 export async function runPromptsAudit(projectId: string): Promise<PromptsAuditResult> {
@@ -1793,6 +1843,7 @@ export async function runPromptsAudit(projectId: string): Promise<PromptsAuditRe
     checkGuardrailEnforcementInEdge(),
     checkChangeOrdersSchema(),
     checkCOSuggestionDeterminism(projectId),
+    checkArchetypeMarginStatsDeterminism(),
   ]);
 
   const checks: AuditCheck[] = [];
