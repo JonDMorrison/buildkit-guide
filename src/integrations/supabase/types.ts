@@ -2590,6 +2590,7 @@ export type Database = {
           labor_cost_model: string
           labor_rate_source: string
           organization_id: string
+          profile: Json
           quote_required_before_tasks: boolean
           region: string | null
           require_quote_approved: boolean
@@ -2606,6 +2607,7 @@ export type Database = {
           labor_cost_model?: string
           labor_rate_source?: string
           organization_id: string
+          profile?: Json
           quote_required_before_tasks?: boolean
           region?: string | null
           require_quote_approved?: boolean
@@ -2622,6 +2624,7 @@ export type Database = {
           labor_cost_model?: string
           labor_rate_source?: string
           organization_id?: string
+          profile?: Json
           quote_required_before_tasks?: boolean
           region?: string | null
           require_quote_approved?: boolean
@@ -6228,6 +6231,15 @@ export type Database = {
           },
         ]
       }
+      v_rpc_metadata: {
+        Row: {
+          arguments: string | null
+          function_name: unknown
+          return_type: string | null
+          security_definer: boolean | null
+        }
+        Relationships: []
+      }
       v_time_entries_enriched: {
         Row: {
           check_in_at: string | null
@@ -6435,6 +6447,10 @@ export type Database = {
     Functions: {
       _audit_change_orders_hardened: { Args: never; Returns: Json }
       _audit_playbook_checks: { Args: { p_project_id?: string }; Returns: Json }
+      _check_function_exists: {
+        Args: { p_function_name: string }
+        Returns: Json
+      }
       _playbook_snapshot: { Args: { p_playbook_id: string }; Returns: Json }
       assign_time_entry_task: {
         Args: { p_task_id: string; p_time_entry_id: string }
@@ -7054,7 +7070,7 @@ export type Database = {
       }
       rpc_run_audit_suite: { Args: { p_project_id?: string }; Returns: Json }
       rpc_run_org_onboarding_wizard: {
-        Args: { p_organization_id: string; p_payload: Json }
+        Args: { p_answers: Json; p_organization_id: string }
         Returns: Json
       }
       rpc_run_project_stress_test: {
