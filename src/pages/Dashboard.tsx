@@ -25,6 +25,7 @@ import {
   WeatherInfoModal,
   CrewInfoModal,
   BlockersPreviewModal,
+  EconomicHealthWidget,
 } from "@/components/dashboard/widgets";
 import type { SnapshotTask, SnapshotTrade } from "@/components/dashboard/widgets";
 import {
@@ -187,15 +188,17 @@ export default function Dashboard() {
     gcTime: 30 * 60 * 1000,
   });
 
-  const { data: todayLog } = useQuery({
-    queryKey: ["dashboard-daily-log", currentProjectId, format(today, "yyyy-MM-dd")],
+  // Use most-recent daily log (not strictly today) — shows "as of [date]" label when stale
+  const { data: recentLog } = useQuery({
+    queryKey: ["dashboard-daily-log-recent", currentProjectId],
     queryFn: async () => {
       if (!currentProjectId) return null;
       const { data, error } = await supabase
         .from("daily_logs")
         .select("*")
         .eq("project_id", currentProjectId)
-        .eq("log_date", format(today, "yyyy-MM-dd"))
+        .order("log_date", { ascending: false })
+        .limit(1)
         .maybeSingle();
       if (error) throw error;
       return data;
@@ -204,6 +207,8 @@ export default function Dashboard() {
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });
+  const todayLog = recentLog; // keep alias for compatibility
+  const logIsStale = recentLog && recentLog.log_date !== format(today, "yyyy-MM-dd");
 
   // Fetch active trades with names and task counts
   const { data: activeTradesData = [] } = useQuery({
@@ -394,11 +399,12 @@ export default function Dashboard() {
       case 'myday': return <MyDayWidget priorityTasks={priorityTasks} />;
       case 'safety': return <SafetyWidget formsToday={formsToday} formsThisWeek={safetyFormsThisWeek} incidents={incidents} />;
       case 'blockers': return <BlockersWidget blockers={blockers.filter(b => !b.is_resolved)} />;
+      case 'econhealth': return <EconomicHealthWidget projectId={currentProjectId} />;
       default: return null;
     }
   };
 
-  const widgetIds = ['metrics', 'activity', 'health', 'distribution', 'myday', 'safety', 'blockers'];
+  const widgetIds = ['metrics', 'activity', 'health', 'distribution', 'myday', 'safety', 'blockers', 'econhealth'];
 
   return (
     <Layout>
@@ -465,6 +471,7 @@ export default function Dashboard() {
             tasksStarting={tasksStartingToday}
             tasksFinishing={tasksFinishingToday}
             blockedCount={blockedTasks}
+            staleLogDate={logIsStale ? recentLog?.log_date : null}
             onWeatherClick={() => setWeatherPopoverOpen(true)}
             onCrewClick={() => setCrewPopoverOpen(true)}
             onTradesClick={() => setTradesPopoverOpen(true)}

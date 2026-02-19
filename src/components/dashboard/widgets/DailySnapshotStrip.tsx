@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { CloudRain, HardHat, Wrench, PlayCircle, CheckSquare, AlertTriangle, Sun, Cloud, CloudSnow, ChevronRight } from "lucide-react";
+import { CloudRain, HardHat, Wrench, PlayCircle, CheckSquare, AlertTriangle, Sun, Cloud, CloudSnow, ChevronRight, CalendarClock } from "lucide-react";
 
 interface Task {
   id: string;
@@ -28,6 +28,7 @@ interface DailySnapshotStripProps {
   tasksStarting: number;
   tasksFinishing: number;
   blockedCount: number;
+  staleLogDate?: string | null; // e.g. "2026-02-17" — shown as "As of Feb 17" when not today
   // Click handlers
   onWeatherClick?: () => void;
   onCrewClick?: () => void;
@@ -84,6 +85,7 @@ export const DailySnapshotStrip = memo(function DailySnapshotStrip({
   tasksStarting,
   tasksFinishing,
   blockedCount,
+  staleLogDate,
   onWeatherClick,
   onCrewClick,
   onTradesClick,
@@ -92,9 +94,20 @@ export const DailySnapshotStrip = memo(function DailySnapshotStrip({
   onBlockersClick,
 }: DailySnapshotStripProps) {
   const WeatherIcon = getWeatherIcon(weather);
-  
+
+  // Format stale date label e.g. "Feb 17"
+  const staleDateLabel = staleLogDate
+    ? new Date(staleLogDate + "T12:00:00").toLocaleDateString("en-CA", { month: "short", day: "numeric" })
+    : null;
+
   return (
     <div className="widget-card !p-3 md:!p-4">
+      {staleDateLabel && (
+        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mb-2">
+          <CalendarClock className="h-3 w-3" />
+          <span>Site data as of {staleDateLabel} — no log submitted today</span>
+        </div>
+      )}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <MetricTile icon={WeatherIcon} label="Weather" value={weather || "Clear"} onClick={onWeatherClick} />
         <MetricTile icon={HardHat} label="Crew" value={crewCount} onClick={onCrewClick} />
