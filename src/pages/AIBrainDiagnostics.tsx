@@ -427,6 +427,11 @@ export default function AIBrainDiagnostics() {
   const [inspectorCopied, setInspectorCopied] = useState(false);
   const [inspectorOpen, setInspectorOpen] = useState(false);
 
+  // Determinism Re-scan state
+  const [detRunning, setDetRunning] = useState(false);
+  const [detResult, setDetResult] = useState<{ violation_count: number; suspect_functions: { function_name: string; issue: string }[] } | null>(null);
+  const [detError, setDetError] = useState<string | null>(null);
+
   // Fetch projects
   useEffect(() => {
     if (!activeOrganizationId) return;
@@ -567,6 +572,24 @@ export default function AIBrainDiagnostics() {
       else setInspectorResult(data);
     } catch (e: any) { setInspectorError(e.message); }
     finally { setInspectorRunning(false); }
+  };
+
+  // Determinism re-scan handler
+  const handleDetRescan = async () => {
+    setDetRunning(true);
+    setDetError(null);
+    setDetResult(null);
+    try {
+      const { data, error: rpcError } = await (supabase as any).rpc('rpc_get_os_system_inventory');
+      if (rpcError) { setDetError(rpcError.message); return; }
+      const scan = data?.aggregation_determinism_scan;
+      if (!scan) { setDetError('aggregation_determinism_scan missing from response'); return; }
+      setDetResult({
+        violation_count: scan.violation_count ?? 0,
+        suspect_functions: scan.suspect_functions ?? [],
+      });
+    } catch (e: any) { setDetError(e.message); }
+    finally { setDetRunning(false); }
   };
 
   const handleCopyInspector = () => {
@@ -1094,6 +1117,95 @@ export default function AIBrainDiagnostics() {
             </div>
           )}
         </div>
+
+        {/* ─── Determinism Patch Runner ─────────────────────────────── */}
+        <div className="border-t pt-6 space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <RefreshCw className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-semibold">Determinism Patch Runner</h2>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Re-runs <code className="font-mono">rpc_get_os_system_inventory</code> and renders only the{' '}
+                <code className="font-mono">aggregation_determinism_scan</code> — use this to confirm{' '}
+                the <code className="font-mono">rpc_time_diagnostics_summary</code> patch removed the genuine hit.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleDetRescan}
+              disabled={detRunning || !dbAuthOk}
+            >
+              <RefreshCw className={`h-4 w-4 mr-1.5 ${detRunning ? 'animate-spin' : ''}`} />
+              {detRunning ? 'Scanning…' : 'Re-run OS Inventory'}
+            </Button>
+          </div>
+
+          {!dbAuthOk && !dbAuthLoading && (
+            <Card className="border-destructive bg-destructive/5">
+              <CardContent className="p-3 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+                <span className="text-sm text-destructive">DB auth required — please refresh or log in first.</span>
+              </CardContent>
+            </Card>
+          )}
+
+          {detError && (
+            <Card className="border-destructive bg-destructive/5">
+              <CardContent className="p-3 flex items-center gap-2">
+                <XCircle className="h-4 w-4 text-destructive shrink-0" />
+                <span className="text-sm text-destructive font-mono">{detError}</span>
+              </CardContent>
+            </Card>
+          )}
+
+          {detResult && (
+            <div className="space-y-3">
+              {/* Violation count badge */}
+              <div className="flex items-center gap-3">
+                <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-semibold ${
+                  detResult.violation_count === 0
+                    ? 'bg-green-500/10 text-green-700 border-green-500/30'
+                    : 'bg-destructive/10 text-destructive border-destructive/30'
+                }`}>
+                  {detResult.violation_count === 0
+                    ? <CheckCircle2 className="h-4 w-4" />
+                    : <AlertTriangle className="h-4 w-4" />}
+                  {detResult.violation_count} violation{detResult.violation_count !== 1 ? 's' : ''} detected
+                </div>
+                {detResult.violation_count === 0 && (
+                  <span className="text-xs text-muted-foreground">Determinism hygiene confirmed ✓</span>
+                )}
+              </div>
+
+              {/* Suspect functions table */}
+              {detResult.suspect_functions.length > 0 ? (
+                <Card className="border-warning/30">
+                  <CardContent className="p-4 space-y-2">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      Suspect Functions ({detResult.suspect_functions.length})
+                    </p>
+                    <div className="space-y-1.5">
+                      {detResult.suspect_functions.map((fn, i) => (
+                        <div key={i} className="flex items-center justify-between gap-3 py-1 border-b border-border last:border-0">
+                          <code className="text-xs font-mono text-foreground">{fn.function_name}</code>
+                          <span className="text-[11px] px-2 py-0.5 rounded font-mono bg-muted text-muted-foreground border border-border shrink-0">
+                            {fn.issue}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">No suspect functions — all aggregations are deterministic.</p>
+              )}
+            </div>
+          )}
+        </div>
+
       </div>
     </Layout>
   );
