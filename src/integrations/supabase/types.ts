@@ -2980,6 +2980,41 @@ export type Database = {
         }
         Relationships: []
       }
+      project_archetypes: {
+        Row: {
+          created_at: string
+          id: string
+          key: string
+          label: string
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key: string
+          label: string
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key?: string
+          label?: string
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_archetypes_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_budgets: {
         Row: {
           client_id: string | null
@@ -3568,6 +3603,7 @@ export type Database = {
       }
       projects: {
         Row: {
+          archetype_id: string | null
           billing_address: string | null
           client_id: string | null
           created_at: string
@@ -3589,6 +3625,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archetype_id?: string | null
           billing_address?: string | null
           client_id?: string | null
           created_at?: string
@@ -3610,6 +3647,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archetype_id?: string | null
           billing_address?: string | null
           client_id?: string | null
           created_at?: string
@@ -3631,6 +3669,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "projects_archetype_id_fkey"
+            columns: ["archetype_id"]
+            isOneToOne: false
+            referencedRelation: "project_archetypes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "projects_client_id_fkey"
             columns: ["client_id"]
@@ -6550,6 +6595,10 @@ export type Database = {
       }
       rpc_generate_tasks_from_estimate: {
         Args: { p_estimate_id: string }
+        Returns: Json
+      }
+      rpc_get_archetype_margin_stats: {
+        Args: { p_archetype_id: string }
         Returns: Json
       }
       rpc_get_guardrails: { Args: never; Returns: Json }
