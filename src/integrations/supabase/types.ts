@@ -2947,6 +2947,173 @@ export type Database = {
           },
         ]
       }
+      playbook_phases: {
+        Row: {
+          description: string
+          id: string
+          name: string
+          playbook_id: string
+          sequence_order: number
+        }
+        Insert: {
+          description?: string
+          id?: string
+          name: string
+          playbook_id: string
+          sequence_order?: number
+        }
+        Update: {
+          description?: string
+          id?: string
+          name?: string
+          playbook_id?: string
+          sequence_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playbook_phases_playbook_id_fkey"
+            columns: ["playbook_id"]
+            isOneToOne: false
+            referencedRelation: "playbooks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      playbook_tasks: {
+        Row: {
+          allow_skip: boolean
+          density_weight: number
+          description: string
+          expected_hours_high: number
+          expected_hours_low: number
+          id: string
+          playbook_phase_id: string
+          required_flag: boolean
+          role_type: string
+          sequence_order: number
+          title: string
+        }
+        Insert: {
+          allow_skip?: boolean
+          density_weight?: number
+          description?: string
+          expected_hours_high?: number
+          expected_hours_low?: number
+          id?: string
+          playbook_phase_id: string
+          required_flag?: boolean
+          role_type?: string
+          sequence_order?: number
+          title: string
+        }
+        Update: {
+          allow_skip?: boolean
+          density_weight?: number
+          description?: string
+          expected_hours_high?: number
+          expected_hours_low?: number
+          id?: string
+          playbook_phase_id?: string
+          required_flag?: boolean
+          role_type?: string
+          sequence_order?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playbook_tasks_playbook_phase_id_fkey"
+            columns: ["playbook_phase_id"]
+            isOneToOne: false
+            referencedRelation: "playbook_phases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      playbook_versions: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          playbook_id: string
+          snapshot: Json
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          playbook_id: string
+          snapshot: Json
+          version: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          playbook_id?: string
+          snapshot?: Json
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playbook_versions_playbook_id_fkey"
+            columns: ["playbook_id"]
+            isOneToOne: false
+            referencedRelation: "playbooks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      playbooks: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string
+          id: string
+          is_archived: boolean
+          is_default: boolean
+          job_type: string
+          name: string
+          organization_id: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string
+          id?: string
+          is_archived?: boolean
+          is_default?: boolean
+          job_type?: string
+          name: string
+          organization_id: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string
+          id?: string
+          is_archived?: boolean
+          is_default?: boolean
+          job_type?: string
+          name?: string
+          organization_id?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playbooks_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -6207,6 +6374,7 @@ export type Database = {
       }
     }
     Functions: {
+      _playbook_snapshot: { Args: { p_playbook_id: string }; Returns: Json }
       assign_time_entry_task: {
         Args: { p_task_id: string; p_time_entry_id: string }
         Returns: boolean
@@ -6487,6 +6655,10 @@ export type Database = {
         }
         Returns: Json
       }
+      rpc_apply_playbook_to_project: {
+        Args: { p_playbook_id: string; p_project_id: string }
+        Returns: Json
+      }
       rpc_approve_change_order: {
         Args: { p_approved?: boolean; p_change_order_id: string }
         Returns: Json
@@ -6546,6 +6718,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      rpc_archive_playbook: { Args: { p_playbook_id: string }; Returns: Json }
       rpc_calculate_certification_tier: {
         Args: { p_organization_id: string }
         Returns: Json
@@ -6597,6 +6770,17 @@ export type Database = {
         Returns: Json
       }
       rpc_create_estimate: { Args: { p_project_id: string }; Returns: Json }
+      rpc_create_playbook: {
+        Args: {
+          p_description?: string
+          p_is_default?: boolean
+          p_job_type?: string
+          p_name: string
+          p_organization_id: string
+          p_phases?: Json
+        }
+        Returns: Json
+      }
       rpc_delete_change_order_line_item: {
         Args: { p_line_item_id: string }
         Returns: Json
@@ -6610,6 +6794,10 @@ export type Database = {
         Returns: undefined
       }
       rpc_duplicate_estimate: { Args: { p_estimate_id: string }; Returns: Json }
+      rpc_duplicate_playbook: {
+        Args: { p_new_name?: string; p_playbook_id: string }
+        Returns: Json
+      }
       rpc_ensure_release_checks: {
         Args: { p_org_id: string }
         Returns: undefined
@@ -6683,6 +6871,10 @@ export type Database = {
       }
       rpc_get_unrated_labor_summary: {
         Args: { p_project_id?: string }
+        Returns: Json
+      }
+      rpc_list_playbooks_by_org: {
+        Args: { p_include_archived?: boolean; p_organization_id: string }
         Returns: Json
       }
       rpc_lock_timesheet_period: {
@@ -6877,6 +7069,17 @@ export type Database = {
       }
       rpc_update_org_intelligence_profile: {
         Args: { p_organization_id: string; p_patch: Json }
+        Returns: Json
+      }
+      rpc_update_playbook: {
+        Args: {
+          p_description?: string
+          p_is_default?: boolean
+          p_job_type?: string
+          p_name?: string
+          p_phases?: Json
+          p_playbook_id: string
+        }
         Returns: Json
       }
       rpc_update_project_currency: {
