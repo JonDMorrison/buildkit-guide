@@ -6914,6 +6914,10 @@ export type Database = {
         Args: { p_org_id: string }
         Returns: Json
       }
+      rpc_get_playbook_performance: {
+        Args: { p_playbook_id: string }
+        Returns: Json
+      }
       rpc_get_pricing_suggestions: {
         Args: { p_min_projects?: number }
         Returns: Json
@@ -7106,6 +7110,10 @@ export type Database = {
       }
       rpc_suggest_change_order_from_risk: {
         Args: { p_project_id: string }
+        Returns: Json
+      }
+      rpc_suggest_playbook_adjustments: {
+        Args: { p_playbook_id: string }
         Returns: Json
       }
       rpc_time_diagnostics_rls_probe: {
