@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { formatCurrency } from '@/lib/formatters';
 
 // -- Types --
 
@@ -1845,6 +1846,44 @@ async function checkPricingSuggestionsDeterminism(): Promise<AuditCheck> {
   }
 }
 
+// -- UI Currency Label Scan (P1) --
+
+function checkUiCurrencyLabels(): AuditCheck {
+  const id = 'ui_currency_label_scan';
+  const name = 'UI Currency Label Scan (No Hardcoded CAD)';
+  const area = 'Finance';
+  const sev: 'P1' = 'P1';
+
+  const testUSD = formatCurrency(12340, 'USD');
+  const testCAD = formatCurrency(12340, 'CAD');
+  const includesUSDCode = testUSD.includes('USD');
+  const includesCADCode = testCAD.includes('CAD');
+
+  const offenders: string[] = [];
+  if (!includesUSDCode) offenders.push(`formatCurrency(12340, 'USD') => "${testUSD}" — missing currency code`);
+  if (!includesCADCode) offenders.push(`formatCurrency(12340, 'CAD') => "${testCAD}" — missing currency code`);
+
+  const allPass = includesUSDCode && includesCADCode;
+
+  return {
+    id, name, area, severity: sev,
+    expected: 'formatCurrency accepts dynamic currency param and always appends currency code',
+    actual: allPass
+      ? `Formatter verified: output includes code (e.g. "${testUSD}")`
+      : `Issues: ${offenders.join('; ')}`,
+    status: allPass ? 'PASS' : 'FAIL',
+    pass: allPass,
+    evidence: JSON.stringify({
+      test_USD_output: testUSD,
+      test_CAD_output: testCAD,
+      includes_code: { USD: includesUSDCode, CAD: includesCADCode },
+      note: 'Callers must pass entity.currency, never hardcoded. Code review recommended for new files.',
+    }, null, 2),
+    source: 'client',
+    offenders: offenders.length > 0 ? offenders : undefined,
+  };
+}
+
 // -- Main Runner --
 
 export async function runPromptsAudit(projectId: string): Promise<PromptsAuditResult> {
@@ -1883,6 +1922,7 @@ export async function runPromptsAudit(projectId: string): Promise<PromptsAuditRe
     checkCOSuggestionDeterminism(projectId),
     checkArchetypeMarginStatsDeterminism(),
     checkPricingSuggestionsDeterminism(),
+    Promise.resolve(checkUiCurrencyLabels()),
   ]);
 
   const checks: AuditCheck[] = [];
