@@ -6662,6 +6662,7 @@ export type Database = {
         | "deficiency_created"
         | "document_uploaded"
         | "incident_report"
+        | "guardrail_warning"
       proposal_status:
         | "draft"
         | "submitted"
@@ -6827,6 +6828,7 @@ export const Constants = {
         "deficiency_created",
         "document_uploaded",
         "incident_report",
+        "guardrail_warning",
       ],
       proposal_status: [
         "draft",
