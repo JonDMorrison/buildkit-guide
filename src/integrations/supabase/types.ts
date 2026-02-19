@@ -7860,6 +7860,7 @@ export type Database = {
         Args: { p_archetype_id: string }
         Returns: Json
       }
+      rpc_get_executive_dashboard: { Args: { p_org_id: string }; Returns: Json }
       rpc_get_guardrails: { Args: never; Returns: Json }
       rpc_get_operating_system_score: {
         Args: { p_org_id: string }
