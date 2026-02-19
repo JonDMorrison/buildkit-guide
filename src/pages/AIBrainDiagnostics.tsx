@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Play, Download, ChevronDown, CheckCircle2, XCircle, AlertTriangle, Copy, Brain, Shield, Eye, Zap, Lock, RefreshCw, User } from 'lucide-react';
+import { Play, Download, ChevronDown, CheckCircle2, XCircle, AlertTriangle, Copy, Brain, Shield, Eye, Zap, Lock, RefreshCw, User, FlaskConical, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from '@/hooks/useOrganization';
 
@@ -153,6 +153,97 @@ function DbAuthCard({ data, loading, error, onRefresh }: {
   );
 }
 
+// --- Scenario Runner ---
+
+interface ScenarioItem {
+  scenario: string;
+  project_id: string | null;
+  success: boolean;
+  ok: boolean;
+  payload: any;
+  error: { sqlstate: string; message: string } | null;
+}
+
+interface ScenarioResult {
+  ok: boolean;
+  org_id: string;
+  scenarios: ScenarioItem[];
+}
+
+const SCENARIO_LABELS: Record<string, string> = {
+  active_control:              'Active Project (Control)',
+  completed_or_closed:         'Completed / Closed',
+  estimate_no_time_entries:    'Estimate — No Time Entries',
+  has_approved_change_orders:  'Has Approved Change Orders',
+  no_estimate:                 'No Estimate',
+  zero_projected_revenue:      'Time Entries — Zero Projected Revenue',
+};
+
+function ScenarioCard({ s }: { s: ScenarioItem }) {
+  const label = SCENARIO_LABELS[s.scenario] ?? s.scenario;
+  const overallOk = s.success && s.ok;
+  const borderClass = overallOk ? 'border-primary/30' : 'border-destructive/30';
+
+  return (
+    <Card className={`${borderClass} border`}>
+      <Collapsible>
+        <CollapsibleTrigger className="w-full">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="flex items-center gap-2 min-w-0">
+              <FlaskConical className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="font-medium text-sm truncate">{label}</span>
+              {s.project_id && (
+                <span className="text-xs text-muted-foreground font-mono shrink-0">
+                  {s.project_id.slice(0, 8)}…
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 shrink-0 ml-2">
+              <StatusBadge ok={overallOk} />
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </CardContent>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="px-4 pb-4 space-y-2">
+            <div className="flex items-center gap-3 text-xs">
+              {s.project_id && (
+                <a
+                  href={`/projects/${s.project_id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1 text-primary hover:underline"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <ExternalLink className="h-3 w-3" /> Open Project
+                </a>
+              )}
+              <span className={s.success ? 'text-primary' : 'text-destructive'}>
+                RPC: {s.success ? 'succeeded' : 'failed'}
+              </span>
+              {s.success && (
+                <span className={s.ok ? 'text-primary' : 'text-destructive'}>
+                  Control engine: {s.ok ? 'ok' : 'issues found'}
+                </span>
+              )}
+            </div>
+            {s.error && (
+              <div className="text-xs text-destructive bg-destructive/5 rounded p-2 font-mono">
+                [{s.error.sqlstate}] {s.error.message}
+              </div>
+            )}
+            {(s.payload || s.error) && (
+              <pre className="p-3 bg-muted rounded text-xs whitespace-pre-wrap max-h-60 overflow-auto font-mono">
+                {JSON.stringify(s.payload ?? s.error, null, 2)}
+              </pre>
+            )}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    </Card>
+  );
+}
+
 // --- Main Page ---
 
 export default function AIBrainDiagnostics() {
@@ -172,6 +263,11 @@ export default function AIBrainDiagnostics() {
   const [dbAuth, setDbAuth] = useState<DbAuthData | null>(null);
   const [dbAuthLoading, setDbAuthLoading] = useState(false);
   const [dbAuthError, setDbAuthError] = useState<string | null>(null);
+
+  // Scenario runner state
+  const [scenarioRunning, setScenarioRunning] = useState(false);
+  const [scenarioResult, setScenarioResult] = useState<ScenarioResult | null>(null);
+  const [scenarioError, setScenarioError] = useState<string | null>(null);
 
   // Fetch projects
   useEffect(() => {
@@ -249,6 +345,27 @@ export default function AIBrainDiagnostics() {
       }
     } catch (e: any) { setError(e.message); }
     finally { setRunning(false); }
+  };
+
+  // Scenario runner handler
+  const handleRunScenarios = async () => {
+    if (!activeOrganizationId || !dbAuthOk) return;
+    setScenarioRunning(true);
+    setScenarioError(null);
+    setScenarioResult(null);
+    try {
+      const { data, error: rpcError } = await (supabase as any).rpc(
+        'rpc_run_ai_brain_scenario_suite',
+        { p_org_id: activeOrganizationId }
+      );
+      if (rpcError) setScenarioError(rpcError.message);
+      else setScenarioResult(data as ScenarioResult);
+    } catch (e: any) { setScenarioError(e.message); }
+    finally { setScenarioRunning(false); }
+  };
+
+  const handleCopyScenario = () => {
+    if (scenarioResult) navigator.clipboard.writeText(JSON.stringify(scenarioResult, null, 2));
   };
 
   const handleCopy = () => { if (result) navigator.clipboard.writeText(JSON.stringify(result, null, 2)); };
@@ -460,6 +577,76 @@ export default function AIBrainDiagnostics() {
             </Collapsible>
           </>
         )}
+
+        {/* ─── Scenario Runner ─────────────────────────────────── */}
+        <div className="border-t pt-6 space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <FlaskConical className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-semibold">Scenario Suite Runner</h2>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Runs <code className="font-mono">rpc_generate_project_margin_control</code> against up to 6 edge-case projects in this org.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {scenarioResult && (
+                <Button variant="outline" size="sm" onClick={handleCopyScenario}>
+                  <Copy className="h-4 w-4 mr-1.5" /> Copy JSON
+                </Button>
+              )}
+              <Button
+                size="sm"
+                onClick={handleRunScenarios}
+                disabled={scenarioRunning || !dbAuthOk || !activeOrganizationId}
+              >
+                <Play className="h-4 w-4 mr-1.5" />
+                {scenarioRunning ? 'Running…' : 'Run Scenario Suite'}
+              </Button>
+            </div>
+          </div>
+
+          {scenarioError && (
+            <Card className="border-destructive bg-destructive/5">
+              <CardContent className="p-3 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+                <span className="text-sm text-destructive">{scenarioError}</span>
+              </CardContent>
+            </Card>
+          )}
+
+          {scenarioResult && (
+            <>
+              {/* Summary bar */}
+              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                <span className={scenarioResult.ok ? 'text-primary font-semibold' : 'text-destructive font-semibold'}>
+                  {scenarioResult.ok ? '✓ All scenarios ok' : '✗ One or more scenarios failed'}
+                </span>
+                <span>{scenarioResult.scenarios.length} scenario{scenarioResult.scenarios.length !== 1 ? 's' : ''} run</span>
+                <span className="text-primary">{scenarioResult.scenarios.filter(s => s.ok && s.success).length} pass</span>
+                {scenarioResult.scenarios.filter(s => !s.ok || !s.success).length > 0 && (
+                  <span className="text-destructive">{scenarioResult.scenarios.filter(s => !s.ok || !s.success).length} fail</span>
+                )}
+              </div>
+
+              {/* Scenario cards */}
+              <div className="space-y-2">
+                {scenarioResult.scenarios.map(s => (
+                  <ScenarioCard key={s.scenario} s={s} />
+                ))}
+              </div>
+
+              {scenarioResult.scenarios.length === 0 && (
+                <Card className="border-muted">
+                  <CardContent className="p-4 text-center text-sm text-muted-foreground">
+                    No matching projects found for any scenario in this org.
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </Layout>
   );
