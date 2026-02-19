@@ -7911,6 +7911,7 @@ export type Database = {
         Args: { p_project_id?: string }
         Returns: Json
       }
+      rpc_is_org_member: { Args: { p_org_id: string }; Returns: boolean }
       rpc_list_playbooks_by_org: {
         Args: { p_include_archived?: boolean; p_organization_id: string }
         Returns: Json
