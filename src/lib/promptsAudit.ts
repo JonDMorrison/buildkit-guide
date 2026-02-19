@@ -1483,6 +1483,52 @@ async function checkCostRollupDeterminism(projectId: string): Promise<AuditCheck
   }
 }
 
+// -- Profit Risk Determinism (P1) --
+
+async function checkProfitRiskDeterminism(projectId: string): Promise<AuditCheck> {
+  const id = 'profit_risk_determinism';
+  const name = 'Profit Risk RPC Determinism';
+  const area = 'Finance';
+  const sev: 'P1' = 'P1';
+
+  try {
+    if (!projectId) {
+      return makeCheck(id, name, area, sev,
+        'RPC returns identical results on consecutive calls', 'No project selected',
+        'NEEDS_MANUAL', 'Select a project first');
+    }
+
+    const { data: run1, error: err1 } = await supabase.rpc('rpc_get_project_profit_risk', {
+      p_project_id: projectId,
+    });
+    if (err1) throw err1;
+
+    const { data: run2, error: err2 } = await supabase.rpc('rpc_get_project_profit_risk', {
+      p_project_id: projectId,
+    });
+    if (err2) throw err2;
+
+    const s1 = JSON.stringify(run1);
+    const s2 = JSON.stringify(run2);
+    const deterministic = s1 === s2;
+
+    const r = run1 as any;
+    const summary = deterministic
+      ? `Deterministic — risk=${r?.risk_score ?? '?'} (${r?.risk_level ?? '?'}), drivers=${(r?.drivers ?? []).length}`
+      : 'Non-deterministic: outputs differ between calls';
+
+    return makeCheck(id, name, area, sev,
+      'Two consecutive calls return identical JSON',
+      summary,
+      deterministic ? 'PASS' : 'FAIL',
+      JSON.stringify({ run1, run2 }, null, 2));
+  } catch (e: any) {
+    return makeCheck(id, name, area, sev,
+      'Profit risk RPC executes', `Error: ${e.message}`,
+      'FAIL', e.message);
+  }
+}
+
 // -- Main Runner --
 
 export async function runPromptsAudit(projectId: string): Promise<PromptsAuditResult> {
@@ -1514,6 +1560,7 @@ export async function runPromptsAudit(projectId: string): Promise<PromptsAuditRe
     checkScoringDeterminism(),
     checkCertificationTierDeterminism(),
     checkCostRollupDeterminism(projectId),
+    checkProfitRiskDeterminism(projectId),
   ]);
 
   const checks: AuditCheck[] = [];
