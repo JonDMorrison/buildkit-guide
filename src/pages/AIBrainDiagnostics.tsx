@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Play, Download, ChevronDown, CheckCircle2, XCircle, AlertTriangle, Copy, Brain, Shield, Eye, Zap, Lock, RefreshCw, User, FlaskConical, ExternalLink, Microscope, Search, Beaker } from 'lucide-react';
+import { Play, Download, ChevronDown, CheckCircle2, XCircle, AlertTriangle, Copy, Brain, Shield, Eye, Zap, Lock, RefreshCw, User, FlaskConical, ExternalLink, Microscope, Search, Beaker, GitBranch } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from '@/hooks/useOrganization';
@@ -448,6 +448,13 @@ export default function AIBrainDiagnostics() {
   const [detResult, setDetResult] = useState<{ violation_count: number; suspect_functions: { function_name: string; issue: string }[] } | null>(null);
   const [detError, setDetError] = useState<string | null>(null);
 
+  // Margin Inputs Trace state
+  const [traceProject, setTraceProject] = useState<string>('');
+  const [traceRunning, setTraceRunning] = useState(false);
+  const [traceResult, setTraceResult] = useState<any>(null);
+  const [traceError, setTraceError] = useState<string | null>(null);
+  const [traceCopied, setTraceCopied] = useState(false);
+
   // Seed Margin Test Project state
   type SeedResult = {
     success: boolean;
@@ -714,6 +721,30 @@ export default function AIBrainDiagnostics() {
       });
     } catch (e: any) { setDetError(e.message); }
     finally { setDetRunning(false); }
+  };
+
+  // Margin Inputs Trace handler
+  const handleRunTrace = async () => {
+    if (!traceProject || !dbAuthOk) return;
+    setTraceRunning(true);
+    setTraceError(null);
+    setTraceResult(null);
+    try {
+      const { data, error: rpcErr } = await (supabase as any).rpc(
+        'rpc_debug_margin_control_inputs',
+        { p_project_id: traceProject }
+      );
+      if (rpcErr) setTraceError(rpcErr.message);
+      else setTraceResult(data);
+    } catch (e: any) { setTraceError(e.message); }
+    finally { setTraceRunning(false); }
+  };
+
+  const handleCopyTrace = () => {
+    if (!traceResult) return;
+    navigator.clipboard.writeText(JSON.stringify(traceResult, null, 2));
+    setTraceCopied(true);
+    setTimeout(() => setTraceCopied(false), 2000);
   };
 
   const handleCopyInspector = () => {
@@ -1258,6 +1289,151 @@ export default function AIBrainDiagnostics() {
               </Collapsible>
             </div>
           )}
+        </div>
+
+        {/* ─── Margin Inputs Trace ──────────────────────────────────────── */}
+        <div className="border-t pt-6 space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <GitBranch className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-semibold">Margin Inputs Trace</h2>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Calls <code className="font-mono">rpc_debug_margin_control_inputs</code> — shows every raw number
+                fed into the margin engine so you can trace why burn ratios or margins default to 0/1.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {traceResult && (
+                <Button variant="outline" size="sm" onClick={handleCopyTrace}>
+                  <Copy className="h-4 w-4 mr-1.5" />
+                  {traceCopied ? 'Copied!' : 'Copy JSON'}
+                </Button>
+              )}
+              <Button
+                size="sm"
+                onClick={handleRunTrace}
+                disabled={traceRunning || !dbAuthOk || !traceProject}
+              >
+                <Play className="h-4 w-4 mr-1.5" />
+                {traceRunning ? 'Tracing…' : 'Trace Inputs'}
+              </Button>
+            </div>
+          </div>
+
+          {/* Project selector */}
+          <div className="max-w-sm">
+            <label className="text-sm font-medium mb-1 block">Project (required)</label>
+            <Select value={traceProject} onValueChange={setTraceProject}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a project to trace" />
+              </SelectTrigger>
+              <SelectContent>
+                {projects.map(p => (
+                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {!dbAuthOk && !dbAuthLoading && (
+            <Card className="border-destructive bg-destructive/5">
+              <CardContent className="p-3 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+                <span className="text-sm text-destructive">DB auth required — please refresh or log in first.</span>
+              </CardContent>
+            </Card>
+          )}
+
+          {traceError && (
+            <Card className="border-destructive bg-destructive/5">
+              <CardContent className="p-3 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+                <span className="text-sm text-destructive font-mono">{traceError}</span>
+              </CardContent>
+            </Card>
+          )}
+
+          {traceResult && (() => {
+            const inputs = traceResult.inputs ?? {};
+            const sources = traceResult.sources ?? {};
+            const inputRows: { key: string; label: string; value: unknown; highlight?: 'warn' | 'ok' }[] = [
+              { key: 'projected_revenue',       label: 'Projected Revenue',            value: inputs.projected_revenue,       highlight: inputs.projected_revenue === 0 ? 'warn' : 'ok' },
+              { key: 'contract_value_used',     label: 'Contract Value Used',          value: inputs.contract_value_used },
+              { key: 'selected_estimate_id',    label: 'Selected Estimate ID',         value: inputs.selected_estimate_id ?? '—',  highlight: !inputs.selected_estimate_id ? 'warn' : undefined },
+              { key: 'estimate_total_cost',     label: 'Estimate — Total Cost',        value: inputs.estimate_total_cost },
+              { key: 'estimate_labor_cost',     label: 'Estimate — Labor Cost',        value: inputs.estimate_labor_cost },
+              { key: 'estimate_material_cost',  label: 'Estimate — Material Cost',     value: inputs.estimate_material_cost },
+              { key: 'estimate_sub_cost',       label: 'Estimate — Sub Cost',          value: inputs.estimate_sub_cost },
+              { key: 'actual_labor_cost_to_date',    label: 'Actual Labor Cost to Date',    value: inputs.actual_labor_cost_to_date,    highlight: inputs.actual_labor_cost_to_date === 0 ? 'warn' : 'ok' },
+              { key: 'actual_material_cost_to_date', label: 'Actual Material Cost to Date',  value: inputs.actual_material_cost_to_date },
+              { key: 'actual_sub_cost_to_date',      label: 'Actual Sub Cost to Date',       value: inputs.actual_sub_cost_to_date },
+              { key: 'actual_total_cost_to_date',    label: 'Actual Total Cost to Date',     value: inputs.actual_total_cost_to_date,    highlight: inputs.actual_total_cost_to_date === 0 ? 'warn' : 'ok' },
+              { key: 'labor_cost_ratio_used',        label: 'Labor Cost Ratio Used',         value: inputs.labor_cost_ratio_used,        highlight: inputs.labor_cost_ratio_used === 0 ? 'warn' : 'ok' },
+              { key: 'projected_margin_at_completion_ratio_used', label: 'Projected Margin @ Completion Ratio', value: inputs.projected_margin_at_completion_ratio_used, highlight: inputs.projected_margin_at_completion_ratio_used === 0 ? 'warn' : 'ok' },
+              { key: 'snapshot_actual_labor_cost',   label: 'Snapshot — Actual Labor Cost',  value: inputs.snapshot_actual_labor_cost,   highlight: inputs.snapshot_actual_labor_cost === 0 ? 'warn' : undefined },
+              { key: 'snapshot_actual_total_cost',   label: 'Snapshot — Actual Total Cost',  value: inputs.snapshot_actual_total_cost,   highlight: inputs.snapshot_actual_total_cost === 0 ? 'warn' : undefined },
+              { key: 'snapshot_realized_margin_ratio',    label: 'Snapshot — Realized Margin Ratio',     value: inputs.snapshot_realized_margin_ratio },
+              { key: 'snapshot_cost_to_revenue_ratio',    label: 'Snapshot — Cost-to-Revenue Ratio',     value: inputs.snapshot_cost_to_revenue_ratio },
+            ];
+
+            return (
+              <div className="space-y-3">
+                {/* IDs */}
+                <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground font-mono">
+                  <span>project: {traceResult.project_id?.slice(0, 8)}…</span>
+                  <span>org: {traceResult.org_id?.slice(0, 8)}…</span>
+                </div>
+
+                {/* Inputs table */}
+                <Card>
+                  <CardContent className="p-0 overflow-hidden">
+                    <div className="px-4 py-2.5 border-b border-border bg-muted/30">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Inputs</p>
+                    </div>
+                    <div className="divide-y divide-border">
+                      {inputRows.map(row => (
+                        <div key={row.key} className={`grid grid-cols-[1fr_auto] gap-4 px-4 py-2 text-xs items-center ${
+                          row.highlight === 'warn' ? 'bg-amber-500/5' : ''
+                        }`}>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            {row.highlight === 'warn' && <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />}
+                            <span className="text-muted-foreground truncate">{row.label}</span>
+                          </div>
+                          <span className={`font-mono text-right shrink-0 ${
+                            row.highlight === 'warn' ? 'text-amber-600 font-semibold' :
+                            row.highlight === 'ok'   ? 'text-foreground' : 'text-muted-foreground'
+                          }`}>
+                            {typeof row.value === 'string' && row.value.length > 8 && row.value !== '—'
+                              ? row.value.slice(0, 8) + '…'
+                              : String(row.value ?? '—')}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Sources table */}
+                <Card className="border-border/50">
+                  <CardContent className="p-0 overflow-hidden">
+                    <div className="px-4 py-2.5 border-b border-border bg-muted/30">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Data Sources</p>
+                    </div>
+                    <div className="divide-y divide-border">
+                      {Object.entries(sources).map(([k, v]) => (
+                        <div key={k} className="grid grid-cols-[160px_1fr] gap-3 px-4 py-2 text-xs items-start">
+                          <span className="text-muted-foreground font-mono shrink-0">{k}</span>
+                          <span className="text-foreground break-words">{String(v)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          })()}
         </div>
 
         {/* ─── Quick Probe (3 Projects) ────────────────────────────────── */}
