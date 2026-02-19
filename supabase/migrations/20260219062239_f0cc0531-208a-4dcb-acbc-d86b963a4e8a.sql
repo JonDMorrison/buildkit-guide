@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public.rpc_get_unrated_labor_summary(uuid) TO authenticated;

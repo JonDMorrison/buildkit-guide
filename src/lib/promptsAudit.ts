@@ -881,14 +881,25 @@ async function checkUnratedLaborBannerCoverage(): Promise<AuditCheck> {
 
   // 3. Verify RPC data layer works
   let rpcOk = false;
+  let rpcError = '';
   try {
     const { supabase } = await import('@/integrations/supabase/client');
-    const { error } = await (supabase as any).rpc('rpc_get_unrated_labor_summary', {
+    const { data, error } = await (supabase as any).rpc('rpc_get_unrated_labor_summary', {
       p_project_id: null,
     });
-    rpcOk = !error;
-  } catch {
-    rpcOk = false;
+    if (error) {
+      rpcError = error.message || JSON.stringify(error);
+    } else {
+      // Verify expected fields exist in response
+      const d = data as any;
+      const hasFields = d && typeof d.unrated_hours !== 'undefined'
+        && typeof d.unrated_entries_count !== 'undefined'
+        && typeof d.currency_mismatch_hours !== 'undefined';
+      rpcOk = hasFields;
+      if (!hasFields) rpcError = 'Response missing expected fields: ' + JSON.stringify(d);
+    }
+  } catch (e: any) {
+    rpcError = e.message || 'Unknown exception';
   }
 
   const failedPages = results.filter(r => !r.moduleLoaded);
@@ -897,7 +908,7 @@ async function checkUnratedLaborBannerCoverage(): Promise<AuditCheck> {
 
   const evidence = [
     `Banner component: ${bannerOk ? '✓ importable' : '✗ missing'}`,
-    `RPC data layer: ${rpcOk ? '✓ functional' : '✗ broken'}`,
+    `RPC data layer: ${rpcOk ? '✓ functional' : `✗ ${rpcError}`}`,
     ...results.map(r => `${r.page}: ${r.moduleLoaded ? '✓ module loaded' : `✗ ${r.error || 'failed'}`}`),
   ].join('\n');
 
