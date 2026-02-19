@@ -8029,6 +8029,10 @@ export type Database = {
         Returns: Json
       }
       rpc_run_audit_suite: { Args: { p_project_id?: string }; Returns: Json }
+      rpc_run_margin_control_edge_cases: {
+        Args: { p_org_id: string }
+        Returns: Json
+      }
       rpc_run_org_onboarding_wizard: {
         Args: { p_answers: Json; p_organization_id: string }
         Returns: Json
