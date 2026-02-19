@@ -70,7 +70,7 @@ serve(async (req: Request) => {
       .from("projects")
       .insert({
         name: SEED_NAME,
-        status: "active",
+        status: "in_progress",
         organization_id: organizationId,
         created_by: user.id,
         location: "Stress Test Site, Vancouver BC",
