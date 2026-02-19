@@ -7008,6 +7008,15 @@ export type Database = {
       }
     }
     Views: {
+      v_ai_brain_build_status: {
+        Row: {
+          functions_present: boolean | null
+          functions_search_path_pinned: boolean | null
+          functions_security_definer: boolean | null
+          views_present: boolean | null
+        }
+        Relationships: []
+      }
       v_org_margin_performance: {
         Row: {
           completed_projects_count: number | null
@@ -7652,6 +7661,10 @@ export type Database = {
           p_rate?: number
           p_sort_order?: number
         }
+        Returns: Json
+      }
+      rpc_ai_brain_perf_sanity: {
+        Args: { p_org_id: string; p_project_id: string }
         Returns: Json
       }
       rpc_apply_playbook_to_project:
