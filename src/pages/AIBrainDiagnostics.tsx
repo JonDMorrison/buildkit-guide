@@ -1669,7 +1669,201 @@ export default function AIBrainDiagnostics() {
           )}
         </div>
 
+
+        {/* ─── Margin Inputs Trace ────────────────────────────────────── */}
+        <div className="border-t pt-6 space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <Search className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-semibold">Margin Inputs Trace</h2>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Exposes the raw numeric inputs consumed by the margin engine for any project.
+                Use this to explain why <code className="font-mono">labor_burn_ratio=0</code> or <code className="font-mono">projected_margin=1</code>.
+                Read-only — no writes.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Select value={traceProject} onValueChange={setTraceProject}>
+                <SelectTrigger className="w-[240px]">
+                  <SelectValue placeholder="Select project…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {projects.map(p => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleRunTrace}
+                disabled={traceRunning || !traceProject || !dbAuthOk}
+              >
+                <GitBranch className={`h-4 w-4 mr-1.5 ${traceRunning ? 'animate-pulse' : ''}`} />
+                {traceRunning ? 'Running…' : 'Run Inputs Trace'}
+              </Button>
+            </div>
+          </div>
+
+          {!dbAuthOk && !dbAuthLoading && (
+            <Card className="border-destructive bg-destructive/5">
+              <CardContent className="p-3 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+                <span className="text-sm text-destructive">DB auth required — please refresh or log in first.</span>
+              </CardContent>
+            </Card>
+          )}
+
+          {traceError && (
+            <Card className="border-destructive bg-destructive/5">
+              <CardContent className="p-3 flex items-center gap-2">
+                <XCircle className="h-4 w-4 text-destructive shrink-0" />
+                <span className="text-sm text-destructive font-mono">{traceError}</span>
+              </CardContent>
+            </Card>
+          )}
+
+          {traceResult && (() => {
+            const inputs = traceResult.inputs ?? {};
+            const sources = traceResult.sources ?? {};
+
+            // Key rows to display — ordered for diagnosis
+            const inputRows: { label: string; key: string; format: 'currency' | 'ratio' | 'id' | 'bool' }[] = [
+              { label: 'Projected Revenue',             key: 'projected_revenue',                          format: 'currency' },
+              { label: 'Contract Value Used',           key: 'contract_value_used',                        format: 'currency' },
+              { label: 'Selected Estimate ID',          key: 'selected_estimate_id',                       format: 'id'       },
+              { label: 'Estimate Total Cost',           key: 'estimate_total_cost',                        format: 'currency' },
+              { label: 'Estimate Labor Cost',           key: 'estimate_labor_cost',                        format: 'currency' },
+              { label: 'Estimate Material Cost',        key: 'estimate_material_cost',                     format: 'currency' },
+              { label: 'Estimate Sub Cost',             key: 'estimate_sub_cost',                          format: 'currency' },
+              { label: 'Actual Labor Cost to Date',     key: 'actual_labor_cost_to_date',                  format: 'currency' },
+              { label: 'Actual Material Cost to Date',  key: 'actual_material_cost_to_date',               format: 'currency' },
+              { label: 'Actual Sub Cost to Date',       key: 'actual_sub_cost_to_date',                    format: 'currency' },
+              { label: 'Actual Total Cost to Date',     key: 'actual_total_cost_to_date',                  format: 'currency' },
+              { label: 'Snapshot Actual Labor Cost',    key: 'snapshot_actual_labor_cost',                 format: 'currency' },
+              { label: 'Snapshot Actual Total Cost',    key: 'snapshot_actual_total_cost',                 format: 'currency' },
+              { label: 'Snapshot Realized Margin',      key: 'snapshot_realized_margin_ratio',             format: 'ratio'    },
+              { label: 'Snapshot Cost/Revenue Ratio',   key: 'snapshot_cost_to_revenue_ratio',             format: 'ratio'    },
+              { label: 'Labor Cost Ratio Used',         key: 'labor_cost_ratio_used',                      format: 'ratio'    },
+              { label: 'Projected Margin Ratio Used',   key: 'projected_margin_at_completion_ratio_used',  format: 'ratio'    },
+            ];
+
+            const isZeroWarning = (key: string, val: any): boolean => {
+              // Flag zeros on critical revenue/cost fields — not ratios (0 ratio is expected if no data)
+              const criticalFields = [
+                'projected_revenue', 'contract_value_used',
+                'estimate_total_cost', 'actual_labor_cost_to_date',
+              ];
+              return criticalFields.includes(key) && (val === 0 || val === null || val === undefined);
+            };
+
+            const formatValue = (key: string, val: any, fmt: string): string => {
+              if (val === null || val === undefined) return '—';
+              if (fmt === 'id') return val ? (val as string).slice(0, 8) + '…' : '∅ none';
+              if (fmt === 'ratio') return typeof val === 'number' ? val.toFixed(4) : String(val);
+              if (fmt === 'currency') return typeof val === 'number' ? `$${val.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : String(val);
+              return String(val);
+            };
+
+            return (
+              <div className="space-y-4">
+                {/* Header metadata */}
+                <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                  <span>Project: <code className="font-mono text-foreground">{(traceResult.project_id as string)?.slice(0, 8)}…</code></span>
+                  <span>Org: <code className="font-mono text-foreground">{(traceResult.org_id as string)?.slice(0, 8)}…</code></span>
+                </div>
+
+                {/* Inputs table */}
+                <Card className="border">
+                  <CardContent className="p-0">
+                    <div className="px-4 py-2 border-b border-border bg-muted/40">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Engine Inputs</p>
+                    </div>
+                    <div className="divide-y divide-border">
+                      {inputRows.map(({ label, key, format }) => {
+                        const val = inputs[key];
+                        const warn = isZeroWarning(key, val);
+                        return (
+                          <div key={key} className={`flex items-center justify-between px-4 py-2 ${warn ? 'bg-amber-500/5' : ''}`}>
+                            <span className={`text-xs ${warn ? 'text-amber-700 font-medium' : 'text-muted-foreground'}`}>
+                              {warn && '⚠ '}{label}
+                            </span>
+                            <span className={`text-xs font-mono ${
+                              warn ? 'text-amber-700 font-bold' :
+                              key === 'selected_estimate_id' && !val ? 'text-destructive' :
+                              'text-foreground'
+                            }`}>
+                              {formatValue(key, val, format)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Sources table */}
+                <Card className="border">
+                  <CardContent className="p-0">
+                    <div className="px-4 py-2 border-b border-border bg-muted/40">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Data Sources</p>
+                    </div>
+                    <div className="divide-y divide-border">
+                      {Object.entries(sources).map(([k, v]) => (
+                        <div key={k} className="flex items-center justify-between px-4 py-2">
+                          <span className="text-xs text-muted-foreground">{k}</span>
+                          <span className="text-xs font-mono text-foreground max-w-[60%] text-right">{String(v)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Snapshot presence */}
+                {inputs.engine_snapshot && (
+                  <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded border ${
+                    inputs.engine_snapshot.snapshot_row_present
+                      ? 'border-primary/30 bg-primary/5 text-primary'
+                      : 'border-destructive/30 bg-destructive/5 text-destructive'
+                  }`}>
+                    {inputs.engine_snapshot.snapshot_row_present
+                      ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                      : <XCircle className="h-3.5 w-3.5 shrink-0" />}
+                    <span>
+                      Snapshot row in <code className="font-mono">{inputs.engine_snapshot.snapshot_source}</code>:{' '}
+                      <strong>{inputs.engine_snapshot.snapshot_row_present ? 'Present' : 'MISSING — all inputs will be 0'}</strong>
+                    </span>
+                  </div>
+                )}
+
+                {/* Copy JSON button + collapsible raw JSON */}
+                <Collapsible>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" onClick={handleCopyTrace}>
+                      <Copy className="h-3.5 w-3.5 mr-1.5" />
+                      {traceCopied ? 'Copied!' : 'Copy JSON'}
+                    </Button>
+                    <CollapsibleTrigger asChild>
+                      <Button size="sm" variant="ghost">
+                        <ChevronDown className="h-3.5 w-3.5 mr-1.5" /> Raw JSON
+                      </Button>
+                    </CollapsibleTrigger>
+                  </div>
+                  <CollapsibleContent>
+                    <pre className="mt-2 p-3 bg-muted rounded text-xs whitespace-pre-wrap max-h-80 overflow-auto font-mono border border-border">
+                      {JSON.stringify(traceResult, null, 2)}
+                    </pre>
+                  </CollapsibleContent>
+                </Collapsible>
+              </div>
+            );
+          })()}
+        </div>
+
         {/* ─── Determinism Patch Runner ─────────────────────────────── */}
+
         <div className="border-t pt-6 space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
