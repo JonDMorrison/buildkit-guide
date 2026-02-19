@@ -20,7 +20,8 @@ import { Switch } from './ui/switch';
 import { Label } from './ui/label';
 import { FormField } from './FormField';
 import { DatePicker } from './ui/date-picker';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ArrowRight } from 'lucide-react';
+import { PlaybookSuggestionStep } from './playbooks/PlaybookSuggestionStep';
 
 const projectSchema = z.object({
   name: z.string().trim().min(3, 'Project name must be at least 3 characters'),
@@ -31,6 +32,7 @@ const projectSchema = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   clientId: z.string().optional(),
+  jobType: z.string().trim().optional(),
 });
 
 type ProjectForm = z.infer<typeof projectSchema>;
@@ -41,6 +43,8 @@ interface CreateProjectModalProps {
   onSuccess: () => void;
 }
 
+type Step = 'details' | 'playbook';
+
 export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProjectModalProps) => {
   const { user } = useAuth();
   const { activeOrganizationId } = useOrganization();
@@ -49,6 +53,7 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
   const [loading, setLoading] = useState(false);
   const [includeArchived, setIncludeArchived] = useState(false);
   const [allClients, setAllClients] = useState<{ id: string; name: string; is_active: boolean }[]>([]);
+  const [step, setStep] = useState<Step>('details');
   const [form, setForm] = useState<ProjectForm>({
     name: '',
     jobNumber: '',
@@ -58,8 +63,22 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
     startDate: '',
     endDate: '',
     clientId: '',
+    jobType: '',
   });
   const [errors, setErrors] = useState<Partial<Record<keyof ProjectForm, string>>>({});
+
+  // Reset step when modal reopens
+  useEffect(() => {
+    if (open) {
+      setStep('details');
+    } else {
+      setForm({
+        name: '', jobNumber: '', location: '', billingAddress: '',
+        description: '', startDate: '', endDate: '', clientId: '', jobType: '',
+      });
+      setErrors({});
+    }
+  }, [open]);
 
   useEffect(() => {
     if (open && activeOrganizationId) {
@@ -74,30 +93,50 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
 
   const clients = includeArchived ? allClients : allClients.filter(c => c.is_active);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const validateDetails = (): boolean => {
     setErrors({});
+    try {
+      projectSchema.parse(form);
+      return true;
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const newErrors: Partial<Record<keyof ProjectForm, string>> = {};
+        error.issues.forEach((issue) => {
+          if (issue.path[0]) {
+            newErrors[issue.path[0] as keyof ProjectForm] = issue.message;
+          }
+        });
+        setErrors(newErrors);
+      }
+      return false;
+    }
+  };
 
+  const handleNextStep = () => {
+    if (validateDetails()) {
+      setStep('playbook');
+    }
+  };
+
+  const createProject = async (playbookId?: string) => {
+    setLoading(true);
     try {
       const validatedData = projectSchema.parse(form);
-      setLoading(true);
 
       let orgId = activeOrganizationId;
 
       // If user has no organization, create one for them
-      // The database trigger will automatically add them as admin
       if (!orgId && user?.id) {
-        const orgName = user.email?.split('@')[0] 
+        const orgName = user.email?.split('@')[0]
           ? `${user.email.split('@')[0]}'s Organization`
           : 'My Organization';
-        
+
         const newOrgId = crypto.randomUUID();
         const { error: orgError } = await supabase
           .from('organizations')
           .insert({ id: newOrgId, name: orgName });
 
         if (orgError) throw new Error(`Failed to create organization: ${orgError.message}`);
-        
         orgId = newOrgId;
       }
 
@@ -134,42 +173,47 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
         });
       }
 
-      // Invalidate organization queries so the new org shows up
+      // Apply playbook if selected
+      if (playbookId && data && user?.id) {
+        try {
+          await supabase.rpc('rpc_apply_playbook_to_project' as any, {
+            p_playbook_id: playbookId,
+            p_project_id: data.id,
+            p_user_id: user.id,
+            p_force_reapply: false,
+          });
+          toast({
+            title: 'Project created with playbook',
+            description: `${validatedData.name} has been created and playbook applied.`,
+          });
+        } catch (pbError: any) {
+          console.error('Playbook application failed:', pbError);
+          toast({
+            title: 'Project created',
+            description: `${validatedData.name} created, but playbook could not be applied: ${pbError.message}`,
+            variant: 'destructive',
+          });
+        }
+      } else {
+        toast({
+          title: 'Project created',
+          description: `${validatedData.name} has been created successfully.`,
+        });
+      }
+
+      // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ['organizations'] });
       queryClient.invalidateQueries({ queryKey: ['organization-memberships'] });
-
-      toast({
-        title: 'Project created',
-        description: `${validatedData.name} has been created successfully.`,
-      });
-
-      // Invalidate project queries so lists update instantly
       queryClient.invalidateQueries({ queryKey: ['user-projects'] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
-      setForm({
-        name: '',
-        jobNumber: '',
-        location: '',
-        billingAddress: '',
-        description: '',
-        startDate: '',
-        endDate: '',
-        clientId: '',
-      });
 
       onOpenChange(false);
       onSuccess();
     } catch (error) {
       if (error instanceof z.ZodError) {
-        const newErrors: Partial<Record<keyof ProjectForm, string>> = {};
-        error.issues.forEach((issue) => {
-          if (issue.path[0]) {
-            newErrors[issue.path[0] as keyof ProjectForm] = issue.message;
-          }
-        });
-        setErrors(newErrors);
+        // shouldn't happen since we validated before
+        setStep('details');
       } else {
-        // Extract error message from various error formats (Supabase, PostgREST, Error objects)
         let errorMessage = 'An unexpected error occurred';
         if (error instanceof Error) {
           errorMessage = error.message;
@@ -177,7 +221,7 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
           const err = error as { message?: string; error_description?: string; details?: string; hint?: string };
           errorMessage = err.message || err.error_description || err.details || err.hint || 'An unexpected error occurred';
         }
-        
+
         toast({
           title: 'Error creating project',
           description: errorMessage,
@@ -193,146 +237,147 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Create New Project</DialogTitle>
+          <DialogTitle>
+            {step === 'details' ? 'Create New Project' : 'Select Playbook'}
+          </DialogTitle>
           <DialogDescription>
-            Add a new construction project to coordinate work across trades.
+            {step === 'details'
+              ? 'Add a new construction project to coordinate work across trades.'
+              : 'Choose a playbook to auto-populate phases and tasks.'}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              label="Project Name"
-              required
-              error={errors.name}
-            >
+        {step === 'details' ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <FormField label="Project Name" required error={errors.name}>
+                <Input
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="Downtown Office Complex"
+                  className="min-h-[52px]"
+                />
+              </FormField>
+              <FormField label="Job #" error={errors.jobNumber}>
+                <Input
+                  value={form.jobNumber}
+                  onChange={(e) => setForm({ ...form, jobNumber: e.target.value })}
+                  placeholder="2024-001"
+                  className="min-h-[52px]"
+                />
+              </FormField>
+            </div>
+
+            <FormField label="Job Type" error={errors.jobType}>
               <Input
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="Downtown Office Complex"
+                value={form.jobType}
+                onChange={(e) => setForm({ ...form, jobType: e.target.value })}
+                placeholder="e.g. Tenant Improvement, Residential"
                 className="min-h-[52px]"
               />
             </FormField>
 
-            <FormField
-              label="Job #"
-              error={errors.jobNumber}
-            >
+            <FormField label="Client" error={errors.clientId}>
+              <Select value={form.clientId || ""} onValueChange={(v) => setForm({ ...form, clientId: v === "none" ? "" : v })}>
+                <SelectTrigger className="min-h-[52px]"><SelectValue placeholder="None" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {clients.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}{!c.is_active ? " (archived)" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+            <div className="flex items-center gap-2">
+              <Switch id="include-archived-create" checked={includeArchived} onCheckedChange={setIncludeArchived} />
+              <Label htmlFor="include-archived-create" className="text-sm text-muted-foreground cursor-pointer">Include archived clients</Label>
+            </div>
+
+            <FormField label="Job Site Address" required error={errors.location}>
               <Input
-                value={form.jobNumber}
-                onChange={(e) => setForm({ ...form, jobNumber: e.target.value })}
-                placeholder="2024-001"
+                value={form.location}
+                onChange={(e) => setForm({ ...form, location: e.target.value })}
+                placeholder="123 Main St, Seattle, WA"
                 className="min-h-[52px]"
               />
             </FormField>
-          </div>
 
-          <FormField label="Client" error={errors.clientId}>
-            <Select value={form.clientId || ""} onValueChange={(v) => setForm({ ...form, clientId: v === "none" ? "" : v })}>
-              <SelectTrigger className="min-h-[52px]"><SelectValue placeholder="None" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None</SelectItem>
-                {clients.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}{!c.is_active ? " (archived)" : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FormField>
-          <div className="flex items-center gap-2">
-            <Switch id="include-archived-create" checked={includeArchived} onCheckedChange={setIncludeArchived} />
-            <Label htmlFor="include-archived-create" className="text-sm text-muted-foreground cursor-pointer">Include archived clients</Label>
-          </div>
-
-          <FormField
-            label="Job Site Address"
-            required
-            error={errors.location}
-          >
-            <Input
-              value={form.location}
-              onChange={(e) => setForm({ ...form, location: e.target.value })}
-              placeholder="123 Main St, Seattle, WA"
-              className="min-h-[52px]"
-            />
-          </FormField>
-
-          <FormField
-            label="Billing Address"
-            error={errors.billingAddress}
-          >
-            <Input
-              value={form.billingAddress}
-              onChange={(e) => setForm({ ...form, billingAddress: e.target.value })}
-              placeholder="Optional — for invoicing purposes"
-              className="min-h-[52px]"
-            />
-          </FormField>
-
-          <FormField
-            label="Description"
-            error={errors.description}
-          >
-            <Textarea
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              placeholder="Brief project description..."
-              className="min-h-[80px]"
-            />
-          </FormField>
-
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              label="Start Date"
-              error={errors.startDate}
-            >
-              <DatePicker
-                value={form.startDate}
-                onChange={(v) => setForm({ ...form, startDate: v })}
-                placeholder="Select start date"
+            <FormField label="Billing Address" error={errors.billingAddress}>
+              <Input
+                value={form.billingAddress}
+                onChange={(e) => setForm({ ...form, billingAddress: e.target.value })}
+                placeholder="Optional — for invoicing purposes"
+                className="min-h-[52px]"
               />
             </FormField>
 
-            <FormField
-              label="End Date"
-              error={errors.endDate}
-            >
-              <DatePicker
-                value={form.endDate}
-                onChange={(v) => setForm({ ...form, endDate: v })}
-                placeholder="Select end date"
-                minDate={form.startDate}
+            <FormField label="Description" error={errors.description}>
+              <Textarea
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                placeholder="Brief project description..."
+                className="min-h-[80px]"
               />
             </FormField>
-          </div>
 
-          <div className="flex gap-3 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              className="flex-1 min-h-[52px]"
-              disabled={loading}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              className="flex-1 min-h-[52px]"
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                'Create Project'
-              )}
-            </Button>
+            <div className="grid grid-cols-2 gap-4">
+              <FormField label="Start Date" error={errors.startDate}>
+                <DatePicker
+                  value={form.startDate}
+                  onChange={(v) => setForm({ ...form, startDate: v })}
+                  placeholder="Select start date"
+                />
+              </FormField>
+              <FormField label="End Date" error={errors.endDate}>
+                <DatePicker
+                  value={form.endDate}
+                  onChange={(v) => setForm({ ...form, endDate: v })}
+                  placeholder="Select end date"
+                  minDate={form.startDate}
+                />
+              </FormField>
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                className="flex-1 min-h-[52px]"
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleNextStep}
+                className="flex-1 min-h-[52px] gap-1.5"
+                disabled={loading}
+              >
+                Next
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-        </form>
+        ) : (
+          <>
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-primary mr-3" />
+                <span className="text-sm text-muted-foreground">Creating project...</span>
+              </div>
+            ) : (
+              <PlaybookSuggestionStep
+                jobType={form.jobType}
+                onApply={(playbookId) => createProject(playbookId)}
+                onSkip={() => createProject()}
+                onBack={() => setStep('details')}
+              />
+            )}
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

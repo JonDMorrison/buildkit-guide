@@ -39,7 +39,7 @@ const statusConfig = {
 };
 
 export const ProjectCard = ({ name, jobNumber, location, status, tasks, blockedTasks, safetyCompliance, integrity }: ProjectCardProps) => {
-  const statusInfo = statusConfig[status];
+  const statusInfo = statusConfig[status] || { label: status, className: "bg-muted text-muted-foreground" };
   const completion = tasks.total > 0 ? Math.round((tasks.completed / tasks.total) * 100) : 0;
 
   return (
