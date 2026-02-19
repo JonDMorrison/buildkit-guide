@@ -6378,6 +6378,10 @@ export type Database = {
         Args: { p_project_id: string }
         Returns: Json
       }
+      rpc_get_project_profit_risk: {
+        Args: { p_project_id: string }
+        Returns: Json
+      }
       rpc_get_project_workflow: {
         Args: { p_project_id: string }
         Returns: Json
