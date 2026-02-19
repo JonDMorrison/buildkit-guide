@@ -73,6 +73,13 @@ export type Database = {
             foreignKeyName: "ai_insight_validation_log_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "ai_insight_validation_log_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "v_project_progress"
             referencedColumns: ["id"]
           },
@@ -128,6 +135,13 @@ export type Database = {
             foreignKeyName: "ai_insights_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "ai_insights_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "v_project_progress"
             referencedColumns: ["id"]
           },
@@ -168,6 +182,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_queries_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "ai_queries_project_id_fkey"
@@ -313,6 +334,13 @@ export type Database = {
             foreignKeyName: "attachments_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "attachments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "v_project_progress"
             referencedColumns: ["id"]
           },
@@ -380,6 +408,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_log_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "audit_log_project_id_fkey"
@@ -628,6 +663,13 @@ export type Database = {
             foreignKeyName: "change_orders_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "change_orders_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "v_project_progress"
             referencedColumns: ["id"]
           },
@@ -866,6 +908,13 @@ export type Database = {
             foreignKeyName: "daily_logs_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "daily_logs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "v_project_progress"
             referencedColumns: ["id"]
           },
@@ -976,6 +1025,13 @@ export type Database = {
             foreignKeyName: "deficiencies_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "deficiencies_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "v_project_progress"
             referencedColumns: ["id"]
           },
@@ -1033,6 +1089,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_texts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "document_texts_project_id_fkey"
@@ -1322,6 +1385,13 @@ export type Database = {
             foreignKeyName: "estimates_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "estimates_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "v_project_progress"
             referencedColumns: ["id"]
           },
@@ -1410,6 +1480,13 @@ export type Database = {
             foreignKeyName: "financial_integrity_overrides_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "financial_integrity_overrides_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "v_project_progress"
             referencedColumns: ["id"]
           },
@@ -1447,6 +1524,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_column_mappings_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "gc_column_mappings_project_id_fkey"
@@ -1507,6 +1591,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_deficiency_imports_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "gc_deficiency_imports_project_id_fkey"
@@ -1704,6 +1795,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invitations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "invitations_project_id_fkey"
@@ -2158,6 +2256,13 @@ export type Database = {
             foreignKeyName: "invoices_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "invoices_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "v_project_progress"
             referencedColumns: ["id"]
           },
@@ -2220,6 +2325,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_sites_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "job_sites_project_id_fkey"
@@ -2303,6 +2415,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "manpower_requests_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "manpower_requests_project_id_fkey"
@@ -2460,6 +2579,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "notifications_project_id_fkey"
@@ -3260,6 +3386,13 @@ export type Database = {
             foreignKeyName: "project_budgets_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: true
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "project_budgets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
             referencedRelation: "v_project_progress"
             referencedColumns: ["id"]
           },
@@ -3408,6 +3541,13 @@ export type Database = {
             foreignKeyName: "project_financial_snapshots_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "project_financial_snapshots_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "v_project_progress"
             referencedColumns: ["id"]
           },
@@ -3442,6 +3582,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_invoice_permissions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "project_invoice_permissions_project_id_fkey"
@@ -3490,6 +3637,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_members_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "project_members_project_id_fkey"
@@ -3619,6 +3773,13 @@ export type Database = {
             foreignKeyName: "project_scope_items_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "project_scope_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "v_project_progress"
             referencedColumns: ["id"]
           },
@@ -3700,6 +3861,13 @@ export type Database = {
             foreignKeyName: "project_workflow_steps_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "project_workflow_steps_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "v_project_progress"
             referencedColumns: ["id"]
           },
@@ -3761,6 +3929,13 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "projects"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_workflows_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "project_workflows_project_id_fkey"
@@ -4046,6 +4221,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposals_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "proposals_project_id_fkey"
@@ -4354,6 +4536,13 @@ export type Database = {
             foreignKeyName: "quotes_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "quotes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "v_project_progress"
             referencedColumns: ["id"]
           },
@@ -4430,6 +4619,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "receipts_project_id_fkey"
@@ -4525,6 +4721,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_invoice_templates_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "recurring_invoice_templates_project_id_fkey"
@@ -4865,6 +5068,13 @@ export type Database = {
             foreignKeyName: "safety_forms_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "safety_forms_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "v_project_progress"
             referencedColumns: ["id"]
           },
@@ -4924,6 +5134,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scope_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "scope_items_project_id_fkey"
@@ -5140,6 +5357,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_issues_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "support_issues_project_id_fkey"
@@ -5396,6 +5620,13 @@ export type Database = {
             foreignKeyName: "tasks_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "v_project_progress"
             referencedColumns: ["id"]
           },
@@ -5504,6 +5735,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_adjustment_requests_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "time_adjustment_requests_project_id_fkey"
@@ -5642,6 +5880,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "time_entries_project_id_fkey"
@@ -5802,6 +6047,13 @@ export type Database = {
             foreignKeyName: "time_entry_flags_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "time_entry_flags_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "v_project_progress"
             referencedColumns: ["id"]
           },
@@ -5895,6 +6147,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_events_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "time_events_project_id_fkey"
@@ -6134,6 +6393,13 @@ export type Database = {
             foreignKeyName: "voice_transcriptions_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "voice_transcriptions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "v_project_progress"
             referencedColumns: ["id"]
           },
@@ -6210,6 +6476,28 @@ export type Database = {
       }
     }
     Views: {
+      v_project_economic_snapshot: {
+        Row: {
+          actual_cost: number | null
+          actual_labor_cost: number | null
+          actual_material_cost: number | null
+          cost_to_revenue_ratio: number | null
+          org_id: string | null
+          project_id: string | null
+          projected_revenue: number | null
+          realized_margin_ratio: number | null
+          revenue_delta_from_estimate: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_organization_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_project_progress: {
         Row: {
           blocked_tasks: number | null
@@ -6293,6 +6581,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "time_entries_project_id_fkey"
@@ -6433,6 +6728,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
           },
           {
             foreignKeyName: "time_entries_project_id_fkey"
