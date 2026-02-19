@@ -9,6 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useEstimates } from "@/hooks/useEstimates";
 import { AlertTriangle, TrendingDown, TrendingUp, Globe, Settings } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { PlaybookBaselineComparison, type PlaybookBaseline } from "./PlaybookBaselineComparison";
 import type { EstimateVarianceSummary } from "@/types/estimates";
 
 interface Props {
@@ -34,12 +36,19 @@ export const EstimateVarianceView = ({ projectId, onClose }: Props) => {
   const navigate = useNavigate();
   const { fetchVariance } = useEstimates(projectId);
   const [data, setData] = useState<EstimateVarianceSummary | null>(null);
+  const [baseline, setBaseline] = useState<PlaybookBaseline | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
-      const result = await fetchVariance(projectId);
-      setData(result);
+      const [varianceResult, baselineResult] = await Promise.all([
+        fetchVariance(projectId),
+        (supabase as any).rpc('get_playbook_baseline', { p_project_id: projectId }),
+      ]);
+      setData(varianceResult);
+      if (baselineResult?.data) {
+        setBaseline(baselineResult.data as PlaybookBaseline);
+      }
       setLoading(false);
     };
     load();
@@ -103,6 +112,15 @@ export const EstimateVarianceView = ({ projectId, onClose }: Props) => {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Playbook Baseline Comparison */}
+            {baseline?.has_playbook && (
+              <PlaybookBaselineComparison
+                baseline={baseline}
+                estimateLaborHours={data.planned.labor_hours}
+                currency={cur}
+              />
+            )}
 
             {/* Breakdown table */}
             <Card>
