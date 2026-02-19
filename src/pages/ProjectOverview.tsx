@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { Layout } from '@/components/Layout';
+import { UnratedLaborBanner } from '@/components/UnratedLaborBanner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -203,6 +204,8 @@ const ProjectOverview = () => {
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Projects
         </Button>
+
+        <UnratedLaborBanner projectId={projectId} />
 
         <div className="flex items-start justify-between mb-6">
           <div className="flex-1">
