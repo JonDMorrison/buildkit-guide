@@ -1232,6 +1232,33 @@ export type Database = {
           },
         ]
       }
+      economic_flag_dictionary: {
+        Row: {
+          created_at: string
+          default_action_key: string
+          description: string
+          key: string
+          label: string
+          severity: string
+        }
+        Insert: {
+          created_at?: string
+          default_action_key: string
+          description: string
+          key: string
+          label: string
+          severity: string
+        }
+        Update: {
+          created_at?: string
+          default_action_key?: string
+          description?: string
+          key?: string
+          label?: string
+          severity?: string
+        }
+        Relationships: []
+      }
       estimate_line_items: {
         Row: {
           amount: number
@@ -7881,6 +7908,7 @@ export type Database = {
         Args: { p_archetype_id: string }
         Returns: Json
       }
+      rpc_get_economic_flag_dictionary: { Args: never; Returns: Json }
       rpc_get_executive_dashboard: { Args: { p_org_id: string }; Returns: Json }
       rpc_get_executive_risk_summary: {
         Args: { p_org_id: string }
