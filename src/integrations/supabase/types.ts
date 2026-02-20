@@ -8190,6 +8190,10 @@ export type Database = {
         Args: { p_project_id: string }
         Returns: Json
       }
+      rpc_scan_economic_data_integrity: {
+        Args: { p_org_id: string }
+        Returns: Json
+      }
       rpc_send_change_order: {
         Args: { p_change_order_id: string }
         Returns: Json
