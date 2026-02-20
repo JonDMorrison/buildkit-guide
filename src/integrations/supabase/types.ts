@@ -8039,6 +8039,10 @@ export type Database = {
         Args: { p_org_id: string }
         Returns: Json
       }
+      rpc_get_os_brain_release_report: {
+        Args: { p_org_id: string; p_project_id?: string }
+        Returns: Json
+      }
       rpc_get_os_system_inventory: { Args: never; Returns: Json }
       rpc_get_playbook_performance: {
         Args: { p_playbook_id: string }
