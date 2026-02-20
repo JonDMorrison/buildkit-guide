@@ -1259,6 +1259,35 @@ export type Database = {
         }
         Relationships: []
       }
+      economic_risk_thresholds: {
+        Row: {
+          block_threshold: number
+          org_id: string
+          updated_at: string
+          warn_threshold: number
+        }
+        Insert: {
+          block_threshold?: number
+          org_id: string
+          updated_at?: string
+          warn_threshold?: number
+        }
+        Update: {
+          block_threshold?: number
+          org_id?: string
+          updated_at?: string
+          warn_threshold?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "economic_risk_thresholds_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       estimate_line_items: {
         Row: {
           amount: number
@@ -7464,6 +7493,13 @@ export type Database = {
       _internal_economic_gate: {
         Args: { p_project_id: string }
         Returns: number
+      }
+      _internal_get_thresholds: {
+        Args: { p_org_id: string }
+        Returns: {
+          block_threshold: number
+          warn_threshold: number
+        }[]
       }
       _playbook_snapshot: { Args: { p_playbook_id: string }; Returns: Json }
       assign_time_entry_task: {
