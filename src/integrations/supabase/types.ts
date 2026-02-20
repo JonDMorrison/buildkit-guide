@@ -7404,6 +7404,10 @@ export type Database = {
         Args: { p_function_name: string }
         Returns: Json
       }
+      _internal_economic_gate: {
+        Args: { p_project_id: string }
+        Returns: number
+      }
       _playbook_snapshot: { Args: { p_playbook_id: string }; Returns: Json }
       assign_time_entry_task: {
         Args: { p_task_id: string; p_time_entry_id: string }
@@ -7805,6 +7809,7 @@ export type Database = {
         }
       }
       rpc_check_workflow_write_deny: { Args: never; Returns: Json }
+      rpc_complete_project: { Args: { p_project_id: string }; Returns: Json }
       rpc_convert_proposal_to_quote: {
         Args: { p_include_estimate_lines?: boolean; p_proposal_id: string }
         Returns: string
