@@ -3920,6 +3920,63 @@ export type Database = {
           },
         ]
       }
+      project_margin_snapshots: {
+        Row: {
+          project_id: string
+          projected_margin_ratio: number
+          risk_score: number
+          snapshot_date: string
+        }
+        Insert: {
+          project_id: string
+          projected_margin_ratio: number
+          risk_score: number
+          snapshot_date: string
+        }
+        Update: {
+          project_id?: string
+          projected_margin_ratio?: number
+          risk_score?: number
+          snapshot_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_margin_snapshots_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_margin_snapshots_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "project_margin_snapshots_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_labor_burn_index"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "project_margin_snapshots_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_margin_projection"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "project_margin_snapshots_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_progress"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_members: {
         Row: {
           bill_rate: number | null
@@ -7807,6 +7864,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      rpc_capture_margin_snapshot: {
+        Args: { p_project_id: string }
+        Returns: Json
       }
       rpc_check_workflow_write_deny: { Args: never; Returns: Json }
       rpc_complete_project: { Args: { p_project_id: string }; Returns: Json }
