@@ -7958,6 +7958,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      rpc_generate_executive_margin_report: {
+        Args: { p_org_id: string }
+        Returns: Json
+      }
       rpc_generate_org_operational_summary: {
         Args: { p_organization_id: string }
         Returns: Json
