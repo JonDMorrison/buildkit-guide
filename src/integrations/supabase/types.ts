@@ -7869,6 +7869,10 @@ export type Database = {
         Args: { p_organization_id: string }
         Returns: Json
       }
+      rpc_calculate_economic_maturity_score: {
+        Args: { p_org_id: string }
+        Returns: Json
+      }
       rpc_calculate_operational_profile_score: {
         Args: { p_organization_id: string }
         Returns: Json
