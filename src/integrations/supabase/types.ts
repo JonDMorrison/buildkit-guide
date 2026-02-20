@@ -8225,6 +8225,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      rpc_simulate_margin_sensitivity: {
+        Args: { p_labor_delta_percent: number; p_project_id: string }
+        Returns: Json
+      }
       rpc_submit_timesheet_period: {
         Args: {
           p_actor_id: string
