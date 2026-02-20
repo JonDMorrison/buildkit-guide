@@ -12,6 +12,7 @@ import {
   RefreshCw, AlertTriangle,
   Shield, Award, Crown, Gem, ExternalLink, BarChart3, Zap, Target,
   HelpCircle, Activity, Copy, Check, DatabaseZap, CircleAlert, CircleDot,
+  TrendingUp,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getCause } from '@/lib/causesDictionary';
@@ -63,6 +64,7 @@ interface RiskSummary {
   top_causes: TopCause[];
   os_score: OsScore;
   data_integrity?: DataIntegrity;
+  volatility_index: number;
 }
 
 // ── MCI calculation ────────────────────────────────────────────────────────
@@ -161,6 +163,91 @@ function CauseRow({ cause, count }: { cause: string; count: number }) {
         {count}
       </Badge>
     </div>
+  );
+}
+
+// ── Volatility Index card ─────────────────────────────────────────────────
+// Headline executive metric:
+//   volatility_index = SUM(risk_score × revenue) / SUM(revenue)
+//   Weighted by revenue so a high-risk $10M project outweighs a low-risk $500K one.
+//   Range 0–100. Higher = more volatile portfolio.
+
+function viColor(vi: number) {
+  if (vi > 60) return 'text-destructive';
+  if (vi >= 30) return 'text-accent-foreground';
+  return 'text-primary';
+}
+
+function viLabel(vi: number) {
+  if (vi > 60) return 'High Volatility';
+  if (vi >= 30) return 'Moderate Volatility';
+  return 'Low Volatility';
+}
+
+function viBarColor(vi: number) {
+  if (vi > 60) return 'bg-destructive';
+  if (vi >= 30) return 'bg-accent-foreground/60';
+  return 'bg-primary';
+}
+
+function VolatilityIndexCard({ vi }: { vi: number | null }) {
+  const value = vi ?? 0;
+  return (
+    <Card className="border-2 border-primary/30 bg-gradient-to-br from-background to-muted/30">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+          <TrendingUp className="h-4 w-4" />
+          Portfolio Volatility Index
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/50 cursor-help ml-1" />
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-xs p-3 space-y-1.5">
+              <p className="font-semibold text-xs">Portfolio Volatility Index (PVI)</p>
+              <p className="text-xs leading-relaxed">
+                PVI = Σ(risk_score × revenue) ÷ Σ(revenue)
+              </p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Revenue-weighted average of risk across all active projects.
+                A $10M at-risk project moves this number far more than a $200K stable one.
+                Range 0–100. Lower is better.
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="pt-0 space-y-3">
+        {vi === null ? (
+          <p className="text-sm text-muted-foreground">No active projects.</p>
+        ) : (
+          <>
+            <div className="flex items-end gap-2">
+              <span className={`text-5xl font-bold tabular-nums ${viColor(value)}`}>
+                {value.toFixed(1)}
+              </span>
+              <span className="text-muted-foreground text-sm mb-1.5">/ 100</span>
+            </div>
+            <div className="h-2 bg-muted rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${viBarColor(value)}`}
+                style={{ width: `${Math.min(value, 100)}%` }}
+              />
+            </div>
+            <Badge
+              className={`text-xs font-medium border ${
+                value > 60
+                  ? 'bg-destructive/10 text-destructive border-destructive/30'
+                  : value >= 30
+                  ? 'bg-accent text-accent-foreground border-accent'
+                  : 'bg-primary/10 text-primary border-primary/30'
+              }`}
+            >
+              {viLabel(value)}
+            </Badge>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -415,6 +502,7 @@ export default function ExecutiveDashboard() {
   const tier    = data?.os_score?.tier;
   const margin  = data?.avg_projected_margin_at_completion_percent ?? 0;
   const mci     = data ? computeMCI(data.at_risk_count, data.projects_active_count) : null;
+  const vi      = data != null ? (data.volatility_index ?? 0) : null;
 
   return (
     <TooltipProvider>
@@ -472,7 +560,10 @@ export default function ExecutiveDashboard() {
 
           {data && (
             <>
-              {/* ── Headline: Margin Control Index ──────────────── */}
+              {/* ── Headline: Portfolio Volatility Index ─────────── */}
+              <VolatilityIndexCard vi={vi} />
+
+              {/* ── Margin Control Index ─────────────────────────── */}
               <MarginControlIndexCard mci={mci} />
 
               {/* ── Block 1: OS Health + Project Counts ─────────── */}
