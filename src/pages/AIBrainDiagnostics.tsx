@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Play, Download, ChevronDown, CheckCircle2, XCircle, AlertTriangle, Copy, Brain, Shield, Eye, Zap, Lock, RefreshCw, User, FlaskConical, ExternalLink, Microscope, Search, Beaker, GitBranch } from 'lucide-react';
+import { Play, Download, ChevronDown, CheckCircle2, XCircle, AlertTriangle, Copy, Brain, Shield, Eye, Zap, Lock, RefreshCw, User, FlaskConical, ExternalLink, Microscope, Search, Beaker, GitBranch, FileCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from '@/hooks/useOrganization';
@@ -472,6 +472,13 @@ export default function AIBrainDiagnostics() {
   const [seedResult, setSeedResult] = useState<SeedResult | null>(null);
   const [seedError, setSeedError] = useState<string | null>(null);
 
+  // Release Report state
+  const [releaseProject, setReleaseProject] = useState<string>('');
+  const [releaseRunning, setReleaseRunning] = useState(false);
+  const [releaseResult, setReleaseResult] = useState<any>(null);
+  const [releaseError, setReleaseError] = useState<string | null>(null);
+  const [releaseCopied, setReleaseCopied] = useState(false);
+
   // Fetch projects
   useEffect(() => {
     if (!activeOrganizationId) return;
@@ -780,6 +787,29 @@ export default function AIBrainDiagnostics() {
       setSeedResult(data as SeedResult);
     } catch (e: any) { setSeedError(e.message); }
     finally { setSeedRunning(false); }
+  };
+
+  // Release Report handler
+  const handleReleaseReport = async () => {
+    if (!activeOrganizationId || !dbAuthOk) return;
+    setReleaseRunning(true);
+    setReleaseError(null);
+    setReleaseResult(null);
+    try {
+      const params: Record<string, string> = { p_org_id: activeOrganizationId };
+      if (releaseProject && releaseProject !== '__auto__') params.p_project_id = releaseProject;
+      const { data, error: rpcErr } = await (supabase as any).rpc('rpc_get_os_brain_release_report', params);
+      if (rpcErr) setReleaseError(rpcErr.message);
+      else setReleaseResult(data);
+    } catch (e: any) { setReleaseError(e.message); }
+    finally { setReleaseRunning(false); }
+  };
+
+  const handleCopyRelease = () => {
+    if (!releaseResult) return;
+    navigator.clipboard.writeText(JSON.stringify(releaseResult, null, 2));
+    setReleaseCopied(true);
+    setTimeout(() => setReleaseCopied(false), 2000);
   };
 
   // Parse result into sections
@@ -1949,6 +1979,157 @@ export default function AIBrainDiagnostics() {
               )}
             </div>
           )}
+        </div>
+
+        {/* ─── OS Brain Release Report ─────────────────────────── */}
+        <div className="border-t pt-6 space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <FileCheck className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-semibold">OS Brain Release Report</h2>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Post-build verification for risk decomposition, revenue exposure metrics, and hard guardrail enforcement.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {releaseResult && (
+                <Button variant="outline" size="sm" onClick={handleCopyRelease}>
+                  <Copy className="h-4 w-4 mr-1.5" />
+                  {releaseCopied ? 'Copied!' : 'Copy JSON'}
+                </Button>
+              )}
+              <Button
+                size="sm"
+                onClick={handleReleaseReport}
+                disabled={releaseRunning || !dbAuthOk || !activeOrganizationId}
+              >
+                <Play className="h-4 w-4 mr-1.5" />
+                {releaseRunning ? 'Running…' : 'Run Release Report'}
+              </Button>
+            </div>
+          </div>
+
+          {/* Project selector */}
+          <Card>
+            <CardContent className="p-4">
+              <label className="text-sm font-medium mb-1 block">Project (optional — auto-selects first active)</label>
+              <Select value={releaseProject} onValueChange={setReleaseProject}>
+                <SelectTrigger className="max-w-xs">
+                  <SelectValue placeholder="Auto-detect first active project" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__auto__">Auto-detect</SelectItem>
+                  {projects.map(p => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </CardContent>
+          </Card>
+
+          {releaseError && (
+            <Card className="border-destructive bg-destructive/5">
+              <CardContent className="p-4 flex items-center gap-2">
+                <XCircle className="h-4 w-4 text-destructive shrink-0" />
+                <span className="text-sm text-destructive font-mono">{releaseError}</span>
+              </CardContent>
+            </Card>
+          )}
+
+          {releaseResult && (() => {
+            const rr = releaseResult;
+            const checks = rr.checks ?? {};
+            const failing: string[] = rr.failing_sections ?? [];
+
+            const SECTION_META: { key: string; label: string; icon: typeof CheckCircle2 }[] = [
+              { key: 'existence_and_security',         label: 'Check 1 — Existence + Security Posture',       icon: Shield },
+              { key: 'wiring_and_shape_project',       label: 'Check 2 — Wiring & Shape (Project)',           icon: GitBranch },
+              { key: 'wiring_and_shape_exec',          label: 'Check 3 — Wiring & Shape (Exec Summary)',      icon: Eye },
+              { key: 'guardrail_enforcement_presence', label: 'Check 4 — Guardrail Enforcement (Static Scan)',icon: Lock },
+              { key: 'determinism_hygiene',            label: 'Check 5 — Determinism Hygiene',                icon: Microscope },
+              { key: 'smoke_tests_authenticated',      label: 'Check 6 — Authenticated Smoke Tests',          icon: Zap },
+            ];
+
+            const isSectionFailing = (key: string) => failing.includes(key);
+
+            return (
+              <div className="space-y-3">
+                {/* Overall badge + failing list */}
+                <div className="flex items-center gap-3 flex-wrap">
+                  {rr.ok
+                    ? <Badge className="bg-primary/10 text-primary text-sm px-3 py-1"><CheckCircle2 className="h-4 w-4 mr-1.5" />ALL CHECKS PASS</Badge>
+                    : <Badge className="bg-destructive/10 text-destructive text-sm px-3 py-1"><XCircle className="h-4 w-4 mr-1.5" />ISSUES FOUND</Badge>
+                  }
+                  <span className="text-xs text-muted-foreground font-mono">version: {rr.version}</span>
+                  {rr.project_id && <span className="text-xs text-muted-foreground font-mono">project: {String(rr.project_id).slice(0, 8)}…</span>}
+                </div>
+
+                {!rr.ok && failing.length > 0 && (
+                  <Card className="border-destructive bg-destructive/5">
+                    <CardContent className="p-3">
+                      <p className="text-xs font-semibold text-destructive mb-1">Failing sections:</p>
+                      <ul className="space-y-0.5">
+                        {failing.map((s: string) => (
+                          <li key={s} className="flex items-center gap-1 text-xs text-destructive">
+                            <XCircle className="h-3 w-3 shrink-0" /> <span className="font-mono">{s}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Section collapsibles */}
+                {SECTION_META.map(({ key, label, icon: Icon }) => {
+                  const data = checks[key];
+                  const failing_section = isSectionFailing(key);
+                  const borderClass = failing_section ? 'border-destructive/30' : 'border-primary/30';
+                  return (
+                    <Card key={key} className={`${borderClass} border`}>
+                      <Collapsible>
+                        <CollapsibleTrigger className="w-full">
+                          <CardContent className="p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Icon className="h-4 w-4 text-muted-foreground" />
+                              <span className="font-medium text-sm">{label}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {failing_section
+                                ? <Badge className="bg-destructive/10 text-destructive text-xs"><XCircle className="h-3 w-3 mr-1" />FAIL</Badge>
+                                : <Badge className="bg-primary/10 text-primary text-xs"><CheckCircle2 className="h-3 w-3 mr-1" />PASS</Badge>
+                              }
+                              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                          </CardContent>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="px-4 pb-4">
+                            <pre className="p-3 bg-muted rounded text-xs whitespace-pre-wrap max-h-72 overflow-auto font-mono">
+                              {JSON.stringify(data, null, 2)}
+                            </pre>
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </Card>
+                  );
+                })}
+
+                {/* Raw JSON */}
+                <Collapsible>
+                  <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+                    <ChevronDown className="h-3 w-3" /> Raw Report JSON
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <pre className="mt-2 p-3 bg-muted rounded text-xs whitespace-pre-wrap max-h-96 overflow-auto font-mono">
+                      {JSON.stringify(rr, null, 2)}
+                    </pre>
+                  </CollapsibleContent>
+                </Collapsible>
+              </div>
+            );
+          })()}
         </div>
 
       </div>
