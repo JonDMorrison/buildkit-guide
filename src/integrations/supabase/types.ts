@@ -7828,6 +7828,7 @@ export type Database = {
         }
       }
       rpc_archive_playbook: { Args: { p_playbook_id: string }; Returns: Json }
+      rpc_assert_deterministic_ordering: { Args: never; Returns: Json }
       rpc_calculate_certification_tier: {
         Args: { p_organization_id: string }
         Returns: Json
