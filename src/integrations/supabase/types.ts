@@ -7940,6 +7940,10 @@ export type Database = {
         }
         Returns: Json
       }
+      rpc_debug_labor_row_match: {
+        Args: { p_project_id: string }
+        Returns: Json
+      }
       rpc_debug_margin_control_inputs: {
         Args: { p_project_id: string }
         Returns: Json
