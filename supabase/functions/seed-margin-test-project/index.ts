@@ -155,9 +155,37 @@ serve(async (req: Request) => {
     }
 
     const { error: teErr } = await admin.from("time_entries").insert(entries);
-    if (teErr) throw new Error(`Time entries insert: ${teErr.message}`);
+    if (teErr) {
+      throw new Error(
+        `Time entries insert FAILED — SQLSTATE: ${teErr.code ?? "unknown"}, ` +
+        `message: ${teErr.message}, hint: ${teErr.hint ?? "none"}, ` +
+        `details: ${teErr.details ?? "none"}, project_id: ${project.id}`
+      );
+    }
 
-    console.log("Inserted 10 time entries (100 h total @ $85/h = $8 500)");
+    // ---------- POST-INSERT VERIFICATION — hard fail if rows are missing ----------
+    const EXPECTED_COUNT = 10;
+    const { count: verifiedCount, error: countErr } = await admin
+      .from("time_entries")
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", project.id);
+
+    if (countErr) {
+      throw new Error(
+        `Post-insert verification query FAILED — SQLSTATE: ${countErr.code ?? "unknown"}, ` +
+        `message: ${countErr.message}, project_id: ${project.id}`
+      );
+    }
+
+    if ((verifiedCount ?? 0) < EXPECTED_COUNT) {
+      throw new Error(
+        `Post-insert verification FAILED — expected_count: ${EXPECTED_COUNT}, ` +
+        `actual_count: ${verifiedCount ?? 0}, project_id: ${project.id}. ` +
+        `Rows were silently dropped (likely RLS or constraint violation).`
+      );
+    }
+
+    console.log(`Verified ${verifiedCount} time entries exist for project ${project.id}`);
 
     return new Response(
       JSON.stringify({
@@ -165,19 +193,23 @@ serve(async (req: Request) => {
         already_existed: false,
         project_id: project.id,
         estimate_id: estimate.id,
-        time_entries_count: 10,
+        inserted_count: verifiedCount,
         total_labor_hours: 100,
         total_labor_cost: 8500,
         planned_total_cost: 7000,
         contract_value: 10000,
-        message: "Margin stress project seeded — burn ($8 500) exceeds estimate ($7 000). Run Quick Probe to confirm flags.",
+        message: `Verified ${verifiedCount}/${EXPECTED_COUNT} time entries. Burn ($8,500) exceeds estimate ($7,000). Run Quick Probe to confirm flags.`,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: any) {
     console.error("Seed error:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({
+        success: false,
+        sqlstate: error.code ?? "UNKNOWN",
+        message_text: error.message,
+      }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
