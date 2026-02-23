@@ -488,6 +488,7 @@ export default function AIBrainDiagnostics() {
   const [showOnlyHighVolatility, setShowOnlyHighVolatility] = useState(false);
   const [opsCaptureAndRefresh, setOpsCaptureAndRefresh] = useState(false);
   const [opsReleaseRawOpen, setOpsReleaseRawOpen] = useState(false);
+  const [opsExecReport, setOpsExecReport] = useState<{ loading: boolean; data: any; error: string | null }>({ loading: false, data: null, error: null });
 
   // Fetch projects
   useEffect(() => {
@@ -877,6 +878,16 @@ export default function AIBrainDiagnostics() {
       else setOpsVolatility({ loading: false, data: volData, error: null });
     } catch (e: any) { setOpsVolatility({ loading: false, data: null, error: e.message }); }
     finally { setOpsCaptureAndRefresh(false); }
+  };
+
+  const handleOpsExecReport = async () => {
+    if (!activeOrganizationId || !dbAuthOk) return;
+    setOpsExecReport({ loading: true, data: null, error: null });
+    try {
+      const { data, error: rpcErr } = await (supabase as any).rpc('rpc_generate_executive_report', { p_org_id: activeOrganizationId });
+      if (rpcErr) setOpsExecReport({ loading: false, data: null, error: rpcErr.message });
+      else setOpsExecReport({ loading: false, data, error: null });
+    } catch (e: any) { setOpsExecReport({ loading: false, data: null, error: e.message }); }
   };
 
   // Parse result into sections
@@ -1804,7 +1815,178 @@ export default function AIBrainDiagnostics() {
               <BarChart3 className="h-4 w-4 mr-1.5" />
               {opsVolatility.loading ? 'Loading…' : 'View Volatility (30d)'}
             </Button>
+            <Button
+              size="sm"
+              onClick={handleOpsExecReport}
+              disabled={opsExecReport.loading || !dbAuthOk || !activeOrganizationId}
+            >
+              <Brain className="h-4 w-4 mr-1.5" />
+              {opsExecReport.loading ? 'Generating…' : 'Executive Report'}
+            </Button>
           </div>
+
+          {/* Executive Report Panel */}
+          {opsExecReport.error && (
+            <div className="flex items-start gap-2 p-3 bg-destructive/10 rounded text-destructive text-xs">
+              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>{opsExecReport.error}</span>
+            </div>
+          )}
+          {opsExecReport.data && (() => {
+            const d = opsExecReport.data;
+            const summary = d?.summary || {};
+            const topRisks = d?.top_risks || [];
+            const unstable = d?.most_unstable_projects || [];
+            const improving = d?.improving_projects || [];
+            const exposure = d?.financial_exposure || {};
+            const notes = d?.notes || [];
+            return (
+              <Card className="border">
+                <CardContent className="p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Brain className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium text-sm">Executive Report</span>
+                    </div>
+                    <StatusBadge ok={d?.success === true} />
+                  </div>
+
+                  {/* Summary metrics */}
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
+                    <div className="bg-muted rounded p-2"><span className="text-muted-foreground">Projects</span><div className="font-medium">{summary.project_count ?? '—'}</div></div>
+                    <div className="bg-muted rounded p-2"><span className="text-muted-foreground">High Risk</span><div className="font-medium text-destructive">{summary.high_risk_projects ?? '—'}</div></div>
+                    <div className="bg-muted rounded p-2"><span className="text-muted-foreground">Unstable</span><div className="font-medium">{summary.unstable_projects ?? '—'}</div></div>
+                    <div className="bg-muted rounded p-2"><span className="text-muted-foreground">Improving</span><div className="font-medium text-primary">{summary.improving_projects ?? '—'}</div></div>
+                    <div className="bg-muted rounded p-2"><span className="text-muted-foreground">Revenue at Risk</span><div className="font-medium text-destructive">{summary.revenue_at_risk_percent ?? 0}%</div></div>
+                  </div>
+
+                  {/* Financial Exposure */}
+                  <div className="text-xs space-y-1">
+                    <span className="font-medium text-muted-foreground">Financial Exposure</span>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="bg-muted rounded p-2"><span className="text-muted-foreground">Total Revenue</span><div className="font-medium">${Number(exposure.total_projected_revenue || 0).toLocaleString()}</div></div>
+                      <div className="bg-muted rounded p-2"><span className="text-muted-foreground">At Risk Revenue</span><div className="font-medium text-destructive">${Number(exposure.high_risk_projected_revenue || 0).toLocaleString()}</div></div>
+                      <div className="bg-muted rounded p-2"><span className="text-muted-foreground">% at Risk</span><div className="font-medium">{exposure.revenue_at_risk_percent ?? 0}%</div></div>
+                    </div>
+                  </div>
+
+                  {/* Top Risks table */}
+                  {topRisks.length > 0 && (
+                    <div className="text-xs space-y-1">
+                      <span className="font-medium text-muted-foreground">Top Risks (risk ≥ 60)</span>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead><tr className="border-b text-muted-foreground">
+                            <th className="text-left py-1 pr-2">Project</th>
+                            <th className="text-right py-1 pr-2">Risk</th>
+                            <th className="text-left py-1 pr-2">Position</th>
+                            <th className="text-right py-1 pr-2">Proj Margin</th>
+                            <th className="text-right py-1">Revenue</th>
+                          </tr></thead>
+                          <tbody>
+                            {topRisks.map((r: any, i: number) => (
+                              <tr key={i} className="border-b border-muted">
+                                <td className="py-1 pr-2 font-mono">
+                                  <TooltipProvider><Tooltip><TooltipTrigger>{String(r.project_id).slice(0, 8)}…</TooltipTrigger><TooltipContent><p className="font-mono text-xs">{r.project_id}</p></TooltipContent></Tooltip></TooltipProvider>
+                                </td>
+                                <td className="text-right py-1 pr-2 text-destructive font-medium">{r.risk_score}</td>
+                                <td className="py-1 pr-2">{r.economic_position}</td>
+                                <td className="text-right py-1 pr-2">{r.projected_margin}%</td>
+                                <td className="text-right py-1">${Number(r.projected_revenue || 0).toLocaleString()}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">Sorted by: risk_score DESC, project_id ASC (server)</p>
+                    </div>
+                  )}
+
+                  {/* Unstable projects table */}
+                  {unstable.length > 0 && (
+                    <div className="text-xs space-y-1">
+                      <span className="font-medium text-muted-foreground">Most Unstable Projects</span>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead><tr className="border-b text-muted-foreground">
+                            <th className="text-left py-1 pr-2">Project</th>
+                            <th className="text-right py-1 pr-2">Vol Score</th>
+                            <th className="text-left py-1 pr-2">Label</th>
+                            <th className="text-right py-1">Risk</th>
+                          </tr></thead>
+                          <tbody>
+                            {unstable.map((u: any, i: number) => (
+                              <tr key={i} className="border-b border-muted">
+                                <td className="py-1 pr-2 font-mono">
+                                  <TooltipProvider><Tooltip><TooltipTrigger>{String(u.project_id).slice(0, 8)}…</TooltipTrigger><TooltipContent><p className="font-mono text-xs">{u.project_id}</p></TooltipContent></Tooltip></TooltipProvider>
+                                </td>
+                                <td className="text-right py-1 pr-2 font-medium">{u.volatility_score}</td>
+                                <td className={`py-1 pr-2 ${u.volatility_label === 'critical' ? 'text-destructive' : ''}`}>{u.volatility_label}</td>
+                                <td className="text-right py-1">{u.latest_risk_score}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">Sorted by: volatility_score DESC, project_id ASC (server)</p>
+                    </div>
+                  )}
+
+                  {/* Improving projects table */}
+                  {improving.length > 0 && (
+                    <div className="text-xs space-y-1">
+                      <span className="font-medium text-muted-foreground">Improving Projects</span>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead><tr className="border-b text-muted-foreground">
+                            <th className="text-left py-1 pr-2">Project</th>
+                            <th className="text-right py-1 pr-2">Oldest Risk</th>
+                            <th className="text-right py-1 pr-2">Latest Risk</th>
+                            <th className="text-right py-1">Δ Improvement</th>
+                          </tr></thead>
+                          <tbody>
+                            {improving.map((p: any, i: number) => (
+                              <tr key={i} className="border-b border-muted">
+                                <td className="py-1 pr-2 font-mono">
+                                  <TooltipProvider><Tooltip><TooltipTrigger>{String(p.project_id).slice(0, 8)}…</TooltipTrigger><TooltipContent><p className="font-mono text-xs">{p.project_id}</p></TooltipContent></Tooltip></TooltipProvider>
+                                </td>
+                                <td className="text-right py-1 pr-2">{p.risk_oldest}</td>
+                                <td className="text-right py-1 pr-2 text-primary">{p.risk_latest}</td>
+                                <td className="text-right py-1 font-medium text-primary">+{p.improvement_delta}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">Sorted by: improvement_delta DESC, project_id ASC (server)</p>
+                    </div>
+                  )}
+
+                  {/* Notes */}
+                  {notes.length > 0 && (
+                    <div className="text-xs space-y-1">
+                      <span className="font-medium text-muted-foreground">Notes</span>
+                      <ul className="list-disc list-inside space-y-0.5">
+                        {notes.map((n: string, i: number) => <li key={i}>{n}</li>)}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Raw JSON */}
+                  <Collapsible>
+                    <CollapsibleTrigger className="text-xs text-muted-foreground flex items-center gap-1 hover:text-foreground">
+                      <ChevronDown className="h-3 w-3" /> Raw JSON
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <pre className="p-3 mt-2 bg-muted rounded text-[10px] whitespace-pre-wrap max-h-60 overflow-auto font-mono">
+                        {JSON.stringify(d, null, 2)}
+                      </pre>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           {/* Release Report Panel */}
           {opsReleaseReport.error && (
