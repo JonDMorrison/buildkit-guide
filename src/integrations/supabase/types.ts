@@ -8135,6 +8135,10 @@ export type Database = {
         Args: { p_project_id: string }
         Returns: Json
       }
+      rpc_get_project_volatility_index: {
+        Args: { p_days?: number; p_org_id: string }
+        Returns: Json
+      }
       rpc_get_project_workflow: {
         Args: { p_project_id: string }
         Returns: Json
