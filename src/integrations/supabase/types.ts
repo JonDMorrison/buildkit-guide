@@ -3720,6 +3720,57 @@ export type Database = {
           },
         ]
       }
+      project_economic_snapshots: {
+        Row: {
+          contract_value: number | null
+          created_at: string
+          economic_position: string
+          flags: Json
+          flags_hash: string
+          id: string
+          labor_burn_ratio: number
+          org_id: string
+          project_id: string
+          projected_margin: number
+          projected_revenue: number | null
+          realized_margin: number
+          risk_score: number
+          snapshot_date: string
+        }
+        Insert: {
+          contract_value?: number | null
+          created_at?: string
+          economic_position: string
+          flags?: Json
+          flags_hash: string
+          id?: string
+          labor_burn_ratio: number
+          org_id: string
+          project_id: string
+          projected_margin: number
+          projected_revenue?: number | null
+          realized_margin: number
+          risk_score: number
+          snapshot_date: string
+        }
+        Update: {
+          contract_value?: number | null
+          created_at?: string
+          economic_position?: string
+          flags?: Json
+          flags_hash?: string
+          id?: string
+          labor_burn_ratio?: number
+          org_id?: string
+          project_id?: string
+          projected_margin?: number
+          projected_revenue?: number | null
+          realized_margin?: number
+          risk_score?: number
+          snapshot_date?: string
+        }
+        Relationships: []
+      }
       project_financial_snapshots: {
         Row: {
           actual_labor_cost: number
@@ -7907,6 +7958,10 @@ export type Database = {
         }
       }
       rpc_capture_margin_snapshot: {
+        Args: { p_project_id: string }
+        Returns: Json
+      }
+      rpc_capture_project_economic_snapshot: {
         Args: { p_project_id: string }
         Returns: Json
       }
