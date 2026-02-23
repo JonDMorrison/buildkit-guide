@@ -2042,6 +2042,9 @@ export default function AIBrainDiagnostics() {
             const rr = releaseResult;
             const checks = rr.checks ?? {};
             const failing: string[] = rr.failing_sections ?? [];
+            const whyFailed: string[] = rr.why_failed ?? [];
+            const skippedSections: string[] = rr.skipped_sections ?? [];
+            const credCheck = checks.economic_inputs_credibility;
 
             const SECTION_META: { key: string; label: string; icon: typeof CheckCircle2 }[] = [
               { key: 'existence_and_security',         label: 'Check 1 — Existence + Security Posture',       icon: Shield },
@@ -2056,17 +2059,104 @@ export default function AIBrainDiagnostics() {
 
             return (
               <div className="space-y-3">
-                {/* Overall badge + failing list */}
-                <div className="flex items-center gap-3 flex-wrap">
-                  {rr.ok
-                    ? <Badge className="bg-primary/10 text-primary text-sm px-3 py-1"><CheckCircle2 className="h-4 w-4 mr-1.5" />ALL CHECKS PASS</Badge>
-                    : <Badge className="bg-destructive/10 text-destructive text-sm px-3 py-1"><XCircle className="h-4 w-4 mr-1.5" />ISSUES FOUND</Badge>
-                  }
-                  <span className="text-xs text-muted-foreground font-mono">version: {rr.version}</span>
-                  {rr.project_id && <span className="text-xs text-muted-foreground font-mono">project: {String(rr.project_id).slice(0, 8)}…</span>}
-                </div>
+                {/* ── Compact Summary Panel ── */}
+                <Card className={rr.success ? 'border-primary/30' : 'border-destructive/30'}>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      {rr.success
+                        ? <Badge className="bg-primary/10 text-primary text-sm px-3 py-1"><CheckCircle2 className="h-4 w-4 mr-1.5" />SUCCESS</Badge>
+                        : <Badge className="bg-destructive/10 text-destructive text-sm px-3 py-1"><XCircle className="h-4 w-4 mr-1.5" />FAILED</Badge>
+                      }
+                      <span className="text-xs text-muted-foreground font-mono">v{rr.version}</span>
+                      <Badge variant="outline" className="text-xs font-mono">{rr.evaluation_mode ?? 'unknown'}</Badge>
+                      {rr.project_id && <span className="text-xs text-muted-foreground font-mono">project: {String(rr.project_id).slice(0, 8)}…</span>}
+                    </div>
 
-                {!rr.ok && failing.length > 0 && (
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <span className="font-medium text-muted-foreground">why_failed</span>
+                        {whyFailed.length === 0
+                          ? <p className="text-primary mt-0.5">— none —</p>
+                          : <ul className="mt-0.5 space-y-0.5">{whyFailed.map(w => (
+                              <li key={w} className="flex items-center gap-1 text-destructive"><XCircle className="h-3 w-3 shrink-0" /><span className="font-mono">{w}</span></li>
+                            ))}</ul>
+                        }
+                      </div>
+                      <div>
+                        <span className="font-medium text-muted-foreground">skipped_sections</span>
+                        {skippedSections.length === 0
+                          ? <p className="text-primary mt-0.5">— none —</p>
+                          : <ul className="mt-0.5 space-y-0.5">{skippedSections.map(s => (
+                              <li key={s} className="font-mono text-muted-foreground">{s}</li>
+                            ))}</ul>
+                        }
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* ── Economic Inputs Credibility ── */}
+                {credCheck && (
+                  <Card className={credCheck.success ? 'border-primary/30 border' : 'border-destructive/30 border'}>
+                    <CardContent className="p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Shield className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium text-sm">economic_inputs_credibility</span>
+                        </div>
+                        {credCheck.success
+                          ? <Badge className="bg-primary/10 text-primary text-xs"><CheckCircle2 className="h-3 w-3 mr-1" />PASS</Badge>
+                          : <Badge className="bg-destructive/10 text-destructive text-xs"><XCircle className="h-3 w-3 mr-1" />FAIL</Badge>
+                        }
+                      </div>
+                      {credCheck.message_text && (
+                        <p className="text-xs text-muted-foreground font-mono">{credCheck.message_text}</p>
+                      )}
+                      {credCheck.evidence && (
+                        <Collapsible>
+                          <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+                            <ChevronDown className="h-3 w-3" /> Evidence JSON
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <pre className="mt-1 p-3 bg-muted rounded text-xs whitespace-pre-wrap max-h-60 overflow-auto font-mono">
+                              {JSON.stringify(credCheck.evidence, null, 2)}
+                            </pre>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* ── Self Tests (v14) ── */}
+                {rr.self_tests && (
+                  <Card className={rr.self_tests.all_pass ? 'border-primary/30 border' : 'border-destructive/30 border'}>
+                    <Collapsible>
+                      <CollapsibleTrigger className="w-full">
+                        <CardContent className="p-4 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Microscope className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium text-sm">Self Tests</span>
+                          </div>
+                          {rr.self_tests.all_pass
+                            ? <Badge className="bg-primary/10 text-primary text-xs"><CheckCircle2 className="h-3 w-3 mr-1" />PASS</Badge>
+                            : <Badge className="bg-destructive/10 text-destructive text-xs"><XCircle className="h-3 w-3 mr-1" />FAIL</Badge>
+                          }
+                        </CardContent>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="px-4 pb-4">
+                          <pre className="p-3 bg-muted rounded text-xs whitespace-pre-wrap max-h-48 overflow-auto font-mono">
+                            {JSON.stringify(rr.self_tests, null, 2)}
+                          </pre>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </Card>
+                )}
+
+                {/* Failing sections banner */}
+                {!rr.success && failing.length > 0 && (
                   <Card className="border-destructive bg-destructive/5">
                     <CardContent className="p-3">
                       <p className="text-xs font-semibold text-destructive mb-1">Failing sections:</p>
