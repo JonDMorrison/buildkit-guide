@@ -6,7 +6,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Play, Download, ChevronDown, CheckCircle2, XCircle, AlertTriangle, Copy, Brain, Shield, Eye, Zap, Lock, RefreshCw, User, FlaskConical, ExternalLink, Microscope, Search, Beaker, GitBranch, FileCheck } from 'lucide-react';
+import { Play, Download, ChevronDown, CheckCircle2, XCircle, AlertTriangle, Copy, Brain, Shield, Eye, Zap, Lock, RefreshCw, User, FlaskConical, ExternalLink, Microscope, Search, Beaker, GitBranch, FileCheck, Activity, Camera, BarChart3, Filter } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from '@/hooks/useOrganization';
@@ -479,6 +481,12 @@ export default function AIBrainDiagnostics() {
   const [releaseError, setReleaseError] = useState<string | null>(null);
   const [releaseCopied, setReleaseCopied] = useState(false);
 
+  // OS Operations state
+  const [opsReleaseReport, setOpsReleaseReport] = useState<{ loading: boolean; data: any; error: string | null }>({ loading: false, data: null, error: null });
+  const [opsSnapshot, setOpsSnapshot] = useState<{ loading: boolean; data: any; error: string | null }>({ loading: false, data: null, error: null });
+  const [opsVolatility, setOpsVolatility] = useState<{ loading: boolean; data: any; error: string | null }>({ loading: false, data: null, error: null });
+  const [showOnlyHighVolatility, setShowOnlyHighVolatility] = useState(false);
+
   // Fetch projects
   useEffect(() => {
     if (!activeOrganizationId) return;
@@ -810,6 +818,37 @@ export default function AIBrainDiagnostics() {
     navigator.clipboard.writeText(JSON.stringify(releaseResult, null, 2));
     setReleaseCopied(true);
     setTimeout(() => setReleaseCopied(false), 2000);
+  };
+
+  // OS Operations handlers
+  const handleOpsReleaseReport = async () => {
+    if (!activeOrganizationId || !dbAuthOk) return;
+    setOpsReleaseReport({ loading: true, data: null, error: null });
+    try {
+      const { data, error: rpcErr } = await (supabase as any).rpc('rpc_get_os_brain_release_report', { p_org_id: activeOrganizationId });
+      if (rpcErr) setOpsReleaseReport({ loading: false, data: null, error: rpcErr.message });
+      else setOpsReleaseReport({ loading: false, data, error: null });
+    } catch (e: any) { setOpsReleaseReport({ loading: false, data: null, error: e.message }); }
+  };
+
+  const handleOpsCaptureSnapshots = async () => {
+    if (!activeOrganizationId || !dbAuthOk) return;
+    setOpsSnapshot({ loading: true, data: null, error: null });
+    try {
+      const { data, error: rpcErr } = await (supabase as any).rpc('rpc_capture_org_economic_snapshots', { p_org_id: activeOrganizationId });
+      if (rpcErr) setOpsSnapshot({ loading: false, data: null, error: rpcErr.message });
+      else setOpsSnapshot({ loading: false, data, error: null });
+    } catch (e: any) { setOpsSnapshot({ loading: false, data: null, error: e.message }); }
+  };
+
+  const handleOpsVolatility = async () => {
+    if (!activeOrganizationId || !dbAuthOk) return;
+    setOpsVolatility({ loading: true, data: null, error: null });
+    try {
+      const { data, error: rpcErr } = await (supabase as any).rpc('rpc_get_project_volatility_index', { p_org_id: activeOrganizationId, p_days: 30 });
+      if (rpcErr) setOpsVolatility({ loading: false, data: null, error: rpcErr.message });
+      else setOpsVolatility({ loading: false, data, error: null });
+    } catch (e: any) { setOpsVolatility({ loading: false, data: null, error: e.message }); }
   };
 
   // Parse result into sections
@@ -1697,6 +1736,288 @@ export default function AIBrainDiagnostics() {
               </CardContent>
             </Card>
           )}
+        </div>
+
+        {/* ─── OS Operations ───────────────────────────────────── */}
+        <div className="border-t pt-6 space-y-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <Activity className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold">OS Operations</h2>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Manual operations: capture snapshots, run release reports, and view volatility metrics.
+            </p>
+          </div>
+
+          {/* Buttons */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <Button
+              size="sm"
+              onClick={handleOpsReleaseReport}
+              disabled={opsReleaseReport.loading || !dbAuthOk || !activeOrganizationId}
+            >
+              <FileCheck className="h-4 w-4 mr-1.5" />
+              {opsReleaseReport.loading ? 'Running…' : 'Run Release Report'}
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleOpsCaptureSnapshots}
+              disabled={opsSnapshot.loading || !dbAuthOk || !activeOrganizationId}
+            >
+              <Camera className="h-4 w-4 mr-1.5" />
+              {opsSnapshot.loading ? 'Capturing…' : 'Capture Org Snapshots'}
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleOpsVolatility}
+              disabled={opsVolatility.loading || !dbAuthOk || !activeOrganizationId}
+            >
+              <BarChart3 className="h-4 w-4 mr-1.5" />
+              {opsVolatility.loading ? 'Loading…' : 'View Volatility (30d)'}
+            </Button>
+          </div>
+
+          {/* Release Report Panel */}
+          {opsReleaseReport.error && (
+            <Card className="border-destructive bg-destructive/5">
+              <CardContent className="p-3 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+                <span className="text-sm text-destructive">{opsReleaseReport.error}</span>
+              </CardContent>
+            </Card>
+          )}
+          {opsReleaseReport.data && (() => {
+            const rr = opsReleaseReport.data;
+            const ok = rr?.success === true;
+            const whyFailed = Array.isArray(rr?.why_failed) ? rr.why_failed : [];
+            const skippedSections = Array.isArray(rr?.skipped_sections) ? rr.skipped_sections : [];
+            return (
+              <Card className={`border ${ok ? 'border-primary/30' : 'border-destructive/30'}`}>
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <StatusBadge ok={ok} />
+                    <span className="text-xs text-muted-foreground">Mode: <span className="font-mono font-medium text-foreground">{rr?.evaluation_mode ?? '—'}</span></span>
+                    <span className="text-xs text-muted-foreground">Version: <span className="font-mono font-medium text-foreground">{rr?.version ?? '—'}</span></span>
+                    {rr?.sample_project_id && (
+                      <span className="text-xs text-muted-foreground">Sample: <span className="font-mono">{String(rr.sample_project_id).slice(0, 8)}…</span></span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <p className="font-medium mb-1">Why Failed</p>
+                      {whyFailed.length > 0 ? (
+                        <ul className="list-disc pl-4 space-y-0.5 text-destructive">
+                          {whyFailed.map((f: string, i: number) => <li key={i}>{f}</li>)}
+                        </ul>
+                      ) : <p className="text-muted-foreground italic">none</p>}
+                    </div>
+                    <div>
+                      <p className="font-medium mb-1">Skipped Sections</p>
+                      {skippedSections.length > 0 ? (
+                        <ul className="list-disc pl-4 space-y-0.5 text-muted-foreground">
+                          {skippedSections.map((s: string, i: number) => <li key={i}>{s}</li>)}
+                        </ul>
+                      ) : <p className="text-muted-foreground italic">none</p>}
+                    </div>
+                  </div>
+                  <Collapsible>
+                    <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+                      <ChevronDown className="h-3 w-3" /> Raw JSON
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <pre className="mt-1 p-3 bg-muted rounded text-xs whitespace-pre-wrap max-h-72 overflow-auto font-mono">
+                        {JSON.stringify(rr, null, 2)}
+                      </pre>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </CardContent>
+              </Card>
+            );
+          })()}
+
+          {/* Snapshot Capture Panel */}
+          {opsSnapshot.error && (
+            <Card className="border-destructive bg-destructive/5">
+              <CardContent className="p-3 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+                <span className="text-sm text-destructive">{opsSnapshot.error}</span>
+              </CardContent>
+            </Card>
+          )}
+          {opsSnapshot.data && (() => {
+            const snap = opsSnapshot.data;
+            const ok = snap?.success === true;
+            const results = Array.isArray(snap?.results) ? snap.results.slice(0, 10) : [];
+            return (
+              <Card className={`border ${ok ? 'border-primary/30' : 'border-destructive/30'}`}>
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <StatusBadge ok={ok} />
+                    <span className="text-xs text-muted-foreground">Date: <span className="font-mono font-medium text-foreground">{snap?.snapshot_date ?? '—'}</span></span>
+                    <span className="text-xs text-muted-foreground">Mode: <span className="font-mono font-medium text-foreground">{snap?.selection_mode ?? '—'}</span></span>
+                    <span className="text-xs text-muted-foreground">Projects: <span className="font-mono font-medium text-foreground">{snap?.project_count ?? '—'}</span></span>
+                    <span className="text-xs text-muted-foreground">Inserted: <span className="font-mono font-medium text-foreground">{snap?.inserted_count ?? '—'}</span></span>
+                    <span className="text-xs text-muted-foreground">Updated: <span className="font-mono font-medium text-foreground">{snap?.updated_count ?? '—'}</span></span>
+                  </div>
+                  {results.length > 0 && (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="border-b text-muted-foreground">
+                            <th className="text-left py-1 pr-2">project_id</th>
+                            <th className="text-left py-1 pr-2">inserted</th>
+                            <th className="text-left py-1 pr-2">updated</th>
+                            <th className="text-left py-1 pr-2">flags_hash</th>
+                            <th className="text-left py-1 pr-2">success</th>
+                            <th className="text-left py-1">message</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {results.map((r: any, i: number) => (
+                            <tr key={i} className="border-b border-border/50">
+                              <td className="py-1 pr-2 font-mono">
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="cursor-help">{String(r?.project_id ?? '').slice(0, 8)}…</span>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p className="font-mono text-xs">{r?.project_id}</p></TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              </td>
+                              <td className="py-1 pr-2">{r?.inserted != null ? String(r.inserted) : '—'}</td>
+                              <td className="py-1 pr-2">{r?.updated != null ? String(r.updated) : '—'}</td>
+                              <td className="py-1 pr-2 font-mono">
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="cursor-help">{String(r?.flags_hash ?? '').slice(0, 8)}</span>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p className="font-mono text-xs">{r?.flags_hash}</p></TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              </td>
+                              <td className="py-1 pr-2">{r?.success != null ? String(r.success) : '—'}</td>
+                              <td className="py-1 text-muted-foreground">{r?.message_text ?? '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  <Collapsible>
+                    <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+                      <ChevronDown className="h-3 w-3" /> Raw JSON
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <pre className="mt-1 p-3 bg-muted rounded text-xs whitespace-pre-wrap max-h-72 overflow-auto font-mono">
+                        {JSON.stringify(snap, null, 2)}
+                      </pre>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </CardContent>
+              </Card>
+            );
+          })()}
+
+          {/* Volatility Panel */}
+          {opsVolatility.error && (
+            <Card className="border-destructive bg-destructive/5">
+              <CardContent className="p-3 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+                <span className="text-sm text-destructive">{opsVolatility.error}</span>
+              </CardContent>
+            </Card>
+          )}
+          {opsVolatility.data && (() => {
+            const vol = opsVolatility.data;
+            const ok = vol?.success === true;
+            const allProjects: any[] = Array.isArray(vol?.projects) ? vol.projects : [];
+            const filtered = showOnlyHighVolatility
+              ? allProjects.filter((p: any) => p?.volatility_label === 'volatile' || p?.volatility_label === 'critical')
+              : allProjects;
+            const displayed = filtered.slice(0, 10);
+            return (
+              <Card className={`border ${ok ? 'border-primary/30' : 'border-destructive/30'}`}>
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <StatusBadge ok={ok} />
+                    <span className="text-xs text-muted-foreground">Window: <span className="font-mono font-medium text-foreground">{vol?.window_days ?? '—'}d</span></span>
+                    <span className="text-xs text-muted-foreground">As of: <span className="font-mono font-medium text-foreground">{vol?.as_of ?? '—'}</span></span>
+                    <span className="text-xs text-muted-foreground">Projects: <span className="font-mono font-medium text-foreground">{vol?.project_count ?? '—'}</span></span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <Filter className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-muted-foreground">Show only volatile/critical</span>
+                    <Switch checked={showOnlyHighVolatility} onCheckedChange={setShowOnlyHighVolatility} />
+                  </div>
+                  {displayed.length > 0 && (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="border-b text-muted-foreground">
+                            <th className="text-left py-1 pr-2">project_id</th>
+                            <th className="text-left py-1 pr-2">score</th>
+                            <th className="text-left py-1 pr-2">label</th>
+                            <th className="text-left py-1 pr-2">latest_date</th>
+                            <th className="text-left py-1 pr-2">risk</th>
+                            <th className="text-left py-1 pr-2">proj_margin</th>
+                            <th className="text-left py-1 pr-2">real_margin</th>
+                            <th className="text-left py-1">flags_Δ</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {displayed.map((p: any, i: number) => {
+                            const labelColor = p?.volatility_label === 'critical' ? 'text-destructive font-semibold'
+                              : p?.volatility_label === 'volatile' ? 'text-orange-500 font-semibold'
+                              : p?.volatility_label === 'watch' ? 'text-yellow-600'
+                              : 'text-muted-foreground';
+                            return (
+                              <tr key={i} className="border-b border-border/50">
+                                <td className="py-1 pr-2 font-mono">
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="cursor-help">{String(p?.project_id ?? '').slice(0, 8)}…</span>
+                                      </TooltipTrigger>
+                                      <TooltipContent><p className="font-mono text-xs">{p?.project_id}</p></TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </td>
+                                <td className="py-1 pr-2 font-mono">{p?.volatility_score ?? '—'}</td>
+                                <td className={`py-1 pr-2 ${labelColor}`}>{p?.volatility_label ?? '—'}</td>
+                                <td className="py-1 pr-2 font-mono">{p?.latest_snapshot_date ?? '—'}</td>
+                                <td className="py-1 pr-2 font-mono">{p?.latest_risk_score ?? '—'}</td>
+                                <td className="py-1 pr-2 font-mono">{p?.latest_projected_margin ?? '—'}</td>
+                                <td className="py-1 pr-2 font-mono">{p?.latest_realized_margin ?? '—'}</td>
+                                <td className="py-1 font-mono">{p?.flags_changes_count ?? '—'}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  {displayed.length === 0 && (
+                    <p className="text-xs text-muted-foreground italic">
+                      {showOnlyHighVolatility ? 'No volatile/critical projects found.' : 'No projects in volatility index.'}
+                    </p>
+                  )}
+                  <Collapsible>
+                    <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+                      <ChevronDown className="h-3 w-3" /> Raw JSON
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <pre className="mt-1 p-3 bg-muted rounded text-xs whitespace-pre-wrap max-h-72 overflow-auto font-mono">
+                        {JSON.stringify(vol, null, 2)}
+                      </pre>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </CardContent>
+              </Card>
+            );
+          })()}
         </div>
 
 
