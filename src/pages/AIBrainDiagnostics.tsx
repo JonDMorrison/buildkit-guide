@@ -486,6 +486,8 @@ export default function AIBrainDiagnostics() {
   const [opsSnapshot, setOpsSnapshot] = useState<{ loading: boolean; data: any; error: string | null }>({ loading: false, data: null, error: null });
   const [opsVolatility, setOpsVolatility] = useState<{ loading: boolean; data: any; error: string | null }>({ loading: false, data: null, error: null });
   const [showOnlyHighVolatility, setShowOnlyHighVolatility] = useState(false);
+  const [opsCaptureAndRefresh, setOpsCaptureAndRefresh] = useState(false);
+  const [opsReleaseRawOpen, setOpsReleaseRawOpen] = useState(false);
 
   // Fetch projects
   useEffect(() => {
@@ -849,6 +851,32 @@ export default function AIBrainDiagnostics() {
       if (rpcErr) setOpsVolatility({ loading: false, data: null, error: rpcErr.message });
       else setOpsVolatility({ loading: false, data, error: null });
     } catch (e: any) { setOpsVolatility({ loading: false, data: null, error: e.message }); }
+  };
+
+  const handleOpsCaptureAndRefresh = async () => {
+    if (!activeOrganizationId || !dbAuthOk) return;
+    setOpsCaptureAndRefresh(true);
+    setOpsSnapshot({ loading: true, data: null, error: null });
+    try {
+      const { data: snapData, error: snapErr } = await (supabase as any).rpc('rpc_capture_org_economic_snapshots', { p_org_id: activeOrganizationId });
+      if (snapErr) {
+        setOpsSnapshot({ loading: false, data: null, error: snapErr.message });
+        setOpsCaptureAndRefresh(false);
+        return;
+      }
+      setOpsSnapshot({ loading: false, data: snapData, error: null });
+    } catch (e: any) {
+      setOpsSnapshot({ loading: false, data: null, error: e.message });
+      setOpsCaptureAndRefresh(false);
+      return;
+    }
+    setOpsVolatility({ loading: true, data: null, error: null });
+    try {
+      const { data: volData, error: volErr } = await (supabase as any).rpc('rpc_get_project_volatility_index', { p_org_id: activeOrganizationId, p_days: 30 });
+      if (volErr) setOpsVolatility({ loading: false, data: null, error: volErr.message });
+      else setOpsVolatility({ loading: false, data: volData, error: null });
+    } catch (e: any) { setOpsVolatility({ loading: false, data: null, error: e.message }); }
+    finally { setOpsCaptureAndRefresh(false); }
   };
 
   // Parse result into sections
@@ -1792,6 +1820,8 @@ export default function AIBrainDiagnostics() {
             const ok = rr?.success === true;
             const whyFailed = Array.isArray(rr?.why_failed) ? rr.why_failed : [];
             const skippedSections = Array.isArray(rr?.skipped_sections) ? rr.skipped_sections : [];
+            const hasCredibilityFail = whyFailed.some((f: string) => f?.includes?.('economic_inputs_not_credible'));
+            const hasDdlFail = whyFailed.some((f: string) => f?.includes?.('nonvolatile_ddl_detected'));
             return (
               <Card className={`border ${ok ? 'border-primary/30' : 'border-destructive/30'}`}>
                 <CardContent className="p-4 space-y-3">
@@ -1821,7 +1851,23 @@ export default function AIBrainDiagnostics() {
                       ) : <p className="text-muted-foreground italic">none</p>}
                     </div>
                   </div>
-                  <Collapsible>
+                  {/* Actionable CTAs for failures */}
+                  {!ok && (hasCredibilityFail || hasDdlFail) && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {hasCredibilityFail && (
+                        <Button size="sm" variant="outline" onClick={handleOpsCaptureSnapshots} disabled={opsSnapshot.loading}>
+                          <Camera className="h-3.5 w-3.5 mr-1.5" />
+                          {opsSnapshot.loading ? 'Capturing…' : 'Capture Snapshots Now'}
+                        </Button>
+                      )}
+                      {hasDdlFail && (
+                        <Button size="sm" variant="outline" onClick={() => setOpsReleaseRawOpen(true)}>
+                          <Eye className="h-3.5 w-3.5 mr-1.5" /> View Offenders in Raw JSON
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                  <Collapsible open={opsReleaseRawOpen} onOpenChange={setOpsReleaseRawOpen}>
                     <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
                       <ChevronDown className="h-3 w-3" /> Raw JSON
                     </CollapsibleTrigger>
@@ -1904,6 +1950,10 @@ export default function AIBrainDiagnostics() {
                           ))}
                         </tbody>
                       </table>
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        Sorted by: project_id ASC (server)
+                        {results.length > 0 && <> · First: <span className="font-mono">{String(results[0]?.project_id ?? '').slice(0, 8)}</span> · Last: <span className="font-mono">{String(results[results.length - 1]?.project_id ?? '').slice(0, 8)}</span></>}
+                      </p>
                     </div>
                   )}
                   <Collapsible>
@@ -1938,15 +1988,64 @@ export default function AIBrainDiagnostics() {
               ? allProjects.filter((p: any) => p?.volatility_label === 'volatile' || p?.volatility_label === 'critical')
               : allProjects;
             const displayed = filtered.slice(0, 10);
+
+            // Coverage warnings
+            const insufficientCount = allProjects.filter((p: any) => (p?.n_snapshots ?? 0) < 2).length;
+            const insufficientPct = allProjects.length > 0 ? insufficientCount / allProjects.length : 0;
+            const newestDate = allProjects.reduce((max: string, p: any) => {
+              const d = p?.latest_snapshot_date ?? '';
+              return d > max ? d : max;
+            }, '');
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = yesterday.toISOString().slice(0, 10);
+            const isSparse = allProjects.length > 0 && insufficientPct > 0.30;
+            const isStale = newestDate !== '' && newestDate < yesterdayStr;
+            const isEmpty = allProjects.length === 0 && ok;
+            const showCoverageWarning = isEmpty || isSparse || isStale;
+
             return (
               <Card className={`border ${ok ? 'border-primary/30' : 'border-destructive/30'}`}>
                 <CardContent className="p-4 space-y-3">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <StatusBadge ok={ok} />
-                    <span className="text-xs text-muted-foreground">Window: <span className="font-mono font-medium text-foreground">{vol?.window_days ?? '—'}d</span></span>
-                    <span className="text-xs text-muted-foreground">As of: <span className="font-mono font-medium text-foreground">{vol?.as_of ?? '—'}</span></span>
-                    <span className="text-xs text-muted-foreground">Projects: <span className="font-mono font-medium text-foreground">{vol?.project_count ?? '—'}</span></span>
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <StatusBadge ok={ok} />
+                      <span className="text-xs text-muted-foreground">Window: <span className="font-mono font-medium text-foreground">{vol?.window_days ?? '—'}d</span></span>
+                      <span className="text-xs text-muted-foreground">As of: <span className="font-mono font-medium text-foreground">{vol?.as_of ?? '—'}</span></span>
+                      <span className="text-xs text-muted-foreground">Projects: <span className="font-mono font-medium text-foreground">{vol?.project_count ?? '—'}</span></span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleOpsCaptureAndRefresh}
+                      disabled={opsCaptureAndRefresh || opsSnapshot.loading || opsVolatility.loading || !dbAuthOk || !activeOrganizationId}
+                    >
+                      <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${opsCaptureAndRefresh ? 'animate-spin' : ''}`} />
+                      {opsCaptureAndRefresh ? 'Capturing + Refreshing…' : 'Capture + Refresh'}
+                    </Button>
                   </div>
+                  {/* Coverage warnings */}
+                  {showCoverageWarning && (
+                    <Card className="border-yellow-500/30 bg-yellow-500/5">
+                      <CardContent className="p-3 space-y-1">
+                        {isEmpty && (
+                          <p className="text-xs text-yellow-700 dark:text-yellow-400 flex items-center gap-1.5">
+                            <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> No projects returned. Capture snapshots to populate volatility data.
+                          </p>
+                        )}
+                        {isSparse && (
+                          <p className="text-xs text-yellow-700 dark:text-yellow-400 flex items-center gap-1.5">
+                            <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> Volatility is based on sparse snapshots ({insufficientCount}/{allProjects.length} projects have &lt;2 snapshots). Capture snapshots to improve accuracy.
+                          </p>
+                        )}
+                        {isStale && (
+                          <p className="text-xs text-yellow-700 dark:text-yellow-400 flex items-center gap-1.5">
+                            <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> Latest snapshots are stale (newest is {newestDate}). Capture snapshots now.
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
                   <div className="flex items-center gap-2 text-xs">
                     <Filter className="h-3 w-3 text-muted-foreground" />
                     <span className="text-muted-foreground">Show only volatile/critical</span>
@@ -1997,6 +2096,10 @@ export default function AIBrainDiagnostics() {
                           })}
                         </tbody>
                       </table>
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        Sorted by: volatility_score DESC, latest_snapshot_date DESC, project_id ASC (server)
+                        {displayed.length > 0 && <> · First: <span className="font-mono">{String(displayed[0]?.project_id ?? '').slice(0, 8)}</span> · Last: <span className="font-mono">{String(displayed[displayed.length - 1]?.project_id ?? '').slice(0, 8)}</span></>}
+                      </p>
                     </div>
                   )}
                   {displayed.length === 0 && (
