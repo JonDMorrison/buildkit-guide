@@ -8073,6 +8073,10 @@ export type Database = {
         Args: { p_org_id: string }
         Returns: Json
       }
+      rpc_generate_executive_report: {
+        Args: { p_org_id: string }
+        Returns: Json
+      }
       rpc_generate_org_operational_summary: {
         Args: { p_organization_id: string }
         Returns: Json
