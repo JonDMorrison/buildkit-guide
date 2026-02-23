@@ -7965,10 +7965,9 @@ export type Database = {
         Args: { p_project_id: string }
         Returns: Json
       }
-      rpc_capture_org_economic_snapshots: {
-        Args: { p_org_id: string }
-        Returns: Json
-      }
+      rpc_capture_org_economic_snapshots:
+        | { Args: { p_org_id: string }; Returns: Json }
+        | { Args: { p_force?: boolean; p_org_id: string }; Returns: Json }
       rpc_capture_project_economic_snapshot: {
         Args: { p_project_id: string }
         Returns: Json

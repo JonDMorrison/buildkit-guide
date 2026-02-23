@@ -833,11 +833,11 @@ export default function AIBrainDiagnostics() {
     } catch (e: any) { setOpsReleaseReport({ loading: false, data: null, error: e.message }); }
   };
 
-  const handleOpsCaptureSnapshots = async () => {
+  const handleOpsCaptureSnapshots = async (force = true) => {
     if (!activeOrganizationId || !dbAuthOk) return;
     setOpsSnapshot({ loading: true, data: null, error: null });
     try {
-      const { data, error: rpcErr } = await (supabase as any).rpc('rpc_capture_org_economic_snapshots', { p_org_id: activeOrganizationId });
+      const { data, error: rpcErr } = await (supabase as any).rpc('rpc_capture_org_economic_snapshots', { p_org_id: activeOrganizationId, p_force: force });
       if (rpcErr) setOpsSnapshot({ loading: false, data: null, error: rpcErr.message });
       else setOpsSnapshot({ loading: false, data, error: null });
     } catch (e: any) { setOpsSnapshot({ loading: false, data: null, error: e.message }); }
@@ -858,7 +858,7 @@ export default function AIBrainDiagnostics() {
     setOpsCaptureAndRefresh(true);
     setOpsSnapshot({ loading: true, data: null, error: null });
     try {
-      const { data: snapData, error: snapErr } = await (supabase as any).rpc('rpc_capture_org_economic_snapshots', { p_org_id: activeOrganizationId });
+      const { data: snapData, error: snapErr } = await (supabase as any).rpc('rpc_capture_org_economic_snapshots', { p_org_id: activeOrganizationId, p_force: true });
       if (snapErr) {
         setOpsSnapshot({ loading: false, data: null, error: snapErr.message });
         setOpsCaptureAndRefresh(false);
@@ -1790,7 +1790,7 @@ export default function AIBrainDiagnostics() {
             </Button>
             <Button
               size="sm"
-              onClick={handleOpsCaptureSnapshots}
+              onClick={() => handleOpsCaptureSnapshots(true)}
               disabled={opsSnapshot.loading || !dbAuthOk || !activeOrganizationId}
             >
               <Camera className="h-4 w-4 mr-1.5" />
@@ -1855,7 +1855,7 @@ export default function AIBrainDiagnostics() {
                   {!ok && (hasCredibilityFail || hasDdlFail) && (
                     <div className="flex items-center gap-2 flex-wrap">
                       {hasCredibilityFail && (
-                        <Button size="sm" variant="outline" onClick={handleOpsCaptureSnapshots} disabled={opsSnapshot.loading}>
+                        <Button size="sm" variant="outline" onClick={() => handleOpsCaptureSnapshots(true)} disabled={opsSnapshot.loading}>
                           <Camera className="h-3.5 w-3.5 mr-1.5" />
                           {opsSnapshot.loading ? 'Capturing…' : 'Capture Snapshots Now'}
                         </Button>
@@ -1900,6 +1900,8 @@ export default function AIBrainDiagnostics() {
                 <CardContent className="p-4 space-y-3">
                   <div className="flex items-center gap-3 flex-wrap">
                     <StatusBadge ok={ok} />
+                    {snap?.skipped && <Badge variant="outline" className="text-[10px] border-yellow-500/50 text-yellow-600">SKIPPED</Badge>}
+                    {snap?.already_captured_today && <Badge variant="outline" className="text-[10px] border-blue-500/50 text-blue-600">Already captured today</Badge>}
                     <span className="text-xs text-muted-foreground">Date: <span className="font-mono font-medium text-foreground">{snap?.snapshot_date ?? '—'}</span></span>
                     <span className="text-xs text-muted-foreground">Mode: <span className="font-mono font-medium text-foreground">{snap?.selection_mode ?? '—'}</span></span>
                     <span className="text-xs text-muted-foreground">Projects: <span className="font-mono font-medium text-foreground">{snap?.project_count ?? '—'}</span></span>
