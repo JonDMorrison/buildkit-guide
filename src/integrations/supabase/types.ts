@@ -8006,6 +8006,7 @@ export type Database = {
         }
         Returns: Json
       }
+      rpc_data_quality_audit: { Args: { p_org_id: string }; Returns: Json }
       rpc_debug_labor_row_match: {
         Args: { p_project_id: string }
         Returns: Json
