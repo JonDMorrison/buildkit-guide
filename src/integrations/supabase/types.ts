@@ -8219,6 +8219,7 @@ export type Database = {
             }
             Returns: undefined
           }
+      rpc_os_system_state: { Args: { p_org_id: string }; Returns: Json }
       rpc_recalculate_change_order_totals: {
         Args: { p_change_order_id: string }
         Returns: undefined
