@@ -3736,6 +3736,7 @@ export type Database = {
           realized_margin: number
           risk_score: number
           snapshot_date: string
+          source: string
         }
         Insert: {
           contract_value?: number | null
@@ -3752,6 +3753,7 @@ export type Database = {
           realized_margin: number
           risk_score: number
           snapshot_date: string
+          source?: string
         }
         Update: {
           contract_value?: number | null
@@ -3768,6 +3770,7 @@ export type Database = {
           realized_margin?: number
           risk_score?: number
           snapshot_date?: string
+          source?: string
         }
         Relationships: []
       }
@@ -8144,10 +8147,16 @@ export type Database = {
         Args: { p_project_id: string }
         Returns: Json
       }
-      rpc_get_project_volatility_index: {
-        Args: { p_days?: number; p_org_id: string }
-        Returns: Json
-      }
+      rpc_get_project_volatility_index:
+        | { Args: { p_days?: number; p_org_id: string }; Returns: Json }
+        | {
+            Args: {
+              p_days?: number
+              p_include_backfill?: boolean
+              p_org_id: string
+            }
+            Returns: Json
+          }
       rpc_get_project_workflow: {
         Args: { p_project_id: string }
         Returns: Json
