@@ -403,6 +403,7 @@ const DIAG_RPCS = [
 function SystemDiagnosticsPanel({ orgId }: { orgId: string | null }) {
   const [results, setResults] = useState<Record<string, { data?: any; error?: string }>>({});
   const [running, setRunning] = useState(false);
+  const [traceRunning, setTraceRunning] = useState(false);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
 
   const handleRun = async () => {
@@ -424,7 +425,45 @@ function SystemDiagnosticsPanel({ orgId }: { orgId: string | null }) {
     setRunning(false);
   };
 
+  const handleRevenueTrace = async () => {
+    if (!orgId) return;
+    setTraceRunning(true);
+
+    let projectId: string | null = null;
+    const sysState = results['rpc_os_system_state']?.data;
+    if (sysState?.projects?.length > 0) {
+      projectId = sysState.projects[0].project_id ?? sysState.projects[0].id ?? null;
+    }
+
+    if (!projectId) {
+      try {
+        const { data } = await (supabase.rpc as any)('rpc_os_system_state', { p_org_id: orgId });
+        if (data?.projects?.length > 0) {
+          projectId = data.projects[0].project_id ?? data.projects[0].id ?? null;
+        }
+      } catch {}
+    }
+
+    if (!projectId) {
+      setResults(prev => ({ ...prev, rpc_revenue_trace: { error: 'No active projects found from rpc_os_system_state' } }));
+      setOpenSections(prev => ({ ...prev, rpc_revenue_trace: true }));
+      setTraceRunning(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await (supabase.rpc as any)('rpc_revenue_trace', { p_project_id: projectId });
+      setResults(prev => ({ ...prev, rpc_revenue_trace: error ? { error: error.message } : { data } }));
+    } catch (e: any) {
+      setResults(prev => ({ ...prev, rpc_revenue_trace: { error: e.message } }));
+    }
+    setOpenSections(prev => ({ ...prev, rpc_revenue_trace: true }));
+    setTraceRunning(false);
+  };
+
   const toggle = (key: string) => setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
+
+  const allKeys = [...DIAG_RPCS, 'rpc_revenue_trace'] as const;
 
   return (
     <Card className="border-dashed border-2 border-muted-foreground/30">
@@ -434,14 +473,20 @@ function SystemDiagnosticsPanel({ orgId }: { orgId: string | null }) {
             <Activity className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-semibold text-muted-foreground">System Diagnostics (Temp)</span>
           </div>
-          <Button size="sm" variant="outline" onClick={handleRun} disabled={running || !orgId}>
-            <Beaker className="h-4 w-4 mr-1" />
-            {running ? 'Running…' : 'Run All RPCs'}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={handleRevenueTrace} disabled={traceRunning || !orgId}>
+              <Search className="h-4 w-4 mr-1" />
+              {traceRunning ? 'Tracing…' : 'Revenue Trace'}
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleRun} disabled={running || !orgId}>
+              <Beaker className="h-4 w-4 mr-1" />
+              {running ? 'Running…' : 'Run All RPCs'}
+            </Button>
+          </div>
         </div>
         {Object.keys(results).length > 0 && (
           <div className="space-y-2">
-            {DIAG_RPCS.map(rpc => {
+            {allKeys.map(rpc => {
               const r = results[rpc];
               if (!r) return null;
               const isOpen = !!openSections[rpc];
