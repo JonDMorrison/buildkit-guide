@@ -8074,6 +8074,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      rpc_exec_report_sanity: { Args: { p_org_id: string }; Returns: Json }
       rpc_generate_executive_margin_report: {
         Args: { p_org_id: string }
         Returns: Json
