@@ -390,7 +390,89 @@ function EdgeCaseRow({ row }: { row: EdgeCaseRow }) {
   );
 }
 
+// --- Temporary System Diagnostics Panel ---
+
+const DIAG_RPCS = [
+  'rpc_os_system_state',
+  'rpc_snapshot_coverage_report',
+  'rpc_data_quality_audit',
+  'rpc_exec_report_sanity',
+  'rpc_os_scale_probe',
+] as const;
+
+function SystemDiagnosticsPanel({ orgId }: { orgId: string | null }) {
+  const [results, setResults] = useState<Record<string, { data?: any; error?: string }>>({});
+  const [running, setRunning] = useState(false);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+
+  const handleRun = async () => {
+    if (!orgId) return;
+    setRunning(true);
+    setResults({});
+
+    const newResults: typeof results = {};
+    for (const rpc of DIAG_RPCS) {
+      try {
+        const { data, error } = await (supabase.rpc as any)(rpc, { p_org_id: orgId });
+        newResults[rpc] = error ? { error: error.message } : { data };
+      } catch (e: any) {
+        newResults[rpc] = { error: e.message };
+      }
+    }
+    setResults(newResults);
+    setOpenSections(Object.fromEntries(DIAG_RPCS.map(r => [r, true])));
+    setRunning(false);
+  };
+
+  const toggle = (key: string) => setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
+
+  return (
+    <Card className="border-dashed border-2 border-muted-foreground/30">
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Activity className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-semibold text-muted-foreground">System Diagnostics (Temp)</span>
+          </div>
+          <Button size="sm" variant="outline" onClick={handleRun} disabled={running || !orgId}>
+            <Beaker className="h-4 w-4 mr-1" />
+            {running ? 'Running…' : 'Run All RPCs'}
+          </Button>
+        </div>
+        {Object.keys(results).length > 0 && (
+          <div className="space-y-2">
+            {DIAG_RPCS.map(rpc => {
+              const r = results[rpc];
+              if (!r) return null;
+              const isOpen = !!openSections[rpc];
+              return (
+                <Collapsible key={rpc} open={isOpen} onOpenChange={() => toggle(rpc)}>
+                  <CollapsibleTrigger className="w-full flex items-center justify-between p-2 rounded bg-muted/50 hover:bg-muted text-xs font-mono">
+                    <span className="flex items-center gap-2">
+                      {r.error
+                        ? <XCircle className="h-3 w-3 text-destructive" />
+                        : <CheckCircle2 className="h-3 w-3 text-primary" />}
+                      {rpc}
+                    </span>
+                    <ChevronDown className={`h-3 w-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <pre className="text-xs bg-muted/30 p-3 rounded mt-1 overflow-auto max-h-80 whitespace-pre-wrap break-all">
+                      {r.error ? `ERROR: ${r.error}` : JSON.stringify(r.data, null, 2)}
+                    </pre>
+                  </CollapsibleContent>
+                </Collapsible>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // --- Main Page ---
+
 
 export default function AIBrainDiagnostics() {
   const { session } = useAuth();
@@ -1006,6 +1088,9 @@ export default function AIBrainDiagnostics() {
             )}
           </CardContent>
         </Card>
+
+        {/* Temporary System Diagnostics */}
+        <SystemDiagnosticsPanel orgId={activeOrganizationId} />
 
         {/* DB auth warning */}
         {!dbAuthOk && !dbAuthLoading && (
