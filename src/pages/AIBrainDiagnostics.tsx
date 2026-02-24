@@ -571,6 +571,16 @@ export default function AIBrainDiagnostics() {
   const [opsCaptureAndRefresh, setOpsCaptureAndRefresh] = useState(false);
   const [opsReleaseRawOpen, setOpsReleaseRawOpen] = useState(false);
   const [opsExecReport, setOpsExecReport] = useState<{ loading: boolean; data: any; error: string | null }>({ loading: false, data: null, error: null });
+  const [opsDataQuality, setOpsDataQuality] = useState<{ data: any; error: string | null }>({ data: null, error: null });
+
+  // Fetch data quality audit on mount
+  useEffect(() => {
+    if (!activeOrganizationId) return;
+    (supabase.rpc as any)('rpc_data_quality_audit', { p_org_id: activeOrganizationId })
+      .then(({ data, error }: any) => {
+        setOpsDataQuality({ data: error ? null : data, error: error?.message || null });
+      });
+  }, [activeOrganizationId]);
 
   // Fetch projects
   useEffect(() => {
@@ -1873,6 +1883,49 @@ export default function AIBrainDiagnostics() {
               Manual operations: capture snapshots, run release reports, and view volatility metrics.
             </p>
           </div>
+
+          {/* Data Quality Warning */}
+          {(() => {
+            const count = opsDataQuality.data?.totals?.missing_revenue_count;
+            if (!count || count <= 0) return null;
+            const projectIds: string[] = opsDataQuality.data?.missing_revenue || [];
+            return (
+              <Card className="border-destructive/50 bg-destructive/5">
+                <CardContent className="p-4 flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                  <div className="flex-1 space-y-2">
+                    <p className="text-sm font-medium text-destructive">
+                      Economic analysis incomplete: revenue data missing for {count} project{count > 1 ? 's' : ''}.
+                    </p>
+                    <Collapsible>
+                      <CollapsibleTrigger asChild>
+                        <Button size="sm" variant="outline" className="text-xs">
+                          <Search className="h-3 w-3 mr-1.5" />
+                          Inspect Projects
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2">
+                        <div className="bg-muted/50 rounded p-3 space-y-1 max-h-48 overflow-auto">
+                          {projectIds.map((pid: string) => {
+                            const proj = projects.find(p => p.id === pid);
+                            return (
+                              <div key={pid} className="text-xs font-mono flex items-center gap-2">
+                                <span className="text-muted-foreground">•</span>
+                                <span>{proj ? proj.name : pid}</span>
+                              </div>
+                            );
+                          })}
+                          {projectIds.length === 0 && (
+                            <span className="text-xs text-muted-foreground">No project IDs returned.</span>
+                          )}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           {/* Buttons */}
           <div className="flex items-center gap-3 flex-wrap">
