@@ -7920,6 +7920,10 @@ export type Database = {
       }
       rpc_archive_playbook: { Args: { p_playbook_id: string }; Returns: Json }
       rpc_assert_deterministic_ordering: { Args: never; Returns: Json }
+      rpc_backfill_project_snapshots: {
+        Args: { p_days?: number; p_org_id: string }
+        Returns: Json
+      }
       rpc_calculate_certification_tier: {
         Args: { p_organization_id: string }
         Returns: Json
