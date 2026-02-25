@@ -12,6 +12,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { PublicRoute } from "@/components/PublicRoute";
 import { TimeTrackingGate } from "@/components/TimeTrackingGate";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { AdminRoute } from "@/components/AdminRoute";
 
 // Lazy load all pages for code splitting
 const Landing = lazy(() => import("./pages/Landing"));
@@ -588,11 +589,14 @@ const App = () => (
                     </ProtectedRoute>
                   }
                 />
+                {/* Admin-only: exposes internal RPC diagnostics */}
                 <Route
                   path="/dashboard-diagnostics"
                   element={
                     <ProtectedRoute>
-                      <DashboardDiagnostics />
+                      <AdminRoute>
+                        <DashboardDiagnostics />
+                      </AdminRoute>
                     </ProtectedRoute>
                   }
                 />
