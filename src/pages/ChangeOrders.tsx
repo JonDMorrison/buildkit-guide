@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { DashboardLayout } from "@/components/dashboard/shared/DashboardLayout";
+import { DashboardHeader } from "@/components/dashboard/shared/DashboardHeader";
 import { Layout } from "@/components/Layout";
-import { SectionHeader } from "@/components/SectionHeader";
 import { NoAccess } from "@/components/NoAccess";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useFinancialAccess } from "@/hooks/useFinancialAccess";
@@ -109,16 +110,16 @@ function ChangeOrdersContent() {
   };
 
   return (
-    <Layout>
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <SectionHeader title="Change Orders" subtitle="Track and manage project change orders" />
-          {canWrite && (
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" /> New Change Order
-            </Button>
-          )}
-        </div>
+    <DashboardLayout>
+      <DashboardHeader
+        title="Change Orders"
+        subtitle="Track and manage project change orders"
+        actions={canWrite ? (
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" /> New Change Order
+          </Button>
+        ) : undefined}
+      />
 
         {/* Search */}
         <div className="relative max-w-sm">
@@ -184,7 +185,6 @@ function ChangeOrdersContent() {
             )}
           </CardContent>
         </Card>
-      </div>
 
       {/* Create Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
@@ -221,7 +221,7 @@ function ChangeOrdersContent() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Layout>
+    </DashboardLayout>
   );
 };
 

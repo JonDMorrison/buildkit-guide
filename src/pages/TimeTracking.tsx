@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Layout } from '@/components/Layout';
+import { DashboardLayout } from '@/components/dashboard/shared/DashboardLayout';
+import { DashboardHeader } from '@/components/dashboard/shared/DashboardHeader';
 import { LogIn, LogOut, Loader2, MapPin, Plus, ClipboardList, Lock, Clock, Flag, WifiOff, Building2, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -395,34 +396,34 @@ export default function TimeTracking() {
   }, [recentEntries]);
 
   return (
-    <Layout>
-      <div className="p-4 md:p-6 space-y-4 max-w-2xl mx-auto">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div>
-            <h1 className="text-2xl font-bold">Time Tracking</h1>
-            <p className="text-muted-foreground">Track your work hours</p>
-          </div>
-          <div className="flex items-center gap-2">
-            {canReviewRequests && (
-              <Button variant="outline" size="sm" onClick={() => navigate('/time/requests')}>
-                <ClipboardList className="h-4 w-4 mr-1" />
-                Review Requests
-              </Button>
-            )}
-            {canLockPeriods && (
-              <Button variant="outline" size="sm" onClick={() => navigate('/time/periods')}>
-                <Lock className="h-4 w-4 mr-1" />
-                Timesheet Periods
-              </Button>
-            )}
-            {!hasActiveEntry && (
-              <Button variant="outline" size="sm" onClick={handleNewAdjustment}>
-                <Plus className="h-4 w-4 mr-1" />
-                Add Entry
-              </Button>
-            )}
-          </div>
-        </div>
+    <DashboardLayout>
+      <div className="space-y-4 max-w-2xl mx-auto">
+        <DashboardHeader
+          title="Time Tracking"
+          subtitle="Track your work hours"
+          actions={
+            <div className="flex items-center gap-2">
+              {canReviewRequests && (
+                <Button variant="outline" size="sm" onClick={() => navigate('/time/requests')}>
+                  <ClipboardList className="h-4 w-4 mr-1" />
+                  Review Requests
+                </Button>
+              )}
+              {canLockPeriods && (
+                <Button variant="outline" size="sm" onClick={() => navigate('/time/periods')}>
+                  <Lock className="h-4 w-4 mr-1" />
+                  Timesheet Periods
+                </Button>
+              )}
+              {!hasActiveEntry && (
+                <Button variant="outline" size="sm" onClick={handleNewAdjustment}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Entry
+                </Button>
+              )}
+            </div>
+          }
+        />
 
         {/* Offline warning */}
         {!isOnline && (
@@ -597,6 +598,6 @@ export default function TimeTracking() {
           onComplete={() => setSuccessAnimation({ ...successAnimation, show: false })}
         />
       </div>
-    </Layout>
+    </DashboardLayout>
   );
 }

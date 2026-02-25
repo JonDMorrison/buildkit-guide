@@ -34,14 +34,14 @@ export const TopNav = () => {
 
   return (
     <>
-      <nav className="sticky top-0 z-50 flex items-center justify-between h-nav px-2 sm:px-4 bg-card border-b-0" style={{ boxShadow: "0 1px 0 rgba(255,255,255,0.04)" }}>
+      <nav className="sticky top-0 z-50 flex items-center justify-between h-nav px-2 sm:px-4 bg-card border-b border-border/40" style={{ boxShadow: "0 1px 2px rgba(0,0,0,0.06)" }}>
         <div className="flex items-center gap-2 sm:gap-4">
           {!isMobile && <SidebarTrigger className="h-9 w-9" />}
           {/* Logo navigates to the role-appropriate home route */}
           <img
             src={projectPathLogo}
             alt="Project Path"
-            className={`${isMobile ? "h-20 w-auto" : "h-24 w-auto"} cursor-pointer`}
+            className={`${isMobile ? "h-8 w-auto" : "h-10 w-auto"} cursor-pointer`}
             onClick={() => navigate(homeRoute)}
           />
           {activeOrganization?.is_sandbox && (

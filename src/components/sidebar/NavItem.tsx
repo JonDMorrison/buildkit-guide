@@ -28,7 +28,7 @@ export const NavItem = forwardRef<HTMLAnchorElement, NavItemProps>(({ label, ico
         "group relative flex items-center gap-3 rounded-lg transition-all duration-150 ease-out",
         "text-sidebar-foreground/50 hover:text-sidebar-foreground/85",
         "hover:bg-sidebar-accent/50",
-        collapsed ? "justify-center px-2 py-2.5" : "px-4 py-2.5",
+        collapsed ? "justify-center px-2 py-3" : "px-4 py-3",
       )}
       activeClassName={cn(
         "!text-sidebar-primary font-semibold bg-sidebar-primary/10",

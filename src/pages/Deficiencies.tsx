@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { DashboardLayout } from "@/components/dashboard/shared/DashboardLayout";
+import { DashboardHeader } from "@/components/dashboard/shared/DashboardHeader";
 import { Layout } from "@/components/Layout";
-import { SectionHeader } from "@/components/SectionHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -213,17 +214,17 @@ const Deficiencies = () => {
   }
 
   return (
-    <Layout>
-      <div className="container max-w-4xl mx-auto px-4 py-6">
-        <SectionHeader
-          title="Deficiencies"
-          count={filteredDeficiencies.length}
-          action={canCreateDeficiencies ? {
-            label: "Add Deficiency",
-            icon: <Plus className="h-6 w-6" />,
-            onClick: handleCreateDeficiency,
-          } : undefined}
-        />
+    <DashboardLayout>
+      <DashboardHeader
+        title="Deficiencies"
+        subtitle={`${filteredDeficiencies.length} items`}
+        actions={canCreateDeficiencies ? (
+          <Button onClick={handleCreateDeficiency}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Deficiency
+          </Button>
+        ) : undefined}
+      />
 
         {/* Project Selector */}
         <div className="mb-4 p-4 bg-card rounded-lg border border-border">
@@ -304,8 +305,7 @@ const Deficiencies = () => {
           onCreate={fetchDeficiencies}
           projectId={selectedProjectId || undefined}
         />
-      </div>
-    </Layout>
+    </DashboardLayout>
   );
 };
 
