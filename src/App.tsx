@@ -82,6 +82,7 @@ const Playbooks = lazy(() => import("./pages/Playbooks"));
 const AdminReleaseChecklist = lazy(() => import("./pages/AdminReleaseChecklist"));
 const TenantIsolationSmoke = lazy(() => import("./pages/TenantIsolationSmoke"));
 const AdminUISmokeRunner = lazy(() => import("./pages/AdminUISmokeRunner"));
+const HealthCheck = lazy(() => import("./pages/HealthCheck"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -662,6 +663,16 @@ const App = () => (
                     <ProtectedRoute>
                       <AdminOrPMRoute>
                         <ExecutiveDashboard />
+                      </AdminOrPMRoute>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/health"
+                  element={
+                    <ProtectedRoute>
+                      <AdminOrPMRoute>
+                        <HealthCheck />
                       </AdminOrPMRoute>
                     </ProtectedRoute>
                   }

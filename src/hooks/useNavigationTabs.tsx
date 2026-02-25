@@ -55,6 +55,7 @@ export const tabs: TabConfig[] = [
   { name: "AI Brain", path: "/insights/ai-brain", icon: Cpu, tiers: ['all'] },
   { name: "Playbooks", path: "/playbooks", icon: BookOpen, tiers: ['all'] },
   { name: "Release", path: "/release", icon: Rocket, tiers: ['all'] },
+  { name: "Health Check", path: "/health", icon: Shield, tiers: ['all'] },
 ];
 
 export const useNavigationTabs = () => {
@@ -123,6 +124,7 @@ export const useNavigationTabs = () => {
         case '/executive':
         case '/data-health':
         case '/users':
+        case '/health':
           return isAdmin || isPM;
 
         // Admin, PM, or Foreman
