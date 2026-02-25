@@ -54,6 +54,7 @@ import { DashboardMissionControl } from "@/components/dashboard/DashboardMission
 import { AttentionInbox } from "@/components/executive/AttentionInbox";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useQuery as useRQQuery } from "@tanstack/react-query";
+import { usePrefetchRoute } from "@/hooks/usePrefetchRoute";
 
 /* ------------------------------------------------------------------ */
 /* Gate — resolves role before mounting content or firing queries       */
@@ -66,12 +67,22 @@ export default function Dashboard() {
 
   const loading = routeAccessLoading || homeRouteLoading;
 
-  // While roles are resolving, show loading — no content mounts, no queries fire
+  // While roles are resolving, show skeleton frame — no content mounts, no queries fire
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        {/* Reserve space for Mission Control + Focus + KPI strip to prevent layout shift */}
+        <div className="space-y-6">
+          <div className="rounded-xl border border-border bg-muted/20 h-24 animate-pulse" />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="rounded-xl border border-border bg-muted/20 h-48 animate-pulse" />
+            <div className="rounded-xl border border-border bg-muted/20 h-48 animate-pulse" />
+          </div>
+          <div className="grid grid-cols-5 gap-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="rounded-xl border border-border bg-muted/20 h-24 animate-pulse" />
+            ))}
+          </div>
         </div>
       </DashboardLayout>
     );
@@ -117,6 +128,14 @@ function DashboardContent() {
   const { isPM, isForeman, isAdmin, isInternalWorker, isExternalTrade, loading: roleLoading } = useAuthRole(currentProjectId || undefined);
   const { tier, certification } = useCertificationTier();
   const { activeOrganizationId } = useOrganization();
+  const { prefetchRoute } = usePrefetchRoute();
+
+  // Cross-page warming: PM on /dashboard warms /executive data if they have access
+  useEffect(() => {
+    if (!roleLoading && (isAdmin || isPM()) && activeOrganizationId) {
+      prefetchRoute('/executive');
+    }
+  }, [roleLoading, isAdmin, isPM, activeOrganizationId, prefetchRoute]);
 
   // Reuse existing change feed for attention inbox (PM compact preview)
   const { data: changeFeed, isLoading: feedLoading } = useRQQuery({
@@ -349,8 +368,13 @@ function DashboardContent() {
   if ((layoutLoading && !layouts) || roleLoading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        {/* Reserve consistent frame while queries load */}
+        <div className="space-y-6">
+          <div className="rounded-xl border border-border bg-muted/20 h-24 animate-pulse" />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="rounded-xl border border-border bg-muted/20 h-48 animate-pulse" />
+            <div className="rounded-xl border border-border bg-muted/20 h-48 animate-pulse" />
+          </div>
         </div>
       </DashboardLayout>
     );
