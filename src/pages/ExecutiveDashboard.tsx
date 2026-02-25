@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from '@/hooks/useOrganization';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import {
-  RefreshCw, Copy, Check, ExternalLink, Loader2, BarChart3, Activity,
+  RefreshCw, Copy, Check, ExternalLink, Loader2, BarChart3,
   AlertTriangle, CheckCircle2, TrendingUp, TrendingDown, Flame, ChevronDown, Download,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -13,28 +13,22 @@ import { useAuthRole } from '@/hooks/useAuthRole';
 import { useCurrentProject } from '@/hooks/useCurrentProject';
 import { usePrefetchRoute } from '@/hooks/usePrefetchRoute';
 import { NoAccess } from '@/components/NoAccess';
-import { ConfidenceRibbon } from '@/components/ConfidenceRibbon';
-import { useSnapshotCoverageReport } from '@/hooks/rpc/useSnapshotCoverageReport';
-import { useDataQualityAudit } from '@/hooks/rpc/useDataQualityAudit';
 import { DashboardLayout } from '@/components/dashboard/shared/DashboardLayout';
 import { DashboardHeader } from '@/components/dashboard/shared/DashboardHeader';
 import { DashboardSection } from '@/components/dashboard/shared/DashboardSection';
-import { DashboardGrid } from '@/components/dashboard/shared/DashboardGrid';
 import { DashboardCard } from '@/components/dashboard/shared/DashboardCard';
 import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
-import { ExecutiveBriefCard } from '@/components/executive/ExecutiveBriefCard';
 import { useExecutiveChangeFeed, type ChangeFeedData } from '@/hooks/rpc/useExecutiveChangeFeed';
 import { PortfolioHealthCard, type PortfolioHealthData } from '@/components/executive/PortfolioHealthCard';
 import { AttentionInbox } from '@/components/executive/AttentionInbox';
-import { EconomicSignalsCard } from '@/components/executive/EconomicSignalsCard';
-import { DataIntegrityCard, type DataIntegrityData } from '@/components/executive/DataIntegrityCard';
-import { AIInsightsSection } from '@/components/ai-insights';
-import { SnapshotStatusCard } from '@/components/executive/SnapshotStatusCard';
 import { DecisionNotesPanel } from '@/components/executive/DecisionNotesPanel';
-import { buildExecutiveBriefExport, type ExportFormat } from '@/lib/executiveBriefExport';
+import { buildExecutiveBriefExport } from '@/lib/executiveBriefExport';
 import { downloadText } from '@/lib/downloadText';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -60,7 +54,6 @@ interface RiskSummary {
   top_risk_projects: TopProject[];
   top_causes: TopCause[];
   os_score: OsScore;
-  data_integrity?: DataIntegrityData;
   volatility_index: number;
 }
 
@@ -71,11 +64,15 @@ function WeeklyBriefHero({
   data,
   onCopy,
   copied,
+  onCopyBrief,
+  onDownloadBrief,
 }: {
   feedData: ChangeFeedData | null;
   data: RiskSummary | null;
   onCopy: () => void;
   copied: boolean;
+  onCopyBrief: () => void;
+  onDownloadBrief: () => void;
 }) {
   if (!feedData && !data) return null;
 
@@ -93,7 +90,6 @@ function WeeklyBriefHero({
     ? `${feedData.previous_snapshot_date} → ${feedData.latest_snapshot_date}`
     : null;
 
-  // Confidence indicators from existing data
   const activeCount = data?.projects_active_count ?? 0;
   const atRiskCount = data?.at_risk_count ?? 0;
   const avgMargin = data?.avg_projected_margin_at_completion_percent ?? 0;
@@ -109,12 +105,29 @@ function WeeklyBriefHero({
             <p className="text-xs text-muted-foreground font-mono mt-1">{snapshotRange}</p>
           )}
         </div>
-        <Button variant="outline" size="sm" onClick={onCopy} className="shrink-0">
-          {copied
-            ? <><Check className="h-3.5 w-3.5 mr-1.5 text-primary" />Copied</>
-            : <><Copy className="h-3.5 w-3.5 mr-1.5" />Copy Summary</>
-          }
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={onCopy}>
+            {copied
+              ? <><Check className="h-3.5 w-3.5 mr-1.5 text-primary" />Copied</>
+              : <><Copy className="h-3.5 w-3.5 mr-1.5" />Copy Summary</>
+            }
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Download className="h-3.5 w-3.5 mr-1.5" />Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={onCopyBrief}>
+                <Copy className="h-3.5 w-3.5 mr-2" />Copy as text
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onDownloadBrief}>
+                <Download className="h-3.5 w-3.5 mr-2" />Download as file
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* Headline change metrics */}
@@ -157,38 +170,32 @@ export default function ExecutiveDashboard() {
   const [ranAt, setRanAt] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [changeLogOpen, setChangeLogOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<number>(0);
-  const [briefCopied, setBriefCopied] = useState(false);
-  const [briefFormat, setBriefFormat] = useState<ExportFormat>('simple');
   const decisionBodyRef = useRef<string>('');
 
-  // Shared change feed hook (canonical key: rpc-executive-change-feed)
+  // Shared change feed hook
   const { data: feedData } = useExecutiveChangeFeed();
 
-  // Shared RPC hooks for confidence ribbon
-  const { data: coverageData, dataUpdatedAt: coverageUpdatedAt } = useSnapshotCoverageReport();
-  const { data: qualityData } = useDataQualityAudit();
-
-  const ribbonCoverage = (coverageData as any)?.coverage_percent ?? null;
-  const ribbonIssues = Array.isArray(qualityData)
-    ? qualityData.filter((r: any) => {
-        const issues = r.issues ?? r.issue_count ?? 0;
-        return Array.isArray(issues) ? issues.length > 0 : Number(issues) > 0;
-      }).length
-    : null;
-  const ribbonAsOf = feedData?.latest_snapshot_date ?? (coverageUpdatedAt ? new Date(coverageUpdatedAt) : null);
-
-  // Cross-page warming: admin on /executive warms /dashboard mission control data
+  // Cross-page warming
   useEffect(() => {
     if (!roleLoading && (isAdmin || isPM()) && activeOrganizationId) {
       prefetchRoute('/dashboard');
     }
   }, [roleLoading, isAdmin, isPM, activeOrganizationId, prefetchRoute]);
 
+  // Auto-fetch on mount
+  useEffect(() => {
+    if (activeOrganizationId && !data && !loading && !error) {
+      refresh();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeOrganizationId]);
+
   const refresh = useCallback(async () => {
     if (!activeOrganizationId) return;
     const now = Date.now();
-    if (now - lastRefresh < 15_000) return; // 15s throttle
+    if (now - lastRefresh < 15_000) return;
     setLastRefresh(now);
     setLoading(true);
     setError(null);
@@ -227,24 +234,21 @@ export default function ExecutiveDashboard() {
 
   const buildBriefParams = useCallback(() => ({
     orgName: activeOrganization?.name ?? 'Organization',
-    asOf: ribbonAsOf instanceof Date ? ribbonAsOf.toISOString() : String(ribbonAsOf ?? new Date().toISOString()),
+    asOf: feedData?.latest_snapshot_date ?? new Date().toISOString(),
     attentionItems: feedData?.attention_ranked_projects ?? [],
-    confidence: { coveragePercent: ribbonCoverage, issuesCount: ribbonIssues },
     decisionNoteBody: decisionBodyRef.current || undefined,
-  }), [activeOrganization, ribbonAsOf, feedData, ribbonCoverage, ribbonIssues]);
+    format: 'simple' as const,
+  }), [activeOrganization, feedData]);
 
   const handleCopyBrief = useCallback(() => {
-    const { text } = buildExecutiveBriefExport({ ...buildBriefParams(), format: briefFormat });
-    navigator.clipboard.writeText(text).then(() => {
-      setBriefCopied(true);
-      setTimeout(() => setBriefCopied(false), 2000);
-    });
-  }, [buildBriefParams, briefFormat]);
+    const { text } = buildExecutiveBriefExport(buildBriefParams());
+    navigator.clipboard.writeText(text);
+  }, [buildBriefParams]);
 
   const handleDownloadBrief = useCallback(() => {
-    const { text, filename } = buildExecutiveBriefExport({ ...buildBriefParams(), format: briefFormat });
+    const { text, filename } = buildExecutiveBriefExport(buildBriefParams());
     downloadText(text, filename);
-  }, [buildBriefParams, briefFormat]);
+  }, [buildBriefParams]);
 
   const portfolioData: PortfolioHealthData | null = data ? {
     projects_active_count: data.projects_active_count,
@@ -260,14 +264,10 @@ export default function ExecutiveDashboard() {
   if (roleLoading) {
     return (
       <DashboardLayout>
-        {/* Reserve space for hero + inbox + footer to prevent layout shift */}
         <div className="space-y-6">
           <div className="rounded-xl border border-border bg-muted/20 h-36 animate-pulse" />
           <div className="rounded-xl border border-border bg-muted/20 h-64 animate-pulse" />
-          <div className="grid grid-cols-2 gap-4">
-            <div className="rounded-xl border border-border bg-muted/20 h-32 animate-pulse" />
-            <div className="rounded-xl border border-border bg-muted/20 h-32 animate-pulse" />
-          </div>
+          <div className="rounded-xl border border-border bg-muted/20 h-48 animate-pulse" />
         </div>
       </DashboardLayout>
     );
@@ -286,28 +286,14 @@ export default function ExecutiveDashboard() {
       <DashboardLayout>
         {/* ── Header ──────────────────────────────────────────── */}
         <DashboardHeader
-          title="Executive Control Center"
-          subtitle="Real-time operating health and margin risk across all active projects."
+          title="Executive Overview"
+          subtitle="Portfolio health and attention items at a glance."
           badge={ranAt ? <span className="text-xs text-muted-foreground font-mono">Last refreshed {ranAt}</span> : undefined}
           actions={
-            <>
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/data-health">
-                  <Activity className="h-4 w-4 mr-1.5" />
-                  Data Health
-                </Link>
-              </Button>
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/executive-report">
-                  <ExternalLink className="h-4 w-4 mr-1.5" />
-                  Full Report
-                </Link>
-              </Button>
-              <Button onClick={refresh} disabled={loading || !activeOrganizationId} size="sm">
-                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                {loading ? 'Loading…' : data ? 'Refresh' : 'Load Dashboard'}
-              </Button>
-            </>
+            <Button onClick={refresh} disabled={loading || !activeOrganizationId} size="sm">
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              {loading ? 'Loading…' : 'Refresh'}
+            </Button>
           }
         />
 
@@ -316,175 +302,104 @@ export default function ExecutiveDashboard() {
           <DashboardCard title="Error" variant="alert" error={error} />
         )}
 
-        {/* ── Empty state ─────────────────────────────────────── */}
-        {!data && !loading && !error && !feedData && (
-          <DashboardCard
-            title="Executive Dashboard"
-            icon={BarChart3}
-            variant="metric"
-            empty
-            emptyMessage="Click Load Dashboard to fetch the latest risk data."
-          />
-        )}
-
-        {/* ── Confidence Ribbon ─────────────────────────────── */}
-        {(feedData || data) && (
-          <ConfidenceRibbon
-            coveragePercent={ribbonCoverage}
-            issuesCount={ribbonIssues}
-            asOf={ribbonAsOf}
-            className="border-b border-border/40 pb-3"
-          />
-        )}
-
         {/* ── 1. Weekly Brief Hero ────────────────────────────── */}
-        <WeeklyBriefHero feedData={feedData} data={data} onCopy={copySummary} copied={copied} />
+        <WeeklyBriefHero
+          feedData={feedData}
+          data={data}
+          onCopy={copySummary}
+          copied={copied}
+          onCopyBrief={handleCopyBrief}
+          onDownloadBrief={handleDownloadBrief}
+        />
 
-        {/* ── Export Brief actions ─────────────────────────────── */}
-        {(feedData || data) && (
-          <div className="flex items-center gap-2">
-            {/* Format toggle */}
-            <div className="inline-flex rounded-md border border-border overflow-hidden text-xs">
-              <button
-                type="button"
-                onClick={() => setBriefFormat('simple')}
-                className={`px-3 py-1.5 font-medium transition-colors ${
-                  briefFormat === 'simple'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-card text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Simple
-              </button>
-              <button
-                type="button"
-                onClick={() => setBriefFormat('report')}
-                className={`px-3 py-1.5 font-medium transition-colors border-l border-border ${
-                  briefFormat === 'report'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-card text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Report
-              </button>
-            </div>
-            <Button variant="outline" size="sm" onClick={handleCopyBrief}>
-              {briefCopied
-                ? <><Check className="h-3.5 w-3.5 mr-1.5 text-primary" />Brief Copied</>
-                : <><Copy className="h-3.5 w-3.5 mr-1.5" />Copy Brief</>
-              }
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleDownloadBrief}>
-              <Download className="h-3.5 w-3.5 mr-1.5" />Download Brief
-            </Button>
-          </div>
-        )}
-
-        {/* Change feed data now comes from useExecutiveChangeFeed shared hook */}
-
-        {/* ── 2. Attention Inbox (primary body) ───────────────── */}
+        {/* ── 2. Attention Inbox ──────────────────────────────── */}
         {(feedData || loading) && (
-          <DashboardSection title="Where Leadership Should Look First">
+          <DashboardSection title="Attention">
             <AttentionInbox
               attentionProjects={feedData?.attention_ranked_projects ?? []}
               topChanges={feedData?.top_changes ?? []}
               loading={loading && !feedData}
             />
+
+            {/* Change Log collapsed inside */}
+            {feedData && feedData.top_changes.length > 0 && (
+              <Collapsible open={changeLogOpen} onOpenChange={setChangeLogOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground hover:text-foreground mt-3">
+                    <span className="text-xs font-medium">Full Change Log ({feedData.top_changes.length} changes)</span>
+                    <ChevronDown className={`h-4 w-4 transition-transform ${changeLogOpen ? 'rotate-180' : ''}`} />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <DashboardCard title="Change Log" variant="table" traceSource="rpc_executive_change_feed → top_changes">
+                    <div className="overflow-x-auto rounded-lg border border-border">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="bg-muted text-muted-foreground">
+                            <th className="text-left px-3 py-2 font-medium">Project</th>
+                            <th className="text-left px-3 py-2 font-medium">Status</th>
+                            <th className="text-right px-3 py-2 font-medium">Risk Δ</th>
+                            <th className="text-right px-3 py-2 font-medium">Margin Δ</th>
+                            <th className="text-right px-3 py-2 font-medium">Burn Δ</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {feedData.top_changes.map(c => (
+                            <tr key={c.project_id} className="border-t border-border hover:bg-muted/30 transition-colors">
+                              <td className="px-3 py-2">
+                                <Link to={`/projects/${c.project_id}`} className="text-primary hover:underline inline-flex items-center gap-1">
+                                  {c.project_name} <ExternalLink className="h-2.5 w-2.5" />
+                                </Link>
+                              </td>
+                              <td className="px-3 py-2 text-foreground">{c.classification.replace(/_/g, ' ')}</td>
+                              <td className="px-3 py-2 text-right font-mono">{c.risk_change > 0 ? '+' : ''}{c.risk_change.toFixed(1)}</td>
+                              <td className="px-3 py-2 text-right font-mono">{c.margin_change > 0 ? '+' : ''}{c.margin_change.toFixed(1)}%</td>
+                              <td className="px-3 py-2 text-right font-mono">{c.burn_change > 0 ? '+' : ''}{c.burn_change.toFixed(2)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </DashboardCard>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
           </DashboardSection>
         )}
 
-        {/* ── 3. Full Change Log (collapsed) ──────────────────── */}
-        {feedData && feedData.top_changes.length > 0 && (
-          <Collapsible open={changeLogOpen} onOpenChange={setChangeLogOpen}>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground hover:text-foreground mb-2">
-                <span className="text-xs font-medium">Full Change Log ({feedData.top_changes.length} changes)</span>
-                <ChevronDown className={`h-4 w-4 transition-transform ${changeLogOpen ? 'rotate-180' : ''}`} />
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <DashboardCard title="Change Log" variant="table" traceSource="rpc_executive_change_feed → top_changes">
-                <div className="overflow-x-auto rounded-lg border border-border">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="bg-muted text-muted-foreground">
-                        <th className="text-left px-3 py-2 font-medium">Project</th>
-                        <th className="text-left px-3 py-2 font-medium">Status</th>
-                        <th className="text-right px-3 py-2 font-medium">Risk Δ</th>
-                        <th className="text-right px-3 py-2 font-medium">Margin Δ</th>
-                        <th className="text-right px-3 py-2 font-medium">Burn Δ</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {feedData.top_changes.map(c => (
-                        <tr key={c.project_id} className="border-t border-border hover:bg-muted/30 transition-colors">
-                          <td className="px-3 py-2">
-                            <Link to={`/projects/${c.project_id}`} className="text-primary hover:underline inline-flex items-center gap-1">
-                              {c.project_name} <ExternalLink className="h-2.5 w-2.5" />
-                            </Link>
-                          </td>
-                          <td className="px-3 py-2 text-foreground">{c.classification.replace(/_/g, ' ')}</td>
-                          <td className="px-3 py-2 text-right font-mono">{c.risk_change > 0 ? '+' : ''}{c.risk_change.toFixed(1)}</td>
-                          <td className="px-3 py-2 text-right font-mono">{c.margin_change > 0 ? '+' : ''}{c.margin_change.toFixed(1)}%</td>
-                          <td className="px-3 py-2 text-right font-mono">{c.burn_change > 0 ? '+' : ''}{c.burn_change.toFixed(2)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </DashboardCard>
-            </CollapsibleContent>
-          </Collapsible>
-        )}
-
-        {/* ── 4. Portfolio Health + Economic Signals ─────────── */}
+        {/* ── 3. Portfolio Health ──────────────────────────────── */}
         {(data || loading) && (
           <DashboardSection title="Portfolio Health" lazy skeletonHeight="h-48">
             <PortfolioHealthCard data={portfolioData} loading={loading} />
+            <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
+              <Link to="/data-health" className="hover:text-foreground transition-colors underline underline-offset-2">Data Health</Link>
+              <Link to="/executive-report" className="hover:text-foreground transition-colors underline underline-offset-2">Full Report</Link>
+            </div>
           </DashboardSection>
         )}
 
-        {data && (
-          <DashboardSection title="Economic Signals" lazy skeletonHeight="h-48" skeletonCount={2}>
-            <EconomicSignalsCard
-              volatilityIndex={data.volatility_index}
-              topRiskProjects={data.top_risk_projects}
-            />
-          </DashboardSection>
-        )}
-
-        {/* ── 5. Decision Notes ─────────────────────────────── */}
+        {/* ── 4. Decision Notes (collapsed by default) ─────────── */}
         {(feedData || data) && (
-          <DashboardSection title="Decision Capture">
-            <DecisionNotesPanel
-              asOf={ribbonAsOf}
-              topAttentionNames={(feedData?.attention_ranked_projects ?? []).slice(0, 3).map((p: any) => p.project_name)}
-              orgId={activeOrganizationId!}
-              isAdmin={isAdmin}
-              onBodyChange={(b: string) => { decisionBodyRef.current = b; }}
-              currentAttentionNames={(feedData?.attention_ranked_projects ?? []).map((p: any) => p.project_name)}
-              currentAsOf={feedData?.latest_snapshot_date}
-            />
-          </DashboardSection>
-        )}
-
-        {/* ── 6. Confidence Footer (compact row) ──────────────── */}
-        {(data || loading || activeOrganizationId) && (
-          <DashboardSection title="Confidence & Evidence">
-            <DashboardGrid columns={activeOrganizationId ? 2 : 1}>
-              <DataIntegrityCard
-                integrity={data?.data_integrity ?? null}
-                loading={loading}
+          <Collapsible open={notesOpen} onOpenChange={setNotesOpen}>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground hover:text-foreground">
+                <span className="text-sm font-medium">Decision Notes</span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${notesOpen ? 'rotate-180' : ''}`} />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-2">
+              <DecisionNotesPanel
+                asOf={feedData?.latest_snapshot_date ?? null}
+                topAttentionNames={(feedData?.attention_ranked_projects ?? []).slice(0, 3).map((p: any) => p.project_name)}
+                orgId={activeOrganizationId!}
+                isAdmin={isAdmin}
+                onBodyChange={(b: string) => { decisionBodyRef.current = b; }}
+                currentAttentionNames={(feedData?.attention_ranked_projects ?? []).map((p: any) => p.project_name)}
+                currentAsOf={feedData?.latest_snapshot_date}
               />
-              {activeOrganizationId && (
-                <SnapshotStatusCard orgId={activeOrganizationId} />
-              )}
-            </DashboardGrid>
-          </DashboardSection>
+            </CollapsibleContent>
+          </Collapsible>
         )}
-
-        {/* ── 6. AI Insights ──────────────────────────────────── */}
-        <AIInsightsSection showChangeFeed />
       </DashboardLayout>
     </TooltipProvider>
   );
