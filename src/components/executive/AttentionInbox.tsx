@@ -156,7 +156,7 @@ export function AttentionInbox({ attentionProjects, topChanges = [], compact = f
               >
                 {classificationIcon(cls)}
                 <span className="text-sm font-medium text-foreground truncate flex-1 group-hover:text-primary transition-colors">
-                  {p.project_name}
+                  {p.project_name || 'Unnamed Project'}
                 </span>
                 <SeverityBadge severity={severity(cls)} label={CLASSIFICATION_LABEL[cls] ?? 'Attention'} className="text-[10px] px-1.5 py-0" />
                 <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
@@ -199,7 +199,7 @@ export function AttentionInbox({ attentionProjects, topChanges = [], compact = f
                   to={`/projects/${p.project_id}?from=attention&issue=${cls}`}
                   className="text-sm font-semibold text-primary hover:underline inline-flex items-center gap-1 truncate"
                 >
-                  {p.project_name}
+                  {p.project_name || 'Unnamed Project'}
                   <ExternalLink className="h-3 w-3 shrink-0" />
                 </Link>
                 <div className="ml-auto shrink-0">

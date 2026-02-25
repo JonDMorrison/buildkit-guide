@@ -39,8 +39,9 @@ export function AIMarginSignalCard({ projectId }: Props) {
         icon={Sparkles}
         variant="metric"
         traceSource="rpc_get_margin_snapshot_history"
+        helpText="Tracks projected margin and risk score trends over the last 30 days."
         empty
-        emptyMessage="Capture one more snapshot to unlock AI insights."
+        emptyMessage="This project needs at least 2 economic snapshots to show trends. Snapshots are captured daily."
       />
     );
   }
@@ -74,6 +75,7 @@ export function AIMarginSignalCard({ projectId }: Props) {
       loading={isLoading}
       variant="metric"
       traceSource="rpc_get_margin_snapshot_history → projected_margin_pct, risk_score, labor_burn_ratio"
+      helpText="Tracks projected margin and risk score trends over the last 30 days."
     >
       {latest && (
         <div className="space-y-3">
