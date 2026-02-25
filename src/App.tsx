@@ -80,6 +80,7 @@ const ChangeOrderDetail = lazy(() => import("./pages/ChangeOrderDetail"));
 const Release = lazy(() => import("./pages/Release"));
 const Playbooks = lazy(() => import("./pages/Playbooks"));
 const AdminReleaseChecklist = lazy(() => import("./pages/AdminReleaseChecklist"));
+const TenantIsolationSmoke = lazy(() => import("./pages/TenantIsolationSmoke"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -617,6 +618,17 @@ const App = () => (
                     <ProtectedRoute>
                       <AdminRoute>
                         <DashboardDiagnostics />
+                      </AdminRoute>
+                    </ProtectedRoute>
+                  }
+                />
+                {/* Admin-only: tenant isolation smoke test */}
+                <Route
+                  path="/admin/tenant-isolation"
+                  element={
+                    <ProtectedRoute>
+                      <AdminRoute>
+                        <TenantIsolationSmoke />
                       </AdminRoute>
                     </ProtectedRoute>
                   }
