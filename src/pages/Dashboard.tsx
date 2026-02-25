@@ -502,13 +502,7 @@ function DashboardContent() {
       )}
 
       {/* ── 4. AI Insights (lazy, below fold) ──────────────────────── */}
-      <DashboardSection
-        title="AI Insights"
-        helpText="AI-generated observations and recommendations based on your project data."
-        lazy
-      >
-        <AIInsightsSection showChangeFeed projectId={currentProjectId} />
-      </DashboardSection>
+      <AIInsightsSection showChangeFeed projectId={currentProjectId} />
 
       {/* ── All Modals (preserved) ───────────────────────────────── */}
       <WeatherInfoModal todayLog={todayLog} open={weatherPopoverOpen} onOpenChange={setWeatherPopoverOpen} projectId={currentProjectId} />

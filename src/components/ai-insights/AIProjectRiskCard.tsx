@@ -48,8 +48,9 @@ export function AIProjectRiskCard({ projectId }: Props) {
         icon={Sparkles}
         variant="metric"
         traceSource="project_economic_snapshots count"
+        helpText="Calculates a risk score based on margin pressure, labor burn, and data confidence."
         empty
-        emptyMessage="Capture one more snapshot to unlock AI insights."
+        emptyMessage="This project needs at least 2 economic snapshots to show trends. Snapshots are captured daily."
       />
     );
   }
@@ -72,6 +73,7 @@ export function AIProjectRiskCard({ projectId }: Props) {
       loading={loading}
       variant="metric"
       traceSource="rpc_generate_project_margin_control → risk_score, economic_position"
+      helpText="Calculates a risk score based on margin pressure, labor burn, and data confidence."
     >
       {riskData && (
         <div className="space-y-3">

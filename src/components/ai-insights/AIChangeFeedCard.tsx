@@ -52,6 +52,7 @@ export function AIChangeFeedCard() {
       loading={isLoading}
       error={error ? (error as Error).message : null}
       traceSource="rpc_executive_change_feed"
+      helpText="Shows what changed across your projects between the two most recent snapshots."
       actions={
         <Button variant="ghost" size="sm" onClick={refresh} disabled={isFetching} className="shrink-0">
           <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isFetching ? 'animate-spin' : ''}`} />
@@ -62,13 +63,19 @@ export function AIChangeFeedCard() {
       {feed && (
         <div className="space-y-3">
           {/* Summary badges */}
-          <div className="flex flex-wrap gap-2">
-            {feed.new_risks > 0 && <Badge variant="destructive" className="text-xs">{feed.new_risks} New Risk{feed.new_risks !== 1 ? 's' : ''}</Badge>}
-            {feed.resolved_risks > 0 && <Badge variant="secondary" className="text-xs text-primary">{feed.resolved_risks} Resolved</Badge>}
-            {feed.improving > 0 && <Badge variant="secondary" className="text-xs text-primary">{feed.improving} Improving</Badge>}
-            {feed.worsening > 0 && <Badge variant="destructive" className="text-xs">{feed.worsening} Worsening</Badge>}
-            {feed.burn_increases > 0 && <Badge variant="outline" className="text-xs text-accent-foreground">{feed.burn_increases} Burn ↑</Badge>}
-          </div>
+          {(feed.new_risks > 0 || feed.resolved_risks > 0 || feed.improving > 0 || feed.worsening > 0 || feed.burn_increases > 0) ? (
+            <div className="flex flex-wrap gap-2">
+              {feed.new_risks > 0 && <Badge variant="destructive" className="text-xs">{feed.new_risks} New Risk{feed.new_risks !== 1 ? 's' : ''}</Badge>}
+              {feed.resolved_risks > 0 && <Badge variant="secondary" className="text-xs text-primary">{feed.resolved_risks} Resolved</Badge>}
+              {feed.improving > 0 && <Badge variant="secondary" className="text-xs text-primary">{feed.improving} Improving</Badge>}
+              {feed.worsening > 0 && <Badge variant="destructive" className="text-xs">{feed.worsening} Worsening</Badge>}
+              {feed.burn_increases > 0 && <Badge variant="outline" className="text-xs text-accent-foreground">{feed.burn_increases} Burn ↑</Badge>}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground py-2">
+              ✅ All projects stable — no risk changes detected between snapshots.
+            </p>
+          )}
 
           {/* Top changes */}
           {feed.top_changes.slice(0, 4).map(c => (
@@ -76,7 +83,7 @@ export function AIChangeFeedCard() {
               <div className="flex items-center gap-2 min-w-0">
                 {classificationIcon(c.classification)}
                 <Link to={`/projects/${c.project_id}`} className="text-xs text-foreground font-medium truncate hover:text-primary transition-colors">
-                  {c.project_name}
+                  {c.project_name || 'Unnamed Project'}
                 </Link>
                 <span className="text-[10px] text-muted-foreground">{classLabel[c.classification] ?? c.classification}</span>
               </div>
