@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useProjectRole } from "@/hooks/useProjectRole";
 import { useAuth } from "@/hooks/useAuth";
+import { NoAccess } from "@/components/NoAccess";
 import { UserPlus, Users, Shield, Briefcase, Trash2, Edit2, Mail } from "lucide-react";
 import { AddUserToProjectModal } from "@/components/users/AddUserToProjectModal";
 import { InviteUserModal } from "@/components/users/InviteUserModal";
@@ -218,19 +219,11 @@ const UserManagement = () => {
     );
   }
 
-  // Access control
-  if (!isGlobalAdmin && projects.length === 0) {
+  // Access control - admin only
+  if (!isGlobalAdmin) {
     return (
       <Layout>
-        <div className="container max-w-6xl mx-auto px-4 py-6">
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Shield className="h-16 w-16 text-muted-foreground mb-4" />
-            <h2 className="text-2xl font-bold mb-2">Access Denied</h2>
-            <p className="text-muted-foreground max-w-md">
-              You need to be a Project Manager or Admin to access user management.
-            </p>
-          </div>
-        </div>
+        <NoAccess title="Admin Access Required" message="Only administrators can access user management." />
       </Layout>
     );
   }

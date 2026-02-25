@@ -7,6 +7,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, CheckCircle2, XCircle, AlertTriangle, Play, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useOrganization } from '@/hooks/useOrganization';
+import { useAuthRole } from '@/hooks/useAuthRole';
+import { NoAccess } from '@/components/NoAccess';
 import { supabase } from '@/integrations/supabase/client';
 
 interface DiagnosticCheck {
@@ -32,8 +34,27 @@ interface DiagnosticResult {
 export default function TimeDiagnostics() {
   const { toast } = useToast();
   const { activeOrganization } = useOrganization();
+  const { isAdmin, loading: roleLoading } = useAuthRole();
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<DiagnosticResult | null>(null);
+
+  if (roleLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <Layout>
+        <NoAccess title="Admin Access Required" message="Only administrators can access time tracking diagnostics." />
+      </Layout>
+    );
+  }
 
   const runDiagnostics = async () => {
     if (!activeOrganization?.id) {

@@ -8,6 +8,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useOrganization } from '@/hooks/useOrganization';
+import { useAuthRole } from '@/hooks/useAuthRole';
+import { NoAccess } from '@/components/NoAccess';
 import { CheckCircle, XCircle, AlertTriangle, Play, Trash2, Download, Loader2 } from 'lucide-react';
 
 type StepStatus = 'PASS' | 'FAIL' | 'NEEDS_MANUAL' | 'PENDING' | 'RUNNING';
@@ -49,6 +51,7 @@ const statusBadge = (s: StepStatus) => {
 export default function ConversionTestHarness() {
   const { user } = useAuth();
   const { activeOrganizationId, orgRole } = useOrganization();
+  const { isAdmin, loading: roleLoading } = useAuthRole();
   const [fixture, setFixture] = useState<FixtureData | null>(null);
   const [invoiceId, setInvoiceId] = useState<string | null>(null);
   const [steps, setSteps] = useState<StepResult[]>([]);
@@ -69,6 +72,24 @@ export default function ConversionTestHarness() {
       return [...prev, step];
     });
   }, []);
+
+  if (roleLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <Layout>
+        <NoAccess title="Admin Access Required" message="Only administrators can access the conversion test harness." />
+      </Layout>
+    );
+  }
 
   // Step 1: Create fixture
   const createFixture = async (): Promise<FixtureData | null> => {

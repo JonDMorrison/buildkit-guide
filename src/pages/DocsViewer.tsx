@@ -5,9 +5,11 @@ import { Layout } from '@/components/Layout';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, FileText, ChevronRight, ChevronDown, ArrowUp, ShieldCheck } from 'lucide-react';
+import { Search, FileText, ChevronRight, ChevronDown, ArrowUp, ShieldCheck, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSearchParams } from 'react-router-dom';
+import { useAuthRole } from '@/hooks/useAuthRole';
+import { NoAccess } from '@/components/NoAccess';
 
 // Import the raw markdown content
 import qaGauntletContent from '../../docs/QA_GAUNTLET.md?raw';
@@ -40,6 +42,7 @@ function extractToc(markdown: string): TocItem[] {
 }
 
 const DocsViewer = () => {
+  const { isAdmin, isPM, loading: roleLoading } = useAuthRole();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeKey = searchParams.get('doc') || 'qa-gauntlet';
   const activeDoc = DOCS.find(d => d.key === activeKey) || DOCS[0];
@@ -60,6 +63,24 @@ const DocsViewer = () => {
     el?.addEventListener('scroll', handleScroll);
     return () => el?.removeEventListener('scroll', handleScroll);
   }, []);
+
+  if (roleLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!isAdmin && !isPM()) {
+    return (
+      <Layout>
+        <NoAccess title="Access Restricted" message="Only administrators and project managers can access documentation." />
+      </Layout>
+    );
+  }
 
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
