@@ -8268,6 +8268,7 @@ export type Database = {
         }
       }
       rpc_revenue_trace: { Args: { p_project_id: string }; Returns: Json }
+      rpc_revenue_trace_v2: { Args: { p_project_id: string }; Returns: Json }
       rpc_review_time_adjustment_request: {
         Args: {
           p_actor_id: string
