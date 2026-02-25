@@ -1621,6 +1621,7 @@ export type Database = {
         Row: {
           as_of: string
           body: string
+          client_hash: string | null
           created_at: string
           created_by: string
           id: string
@@ -1633,6 +1634,7 @@ export type Database = {
         Insert: {
           as_of: string
           body: string
+          client_hash?: string | null
           created_at?: string
           created_by: string
           id?: string
@@ -1645,6 +1647,7 @@ export type Database = {
         Update: {
           as_of?: string
           body?: string
+          client_hash?: string | null
           created_at?: string
           created_by?: string
           id?: string
