@@ -1,7 +1,6 @@
 import { useCallback } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from '@/hooks/useOrganization';
+import { useExecutiveChangeFeed } from '@/hooks/rpc/useExecutiveChangeFeed';
 import { DashboardCard } from '@/components/dashboard/shared/DashboardCard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,26 +9,6 @@ import {
   AlertTriangle, TrendingDown, TrendingUp, Flame, CheckCircle2,
   Sparkles, RefreshCw,
 } from 'lucide-react';
-
-interface TopChange {
-  project_id: string;
-  project_name: string;
-  risk_change: number;
-  margin_change: number;
-  burn_change: number;
-  classification: string;
-}
-
-interface FeedData {
-  latest_snapshot_date: string;
-  previous_snapshot_date: string;
-  new_risks: number;
-  resolved_risks: number;
-  improving: number;
-  worsening: number;
-  burn_increases: number;
-  top_changes: TopChange[];
-}
 
 function classificationIcon(c: string) {
   switch (c) {
@@ -48,27 +27,7 @@ const classLabel: Record<string, string> = {
 };
 
 export function AIChangeFeedCard() {
-  const { activeOrganizationId } = useOrganization();
-  const queryClient = useQueryClient();
-
-  const { data: feed, isLoading, error, isFetching } = useQuery({
-    queryKey: ['ai-change-feed', activeOrganizationId],
-    queryFn: async () => {
-      const { data, error: rpcErr } = await (supabase as any).rpc(
-        'rpc_executive_change_feed',
-        { p_org_id: activeOrganizationId },
-      );
-      if (rpcErr) throw new Error(rpcErr.message);
-      return (data?.latest_snapshot_date ? data : null) as FeedData | null;
-    },
-    enabled: !!activeOrganizationId,
-    staleTime: 10 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
-  });
-
-  const refresh = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['ai-change-feed', activeOrganizationId] });
-  }, [queryClient, activeOrganizationId]);
+  const { data: feed, isLoading, error, isFetching, refresh } = useExecutiveChangeFeed();
 
   const needsSnapshot = !isLoading && feed === null && !error;
 

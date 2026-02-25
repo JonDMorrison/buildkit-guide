@@ -2,14 +2,15 @@ import { useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from '@/hooks/useOrganization';
+import { CHANGE_FEED_QUERY_KEY } from '@/hooks/rpc/useExecutiveChangeFeed';
 
 /**
  * Prefetch map: route → query keys + queryFns to warm.
  * Only warms critical top-fold data; respects existing staleTime.
  */
 const ROUTE_PREFETCH_MAP: Record<string, string[]> = {
-  '/executive': ['rpc_executive_change_feed', 'rpc_snapshot_coverage_report', 'rpc_data_quality_audit'],
-  '/dashboard': ['pm-attention-feed'],
+  '/executive': ['rpc-executive-change-feed', 'rpc_snapshot_coverage_report', 'rpc_data_quality_audit'],
+  '/dashboard': ['rpc-executive-change-feed'],
   '/insights': [],  // Insights uses custom hooks; no simple RPC to prefetch
 };
 
@@ -59,9 +60,8 @@ export function usePrefetchRoute() {
 /** Map RPC name → react-query key (must match shared hooks) */
 function rpcToQueryKey(rpc: string, orgId: string): string[] | null {
   switch (rpc) {
-    case 'rpc_executive_change_feed':
-    case 'pm-attention-feed':
-      return ['pm-attention-feed', orgId];
+    case 'rpc-executive-change-feed':
+      return [CHANGE_FEED_QUERY_KEY, orgId];
     case 'rpc_snapshot_coverage_report':
       return ['rpc-snapshot-coverage', orgId];
     case 'rpc_data_quality_audit':
@@ -74,8 +74,7 @@ function rpcToQueryKey(rpc: string, orgId: string): string[] | null {
 /** Map RPC name → queryFn (reuses existing RPC calls) */
 function rpcToQueryFn(rpc: string, orgId: string): (() => Promise<any>) | null {
   switch (rpc) {
-    case 'rpc_executive_change_feed':
-    case 'pm-attention-feed':
+    case 'rpc-executive-change-feed':
       return async () => {
         const { data, error } = await (supabase as any).rpc('rpc_executive_change_feed', { p_org_id: orgId });
         if (error) throw error;

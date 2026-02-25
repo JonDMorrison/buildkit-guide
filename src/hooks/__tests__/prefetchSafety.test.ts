@@ -1,6 +1,6 @@
 // @ts-nocheck
 /**
- * Stage 15 — Prefetch Safety Regression Tests
+ * Stage 15/16 — Prefetch Safety + Canonical Key Regression Tests
  *
  * These tests verify:
  * 1. Prefetch does nothing without orgId
@@ -8,6 +8,7 @@
  * 3. Throttling prevents repeated prefetch for same (route, orgId)
  * 4. Canonical query keys match shared hooks
  * 5. No unauthorized route prefetch (canAccessRoute guard)
+ * 6. Deprecated "pm-attention-feed" key is not used anywhere
  */
 import { describe, it, expect } from 'vitest';
 
@@ -16,16 +17,13 @@ describe('usePrefetchRoute safety', () => {
   it('requires activeOrganizationId before prefetching', async () => {
     const source = await import('@/hooks/usePrefetchRoute?raw');
     const code = typeof source === 'string' ? source : source.default;
-    // Must check for orgId before proceeding
     expect(code).toContain('if (!activeOrganizationId) return');
   });
 
   it('uses a throttle set to prevent repeated prefetch per (route, orgId)', async () => {
     const source = await import('@/hooks/usePrefetchRoute?raw');
     const code = typeof source === 'string' ? source : source.default;
-    // Must maintain a Set or Map for deduplication
     expect(code).toMatch(/useRef.*Set/);
-    // Must construct a compound key from route + orgId
     expect(code).toContain('throttleKey');
     expect(code).toMatch(/has\(throttleKey\)/);
     expect(code).toMatch(/add\(throttleKey\)/);
@@ -35,7 +33,6 @@ describe('usePrefetchRoute safety', () => {
     const source = await import('@/hooks/usePrefetchRoute?raw');
     const code = typeof source === 'string' ? source : source.default;
     expect(code).toContain('ROUTE_PREFETCH_MAP');
-    // Must look up the route before calling prefetchQuery
     expect(code).toMatch(/ROUTE_PREFETCH_MAP\[route\]/);
   });
 
@@ -43,37 +40,84 @@ describe('usePrefetchRoute safety', () => {
     const source = await import('@/hooks/usePrefetchRoute?raw');
     const code = typeof source === 'string' ? source : source.default;
     expect(code).toContain('prefetchQuery');
-    // Must not use fetchQuery standalone (only prefetchQuery)
     expect(code).not.toMatch(/(?<!pre)fetchQuery/);
+  });
+
+  it('imports CHANGE_FEED_QUERY_KEY from shared hook', async () => {
+    const source = await import('@/hooks/usePrefetchRoute?raw');
+    const code = typeof source === 'string' ? source : source.default;
+    expect(code).toContain('CHANGE_FEED_QUERY_KEY');
   });
 });
 
 // ─── 2. Canonical query key alignment ──────────────────────────────────────
 describe('Prefetch query key alignment with shared hooks', () => {
-  it('executive change feed prefetch key matches dashboard usage', async () => {
+  it('change feed prefetch uses canonical CHANGE_FEED_QUERY_KEY', async () => {
     const prefetchSource = await import('@/hooks/usePrefetchRoute?raw');
     const prefetchCode = typeof prefetchSource === 'string' ? prefetchSource : prefetchSource.default;
-    // The prefetch map must use the same key pattern as the shared dashboard query
-    // Dashboard.tsx uses ['pm-attention-feed', activeOrganizationId]
-    expect(prefetchCode).toContain("'pm-attention-feed'");
+    expect(prefetchCode).toContain("CHANGE_FEED_QUERY_KEY");
+    expect(prefetchCode).toContain("'rpc-executive-change-feed'");
   });
 
   it('snapshot coverage prefetch key matches shared hook', async () => {
     const prefetchSource = await import('@/hooks/usePrefetchRoute?raw');
     const prefetchCode = typeof prefetchSource === 'string' ? prefetchSource : prefetchSource.default;
-    // useSnapshotCoverageReport uses ["rpc-snapshot-coverage", orgId]
     expect(prefetchCode).toContain("'rpc-snapshot-coverage'");
   });
 
   it('data quality audit prefetch key matches shared hook', async () => {
     const prefetchSource = await import('@/hooks/usePrefetchRoute?raw');
     const prefetchCode = typeof prefetchSource === 'string' ? prefetchSource : prefetchSource.default;
-    // useDataQualityAudit uses ["rpc-data-quality-audit", orgId]
     expect(prefetchCode).toContain("'rpc-data-quality-audit'");
   });
 });
 
-// ─── 3. NavItem prefetch integration ───────────────────────────────────────
+// ─── 3. Deprecated key regression ──────────────────────────────────────────
+describe('Deprecated pm-attention-feed key is eliminated', () => {
+  it('usePrefetchRoute does not use pm-attention-feed', async () => {
+    const source = await import('@/hooks/usePrefetchRoute?raw');
+    const code = typeof source === 'string' ? source : source.default;
+    expect(code).not.toContain("'pm-attention-feed'");
+  });
+
+  it('Dashboard does not use pm-attention-feed inline query', async () => {
+    const source = await import('@/pages/Dashboard?raw');
+    const code = typeof source === 'string' ? source : source.default;
+    expect(code).not.toContain("'pm-attention-feed'");
+  });
+
+  it('AIChangeFeedCard does not use ai-change-feed inline query', async () => {
+    const source = await import('@/components/ai-insights/AIChangeFeedCard?raw');
+    const code = typeof source === 'string' ? source : source.default;
+    expect(code).not.toContain("'ai-change-feed'");
+    expect(code).toContain('useExecutiveChangeFeed');
+  });
+});
+
+// ─── 4. Shared hook exports canonical key constant ─────────────────────────
+describe('useExecutiveChangeFeed canonical key', () => {
+  it('exports CHANGE_FEED_QUERY_KEY constant', async () => {
+    const source = await import('@/hooks/rpc/useExecutiveChangeFeed?raw');
+    const code = typeof source === 'string' ? source : source.default;
+    expect(code).toContain('export const CHANGE_FEED_QUERY_KEY');
+    expect(code).toContain('"rpc-executive-change-feed"');
+  });
+
+  it('uses CHANGE_FEED_QUERY_KEY in its own queryKey', async () => {
+    const source = await import('@/hooks/rpc/useExecutiveChangeFeed?raw');
+    const code = typeof source === 'string' ? source : source.default;
+    expect(code).toMatch(/queryKey.*CHANGE_FEED_QUERY_KEY/);
+  });
+
+  it('includes orgId in queryKey', async () => {
+    const source = await import('@/hooks/rpc/useExecutiveChangeFeed?raw');
+    const code = typeof source === 'string' ? source : source.default;
+    expect(code).toContain('useOrganization');
+    expect(code).toContain('p_org_id');
+  });
+});
+
+// ─── 5. NavItem prefetch integration ───────────────────────────────────────
 describe('NavItem hover prefetch integration', () => {
   it('calls prefetchRoute on mouse enter', async () => {
     const source = await import('@/components/sidebar/NavItem?raw');
@@ -89,12 +133,11 @@ describe('NavItem hover prefetch integration', () => {
   });
 });
 
-// ─── 4. Cross-page warming is role-gated ───────────────────────────────────
+// ─── 6. Cross-page warming is role-gated ───────────────────────────────────
 describe('Cross-page warming is role-gated', () => {
   it('ExecutiveDashboard only warms /dashboard for admin/PM', async () => {
     const source = await import('@/pages/ExecutiveDashboard?raw');
     const code = typeof source === 'string' ? source : source.default;
-    // Must check role before prefetching
     expect(code).toMatch(/isAdmin.*isPM|isPM.*isAdmin/);
     expect(code).toContain("prefetchRoute('/dashboard')");
   });

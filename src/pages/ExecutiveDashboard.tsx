@@ -25,7 +25,8 @@ import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 
-import { ExecutiveBriefCard, type ChangeFeedData } from '@/components/executive/ExecutiveBriefCard';
+import { ExecutiveBriefCard } from '@/components/executive/ExecutiveBriefCard';
+import { useExecutiveChangeFeed, type ChangeFeedData } from '@/hooks/rpc/useExecutiveChangeFeed';
 import { PortfolioHealthCard, type PortfolioHealthData } from '@/components/executive/PortfolioHealthCard';
 import { AttentionInbox } from '@/components/executive/AttentionInbox';
 import { EconomicSignalsCard } from '@/components/executive/EconomicSignalsCard';
@@ -152,9 +153,11 @@ export default function ExecutiveDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [ranAt, setRanAt] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [feedData, setFeedData] = useState<ChangeFeedData | null>(null);
   const [changeLogOpen, setChangeLogOpen] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<number>(0);
+
+  // Shared change feed hook (canonical key: rpc-executive-change-feed)
+  const { data: feedData } = useExecutiveChangeFeed();
 
   // Shared RPC hooks for confidence ribbon
   const { data: coverageData, dataUpdatedAt: coverageUpdatedAt } = useSnapshotCoverageReport();
@@ -310,12 +313,7 @@ export default function ExecutiveDashboard() {
         {/* ── 1. Weekly Brief Hero ────────────────────────────── */}
         <WeeklyBriefHero feedData={feedData} data={data} onCopy={copySummary} copied={copied} />
 
-        {/* Hidden: ExecutiveBriefCard still drives data loading via onFeedLoaded */}
-        {activeOrganizationId && (
-          <div className="hidden">
-            <ExecutiveBriefCard orgId={activeOrganizationId} onFeedLoaded={setFeedData} />
-          </div>
-        )}
+        {/* Change feed data now comes from useExecutiveChangeFeed shared hook */}
 
         {/* ── 2. Attention Inbox (primary body) ───────────────── */}
         {(feedData || loading) && (
