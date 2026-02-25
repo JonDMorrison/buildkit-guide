@@ -1,105 +1,64 @@
 
 
-# Simplify the Executive Dashboard
+# Landing Page Copy Refresh
 
-## Current State
+## Why
+The current landing page covers five feature areas (tasks, safety, time tracking, AI, offline UX) but the app has grown significantly. Major capabilities like financial intelligence, executive dashboards, portfolio reporting, health diagnostics, and certification scoring are completely absent from the marketing copy. This is a missed opportunity to differentiate from simpler construction tools.
 
-The /executive page has **11 sections** with significant overlap. Three different areas show "which projects need attention" (Attention Inbox, Economic Signals, Change Log). Two areas show aggregate risk stats (Hero and Portfolio Health). Diagnostic cards (Confidence Ribbon, Data Integrity, Snapshot Status) belong on /data-health, not an executive view. The Insights section is duplicated from /dashboard.
+## What Changes
 
-## Proposed Simplified Layout
+### 1. Update Hero Subtitle
+**Current:** "Track tasks, time, and safety across every trade -- from one app."
+**Proposed:** "Coordinate tasks, track costs, and run diagnostics across every trade and project -- from one app."
 
-Strip it down to **4 sections** that answer the 4 questions an executive actually asks:
+This signals the app is more than a checklist tool.
 
-```text
-+--------------------------------------------------+
-| Header: "Executive Overview"     [Refresh] [Export]|
-+--------------------------------------------------+
-| 1. BRIEF: What happened this week?                |
-|    5 headline metrics + date range                |
-|    (existing Weekly Brief Hero, keep as-is)       |
-+--------------------------------------------------+
-| 2. ATTENTION: Which projects need me?             |
-|    Attention Inbox (ranked list, keep as-is)      |
-|    + Change Log collapsed inside (already there)  |
-+--------------------------------------------------+
-| 3. HEALTH: How's the portfolio overall?           |
-|    Portfolio Health card (keep, it has OS score)   |
-+--------------------------------------------------+
-| 4. NOTES: What did we decide? (collapsed)         |
-|    Decision Notes (collapsed by default)          |
-+--------------------------------------------------+
-```
+### 2. Add New Section: "Financial Intelligence" (after Time Tracking, before AI)
+A new alternating-layout section highlighting:
+- **Headline:** "Know Where Your Money Is Going -- Before It's Gone"
+- **Subtitle:** Budget builder, estimate-vs-actual tracking, and profit risk alerts that catch cost overruns early.
+- **Bullet points:**
+  - Budget builder with line-item estimates
+  - Variance tracking: budget, labor, and materials
+  - Profit risk scoring per project
+  - Receipt capture with AI categorization
+- **Screenshot:** reuse `screenshotAi` or an existing asset (can be swapped later for a dedicated financial screenshot)
 
-## What Gets Removed
+### 3. Add New Section: "Executive Portfolio View" (after Financial Intelligence, before AI)
+- **Headline:** "Every Project. One Dashboard. Zero Surprises."
+- **Subtitle:** Cross-project KPIs, attention inbox, and change feed so leadership sees what matters without chasing PMs.
+- **Bullet points:**
+  - Portfolio-level margin and cost rollups
+  - Attention inbox surfaces what needs action now
+  - Weekly AI-generated insight reports
+  - Certification scoring tracks operational maturity
 
-1. **Confidence Ribbon** -- Move to /data-health where it belongs. Executives don't need "72% coverage" on their main screen.
+### 4. Update AI Section Copy
+**Current bullets:** Document Q&A, Escalation emails, Receipt scanning
+**Proposed bullets (expanded to reflect what actually exists):**
+- Document Q&A with source references
+- Weekly insight reports from project snapshots
+- Hazard suggestions based on weather and tasks
+- Escalation emails drafted instantly
 
-2. **Export Brief actions row** (Simple/Report toggle + Copy Brief + Download Brief) -- Consolidate into the Hero card. The Hero already has "Copy Summary". Replace it with a single dropdown: Copy / Download / Report format. Eliminates a whole visual row.
+### 5. Add "Health Diagnostics" to "Built for the Site" Grid
+Replace or add a 5th card:
+- **Title:** "Self-Diagnosing"
+- **Description:** "Built-in health checks catch data gaps before they become problems."
 
-3. **Economic Signals section** -- Redundant with Attention Inbox. Both show "top risk projects." The Inbox version is more actionable (has next-step CTAs). Remove entirely.
+This replaces "Voice Input" (which is a secondary feature) or extends the grid to 5 items.
 
-4. **Confidence and Evidence footer** (Data Integrity + Snapshot Status) -- This is diagnostic detail. Already accessible via the "Data Health" link in the header. Remove from this page.
+### 6. Update Footer Copyright Year
+Change "2025" to "2026" across Landing.tsx, Features.tsx, and HowItWorks.tsx footers.
 
-5. **Insights section** (AIInsightsSection) -- Already on /dashboard. Remove the duplicate. Executives who want project-level risk/margin cards can go to /dashboard.
+## Files Modified
+- `src/pages/Landing.tsx` -- all copy changes above (new sections, updated hero, updated AI bullets, updated "Built for the Site" grid, footer year)
 
-6. **Manual "Load Dashboard" button** -- Auto-fetch on mount so the page is useful immediately. The Refresh button stays for manual re-fetch.
+## No Backend Changes
+All changes are purely frontend copy and layout within the existing section pattern (alternating grid with icon bullets). No new routes, RPCs, or database changes.
 
-## What Stays (4 sections)
-
-1. **Header** -- Simplified to just "Executive Overview" with Refresh + a single Export dropdown
-2. **Weekly Brief Hero** -- The 5 headline metrics. Move export actions (copy/download) into the Hero as a small dropdown
-3. **Attention Inbox** -- The ranked project list with the Change Log collapsed inside it (already works this way)
-4. **Portfolio Health** -- OS score, risk breakdown, top causes. The one "big picture" card
-5. **Decision Notes** -- Collapsed by default so it doesn't dominate the page
-
-## Technical Changes
-
-### File: `src/pages/ExecutiveDashboard.tsx`
-
-**Auto-fetch on mount:**
-- Add `useEffect` that calls `refresh()` on mount when `activeOrganizationId` is present and `data` is null. Eliminates the empty state entirely.
-
-**Remove sections:**
-- Delete the Confidence Ribbon render block (lines 331-338)
-- Delete the Export Brief actions row (lines 344-381)
-- Delete the Economic Signals section (lines 447-454)
-- Delete the Confidence and Evidence footer section (lines 472-484)
-- Delete the AIInsightsSection render (line 487)
-
-**Remove unused imports:**
-- `ConfidenceRibbon`
-- `EconomicSignalsCard`
-- `DataIntegrityCard`
-- `SnapshotStatusCard`
-- `AIInsightsSection`
-- `useSnapshotCoverageReport`, `useDataQualityAudit`
-- Related state: `ribbonCoverage`, `ribbonIssues`, `ribbonAsOf` computations
-- Brief format state: `briefFormat`, `briefCopied`, `setBriefFormat`, `handleCopyBrief`, `handleDownloadBrief`
-
-**Move export into Hero:**
-- Add a small "Export" dropdown button inside `WeeklyBriefHero` next to the existing "Copy Summary" button. Options: "Copy as text", "Download as file". Uses the existing `buildExecutiveBriefExport` utility with 'simple' format (remove the format toggle -- simple is fine for executives).
-
-**Simplify header actions:**
-- Remove "Data Health" and "Full Report" buttons from header. Keep just "Refresh".
-- Move Data Health + Full Report links into a subtle footer or the Portfolio Health card as secondary links.
-
-**Collapse Decision Notes by default:**
-- Wrap in a `Collapsible` with `defaultOpen={false}` so it doesn't take up space on first load.
-
-### File: `src/components/executive/WeeklyBriefHero` (inline in ExecutiveDashboard.tsx)
-
-- Add `onDownload` and export actions as a small dropdown next to "Copy Summary"
-
-### Files NOT changed:
-- No component files deleted (they may be used elsewhere)
-- No backend/RPC changes
-- No schema changes
-
-## Result
-
-- Page goes from **11 sections to 4** (plus collapsed notes)
-- No redundant data shown
-- Auto-loads on mount -- no "click to start"
-- Diagnostic details stay on /data-health where they belong
-- Export is consolidated into one spot instead of scattered across 2 rows
+## Risks
+- Minimal. Pure copy/layout changes using existing component patterns.
+- New sections reuse the same alternating `grid lg:grid-cols-2` layout already used throughout the page.
+- Screenshots for new sections can temporarily reuse existing assets until dedicated ones are created.
 
