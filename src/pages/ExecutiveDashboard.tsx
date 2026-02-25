@@ -17,7 +17,7 @@ import { DashboardCard } from '@/components/dashboard/shared/DashboardCard';
 
 import { ExecutiveBriefCard, type ChangeFeedData } from '@/components/executive/ExecutiveBriefCard';
 import { PortfolioHealthCard, type PortfolioHealthData } from '@/components/executive/PortfolioHealthCard';
-import { AttentionRequiredTable } from '@/components/executive/AttentionRequiredTable';
+import { AttentionInbox } from '@/components/executive/AttentionInbox';
 import { EconomicSignalsCard } from '@/components/executive/EconomicSignalsCard';
 import { DataIntegrityCard, type DataIntegrityData } from '@/components/executive/DataIntegrityCard';
 import { AIInsightsSection } from '@/components/ai-insights';
@@ -186,11 +186,12 @@ export default function ExecutiveDashboard() {
           </DashboardSection>
         )}
 
-        {/* ── 2. Attention Required ──────────────────────────── */}
+        {/* ── 2. Attention Inbox ─────────────────────────────── */}
         {(feedData || loading) && (
           <DashboardSection title="Where Leadership Should Look First" lazy skeletonHeight="h-56">
-            <AttentionRequiredTable
-              projects={feedData?.attention_ranked_projects ?? []}
+            <AttentionInbox
+              attentionProjects={feedData?.attention_ranked_projects ?? []}
+              topChanges={feedData?.top_changes ?? []}
               loading={loading && !feedData}
             />
           </DashboardSection>

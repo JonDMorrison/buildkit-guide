@@ -51,6 +51,9 @@ import {
 
 import { AIInsightsSection } from "@/components/ai-insights";
 import { DashboardMissionControl } from "@/components/dashboard/DashboardMissionControl";
+import { AttentionInbox } from "@/components/executive/AttentionInbox";
+import { useOrganization } from "@/hooks/useOrganization";
+import { useQuery as useRQQuery } from "@tanstack/react-query";
 
 /* ------------------------------------------------------------------ */
 /* Gate — resolves role before mounting content or firing queries       */
@@ -113,6 +116,23 @@ function DashboardContent() {
   const { currentProjectId, setCurrentProject } = useCurrentProject();
   const { isPM, isForeman, isAdmin, isInternalWorker, isExternalTrade, loading: roleLoading } = useAuthRole(currentProjectId || undefined);
   const { tier, certification } = useCertificationTier();
+  const { activeOrganizationId } = useOrganization();
+
+  // Reuse existing change feed for attention inbox (PM compact preview)
+  const { data: changeFeed, isLoading: feedLoading } = useRQQuery({
+    queryKey: ['pm-attention-feed', activeOrganizationId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc(
+        'rpc_executive_change_feed',
+        { p_org_id: activeOrganizationId },
+      );
+      if (error) throw error;
+      return data?.latest_snapshot_date ? data : null;
+    },
+    enabled: !!activeOrganizationId && (isPM() || isAdmin),
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  });
 
   // Modal states (preserved)
   const [startingModalOpen, setStartingModalOpen] = useState(false);
@@ -381,6 +401,18 @@ function DashboardContent() {
           <BlockersCard blockers={unresolvedBlockers} />
         </DashboardGrid>
       </DashboardSection>
+
+      {/* ── My Attention: compact inbox (PM/Admin only) ──────────── */}
+      {(isPM() || isAdmin) && changeFeed?.attention_ranked_projects?.length > 0 && (
+        <DashboardSection title="My Attention">
+          <AttentionInbox
+            attentionProjects={changeFeed.attention_ranked_projects}
+            topChanges={changeFeed.top_changes ?? []}
+            compact
+            loading={feedLoading}
+          />
+        </DashboardSection>
+      )}
 
       {/* ── At a Glance: KPI strip ──────────────────────────────── */}
       <DashboardSection title="At a Glance">
