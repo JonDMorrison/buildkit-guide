@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { useEstimates } from "@/hooks/useEstimates";
-import { useOrganizationRole } from "@/hooks/useOrganizationRole";
+import { useFinancialAccess } from "@/hooks/useFinancialAccess";
 import { useToast } from "@/hooks/use-toast";
 import { NoAccess } from "@/components/NoAccess";
 import { EstimateVarianceView } from "@/components/estimates/EstimateVarianceView";
@@ -35,10 +35,31 @@ import { formatCurrency } from "@/lib/formatters";
 
 const fmtCurrency = (v: number, currency = "CAD") => formatCurrency(v, currency);
 
+/** Admin/PM/Foreman-only: financial estimate detail page. */
 const EstimateDetail = () => {
+  const { canView, loading: accessLoading } = useFinancialAccess();
+
+  if (accessLoading) {
+    return (
+      <Layout>
+        <div className="p-6 space-y-4">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!canView) {
+    return <Layout><NoAccess message="Admin, PM, or Foreman access required." /></Layout>;
+  }
+
+  return <EstimateDetailContent />;
+};
+
+function EstimateDetailContent() {
   const { estimateId } = useParams<{ estimateId: string }>();
   const navigate = useNavigate();
-  const { role: orgRole, isLoading: orgRoleLoading } = useOrganizationRole();
+  const { canWrite } = useFinancialAccess();
   const { toast } = useToast();
 
   const [estimate, setEstimate] = useState<Estimate | null>(null);
@@ -68,7 +89,7 @@ const EstimateDetail = () => {
     generateTasksFromEstimate, fetchVariance,
   } = useEstimates(estimate?.project_id);
 
-  const canEdit = orgRole === "admin" || orgRole === "pm";
+  const canEdit = canWrite;
 
   // Load estimate from the list or by fetching
   useEffect(() => {
@@ -93,7 +114,7 @@ const EstimateDetail = () => {
 
   useEffect(() => { loadLineItems(); }, [loadLineItems]);
 
-  if (orgRoleLoading || (loading && !estimate)) {
+  if (loading && !estimate) {
     return (
       <Layout>
         <div className="p-6 space-y-4">
@@ -101,10 +122,6 @@ const EstimateDetail = () => {
         </div>
       </Layout>
     );
-  }
-
-  if (!canEdit && orgRole !== "foreman") {
-    return <Layout><NoAccess /></Layout>;
   }
 
   if (!estimate) {
