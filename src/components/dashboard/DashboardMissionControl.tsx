@@ -1,8 +1,7 @@
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { useRouteAccess } from "@/hooks/useRouteAccess";
-import { useOrganization } from "@/hooks/useOrganization";
+import { useSnapshotCoverageReport } from "@/hooks/rpc/useSnapshotCoverageReport";
+import { useDataQualityAudit } from "@/hooks/rpc/useDataQualityAudit";
 import { DashboardCard } from "@/components/dashboard/shared/DashboardCard";
 import { DashboardGrid } from "@/components/dashboard/shared/DashboardGrid";
 import { Button } from "@/components/ui/button";
@@ -16,12 +15,10 @@ import { ShieldCheck, ListChecks, ArrowRight } from "lucide-react";
 export function DashboardMissionControl() {
   const { loading, isAdmin, isPM, canViewExecutive, canViewDiagnostics } = useRouteAccess();
 
-  // While roles are resolving, render nothing — no queries fire
   if (loading) {
     return <MissionControlSkeleton />;
   }
 
-  // Only Admin or PM may see the strip
   if (!isAdmin && !isPM) {
     return null;
   }
@@ -35,7 +32,7 @@ export function DashboardMissionControl() {
 }
 
 /* ------------------------------------------------------------------ */
-/* Skeleton (shown while gate is loading)                               */
+/* Skeleton                                                             */
 /* ------------------------------------------------------------------ */
 
 function MissionControlSkeleton() {
@@ -64,62 +61,27 @@ interface ContentProps {
 
 function DashboardMissionControlContent({ canViewExecutive, canViewDiagnostics }: ContentProps) {
   const navigate = useNavigate();
-  const { activeOrganizationId } = useOrganization();
 
-  // ── RPC: snapshot coverage ──────────────────────────────────────
+  // ── Shared RPC hooks ───────────────────────────────────────────
   const {
     data: coverageData,
     isLoading: coverageLoading,
     error: coverageError,
-  } = useQuery({
-    queryKey: ["mission-control-coverage", activeOrganizationId],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any).rpc("rpc_snapshot_coverage_report", {
-        p_org_id: activeOrganizationId!,
-      });
-      if (error) throw error;
-      return data as any;
-    },
-    enabled: !!activeOrganizationId,
-    staleTime: 10 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
-  });
+  } = useSnapshotCoverageReport();
 
-  // ── RPC: data quality audit ─────────────────────────────────────
   const {
     data: qualityData,
     isLoading: qualityLoading,
     error: qualityError,
-  } = useQuery({
-    queryKey: ["mission-control-quality", activeOrganizationId],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any).rpc("rpc_data_quality_audit", {
-        p_org_id: activeOrganizationId!,
-      });
-      if (error) throw error;
-      return data as any;
-    },
-    enabled: !!activeOrganizationId,
-    staleTime: 10 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
-  });
+  } = useDataQualityAudit();
 
   // ── Derived values ──────────────────────────────────────────────
 
   // Coverage %
   const coveragePercent = (() => {
     if (!coverageData) return null;
-    // The RPC returns an array of project rows; compute average coverage
-    if (Array.isArray(coverageData)) {
-      if (coverageData.length === 0) return 100;
-      const total = coverageData.reduce((sum: number, row: any) => {
-        const pct = row.coverage_pct ?? row.coverage_percent ?? 0;
-        return sum + Number(pct);
-      }, 0);
-      return Math.round(total / coverageData.length);
-    }
-    // Might be a single object with a summary field
-    return coverageData.coverage_pct ?? coverageData.coverage_percent ?? null;
+    // The shared hook normalizes to SnapshotCoverageData which has coverage_percent
+    return (coverageData as any).coverage_percent ?? (coverageData as any).coverage_pct ?? null;
   })();
 
   // Projects with quality issues

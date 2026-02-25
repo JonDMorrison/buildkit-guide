@@ -1,29 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useOrganization } from "@/hooks/useOrganization";
 import { useNavigate } from "react-router-dom";
+import { useDataQualityAudit } from "@/hooks/rpc/useDataQualityAudit";
 import { DashboardCard } from "@/components/dashboard/shared/DashboardCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ShieldAlert, CheckCircle2, ChevronRight } from "lucide-react";
 
 export function DataIntegrityBannerCard() {
-  const { activeOrganizationId } = useOrganization();
   const navigate = useNavigate();
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["acct-data-quality-audit", activeOrganizationId],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any).rpc("rpc_data_quality_audit", {
-        p_org_id: activeOrganizationId!,
-      });
-      if (error) throw error;
-      return data as any;
-    },
-    enabled: !!activeOrganizationId,
-    staleTime: 10 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
-  });
+  const { data, isLoading, error } = useDataQualityAudit();
 
   const issues = Array.isArray(data) ? data : data?.issues || [];
   const issueCount = issues.length;

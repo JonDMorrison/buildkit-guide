@@ -1,4 +1,6 @@
 import { useMemo, useSyncExternalStore } from "react";
+import { useRouteAccess } from "@/hooks/useRouteAccess";
+import { NoAccess } from "@/components/NoAccess";
 import { DashboardLayout } from "@/components/dashboard/shared/DashboardLayout";
 import { DashboardSection } from "@/components/dashboard/shared/DashboardSection";
 import { DashboardCard } from "@/components/dashboard/shared/DashboardCard";
@@ -92,6 +94,30 @@ function aggregate(traces: readonly RpcTraceEntry[]): AggStat[] {
  * Route-level gate enforced by AdminRoute in App.tsx.
  */
 export default function DashboardDiagnostics() {
+  const { loading: roleLoading, isAdmin, canViewDiagnostics } = useRouteAccess();
+
+  if (roleLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!isAdmin && !canViewDiagnostics) {
+    return (
+      <DashboardLayout>
+        <NoAccess />
+      </DashboardLayout>
+    );
+  }
+
+  return <DashboardDiagnosticsContent />;
+}
+
+function DashboardDiagnosticsContent() {
   const traces = useTraces();
 
   const stats = useMemo(() => aggregate(traces), [traces]);
