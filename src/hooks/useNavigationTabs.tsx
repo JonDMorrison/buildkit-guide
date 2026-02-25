@@ -48,7 +48,7 @@ export const tabs: TabConfig[] = [
   { name: "Receipts", path: "/receipts", icon: Receipt, tiers: ['all', 'office', 'field', 'minimal'] },
   { name: "Labor Rates", path: "/settings/labor-rates", icon: Settings, tiers: ['all', 'office'] },
   { name: "Executive", path: "/executive", icon: Crown, tiers: ['all'] },
-  { name: "Data Health", path: "/data-health", icon: Shield, tiers: ['all', 'office'] },
+  { name: "Data Health", path: "/data-health", icon: Shield, tiers: ['all'] },
   { name: "AI Brain", path: "/insights/ai-brain", icon: Cpu, tiers: ['all'] },
   { name: "Playbooks", path: "/playbooks", icon: BookOpen, tiers: ['all'] },
   { name: "Release", path: "/release", icon: Rocket, tiers: ['all'] },
@@ -115,13 +115,24 @@ export const useNavigationTabs = () => {
         case '/release':
         case '/playbooks':
           return isAdmin;
+
         // Admin or PM routes
         case '/executive':
         case '/data-health':
           return isAdmin || isPM;
+
         // Admin, PM, or Foreman
         case '/intelligence':
+        case '/deficiencies':
+        case '/lookahead':
+        case '/manpower':
+        case '/drawings':
           return isAdmin || isPM || isForeman;
+
+        // Admin, PM, or Foreman (estimates need at least foreman)
+        case '/estimates':
+          return isAdmin || isPM || isForeman;
+
         default:
           return true;
       }
