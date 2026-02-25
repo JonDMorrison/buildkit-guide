@@ -48,6 +48,7 @@ import {
 } from "@/components/dashboard/pm";
 
 import { AIInsightsSection } from "@/components/ai-insights";
+import { DashboardMissionControl } from "@/components/dashboard/DashboardMissionControl";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -297,6 +298,9 @@ export default function Dashboard() {
 
   return (
     <DashboardLayout>
+      {/* Mission Control — Admin/PM only, gate+content pattern */}
+      <DashboardMissionControl />
+
       {/* Header */}
       <DashboardHeader
         title="Today on Site"
