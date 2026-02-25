@@ -33,8 +33,9 @@ export function SnapshotStatusCard({ orgId }: Props) {
     }
   }, [orgId, refetch]);
 
-  const uncovered = data ? data.projects.filter(p => p.snapshot_count < 2) : [];
-  const gapped = data ? data.projects.filter(p => p.has_gap && p.snapshot_count >= 2) : [];
+  const projects = data?.projects ?? [];
+  const uncovered = projects.filter(p => p.snapshot_count < 2);
+  const gapped = projects.filter(p => p.has_gap && p.snapshot_count >= 2);
 
   return (
     <DashboardCard
