@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
+import { useUserRole } from '@/hooks/useUserRole';
+import { NoAccess } from '@/components/NoAccess';
+import { Loader2 } from 'lucide-react';
 import { PlaybookList } from '@/components/playbooks/PlaybookList';
 import { PlaybookEditor } from '@/components/playbooks/PlaybookEditor';
 import { CreatePlaybookDialog } from '@/components/playbooks/CreatePlaybookDialog';
@@ -9,7 +12,37 @@ import {
 } from '@/hooks/usePlaybooks';
 import { useQueryClient } from '@tanstack/react-query';
 
+/**
+ * Admin-only page — exposes org-wide playbook templates.
+ * Route-level <AdminRoute> wrapper provides redirect + console warning;
+ * this page-level gate is defence-in-depth to prevent data fetching before
+ * the role check resolves.
+ */
 export default function Playbooks() {
+  const { isAdmin, loading: roleLoading } = useUserRole();
+
+  if (roleLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <Layout>
+        <NoAccess message="Admin access required." />
+      </Layout>
+    );
+  }
+
+  return <PlaybooksContent />;
+}
+
+function PlaybooksContent() {
   const queryClient = useQueryClient();
   const { data: playbooks, isLoading: listLoading } = usePlaybookList();
   const [selectedId, setSelectedId] = useState<string | null>(null);

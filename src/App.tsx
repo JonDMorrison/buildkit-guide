@@ -573,11 +573,14 @@ const App = () => (
                     </ProtectedRoute>
                   }
                 />
+                {/* Admin-only: nav filtering alone is insufficient — direct URL access must be blocked at the route level */}
                 <Route
                   path="/playbooks"
                   element={
                     <ProtectedRoute>
-                      <Playbooks />
+                      <AdminRoute>
+                        <Playbooks />
+                      </AdminRoute>
                     </ProtectedRoute>
                   }
                 />
