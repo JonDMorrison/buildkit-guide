@@ -146,14 +146,20 @@ interface DecisionNotesPanelProps {
   orgId: string;
   /** Whether the current user has admin role (controls delete visibility) */
   isAdmin?: boolean;
+  /** Called whenever the draft/viewed body changes, so parent can use it for export */
+  onBodyChange?: (body: string) => void;
 }
 
-export function DecisionNotesPanel({ asOf, topAttentionNames, orgId, isAdmin = false }: DecisionNotesPanelProps) {
+export function DecisionNotesPanel({ asOf, topAttentionNames, orgId, isAdmin = false, onBodyChange }: DecisionNotesPanelProps) {
   const { user } = useAuth();
   const { notes: dbNotes, isError: dbError, insertNote, deleteNote, isInserting } = useExecutiveDecisionNotes(orgId);
 
   const [template, setTemplate] = useState<Template>('weekly');
-  const [body, setBody] = useState(TEMPLATES.weekly.outline);
+  const [body, setBodyState] = useState(TEMPLATES.weekly.outline);
+  const setBody = useCallback((val: string) => {
+    setBodyState(val);
+    onBodyChange?.(val);
+  }, [onBodyChange]);
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
