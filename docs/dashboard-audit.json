@@ -1,0 +1,1145 @@
+{
+  "generated_at": "2026-02-25",
+  "routes": [
+    { "route": "/dashboard", "file_path": "src/pages/Dashboard.tsx", "component_name": "Dashboard", "purpose": "Project-scoped daily operations home screen with draggable widget grid" },
+    { "route": "/executive", "file_path": "src/pages/ExecutiveDashboard.tsx", "component_name": "ExecutiveDashboard", "purpose": "Org-level executive risk summary with volatility, MCI, OS score, data integrity" },
+    { "route": "/executive-report", "file_path": "src/pages/ExecutiveReport.tsx", "component_name": "ExecutiveReport", "purpose": "Printable/shareable executive risk report — same data as /executive but print-optimized layout" },
+    { "route": "/insights", "file_path": "src/pages/Insights.tsx", "component_name": "Insights", "purpose": "Portfolio-level financial insights: variance leaderboard, trend charts, recommendations" },
+    { "route": "/intelligence", "file_path": "src/pages/Intelligence.tsx", "component_name": "Intelligence", "purpose": "Project-scoped risk, cost rollup, variance, receipt lag, safety compliance KPIs" },
+    { "route": "/insights/ai-brain", "file_path": "src/pages/AIBrainDiagnostics.tsx", "component_name": "AIBrainDiagnostics", "purpose": "Internal diagnostics: test runner, scenario suite, margin inspector, ops tools, change feed, executive report" },
+    { "route": "/data-health", "file_path": "src/pages/DataHealth.tsx", "component_name": "DataHealth", "purpose": "Org-level data quality: missing cost rates, unmatched time, unclassified receipts, missing budgets, overlaps" },
+    { "route": "/insights/snapshots", "file_path": "src/pages/Snapshots.tsx", "component_name": "Snapshots", "purpose": "Snapshot backfill tool and run history log" },
+    { "route": "/insights/audit", "file_path": "src/pages/InsightsAudit.tsx", "component_name": "InsightsAudit", "purpose": "Prompts audit runner with pass/fail checks across server and client" },
+    { "route": "/insights/security", "file_path": "src/pages/SecurityIsolationReport.tsx", "component_name": "SecurityIsolationReport", "purpose": "Security isolation verification report" }
+  ],
+  "dashboards": [
+    {
+      "route": "/dashboard",
+      "component_name": "Dashboard",
+      "file_path": "src/pages/Dashboard.tsx",
+      "lines": 573,
+      "navigation_presence": "nav",
+      "role_gates": [
+        "Redirects isInternalWorker and isExternalTrade to /tasks",
+        "Only isPM, isForeman, isAdmin see the dashboard"
+      ],
+      "sections": [
+        {
+          "title": "Header Card",
+          "component_name": "inline (widget-card gradient)",
+          "purpose": "Title, certification badge, action buttons",
+          "rpc": null,
+          "data_source": "useCertificationTier hook",
+          "actions": ["DashboardCustomizer toggle", "Navigate to project overview", "QuickAddModal", "Navigate to /tasks"],
+          "empty_state": null,
+          "loading_state": null
+        },
+        {
+          "title": "Daily Snapshot Strip",
+          "component_name": "DailySnapshotStrip",
+          "purpose": "At-a-glance: weather, crew count, active trades, tasks starting/finishing, blocked count",
+          "rpc": null,
+          "data_source": "daily_logs table (most recent), tasks table, project_members table",
+          "actions": ["Click opens WeatherInfoModal, CrewInfoModal, ActiveTradesModal, SnapshotDetailModal (starting), SnapshotDetailModal (finishing), BlockersPreviewModal"],
+          "empty_state": "Shows 0 values when no daily log exists",
+          "loading_state": "Inherits from parent queries"
+        },
+        {
+          "title": "Metrics Widget",
+          "component_name": "MetricsWidget",
+          "purpose": "Open tasks, blocked tasks, upcoming tasks, safety forms this week",
+          "rpc": null,
+          "data_source": "tasks table, safety_forms table (client-side computed)",
+          "actions": [],
+          "empty_state": "Shows 0 counts",
+          "loading_state": null
+        },
+        {
+          "title": "Activity Widget",
+          "component_name": "ActivityWidget",
+          "purpose": "7-day completion trend chart",
+          "rpc": null,
+          "data_source": "tasks table (client-side date grouping)",
+          "actions": [],
+          "empty_state": "Empty chart",
+          "loading_state": null
+        },
+        {
+          "title": "Health Widget",
+          "component_name": "HealthWidget",
+          "purpose": "Project health score (0-100) with at-risk, blocked, overdue counts",
+          "rpc": null,
+          "data_source": "tasks table (client-side formula)",
+          "actions": [],
+          "empty_state": null,
+          "loading_state": null
+        },
+        {
+          "title": "Distribution Widget",
+          "component_name": "DistributionWidget",
+          "purpose": "Task status distribution (not started, in progress, blocked)",
+          "rpc": null,
+          "data_source": "tasks table (client-side counts)",
+          "actions": [],
+          "empty_state": null,
+          "loading_state": null
+        },
+        {
+          "title": "My Day Widget",
+          "component_name": "MyDayWidget",
+          "purpose": "Top 5 priority tasks due within 3 days",
+          "rpc": null,
+          "data_source": "tasks table (client-side filter)",
+          "actions": [],
+          "empty_state": null,
+          "loading_state": null
+        },
+        {
+          "title": "Safety Widget",
+          "component_name": "SafetyWidget",
+          "purpose": "Safety forms today, this week, incidents",
+          "rpc": null,
+          "data_source": "safety_forms table",
+          "actions": [],
+          "empty_state": null,
+          "loading_state": null
+        },
+        {
+          "title": "Blockers Widget",
+          "component_name": "BlockersWidget",
+          "purpose": "Unresolved blockers list",
+          "rpc": null,
+          "data_source": "blockers table",
+          "actions": [],
+          "empty_state": null,
+          "loading_state": null
+        },
+        {
+          "title": "Economic Health Widget",
+          "component_name": "EconomicHealthWidget",
+          "purpose": "Project-level economic health summary",
+          "rpc": "Unknown — delegated to EconomicHealthWidget component",
+          "data_source": "Unknown without reading component source",
+          "actions": [],
+          "empty_state": null,
+          "loading_state": null
+        }
+      ]
+    },
+    {
+      "route": "/executive",
+      "component_name": "ExecutiveDashboard",
+      "file_path": "src/pages/ExecutiveDashboard.tsx",
+      "lines": 708,
+      "navigation_presence": "hidden",
+      "role_gates": [],
+      "sections": [
+        {
+          "title": "Header",
+          "component_name": "inline",
+          "purpose": "Title, refresh button, copy summary button",
+          "rpc": null,
+          "actions": ["Refresh (re-calls RPC)", "Copy Summary to clipboard"],
+          "empty_state": "Click Load Dashboard prompt with BarChart3 icon",
+          "loading_state": "Button shows animate-spin on RefreshCw icon"
+        },
+        {
+          "title": "Portfolio Volatility Index",
+          "component_name": "VolatilityIndexCard",
+          "purpose": "Revenue-weighted average risk across all active projects (0-100)",
+          "rpc": "rpc_get_executive_risk_summary → volatility_index",
+          "actions": [],
+          "empty_state": "No active projects message",
+          "loading_state": null
+        },
+        {
+          "title": "Margin Control Index",
+          "component_name": "MarginControlIndexCard",
+          "purpose": "MCI = 100 - (at_risk / active * 100), clamped 0-100",
+          "rpc": "rpc_get_executive_risk_summary → computed client-side from at_risk_count, projects_active_count",
+          "actions": [],
+          "empty_state": "No active projects message",
+          "loading_state": null
+        },
+        {
+          "title": "OS Health + Project Counts",
+          "component_name": "inline grid",
+          "purpose": "OS Score with tier badge, active/at-risk/volatile/stable counts, avg projected margin, top risk causes",
+          "rpc": "rpc_get_executive_risk_summary → os_score, top_causes, project counts",
+          "actions": [],
+          "empty_state": null,
+          "loading_state": null
+        },
+        {
+          "title": "Top Risk Projects",
+          "component_name": "inline card grid",
+          "purpose": "Up to N project cards with risk bar, position badge, executive summary",
+          "rpc": "rpc_get_executive_risk_summary → top_risk_projects[]",
+          "actions": ["Link to /projects/:id"],
+          "empty_state": "No active projects found message",
+          "loading_state": null
+        },
+        {
+          "title": "Data Integrity Panel",
+          "component_name": "DataIntegrityPanel",
+          "purpose": "Structural data issues: zero revenue, no estimate, unrated labor, negative margin without COs",
+          "rpc": "rpc_get_executive_risk_summary → data_integrity",
+          "actions": ["Links to /projects/:id per issue"],
+          "empty_state": "All active projects passed integrity checks",
+          "loading_state": null
+        }
+      ]
+    },
+    {
+      "route": "/executive-report",
+      "component_name": "ExecutiveReport",
+      "file_path": "src/pages/ExecutiveReport.tsx",
+      "lines": 570,
+      "navigation_presence": "hidden",
+      "role_gates": [],
+      "sections": [
+        {
+          "title": "OS Health",
+          "component_name": "inline",
+          "purpose": "OS Score, tier, breakdown grid",
+          "rpc": "rpc_get_executive_risk_summary",
+          "actions": ["Print/Save PDF", "Copy Summary", "Refresh"],
+          "empty_state": "Click Generate Report prompt",
+          "loading_state": "Loading spinner on button"
+        },
+        {
+          "title": "Projects at Risk",
+          "component_name": "inline",
+          "purpose": "Active/at-risk/volatile/stable counts + avg margin",
+          "rpc": "rpc_get_executive_risk_summary",
+          "actions": [],
+          "empty_state": null,
+          "loading_state": null
+        },
+        {
+          "title": "Top Risk Causes",
+          "component_name": "inline",
+          "purpose": "Bar chart of top 5 risk causes with tooltips",
+          "rpc": "rpc_get_executive_risk_summary → top_causes",
+          "actions": [],
+          "empty_state": null,
+          "loading_state": null
+        },
+        {
+          "title": "Top Risk Projects",
+          "component_name": "inline cards",
+          "purpose": "Project cards with risk bar, position badge, executive summary",
+          "rpc": "rpc_get_executive_risk_summary → top_risk_projects[]",
+          "actions": ["Link to /projects/:id"],
+          "empty_state": null,
+          "loading_state": null
+        },
+        {
+          "title": "Value Narrative",
+          "component_name": "ValueNarrative",
+          "purpose": "Text-based guardrail mode analysis",
+          "rpc": "rpc_get_executive_risk_summary (computed client-side)",
+          "actions": [],
+          "empty_state": null,
+          "loading_state": null
+        }
+      ]
+    },
+    {
+      "route": "/insights",
+      "component_name": "Insights",
+      "file_path": "src/pages/Insights.tsx",
+      "lines": 624,
+      "navigation_presence": "nav",
+      "role_gates": [
+        "isGlobalAdmin check via useProjectRole — but no explicit redirect if not admin (shows all data anyway)"
+      ],
+      "sections": [
+        {
+          "title": "Filters Bar",
+          "component_name": "inline",
+          "purpose": "Status filter, date range, data quality checkboxes",
+          "rpc": null,
+          "actions": ["Navigate to /insights/snapshots", "Navigate to /data-health", "Export CSV"],
+          "empty_state": null,
+          "loading_state": null
+        },
+        {
+          "title": "KPI Cards",
+          "component_name": "inline grid (4 cards)",
+          "purpose": "Total contract value, total actual cost, avg margin (weighted), over budget count",
+          "rpc": null,
+          "data_source": "usePortfolioInsights hook (calls rpc_get_portfolio_insights)",
+          "actions": [],
+          "empty_state": "No project data available message",
+          "loading_state": "Skeleton grid"
+        },
+        {
+          "title": "Weekly AI Ops Summary",
+          "component_name": "WeeklyInsightCard",
+          "purpose": "AI-generated weekly ops summary",
+          "rpc": "Unknown — inside WeeklyInsightCard",
+          "actions": [],
+          "empty_state": null,
+          "loading_state": null
+        },
+        {
+          "title": "Recommendations",
+          "component_name": "RecommendationsPanel",
+          "purpose": "Top 5 portfolio recommendations from rules engine",
+          "rpc": null,
+          "data_source": "getPortfolioRecommendations (client-side rules)",
+          "actions": [],
+          "empty_state": null,
+          "loading_state": null
+        },
+        {
+          "title": "Trend Charts",
+          "component_name": "MarginTrendChart, CostTrendChart, OverBudgetTrendChart",
+          "purpose": "Margin, cost, and over-budget trends from snapshots",
+          "rpc": null,
+          "data_source": "useOrgSnapshots hook (reads project_economic_snapshots table)",
+          "actions": [],
+          "empty_state": "No weekly snapshots yet — link to generate",
+          "loading_state": "Skeleton"
+        },
+        {
+          "title": "Scope Estimation Learning",
+          "component_name": "OrgScopeLearningPanel",
+          "purpose": "Org-level scope accuracy metrics",
+          "rpc": null,
+          "data_source": "useOrgScopeAccuracy hook",
+          "actions": [],
+          "empty_state": null,
+          "loading_state": null
+        },
+        {
+          "title": "Operational Patterns",
+          "component_name": "OperationalPatternsPanel",
+          "purpose": "Org-wide operational pattern detection",
+          "rpc": "Unknown — inside OperationalPatternsPanel",
+          "actions": [],
+          "empty_state": null,
+          "loading_state": null
+        },
+        {
+          "title": "Variance Leaderboard",
+          "component_name": "inline Table",
+          "purpose": "Paginated table of all projects sorted by worst variance, with data quality flags",
+          "rpc": null,
+          "data_source": "usePortfolioInsights hook",
+          "actions": ["Click row → /insights/project?projectId=X", "Set budget button for missing-budget projects"],
+          "empty_state": null,
+          "loading_state": "Skeleton rows"
+        }
+      ]
+    },
+    {
+      "route": "/intelligence",
+      "component_name": "Intelligence",
+      "file_path": "src/pages/Intelligence.tsx",
+      "lines": 320,
+      "navigation_presence": "nav",
+      "role_gates": [
+        "isGlobalAdmin || canManageProject check — shows NoAccess component if neither"
+      ],
+      "sections": [
+        {
+          "title": "Project Selector",
+          "component_name": "inline Select",
+          "purpose": "Select a project to view intelligence data",
+          "rpc": null,
+          "data_source": "projects table (org-scoped)",
+          "actions": ["Change project"],
+          "empty_state": "Select a project above prompt",
+          "loading_state": "Skeleton in dropdown"
+        },
+        {
+          "title": "Risk Score",
+          "component_name": "KpiCard",
+          "purpose": "Project risk score with risk level badge and drivers list",
+          "rpc": null,
+          "data_source": "useProfitRisk hook → calls rpc_get_project_profit_risk",
+          "actions": [],
+          "empty_state": "Dash",
+          "loading_state": "Skeleton h-8"
+        },
+        {
+          "title": "Unrated Labor Exposure",
+          "component_name": "KpiCard",
+          "purpose": "Hours and entries without cost rates",
+          "rpc": null,
+          "data_source": "useCostRollup hook → calls rpc_get_project_cost_rollup",
+          "actions": [],
+          "empty_state": "Dash",
+          "loading_state": "Skeleton"
+        },
+        {
+          "title": "Integrity & Variance",
+          "component_name": "KpiCard",
+          "purpose": "Integrity score, budget variance %, labor variance %, blockers",
+          "rpc": null,
+          "data_source": "useVarianceSummary hook → calls estimate_variance_summary",
+          "actions": [],
+          "empty_state": "Dash",
+          "loading_state": "Skeleton"
+        },
+        {
+          "title": "Receipt Approval Lag",
+          "component_name": "KpiCard",
+          "purpose": "Avg lag days, pending count, oldest pending",
+          "rpc": null,
+          "data_source": "useReceiptLag hook → reads receipts table",
+          "actions": [],
+          "empty_state": "No pending",
+          "loading_state": "Skeleton"
+        },
+        {
+          "title": "Safety Compliance",
+          "component_name": "KpiCard",
+          "purpose": "Compliance percentage, gap count, forms submitted",
+          "rpc": null,
+          "data_source": "useSafetyGaps hook → reads safety_forms + daily_logs",
+          "actions": [],
+          "empty_state": "Dash",
+          "loading_state": "Skeleton"
+        }
+      ]
+    },
+    {
+      "route": "/insights/ai-brain",
+      "component_name": "AIBrainDiagnostics",
+      "file_path": "src/pages/AIBrainDiagnostics.tsx",
+      "lines": 3133,
+      "navigation_presence": "hidden",
+      "role_gates": [],
+      "sections": [
+        {
+          "title": "Auth Probe",
+          "component_name": "AuthProbeCard",
+          "purpose": "Verify client session exists",
+          "rpc": "supabase.auth.getSession, supabase.auth.getUser",
+          "actions": [],
+          "empty_state": null,
+          "loading_state": null
+        },
+        {
+          "title": "DB Auth Probe",
+          "component_name": "DbAuthCard",
+          "purpose": "Verify DB-level auth via rpc_whoami",
+          "rpc": "rpc_whoami",
+          "actions": [],
+          "empty_state": null,
+          "loading_state": "Loading indicator"
+        },
+        {
+          "title": "AI Brain Test Runner",
+          "component_name": "SectionCard (5 sections)",
+          "purpose": "Runs existence, security, privileges, smoke, determinism checks",
+          "rpc": "rpc_run_ai_brain_test_runner",
+          "actions": ["Run", "Copy JSON", "Download JSON"],
+          "empty_state": "Select project + Run prompt",
+          "loading_state": "Button disabled + running text"
+        },
+        {
+          "title": "Scenario Suite Runner",
+          "component_name": "ScenarioCard",
+          "purpose": "Run margin control against 6 edge-case projects",
+          "rpc": "rpc_run_ai_brain_scenario_suite",
+          "actions": ["Run", "Copy JSON"],
+          "empty_state": null,
+          "loading_state": "Running state"
+        },
+        {
+          "title": "Margin Edge-Case Suite",
+          "component_name": "EdgeCaseRow",
+          "purpose": "4 deterministic edge-case project archetypes",
+          "rpc": "rpc_run_margin_control_edge_cases",
+          "actions": ["Run", "Copy JSON"],
+          "empty_state": null,
+          "loading_state": "Running state"
+        },
+        {
+          "title": "Margin Payload Inspector",
+          "component_name": "inline",
+          "purpose": "Show exact live output of margin control payload for any project",
+          "rpc": "rpc_debug_margin_control_payload",
+          "actions": ["Select project", "Inspect", "Copy JSON"],
+          "empty_state": null,
+          "loading_state": "Inspecting state"
+        },
+        {
+          "title": "Quick Probe (3 Projects)",
+          "component_name": "inline",
+          "purpose": "Deterministic 3-project probe with parallel RPC calls",
+          "rpc": "rpc_debug_margin_control_payload (3x parallel)",
+          "actions": ["Quick Probe"],
+          "empty_state": "No active projects message",
+          "loading_state": "Probing state"
+        },
+        {
+          "title": "Seed Margin Test Project",
+          "component_name": "inline",
+          "purpose": "Create deterministic test project with burn exceeding estimate",
+          "rpc": "edge function: seed-margin-test-project",
+          "actions": ["Seed Test Project"],
+          "empty_state": null,
+          "loading_state": "Seeding state"
+        },
+        {
+          "title": "Release Report",
+          "component_name": "inline",
+          "purpose": "Generate release readiness report",
+          "rpc": "rpc_get_os_brain_release_report",
+          "actions": ["Run", "Copy JSON"],
+          "empty_state": null,
+          "loading_state": "Running state"
+        },
+        {
+          "title": "OS Operations Panel",
+          "component_name": "inline",
+          "purpose": "Ops toolbox: release report, capture snapshots, volatility, executive report, executive brief (change feed)",
+          "rpc": "rpc_get_os_brain_release_report, rpc_capture_org_economic_snapshots, rpc_get_project_volatility_index, rpc_generate_executive_report, rpc_executive_change_feed",
+          "actions": ["Run Release Report", "Capture Org Snapshots", "View Volatility (30d)", "Executive Report", "Run Executive Brief", "Capture + Refresh"],
+          "empty_state": "Various per-panel empty states",
+          "loading_state": "Per-button loading states"
+        },
+        {
+          "title": "Determinism Re-scan",
+          "component_name": "inline",
+          "purpose": "Check for non-deterministic function violations",
+          "rpc": "rpc_get_os_system_inventory → aggregation_determinism_scan",
+          "actions": ["Run Determinism Re-scan"],
+          "empty_state": null,
+          "loading_state": "Running state"
+        },
+        {
+          "title": "Margin Inputs Trace",
+          "component_name": "inline",
+          "purpose": "Raw numeric inputs consumed by margin engine for any project",
+          "rpc": "rpc_debug_margin_control_inputs",
+          "actions": ["Select project", "Run Inputs Trace", "Copy JSON"],
+          "empty_state": null,
+          "loading_state": "Running state"
+        },
+        {
+          "title": "Data Quality Audit",
+          "component_name": "inline",
+          "purpose": "Auto-fetched on mount — data quality audit results",
+          "rpc": "rpc_data_quality_audit",
+          "actions": [],
+          "empty_state": null,
+          "loading_state": null
+        },
+        {
+          "title": "RPC Inspector",
+          "component_name": "RPCInspector",
+          "purpose": "Call arbitrary RPCs and view raw JSON results",
+          "rpc": "Multiple RPCs defined in ALL_RPCS constant",
+          "actions": ["Run All", "Toggle per-RPC"],
+          "empty_state": null,
+          "loading_state": "Per-RPC running state"
+        }
+      ]
+    },
+    {
+      "route": "/data-health",
+      "component_name": "DataHealth",
+      "file_path": "src/pages/DataHealth.tsx",
+      "lines": 701,
+      "navigation_presence": "hidden",
+      "role_gates": [
+        "isAdmin || isPM() — shows NoAccess if neither"
+      ],
+      "sections": [
+        {
+          "title": "Summary Badge",
+          "component_name": "inline",
+          "purpose": "Total issues count",
+          "rpc": null,
+          "data_source": "Aggregated client-side from all sections",
+          "actions": ["Refresh button"],
+          "empty_state": null,
+          "loading_state": "Spinner"
+        },
+        {
+          "title": "Missing Cost Rates",
+          "component_name": "inline Table",
+          "purpose": "Workers with $0 cost rate across projects",
+          "rpc": null,
+          "data_source": "project_members, profiles, time_entries tables (multiple queries)",
+          "actions": [],
+          "empty_state": "No issues message",
+          "loading_state": "Spinner"
+        },
+        {
+          "title": "Unmatched Time Entries",
+          "component_name": "inline Table",
+          "purpose": "Time entries where user is not a project member",
+          "rpc": null,
+          "data_source": "time_entries, project_members tables",
+          "actions": [],
+          "empty_state": "No issues message",
+          "loading_state": null
+        },
+        {
+          "title": "Unclassified Receipts",
+          "component_name": "inline Table",
+          "purpose": "Receipts without cost_type classification",
+          "rpc": null,
+          "data_source": "receipts table",
+          "actions": [],
+          "empty_state": "No issues message",
+          "loading_state": null
+        },
+        {
+          "title": "Missing Budgets",
+          "component_name": "inline Table",
+          "purpose": "Active projects without budget records",
+          "rpc": null,
+          "data_source": "project_budgets, projects tables",
+          "actions": [],
+          "empty_state": "No issues message",
+          "loading_state": null
+        },
+        {
+          "title": "Overlapping Time Entries",
+          "component_name": "inline Table",
+          "purpose": "Workers with overlapping time entries on same day",
+          "rpc": null,
+          "data_source": "time_entries table (pairwise overlap detection)",
+          "actions": [],
+          "empty_state": "No issues message",
+          "loading_state": null
+        },
+        {
+          "title": "Cross-Project Task References",
+          "component_name": "inline Table",
+          "purpose": "Time entries linked to tasks from a different project",
+          "rpc": null,
+          "data_source": "time_entries, tasks tables",
+          "actions": [],
+          "empty_state": "No issues message",
+          "loading_state": null
+        }
+      ]
+    },
+    {
+      "route": "/insights/snapshots",
+      "component_name": "Snapshots",
+      "file_path": "src/pages/Snapshots.tsx",
+      "lines": 268,
+      "navigation_presence": "hidden",
+      "role_gates": [
+        "isGlobalAdmin || orgRole=admin || orgRole=pm — shows NoAccess if not"
+      ],
+      "sections": [
+        {
+          "title": "Backfill Controls",
+          "component_name": "inline",
+          "purpose": "Select weeks to backfill and trigger snapshot generation",
+          "rpc": "backfill_weekly_snapshots",
+          "actions": ["Backfill Snapshots", "Back button to /insights"],
+          "empty_state": null,
+          "loading_state": "Running state"
+        },
+        {
+          "title": "Run History Log",
+          "component_name": "inline Table",
+          "purpose": "History of snapshot runs with success/fail status",
+          "rpc": null,
+          "data_source": "snapshots_run_log table",
+          "actions": [],
+          "empty_state": "No runs yet",
+          "loading_state": "Skeleton rows"
+        }
+      ]
+    },
+    {
+      "route": "/insights/audit",
+      "component_name": "InsightsAudit",
+      "file_path": "src/pages/InsightsAudit.tsx",
+      "lines": 335,
+      "navigation_presence": "hidden",
+      "role_gates": [],
+      "sections": [
+        {
+          "title": "Prompts Audit",
+          "component_name": "CheckCard, inline tabs",
+          "purpose": "Run 10+ checks across server/client with PASS/FAIL/NEEDS_MANUAL status",
+          "rpc": "runPromptsAudit (calls multiple RPCs internally)",
+          "actions": ["Run Audit", "Download JSON", "Copy JSON"],
+          "empty_state": "Click Run Audit prompt",
+          "loading_state": "Running state"
+        }
+      ]
+    }
+  ],
+  "rpc_usage": [
+    {
+      "rpc_name": "rpc_get_executive_risk_summary",
+      "where_used": ["/executive (ExecutiveDashboard)", "/executive-report (ExecutiveReport)"],
+      "purpose": "Org-level risk summary with OS score, tier, volatility index, project counts, top causes, top risk projects, data integrity",
+      "data_returned": "{ org_id, projects_active_count, at_risk_count, volatile_count, stable_count, avg_projected_margin_at_completion_percent, top_risk_projects[], top_causes[], os_score, data_integrity, volatility_index }",
+      "ui_component": "ExecutiveDashboard, ExecutiveReport"
+    },
+    {
+      "rpc_name": "rpc_run_ai_brain_test_runner",
+      "where_used": ["/insights/ai-brain (AIBrainDiagnostics)"],
+      "purpose": "Run existence, security, privileges, smoke, determinism checks on AI brain layer",
+      "data_returned": "{ ok, existence, security, privileges, smoke, determinism }",
+      "ui_component": "SectionCard grid"
+    },
+    {
+      "rpc_name": "rpc_run_ai_brain_scenario_suite",
+      "where_used": ["/insights/ai-brain (AIBrainDiagnostics)"],
+      "purpose": "Run margin control RPC against up to 6 edge-case projects",
+      "data_returned": "{ ok, scenarios[] }",
+      "ui_component": "ScenarioCard list"
+    },
+    {
+      "rpc_name": "rpc_run_margin_control_edge_cases",
+      "where_used": ["/insights/ai-brain (AIBrainDiagnostics)"],
+      "purpose": "Run margin control against 4 deterministic edge-case project archetypes",
+      "data_returned": "{ org_id, user_id, results[] }",
+      "ui_component": "EdgeCaseRow list"
+    },
+    {
+      "rpc_name": "rpc_debug_margin_control_payload",
+      "where_used": ["/insights/ai-brain (AIBrainDiagnostics) — Margin Payload Inspector and Quick Probe"],
+      "purpose": "Show exact live margin control payload for any project",
+      "data_returned": "{ project_id, org_id, keys_present[], intervention_flags_type, intervention_flags_value[], margin_control_payload }",
+      "ui_component": "Margin Payload Inspector, Quick Probe grid"
+    },
+    {
+      "rpc_name": "rpc_debug_margin_control_inputs",
+      "where_used": ["/insights/ai-brain (AIBrainDiagnostics) — Margin Inputs Trace"],
+      "purpose": "Expose raw numeric inputs consumed by margin engine",
+      "data_returned": "{ project_id, org_id, inputs{}, sources{} }",
+      "ui_component": "Margin Inputs Trace table"
+    },
+    {
+      "rpc_name": "rpc_whoami",
+      "where_used": ["/insights/ai-brain (AIBrainDiagnostics)"],
+      "purpose": "Verify DB-level auth identity",
+      "data_returned": "{ uid }",
+      "ui_component": "DbAuthCard"
+    },
+    {
+      "rpc_name": "rpc_get_os_brain_release_report",
+      "where_used": ["/insights/ai-brain (AIBrainDiagnostics) — Release Report + OS Operations"],
+      "purpose": "Release readiness report",
+      "data_returned": "Release report JSON",
+      "ui_component": "Release Report panel, OS Operations panel"
+    },
+    {
+      "rpc_name": "rpc_capture_org_economic_snapshots",
+      "where_used": ["/insights/ai-brain (AIBrainDiagnostics) — OS Operations"],
+      "purpose": "Capture economic snapshots for all projects in org",
+      "data_returned": "Capture result",
+      "ui_component": "OS Operations panel"
+    },
+    {
+      "rpc_name": "rpc_get_project_volatility_index",
+      "where_used": ["/insights/ai-brain (AIBrainDiagnostics) — OS Operations"],
+      "purpose": "Per-project volatility scores over 30 days",
+      "data_returned": "Array of project volatility records",
+      "ui_component": "Volatility table in OS Operations"
+    },
+    {
+      "rpc_name": "rpc_generate_executive_report",
+      "where_used": ["/insights/ai-brain (AIBrainDiagnostics) — OS Operations"],
+      "purpose": "Generate full executive report with top risks, unstable, improving, financial exposure",
+      "data_returned": "{ success, summary, top_risks[], most_unstable_projects[], improving_projects[], financial_exposure, notes[] }",
+      "ui_component": "Executive Report panel in OS Operations"
+    },
+    {
+      "rpc_name": "rpc_executive_change_feed",
+      "where_used": ["/insights/ai-brain (AIBrainDiagnostics) — OS Operations"],
+      "purpose": "Compare latest vs previous snapshot: new risks, resolved, improving, worsening, burn increases, top changes, attention_ranked_projects",
+      "data_returned": "{ success, org_id, latest_snapshot_date, previous_snapshot_date, changes{}, top_changes[], attention_ranked_projects[] }",
+      "ui_component": "Executive Brief panel in OS Operations"
+    },
+    {
+      "rpc_name": "rpc_data_quality_audit",
+      "where_used": ["/insights/ai-brain (AIBrainDiagnostics) — auto-fetched on mount"],
+      "purpose": "Data quality audit results",
+      "data_returned": "Audit result JSON",
+      "ui_component": "Data Quality section in OS Operations"
+    },
+    {
+      "rpc_name": "rpc_get_os_system_inventory",
+      "where_used": ["/insights/ai-brain (AIBrainDiagnostics) — Determinism Re-scan"],
+      "purpose": "System inventory including aggregation_determinism_scan",
+      "data_returned": "{ aggregation_determinism_scan: { violation_count, suspect_functions[] } }",
+      "ui_component": "Determinism Re-scan section"
+    },
+    {
+      "rpc_name": "backfill_weekly_snapshots",
+      "where_used": ["/insights/snapshots (Snapshots)"],
+      "purpose": "Backfill N weeks of economic snapshots",
+      "data_returned": "{ weeks, created_or_updated }",
+      "ui_component": "Snapshots page"
+    },
+    {
+      "rpc_name": "rpc_get_project_profit_risk",
+      "where_used": ["/intelligence (Intelligence)"],
+      "purpose": "Project-level risk score, risk level, projected margin, drivers",
+      "data_returned": "{ risk_score, risk_level, projected_margin, projected_final_cost, drivers[], currency }",
+      "ui_component": "KpiCard — Risk Score"
+    },
+    {
+      "rpc_name": "rpc_get_project_cost_rollup",
+      "where_used": ["/intelligence (Intelligence)"],
+      "purpose": "Project cost rollup including unrated labor exposure",
+      "data_returned": "{ unrated_labor_hours, unrated_labor_entries_count, currency }",
+      "ui_component": "KpiCard — Unrated Labor"
+    },
+    {
+      "rpc_name": "estimate_variance_summary (view or function)",
+      "where_used": ["/intelligence (Intelligence)"],
+      "purpose": "Integrity score, budget/labor variance, blockers",
+      "data_returned": "{ integrity_score, integrity_status, budget_variance_pct, labor_variance_pct, blockers[] }",
+      "ui_component": "KpiCard — Integrity & Variance"
+    },
+    {
+      "rpc_name": "rpc_get_portfolio_insights (via usePortfolioInsights hook)",
+      "where_used": ["/insights (Insights)"],
+      "purpose": "Portfolio-level financial data per project",
+      "data_returned": "Array of project rows with contract_value, actual_total_cost, planned_total_cost, total_cost_delta, has_budget, actual_margin_percent, etc.",
+      "ui_component": "KPI cards, Variance Leaderboard table"
+    },
+    {
+      "rpc_name": "seed-margin-test-project (edge function)",
+      "where_used": ["/insights/ai-brain (AIBrainDiagnostics)"],
+      "purpose": "Create deterministic test project for margin testing",
+      "data_returned": "{ success, already_existed, project_id, ... }",
+      "ui_component": "Seed Margin Test Project section"
+    },
+    {
+      "rpc_name": "runPromptsAudit (client lib)",
+      "where_used": ["/insights/audit (InsightsAudit)"],
+      "purpose": "Run 10+ audit checks across server and client",
+      "data_returned": "PromptsAuditResult with AuditCheck[]",
+      "ui_component": "CheckCard grid"
+    }
+  ],
+  "role_visibility": [
+    {
+      "role_name": "admin (isGlobalAdmin / isAdmin)",
+      "visible_sections": ["All dashboards — no restrictions"],
+      "hidden_sections": []
+    },
+    {
+      "role_name": "pm (project_manager)",
+      "visible_sections": ["/dashboard", "/insights", "/intelligence", "/data-health", "/insights/snapshots"],
+      "hidden_sections": ["/executive and /executive-report have no role gates — accessible but not in nav", "/insights/ai-brain has no role gates — accessible"]
+    },
+    {
+      "role_name": "foreman",
+      "visible_sections": ["/dashboard"],
+      "hidden_sections": ["Same hidden-but-accessible issue as PM for /executive, /insights/ai-brain"]
+    },
+    {
+      "role_name": "accounting / office tier",
+      "visible_sections": ["/dashboard (nav tier office)", "/insights (nav tier office)"],
+      "hidden_sections": ["/intelligence (nav tier all only)"]
+    },
+    {
+      "role_name": "internal_worker / field tier",
+      "visible_sections": ["Redirected from /dashboard to /tasks"],
+      "hidden_sections": ["All dashboards hidden — nav tier field only shows Tasks, Time, Safety, Receipts"]
+    },
+    {
+      "role_name": "external_trade / minimal tier",
+      "visible_sections": ["Redirected from /dashboard to /tasks"],
+      "hidden_sections": ["All dashboards hidden — nav tier minimal only shows Tasks, Time, Receipts"]
+    }
+  ],
+  "duplicates": [
+    {
+      "concept": "Volatility Index",
+      "locations": [
+        { "route": "/executive", "file_path": "src/pages/ExecutiveDashboard.tsx", "component_name": "VolatilityIndexCard", "rpc": "rpc_get_executive_risk_summary → volatility_index" },
+        { "route": "/insights/ai-brain", "file_path": "src/pages/AIBrainDiagnostics.tsx", "component_name": "OS Operations → View Volatility", "rpc": "rpc_get_project_volatility_index" }
+      ],
+      "notes": "Two different RPCs compute volatility differently. Executive uses revenue-weighted aggregate; diagnostics uses per-project 30-day volatility with labels (critical/volatile/watch/stable). Not truly duplicated data, but the concept appears twice with different granularity."
+    },
+    {
+      "concept": "Data Quality / Data Integrity",
+      "locations": [
+        { "route": "/executive", "file_path": "src/pages/ExecutiveDashboard.tsx", "component_name": "DataIntegrityPanel", "rpc": "rpc_get_executive_risk_summary → data_integrity" },
+        { "route": "/data-health", "file_path": "src/pages/DataHealth.tsx", "component_name": "6 inline tables", "rpc": "Multiple direct table queries" },
+        { "route": "/insights/ai-brain", "file_path": "src/pages/AIBrainDiagnostics.tsx", "component_name": "Data Quality Audit", "rpc": "rpc_data_quality_audit" },
+        { "route": "/insights", "file_path": "src/pages/Insights.tsx", "component_name": "Data Quality filter checkboxes", "rpc": "Client-side getDataQualityFlags" }
+      ],
+      "notes": "Four different surfaces show data quality information using four different data sources and logic. No single authoritative surface."
+    },
+    {
+      "concept": "Executive Risk Summary / Report",
+      "locations": [
+        { "route": "/executive", "file_path": "src/pages/ExecutiveDashboard.tsx", "component_name": "ExecutiveDashboard", "rpc": "rpc_get_executive_risk_summary" },
+        { "route": "/executive-report", "file_path": "src/pages/ExecutiveReport.tsx", "component_name": "ExecutiveReport", "rpc": "rpc_get_executive_risk_summary" },
+        { "route": "/insights/ai-brain", "file_path": "src/pages/AIBrainDiagnostics.tsx", "component_name": "OS Operations → Executive Report", "rpc": "rpc_generate_executive_report" }
+      ],
+      "notes": "/executive and /executive-report both call the same RPC but render differently (interactive vs printable). Diagnostics calls a DIFFERENT RPC (rpc_generate_executive_report) that returns different data (top_risks, most_unstable_projects, improving_projects, financial_exposure). Three executive-level views with overlapping but not identical data."
+    },
+    {
+      "concept": "OS Score / Tier",
+      "locations": [
+        { "route": "/executive", "file_path": "src/pages/ExecutiveDashboard.tsx", "component_name": "OS Score card", "rpc": "rpc_get_executive_risk_summary → os_score" },
+        { "route": "/executive-report", "file_path": "src/pages/ExecutiveReport.tsx", "component_name": "OS Health section", "rpc": "rpc_get_executive_risk_summary → os_score" }
+      ],
+      "notes": "Identical data, different layouts (interactive vs print). Acceptable duplication."
+    },
+    {
+      "concept": "Top Risk Projects",
+      "locations": [
+        { "route": "/executive", "file_path": "src/pages/ExecutiveDashboard.tsx", "component_name": "Top Risk Projects grid", "rpc": "rpc_get_executive_risk_summary → top_risk_projects" },
+        { "route": "/executive-report", "file_path": "src/pages/ExecutiveReport.tsx", "component_name": "Top Risk Projects cards", "rpc": "rpc_get_executive_risk_summary → top_risk_projects" },
+        { "route": "/insights/ai-brain", "file_path": "src/pages/AIBrainDiagnostics.tsx", "component_name": "OS Ops → Executive Report → top_risks", "rpc": "rpc_generate_executive_report → top_risks" }
+      ],
+      "notes": "Three surfaces showing top risk projects using two different RPCs."
+    },
+    {
+      "concept": "Release Report",
+      "locations": [
+        { "route": "/insights/ai-brain", "file_path": "src/pages/AIBrainDiagnostics.tsx", "component_name": "Release Report section", "rpc": "rpc_get_os_brain_release_report" },
+        { "route": "/insights/ai-brain", "file_path": "src/pages/AIBrainDiagnostics.tsx", "component_name": "OS Operations → Run Release Report", "rpc": "rpc_get_os_brain_release_report" }
+      ],
+      "notes": "Same RPC called from two different sections within the same page."
+    },
+    {
+      "concept": "Margin Inputs Trace",
+      "locations": [
+        { "route": "/insights/ai-brain", "file_path": "src/pages/AIBrainDiagnostics.tsx", "component_name": "Margin Inputs Trace (first instance ~line 1565)", "rpc": "rpc_debug_margin_control_inputs" },
+        { "route": "/insights/ai-brain", "file_path": "src/pages/AIBrainDiagnostics.tsx", "component_name": "Margin Inputs Trace (second instance ~line 2608)", "rpc": "rpc_debug_margin_control_inputs" }
+      ],
+      "notes": "Margin Inputs Trace appears to be rendered TWICE in the same page with separate state variables but identical UI. Likely a copy-paste duplication."
+    }
+  ],
+  "unused_features": [
+    {
+      "feature": "attention_ranked_projects",
+      "rpc": "rpc_executive_change_feed",
+      "status": "Returned by RPC but NOT rendered in UI",
+      "location": "The Executive Brief panel in AIBrainDiagnostics renders top_changes but does NOT render attention_ranked_projects",
+      "recommendation": "Surface on /executive or create a dedicated attention-priority widget"
+    },
+    {
+      "feature": "/executive route — not in navigation",
+      "rpc": "rpc_get_executive_risk_summary",
+      "status": "Route exists but not present in useNavigationTabs — only reachable by direct URL",
+      "location": "src/App.tsx line 600, absent from src/hooks/useNavigationTabs.tsx",
+      "recommendation": "Add to nav for admin/PM roles or link from /insights"
+    },
+    {
+      "feature": "/executive-report route — not in navigation",
+      "rpc": "rpc_get_executive_risk_summary",
+      "status": "Route exists but not present in navigation — only reachable by direct URL",
+      "location": "src/App.tsx line 608",
+      "recommendation": "Link from /executive dashboard or add to nav"
+    },
+    {
+      "feature": "/data-health route — not in navigation",
+      "rpc": "Direct table queries",
+      "status": "Only reachable via button on /insights page",
+      "location": "src/App.tsx line 503",
+      "recommendation": "Consider adding to nav for admin tier"
+    },
+    {
+      "feature": "/insights/snapshots — not in navigation",
+      "rpc": "backfill_weekly_snapshots",
+      "status": "Only reachable via button on /insights page",
+      "location": "src/App.tsx line 495",
+      "recommendation": "Acceptable as sub-page, but could benefit from link in /insights sidebar"
+    },
+    {
+      "feature": "rpc_generate_executive_report",
+      "rpc": "rpc_generate_executive_report",
+      "status": "Only callable from OS Operations panel inside AIBrainDiagnostics — not surfaced on any user-facing dashboard",
+      "location": "AIBrainDiagnostics line ~1048",
+      "recommendation": "This is the most comprehensive executive report RPC but is buried in diagnostics"
+    },
+    {
+      "feature": "rpc_executive_change_feed (Executive Brief)",
+      "rpc": "rpc_executive_change_feed",
+      "status": "Only callable from OS Operations panel inside AIBrainDiagnostics",
+      "location": "AIBrainDiagnostics line ~1012",
+      "recommendation": "Surface on /executive as a change-detection widget"
+    },
+    {
+      "feature": "Margin Inputs Trace (duplicate section)",
+      "rpc": "rpc_debug_margin_control_inputs",
+      "status": "Appears twice in AIBrainDiagnostics with separate state management",
+      "location": "AIBrainDiagnostics ~line 1565 and ~line 2608",
+      "recommendation": "Remove one of the duplicate sections"
+    }
+  ],
+  "ux_assessment": {
+    "per_dashboard": {
+      "/dashboard": {
+        "signal_to_noise": 7,
+        "strengths": [
+          "Clean widget grid with customizable layout",
+          "Daily snapshot strip is excellent — high-density, actionable at-a-glance",
+          "Good use of modals for drill-down from snapshot strip"
+        ],
+        "issues": [
+          "573-line monolith with all query logic, metrics computation, and rendering in one file",
+          "8 queries fire on mount even if user only cares about 2-3 widgets",
+          "EconomicHealthWidget data source is opaque from parent — can't assess redundancy"
+        ]
+      },
+      "/executive": {
+        "signal_to_noise": 8,
+        "strengths": [
+          "Clear visual hierarchy: PVI → MCI → OS Score → Risk Projects → Data Integrity",
+          "Tooltips explain every metric with formulas",
+          "Copy summary button is excellent for stakeholder communication"
+        ],
+        "issues": [
+          "Requires manual click to load — no auto-fetch on mount",
+          "Not in navigation — discoverability is zero for users who don't know the URL",
+          "No role gating — any authenticated user can access executive financial data"
+        ]
+      },
+      "/executive-report": {
+        "signal_to_noise": 8,
+        "strengths": [
+          "Print-optimized layout with @media print styles",
+          "Value Narrative section adds guardrail analysis",
+          "Clean separation from /executive for different use cases"
+        ],
+        "issues": [
+          "Nearly identical to /executive — duplicates 80% of the UI code",
+          "Not linked from anywhere in navigation",
+          "No role gating"
+        ]
+      },
+      "/insights": {
+        "signal_to_noise": 7,
+        "strengths": [
+          "Comprehensive filtering (status, date range, data quality)",
+          "Paginated variance leaderboard with data quality flags",
+          "Good use of sub-navigation buttons to /snapshots and /data-health"
+        ],
+        "issues": [
+          "Dense — KPIs, AI summary, recommendations, 3 trend charts, scope learning, operational patterns, AND variance table all on one page",
+          "WeeklyInsightCard and OperationalPatternsPanel data sources unknown without reading child components",
+          "No skeleton for WeeklyInsightCard or OperationalPatternsPanel"
+        ]
+      },
+      "/intelligence": {
+        "signal_to_noise": 9,
+        "strengths": [
+          "Clean 5-card KPI layout",
+          "Each card has traceSource tooltip showing exact data provenance",
+          "Proper role gating with NoAccess fallback"
+        ],
+        "issues": [
+          "Project selector resets to empty on mount — no default selection",
+          "No links to drill deeper into any KPI",
+          "Receipt lag card conditionally hidden — could confuse users expecting 5 cards"
+        ]
+      },
+      "/insights/ai-brain": {
+        "signal_to_noise": 3,
+        "strengths": [
+          "Comprehensive — covers every diagnostic tool in one place",
+          "All panels have copy JSON buttons",
+          "Auth probes at top give immediate feedback on session health"
+        ],
+        "issues": [
+          "3,133 lines in a single file — extreme monolith with 30+ state variables",
+          "Margin Inputs Trace appears TWICE (duplicate section with duplicate state)",
+          "No role gating — internal diagnostic tools accessible to any authenticated user",
+          "Mixes developer tools (seed test project, determinism scan) with executive tools (Executive Brief, Executive Report)",
+          "Cognitive overload — 14+ sections in one scrollable page with no tabs or navigation"
+        ]
+      },
+      "/data-health": {
+        "signal_to_noise": 8,
+        "strengths": [
+          "Clear problem-oriented sections with counts",
+          "Proper role gating (admin/PM only)",
+          "Refresh button for on-demand re-scan"
+        ],
+        "issues": [
+          "6+ sequential queries on mount — could be consolidated into one RPC",
+          "Not in navigation — only reachable from /insights button",
+          "No severity ranking across sections"
+        ]
+      },
+      "/insights/snapshots": {
+        "signal_to_noise": 8,
+        "strengths": [
+          "Simple, focused tool with clear purpose",
+          "Run history table with success/fail status",
+          "Proper role gating"
+        ],
+        "issues": [
+          "Not in navigation — only reachable from /insights",
+          "No automatic snapshot scheduling visibility"
+        ]
+      }
+    },
+    "global_issues": [
+      "AIBrainDiagnostics.tsx at 3,133 lines is the largest file in the codebase — needs decomposition",
+      "5 hidden routes not in navigation (/executive, /executive-report, /data-health, /insights/snapshots, /insights/ai-brain)",
+      "No role gating on /executive, /executive-report, /insights/ai-brain — sensitive financial and diagnostic data exposed",
+      "Data quality concept fragmented across 4 surfaces with 4 different implementations",
+      "Executive-level RPCs (rpc_generate_executive_report, rpc_executive_change_feed) only accessible from diagnostic page"
+    ]
+  },
+  "improvement_opportunities": [
+    {
+      "priority": 1,
+      "title": "Decompose AIBrainDiagnostics.tsx",
+      "description": "Split the 3,133-line monolith into at minimum 3 files: DiagnosticTestRunner (auth probes, test runner, scenario suite, edge cases), MarginInspector (payload inspector, quick probe, inputs trace, seed), and OpsPanel (release report, snapshots, volatility, executive report, change feed). Remove the duplicate Margin Inputs Trace section.",
+      "impact": "Maintainability, cognitive load, eliminates dead code"
+    },
+    {
+      "priority": 2,
+      "title": "Surface Executive Brief and attention_ranked_projects on /executive",
+      "description": "Move the Executive Brief (rpc_executive_change_feed) and attention_ranked_projects to the /executive dashboard as first-class widgets. Currently these powerful features are buried in diagnostics.",
+      "impact": "Stakeholder value — executives can see snapshot-over-snapshot changes without navigating to /insights/ai-brain"
+    },
+    {
+      "priority": 3,
+      "title": "Add role gating to sensitive routes",
+      "description": "Add explicit role checks to /executive, /executive-report, and /insights/ai-brain. At minimum, executive routes should require admin/PM. Diagnostics should require admin.",
+      "impact": "Security — prevents field workers from accessing financial data and diagnostic tools"
+    },
+    {
+      "priority": 4,
+      "title": "Unify data quality into a single authoritative surface",
+      "description": "Create a single DataQuality component/RPC that is the source of truth, consumed by /data-health, /executive DataIntegrityPanel, /insights quality filters, and diagnostics. Currently 4 different implementations with different logic.",
+      "impact": "Consistency, reduced maintenance, single source of truth"
+    },
+    {
+      "priority": 5,
+      "title": "Add hidden routes to navigation",
+      "description": "Add /executive to nav for admin tier. Link /data-health and /insights/snapshots from /insights sub-nav (already done via buttons, but could be more prominent). Consider adding /executive-report as a sub-action of /executive.",
+      "impact": "Discoverability — users currently need to know URLs"
+    },
+    {
+      "priority": 6,
+      "title": "Auto-fetch on /executive mount",
+      "description": "Currently /executive requires clicking 'Load Dashboard' to fetch data. Auto-fetch on mount with the refresh button as a secondary action.",
+      "impact": "UX — one less click for the primary use case"
+    },
+    {
+      "priority": 7,
+      "title": "Refactor Dashboard.tsx queries",
+      "description": "Extract the 8 queries and computed metrics from Dashboard.tsx into a custom hook (useDashboardData). The 573-line file mixes data fetching, metric computation, and rendering.",
+      "impact": "Maintainability, testability"
+    },
+    {
+      "priority": 8,
+      "title": "Consolidate /executive and /executive-report",
+      "description": "80% of the UI code is duplicated between these two pages. Extract shared components (TierIcon, TierBadge, PositionBadge, RiskBar, CauseRow) into a shared module. The print-specific layout could be a variant or print stylesheet on a single page.",
+      "impact": "DRY, reduced maintenance"
+    }
+  ]
+}
