@@ -19,7 +19,8 @@ interface DashboardSectionProps {
 
 /**
  * A titled section within a dashboard page.
- * Supports optional lazy loading via IntersectionObserver.
+ * Provides consistent vertical rhythm (space-y-4) and
+ * optional lazy loading via IntersectionObserver.
  */
 export function DashboardSection({
   title,
@@ -30,14 +31,14 @@ export function DashboardSection({
   className,
 }: DashboardSectionProps) {
   const content = (
-    <div className={cn("space-y-3", className)}>
+    <section className={cn("space-y-4", className)}>
       {title && (
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
           {title}
         </h2>
       )}
       {children}
-    </div>
+    </section>
   );
 
   if (lazy) {
