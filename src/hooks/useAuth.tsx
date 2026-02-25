@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { getDefaultHomeRoute, RoleContext } from '@/utils/getDefaultHomeRoute';
 
 interface AuthContextType {
   user: User | null;
@@ -41,6 +42,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.error('Error processing pending invites:', err);
       }
     };
+
+    // Fetch role context directly from DB (no hooks) for immediate routing
+    const fetchRoleContext = async (userId: string): Promise<RoleContext> => {
+      const [userRolesRes, projectRolesRes, orgMemberRes] = await Promise.all([
+        supabase.from('user_roles').select('role').eq('user_id', userId),
+        supabase.from('project_members').select('role').eq('user_id', userId),
+        supabase.from('organization_memberships').select('role').eq('user_id', userId).eq('is_active', true).limit(1).maybeSingle(),
+      ]);
+
+      const globalRoles = (userRolesRes.data || []).map(r => r.role);
+      const isAdmin = globalRoles.includes('admin');
+      const projectRoles = (projectRolesRes.data || []).map(r => ({ role: r.role }));
+      const orgRole = orgMemberRes.data?.role ?? null;
+
+      return { isAdmin, orgRole, globalRoles, projectRoles };
+    };
     
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -57,10 +74,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Only redirect on actual sign-in events (not session refresh/token refresh)
         // and only if not during initial load (to preserve current route)
         if (event === 'SIGNED_IN' && session && !isInitialLoad) {
-          // Role-based home route is resolved after mount via useDefaultHomeRoute.
-          // Navigate to /dashboard as a safe default; ProtectedRoute + the
-          // consuming component will redirect to the correct role home.
-          navigate('/dashboard');
+          try {
+            const roleCtx = await fetchRoleContext(session.user.id);
+            const homeRoute = getDefaultHomeRoute(roleCtx);
+            navigate(homeRoute);
+          } catch (err) {
+            console.error('Failed to resolve home route, falling back to /dashboard', err);
+            navigate('/dashboard');
+          }
         }
       }
     );
