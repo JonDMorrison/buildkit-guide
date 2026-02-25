@@ -13,6 +13,9 @@ import { useAuthRole } from '@/hooks/useAuthRole';
 import { useCurrentProject } from '@/hooks/useCurrentProject';
 import { usePrefetchRoute } from '@/hooks/usePrefetchRoute';
 import { NoAccess } from '@/components/NoAccess';
+import { ConfidenceRibbon } from '@/components/ConfidenceRibbon';
+import { useSnapshotCoverageReport } from '@/hooks/rpc/useSnapshotCoverageReport';
+import { useDataQualityAudit } from '@/hooks/rpc/useDataQualityAudit';
 import { DashboardLayout } from '@/components/dashboard/shared/DashboardLayout';
 import { DashboardHeader } from '@/components/dashboard/shared/DashboardHeader';
 import { DashboardSection } from '@/components/dashboard/shared/DashboardSection';
@@ -151,6 +154,20 @@ export default function ExecutiveDashboard() {
   const [copied, setCopied] = useState(false);
   const [feedData, setFeedData] = useState<ChangeFeedData | null>(null);
   const [changeLogOpen, setChangeLogOpen] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState<number>(0);
+
+  // Shared RPC hooks for confidence ribbon
+  const { data: coverageData, dataUpdatedAt: coverageUpdatedAt } = useSnapshotCoverageReport();
+  const { data: qualityData } = useDataQualityAudit();
+
+  const ribbonCoverage = (coverageData as any)?.coverage_percent ?? null;
+  const ribbonIssues = Array.isArray(qualityData)
+    ? qualityData.filter((r: any) => {
+        const issues = r.issues ?? r.issue_count ?? 0;
+        return Array.isArray(issues) ? issues.length > 0 : Number(issues) > 0;
+      }).length
+    : null;
+  const ribbonAsOf = feedData?.latest_snapshot_date ?? (coverageUpdatedAt ? new Date(coverageUpdatedAt) : null);
 
   // Cross-page warming: admin on /executive warms /dashboard mission control data
   useEffect(() => {
@@ -161,6 +178,9 @@ export default function ExecutiveDashboard() {
 
   const refresh = useCallback(async () => {
     if (!activeOrganizationId) return;
+    const now = Date.now();
+    if (now - lastRefresh < 15_000) return; // 15s throttle
+    setLastRefresh(now);
     setLoading(true);
     setError(null);
     try {
@@ -176,7 +196,7 @@ export default function ExecutiveDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [activeOrganizationId]);
+  }, [activeOrganizationId, lastRefresh]);
 
   const copySummary = useCallback(() => {
     if (!data && !feedData) return;
@@ -274,6 +294,16 @@ export default function ExecutiveDashboard() {
             variant="metric"
             empty
             emptyMessage="Click Load Dashboard to fetch the latest risk data."
+          />
+        )}
+
+        {/* ── Confidence Ribbon ─────────────────────────────── */}
+        {(feedData || data) && (
+          <ConfidenceRibbon
+            coveragePercent={ribbonCoverage}
+            issuesCount={ribbonIssues}
+            asOf={ribbonAsOf}
+            className="border-b border-border/40 pb-3"
           />
         )}
 

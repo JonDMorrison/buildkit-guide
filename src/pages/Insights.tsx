@@ -30,7 +30,8 @@ import { formatCurrency, formatNumber } from "@/lib/formatters";
 import { getDataQualityFlags } from "@/lib/dataQualityFlags";
 import { format, subWeeks } from "date-fns";
 import { cn } from "@/lib/utils";
-
+import { ConfidenceRibbon } from "@/components/ConfidenceRibbon";
+import { useDataQualityAudit } from "@/hooks/rpc/useDataQualityAudit";
 // Shared dashboard system
 import { DashboardHeader } from "@/components/dashboard/shared/DashboardHeader";
 import { DashboardSection } from "@/components/dashboard/shared/DashboardSection";
@@ -84,6 +85,14 @@ const Insights = () => {
 
   const { snapshots, loading: snapshotsLoading } = useOrgSnapshots(dateFromStr, dateToStr);
   const { rows: orgScopeRows, loading: orgScopeLoading } = useOrgScopeAccuracy(12);
+  const { data: qualityAuditData, dataUpdatedAt: qualityUpdatedAt } = useDataQualityAudit();
+
+  const insightsIssueCount = Array.isArray(qualityAuditData)
+    ? qualityAuditData.filter((r: any) => {
+        const issues = r.issues ?? r.issue_count ?? 0;
+        return Array.isArray(issues) ? issues.length > 0 : Number(issues) > 0;
+      }).length
+    : null;
 
   // "active" is a UI-only composite filter — pass null to the hook (fetch all) and filter client-side
   const rpcStatusFilter = statusFilter === "all" || statusFilter === "active" ? null : statusFilter;
@@ -211,6 +220,12 @@ const Insights = () => {
 
         {/* ── Section 1: Data Quality Overview ──────────────────────── */}
         <DashboardSection title="Data Quality Overview">
+          <ConfidenceRibbon
+            issuesCount={insightsIssueCount}
+            asOf={qualityUpdatedAt ? new Date(qualityUpdatedAt) : null}
+            compact
+            className="mb-2"
+          />
           <DashboardGrid columns={1}>
             <DataIntegrityBannerCard />
           </DashboardGrid>
