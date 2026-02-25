@@ -3,26 +3,8 @@ import { DashboardCard } from '@/components/dashboard/shared/DashboardCard';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+import { useSnapshotCoverageReport } from '@/hooks/rpc/useSnapshotCoverageReport';
 import { Camera, Loader2, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
-
-// ── Types ──────────────────────────────────────────────────────────────────
-
-interface SnapshotCoverageRow {
-  project_id: string;
-  project_name: string;
-  snapshot_count: number;
-  latest_snapshot: string | null;
-  oldest_snapshot: string | null;
-  coverage_days: number;
-  has_gap: boolean;
-}
-
-interface SnapshotCoverageData {
-  total_projects: number;
-  covered_projects: number;
-  coverage_percent: number;
-  projects: SnapshotCoverageRow[];
-}
 
 // ── Component ──────────────────────────────────────────────────────────────
 
@@ -31,29 +13,9 @@ interface Props {
 }
 
 export function SnapshotStatusCard({ orgId }: Props) {
-  const [data, setData] = useState<SnapshotCoverageData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { data, isLoading: loading, error: queryError, refetch } = useSnapshotCoverageReport(orgId);
+  const error = queryError ? String(queryError) : null;
   const [capturing, setCapturing] = useState(false);
-
-  const fetchCoverage = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const { data: result, error: rpcErr } = await (supabase as any).rpc(
-        'rpc_snapshot_coverage_report',
-        { p_org_id: orgId },
-      );
-      if (rpcErr) throw new Error(rpcErr.message);
-      // Normalize: RPC may return the object or null
-      const parsed = result as SnapshotCoverageData | null;
-      setData(parsed ? { ...parsed, projects: parsed.projects ?? [] } : null);
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [orgId]);
 
   const captureSnapshots = useCallback(async () => {
     setCapturing(true);
@@ -63,20 +25,13 @@ export function SnapshotStatusCard({ orgId }: Props) {
         { p_org_id: orgId, p_force: true },
       );
       if (capErr) throw new Error(capErr.message);
-      await fetchCoverage();
+      await refetch();
     } catch (e: any) {
-      setError(e.message);
+      console.error('Capture error:', e.message);
     } finally {
       setCapturing(false);
     }
-  }, [orgId, fetchCoverage]);
-
-  // Auto-load
-  const [loaded, setLoaded] = useState(false);
-  if (!loaded && orgId) {
-    setLoaded(true);
-    fetchCoverage();
-  }
+  }, [orgId, refetch]);
 
   const uncovered = data ? data.projects.filter(p => p.snapshot_count < 2) : [];
   const gapped = data ? data.projects.filter(p => p.has_gap && p.snapshot_count >= 2) : [];
