@@ -1,7 +1,11 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useOrganization } from '@/hooks/useOrganization';
 import { DashboardCard } from '@/components/dashboard/shared/DashboardCard';
-import { Sparkles, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Sparkles, TrendingUp, TrendingDown, Minus, Loader2, BarChart3 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Props {
   projectId: string | null;
@@ -15,6 +19,10 @@ interface MarginSnapshot {
 }
 
 export function AIMarginSignalCard({ projectId }: Props) {
+  const { activeOrganizationId: orgId } = useOrganization();
+  const queryClient = useQueryClient();
+  const [generating, setGenerating] = useState(false);
+
   const { data, isLoading } = useQuery({
     queryKey: ['ai-margin-signal', projectId],
     queryFn: async () => {
@@ -32,6 +40,24 @@ export function AIMarginSignalCard({ projectId }: Props) {
   const snapshots = data ?? [];
   const hasEnough = snapshots.length >= 2;
 
+  async function handleGenerate() {
+    if (!orgId) return;
+    setGenerating(true);
+    try {
+      const { error } = await (supabase as any).rpc(
+        'rpc_capture_org_economic_snapshots',
+        { p_org_id: orgId, p_force: true },
+      );
+      if (error) throw error;
+      toast.success('Analysis data generated. It may take a moment to process.');
+      queryClient.invalidateQueries({ queryKey: ['ai-margin-signal', projectId] });
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to generate analysis data');
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   if (!isLoading && !hasEnough) {
     return (
       <DashboardCard
@@ -40,9 +66,30 @@ export function AIMarginSignalCard({ projectId }: Props) {
         variant="metric"
         traceSource="rpc_get_margin_snapshot_history"
         helpText="Tracks projected margin and risk score trends over the last 30 days."
-        empty
-        emptyMessage="This project needs at least 2 economic snapshots to show trends. Snapshots are captured daily."
-      />
+      >
+        <div className="space-y-3 py-2">
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Not enough data yet to show margin trends. The system needs at least two financial checkpoints to compare.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={handleGenerate}
+            disabled={generating || !orgId}
+          >
+            {generating ? (
+              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+            ) : (
+              <BarChart3 className="h-3.5 w-3.5 mr-1.5" />
+            )}
+            {generating ? 'Generating…' : 'Generate Analysis'}
+          </Button>
+          <p className="text-[10px] text-muted-foreground text-center">
+            This captures a financial checkpoint for all your projects. Run it twice (or wait a day) to unlock trends.
+          </p>
+        </div>
+      </DashboardCard>
     );
   }
 
