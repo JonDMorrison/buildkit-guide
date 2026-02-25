@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
 import { TrendingUp, TrendingDown, Minus, AlertTriangle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface VarianceCardProps {
   label: string;
@@ -12,6 +13,8 @@ interface VarianceCardProps {
   unavailableMessage?: string;
   /** When true, planned is treated as "not set" — shows "Not set" instead of 0 */
   budgetMissing?: boolean;
+  /** Project ID for budget link */
+  projectId?: string;
 }
 
 const fmt = (value: number, unit: "$" | "h" | "%") => {
@@ -28,7 +31,10 @@ export const VarianceCard = ({
   icon,
   unavailableMessage,
   budgetMissing,
+  projectId,
 }: VarianceCardProps) => {
+  const navigate = useNavigate();
+
   if (unavailableMessage) {
     return (
       <Card>
@@ -56,9 +62,13 @@ export const VarianceCard = ({
           <p className="text-xs text-muted-foreground mb-2">
             Planned: <span className="italic">Not set</span>
           </p>
-          <Badge variant="secondary" className="text-xs">
+          <Badge
+            variant="secondary"
+            className="text-xs cursor-pointer hover:bg-secondary/80 transition-colors"
+            onClick={() => projectId && navigate(`/projects/${projectId}?tab=financials`)}
+          >
             <AlertTriangle className="h-3 w-3 mr-1" />
-            Budget required
+            Set up budget →
           </Badge>
         </CardContent>
       </Card>
