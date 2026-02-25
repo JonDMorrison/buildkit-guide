@@ -44,6 +44,7 @@ import { Switch } from '@/components/ui/switch';
 import { useProjectWorkflow } from '@/hooks/useProjectWorkflow';
 import { EconomicControlPanel } from '@/components/project/EconomicControlPanel';
 import { AIInsightsSection } from '@/components/ai-insights';
+import { ProjectContextBanner } from '@/components/projects/ProjectContextBanner';
 
 interface Project {
   id: string;
@@ -206,6 +207,8 @@ const ProjectOverview = () => {
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Projects
         </Button>
+
+        <ProjectContextBanner />
 
         <UnratedLaborBanner projectId={projectId} />
 
@@ -704,7 +707,9 @@ const ProjectOverviewTab = ({ projectId, stats }: { projectId: string; stats: Pr
   return (
     <div className="space-y-6">
       {/* Economic Control Panel */}
-      <EconomicControlPanel projectId={projectId} />
+      <div id="economic-control">
+        <EconomicControlPanel projectId={projectId} />
+      </div>
 
       {/* Customer Hierarchy */}
       <CustomerHierarchyCard projectId={projectId} />

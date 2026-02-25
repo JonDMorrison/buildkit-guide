@@ -45,16 +45,9 @@ function nextStepText(classification: string): string {
 // ── Evidence route mapping by classification ────────────────────────────
 
 function evidenceRoute(projectId: string, classification: string): string {
-  switch (classification) {
-    case 'burn_increase':
-      return `/projects/${projectId}/financials?from=attention&issue=${classification}`;
-    case 'new_risks':
-    case 'worsening':
-    case 'resolved_risks':
-    case 'improving':
-    default:
-      return `/projects/${projectId}/financials?from=attention&issue=${classification}`;
-  }
+  // All evidence routes point to the project overview with attention context
+  // The ProjectContextBanner will handle scroll-to-section behavior
+  return `/projects/${projectId}?from=attention&issue=${classification}`;
 }
 
 // ── Classification helpers ──────────────────────────────────────────────
