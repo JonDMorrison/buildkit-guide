@@ -394,6 +394,7 @@ export default function ExecutiveDashboard() {
               asOf={ribbonAsOf}
               topAttentionNames={(feedData?.attention_ranked_projects ?? []).slice(0, 3).map((p: any) => p.project_name)}
               orgId={activeOrganizationId!}
+              isAdmin={isAdmin}
             />
           </DashboardSection>
         )}
