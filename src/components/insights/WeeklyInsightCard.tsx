@@ -26,14 +26,17 @@ export const WeeklyInsightCard = ({ projectId = null, title }: Props) => {
   // No content yet — show generate prompt
   if (!content && !error) {
     return (
-      <Card className="border-dashed">
-        <CardContent className="py-6 text-center">
-          <Sparkles className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground mb-3">
-            No AI insight generated yet. Generate one from your latest snapshot data.
-          </p>
+      <Card className="border-border/50">
+        <CardContent className="py-4 flex items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <Sparkles className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-foreground">No Insight Generated</p>
+              <p className="text-sm text-muted-foreground">Generate one from your latest snapshot data.</p>
+            </div>
+          </div>
           {canRegenerate && (
-            <Button size="sm" onClick={generate} disabled={generating}>
+            <Button size="sm" onClick={generate} disabled={generating} className="shrink-0">
               {generating ? (
                 <RefreshCw className="h-4 w-4 mr-1.5 animate-spin" />
               ) : (
