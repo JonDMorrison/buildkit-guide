@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
+import { useRoleHomeRedirect } from "@/hooks/useRoleHomeRedirect";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -46,6 +47,8 @@ const ResponsiveGridLayout = WidthProvider(Responsive);
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  // Redirect workers/accounting/admin to their role-appropriate home
+  useRoleHomeRedirect();
   const { user } = useAuth();
   const { currentProjectId, setCurrentProject } = useCurrentProject();
   const { isPM, isForeman, isAdmin, isInternalWorker, isExternalTrade, loading: roleLoading } = useAuthRole(currentProjectId || undefined);

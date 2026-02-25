@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -7,13 +8,16 @@ import { ControlCenterDropdown } from "./control-center/ControlCenterDropdown";
 import { SidebarTrigger } from "./ui/sidebar";
 import { GlobalSearchModal } from "./GlobalSearchModal";
 import { useOrganization } from "@/hooks/useOrganization";
+import { useDefaultHomeRoute } from "@/hooks/useDefaultHomeRoute";
 import projectPathLogo from "@/assets/project-path-logo.png";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export const TopNav = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const { activeOrganization } = useOrganization();
+  const { homeRoute } = useDefaultHomeRoute();
 
   // Global keyboard shortcut ⌘K / Ctrl+K
   useEffect(() => {
@@ -33,7 +37,13 @@ export const TopNav = () => {
       <nav className="sticky top-0 z-50 flex items-center justify-between h-nav px-2 sm:px-4 bg-card border-b-0" style={{ boxShadow: "0 1px 0 rgba(255,255,255,0.04)" }}>
         <div className="flex items-center gap-2 sm:gap-4">
           {!isMobile && <SidebarTrigger className="h-9 w-9" />}
-          <img src={projectPathLogo} alt="Project Path" className={isMobile ? "h-20 w-auto" : "h-24 w-auto"} />
+          {/* Logo navigates to the role-appropriate home route */}
+          <img
+            src={projectPathLogo}
+            alt="Project Path"
+            className={`${isMobile ? "h-20 w-auto" : "h-24 w-auto"} cursor-pointer`}
+            onClick={() => navigate(homeRoute)}
+          />
           {activeOrganization?.is_sandbox && (
             <Badge variant="outline" className="border-amber-500/50 text-amber-500 bg-amber-500/10 text-xs font-medium">
               {activeOrganization.sandbox_label || "Sandbox"}
