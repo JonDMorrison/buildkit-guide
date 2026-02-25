@@ -2,10 +2,12 @@ import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
 import { Home, LayoutDashboard, ClipboardList, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useDefaultHomeRoute } from "@/hooks/useDefaultHomeRoute";
 import logo from "@/assets/project-path-logo.png";
 
 const NotFound = () => {
   const location = useLocation();
+  const { homeRoute } = useDefaultHomeRoute();
 
   useEffect(() => {
     console.error("404 Error: User attempted to access non-existent route:", location.pathname);
@@ -22,8 +24,9 @@ const NotFound = () => {
         </p>
         
         <div className="flex flex-col sm:flex-row gap-3 justify-center mb-8">
+          {/* "Home" links to the role-appropriate home route */}
           <Button asChild>
-            <Link to="/">
+            <Link to={homeRoute}>
               <Home className="h-4 w-4 mr-2" />
               Home
             </Link>

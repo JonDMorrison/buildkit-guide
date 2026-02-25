@@ -57,7 +57,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Only redirect on actual sign-in events (not session refresh/token refresh)
         // and only if not during initial load (to preserve current route)
         if (event === 'SIGNED_IN' && session && !isInitialLoad) {
-          // The ProtectedRoute will handle the onboarding redirect
+          // Role-based home route is resolved after mount via useDefaultHomeRoute.
+          // Navigate to /dashboard as a safe default; ProtectedRoute + the
+          // consuming component will redirect to the correct role home.
           navigate('/dashboard');
         }
       }
