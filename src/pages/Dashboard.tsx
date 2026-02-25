@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { useNavigate, Navigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useRoleHomeRedirect } from "@/hooks/useRoleHomeRedirect";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,6 +25,7 @@ import { useCertificationTier } from "@/hooks/useCertificationTier";
 import { EconomicPulseStrip } from "@/components/dashboard/EconomicPulseStrip";
 import { QuickAddModal } from "@/components/dashboard/QuickAddModal";
 import { format, isAfter, isBefore, addDays, startOfDay, subDays } from "date-fns";
+import { WorkerDashboard } from "@/components/dashboard/worker/WorkerDashboard";
 
 // Shared dashboard system
 import { DashboardLayout } from "@/components/dashboard/shared/DashboardLayout";
@@ -263,8 +264,10 @@ export default function Dashboard() {
 
   // ── Guards ────────────────────────────────────────────────────────────
 
-  if (!roleLoading && !isAdmin && !isPM() && !isForeman() && (isInternalWorker() || isExternalTrade())) {
-    return <Navigate to="/tasks" replace />;
+  const isWorkerRole = !roleLoading && !isAdmin && !isPM() && !isForeman() && (isInternalWorker() || isExternalTrade());
+
+  if (isWorkerRole) {
+    return <WorkerDashboard />;
   }
 
   if ((layoutLoading && !layouts) || roleLoading) {
