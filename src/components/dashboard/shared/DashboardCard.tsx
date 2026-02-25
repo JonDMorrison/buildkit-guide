@@ -206,7 +206,7 @@ export function DashboardCard({
         <div className="flex items-center gap-1.5 shrink-0">
           {resolvedActions}
           {helpText && <SectionHelp text={helpText} />}
-          {traceSource && (
+          {!helpText && traceSource && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>

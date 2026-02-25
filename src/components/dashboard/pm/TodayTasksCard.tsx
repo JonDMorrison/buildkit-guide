@@ -14,7 +14,7 @@ export function TodayTasksCard({ todayCount, totalOpen, loading }: Props) {
       icon={ListChecks}
       loading={loading}
       variant="metric"
-      traceSource="tasks → due_date = today"
+      helpText="Tasks with a due date of today, plus total open tasks across the project."
     >
       <div className="text-4xl font-bold tabular-nums text-foreground">{todayCount}</div>
       <p className="text-xs text-muted-foreground">

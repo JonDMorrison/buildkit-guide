@@ -182,7 +182,7 @@ function DashboardMissionControlContent({ canViewExecutive, canViewDiagnostics }
               : null
           }
           variant="metric"
-          traceSource="rpc_snapshot_coverage_report + rpc_data_quality_audit"
+          helpText="How complete and reliable your project data is. Higher coverage means better decisions."
           value={
             coveragePercent !== null
               ? `${coveragePercent}%`
@@ -216,7 +216,7 @@ function DashboardMissionControlContent({ canViewExecutive, canViewDiagnostics }
           loading={loading}
           error={qualityError && !coverageError ? null : undefined}
           variant="table"
-          traceSource="rpc_data_quality_audit"
+          helpText="The most common data quality problems across your projects. Fix these to improve confidence."
           empty={topIssues.length === 0 && !qualityError}
           emptyMessage="No data quality issues found"
           actions={

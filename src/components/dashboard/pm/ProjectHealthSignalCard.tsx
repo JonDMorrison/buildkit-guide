@@ -86,7 +86,7 @@ export function ProjectHealthSignalCard({ projectId }: Props) {
       icon={Activity}
       loading={loading}
       variant="chart"
-      traceSource="rpc_generate_project_margin_control + rpc_get_margin_snapshot_history"
+      helpText="Margin trends and economic signals for this project. Link an estimate to start tracking."
       empty={!loading && !marginControl}
       emptyMessage="No economic data. Link an approved estimate to begin tracking."
     >

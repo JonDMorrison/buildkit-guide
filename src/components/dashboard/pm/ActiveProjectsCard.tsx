@@ -21,7 +21,7 @@ export function ActiveProjectsCard({ projects, loading }: Props) {
       icon={Building2}
       loading={loading}
       variant="metric"
-      traceSource="project_members → projects"
+      helpText="Projects you're assigned to. Click to view the full project list."
     >
       <div className="text-4xl font-bold tabular-nums text-foreground">{active.length || projects.length}</div>
       <p className="text-xs text-muted-foreground">

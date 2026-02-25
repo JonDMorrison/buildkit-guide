@@ -44,7 +44,7 @@ export function ManpowerOverview({ projectId }: Props) {
       icon={Users}
       loading={isLoading}
       variant={pending.length > 0 ? "alert" : "table"}
-      traceSource="manpower_requests → status"
+      helpText="Manpower requests for this project and their approval status."
       empty={!isLoading && (data?.total ?? 0) === 0}
       emptyMessage="No manpower requests for this project."
       actions={
