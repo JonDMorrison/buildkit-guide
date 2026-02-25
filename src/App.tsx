@@ -312,7 +312,9 @@ const App = () => (
                   path="/users"
                   element={
                     <ProtectedRoute>
-                      <UserManagement />
+                      <AdminOrPMRoute>
+                        <UserManagement />
+                      </AdminOrPMRoute>
                     </ProtectedRoute>
                   }
                 />
@@ -386,7 +388,9 @@ const App = () => (
                   path="/admin/time-diagnostics"
                   element={
                     <ProtectedRoute>
-                      <TimeDiagnostics />
+                      <AdminRoute>
+                        <TimeDiagnostics />
+                      </AdminRoute>
                     </ProtectedRoute>
                   }
                 />
@@ -509,7 +513,9 @@ const App = () => (
                   path="/data-health"
                   element={
                     <ProtectedRoute>
-                      <DataHealth />
+                      <AdminOrPMRoute>
+                        <DataHealth />
+                      </AdminOrPMRoute>
                     </ProtectedRoute>
                   }
                 />
@@ -525,7 +531,9 @@ const App = () => (
                   path="/insights/security"
                   element={
                     <ProtectedRoute>
-                      <SecurityIsolationReport />
+                      <AdminRoute>
+                        <SecurityIsolationReport />
+                      </AdminRoute>
                     </ProtectedRoute>
                   }
                 />
@@ -565,7 +573,9 @@ const App = () => (
                   path="/insights/ai-brain"
                   element={
                     <ProtectedRoute>
-                      <AIBrainDiagnostics />
+                      <AdminRoute>
+                        <AIBrainDiagnostics />
+                      </AdminRoute>
                     </ProtectedRoute>
                   }
                 />
@@ -573,7 +583,9 @@ const App = () => (
                   path="/release"
                   element={
                     <ProtectedRoute>
-                      <Release />
+                      <AdminOrPMRoute>
+                        <Release />
+                      </AdminOrPMRoute>
                     </ProtectedRoute>
                   }
                 />
@@ -592,7 +604,9 @@ const App = () => (
                   path="/admin/release-checklist"
                   element={
                     <ProtectedRoute>
-                      <AdminReleaseChecklist />
+                      <AdminRoute>
+                        <AdminReleaseChecklist />
+                      </AdminRoute>
                     </ProtectedRoute>
                   }
                 />
@@ -612,7 +626,9 @@ const App = () => (
                   path="/system-audit"
                   element={
                     <ProtectedRoute>
-                      <SystemAudit />
+                      <AdminRoute>
+                        <SystemAudit />
+                      </AdminRoute>
                     </ProtectedRoute>
                   }
                 />
@@ -620,7 +636,9 @@ const App = () => (
                   path="/executive"
                   element={
                     <ProtectedRoute>
-                      <ExecutiveDashboard />
+                      <AdminOrPMRoute>
+                        <ExecutiveDashboard />
+                      </AdminOrPMRoute>
                     </ProtectedRoute>
                   }
                 />

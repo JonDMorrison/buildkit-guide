@@ -36,10 +36,31 @@ interface ManualCheck {
   checked_at: string | null;
 }
 
-/* ─── Page ─── */
+/* ─── Page (Gate) ─── */
 export default function Release() {
+  const { isAdmin, isPM, loading: authLoading } = useAuthRole();
+
+  if (authLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!isAdmin && !isPM()) {
+    return <Layout><NoAccess /></Layout>;
+  }
+
+  return <ReleaseContent />;
+}
+
+/* ─── Content ─── */
+function ReleaseContent() {
   const { currentProjectId } = useCurrentProject();
-  const { isAdmin, isPM, loading: authLoading } = useAuthRole(currentProjectId ?? undefined);
+  const { isAdmin, isPM } = useAuthRole(currentProjectId ?? undefined);
   const { activeOrganization } = useOrganization();
   const orgId = activeOrganization?.id;
   const queryClient = useQueryClient();
@@ -122,19 +143,6 @@ export default function Release() {
     return checks.filter((c: any) => c.status === 'FAIL');
   }, [latestRun]);
 
-  if (authLoading) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
-        </div>
-      </Layout>
-    );
-  }
-
-  if (!isAdmin && !isPM()) {
-    return <Layout><NoAccess /></Layout>;
-  }
 
   const totalChecks = latestRun ? latestRun.pass_count + latestRun.fail_count + latestRun.manual_count : 0;
 
