@@ -1617,6 +1617,88 @@ export type Database = {
         }
         Relationships: []
       }
+      executive_decision_notes: {
+        Row: {
+          as_of: string
+          body: string
+          created_at: string
+          created_by: string
+          id: string
+          organization_id: string
+          project_id: string | null
+          source: string
+          template_type: string
+          top3_projects: string[]
+        }
+        Insert: {
+          as_of: string
+          body: string
+          created_at?: string
+          created_by: string
+          id?: string
+          organization_id: string
+          project_id?: string | null
+          source?: string
+          template_type: string
+          top3_projects?: string[]
+        }
+        Update: {
+          as_of?: string
+          body?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          organization_id?: string
+          project_id?: string | null
+          source?: string
+          template_type?: string
+          top3_projects?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "executive_decision_notes_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "executive_decision_notes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "executive_decision_notes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_economic_snapshot"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "executive_decision_notes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_labor_burn_index"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "executive_decision_notes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_margin_projection"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "executive_decision_notes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_progress"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financial_integrity_overrides: {
         Row: {
           blockers: Json
