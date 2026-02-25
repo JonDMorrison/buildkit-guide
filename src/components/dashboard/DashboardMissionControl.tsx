@@ -1,12 +1,14 @@
+import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useRouteAccess } from "@/hooks/useRouteAccess";
 import { useSnapshotCoverageReport } from "@/hooks/rpc/useSnapshotCoverageReport";
 import { useDataQualityAudit } from "@/hooks/rpc/useDataQualityAudit";
 import { DashboardCard } from "@/components/dashboard/shared/DashboardCard";
 import { DashboardGrid } from "@/components/dashboard/shared/DashboardGrid";
+import { ConfidenceRibbon } from "@/components/ConfidenceRibbon";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShieldCheck, ListChecks, ArrowRight } from "lucide-react";
+import { ShieldCheck, ListChecks, ArrowRight, RefreshCw } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
 /* Gate                                                                 */
@@ -61,19 +63,31 @@ interface ContentProps {
 
 function DashboardMissionControlContent({ canViewExecutive, canViewDiagnostics }: ContentProps) {
   const navigate = useNavigate();
+  const [lastRefresh, setLastRefresh] = useState(0);
 
   // ── Shared RPC hooks ───────────────────────────────────────────
   const {
     data: coverageData,
     isLoading: coverageLoading,
     error: coverageError,
+    dataUpdatedAt: coverageUpdatedAt,
+    refetch: refetchCoverage,
   } = useSnapshotCoverageReport();
 
   const {
     data: qualityData,
     isLoading: qualityLoading,
     error: qualityError,
+    refetch: refetchQuality,
   } = useDataQualityAudit();
+
+  const handleRefresh = useCallback(() => {
+    const now = Date.now();
+    if (now - lastRefresh < 15_000) return; // 15s throttle
+    setLastRefresh(now);
+    refetchCoverage();
+    refetchQuality();
+  }, [lastRefresh, refetchCoverage, refetchQuality]);
 
   // ── Derived values ──────────────────────────────────────────────
 
@@ -117,6 +131,10 @@ function DashboardMissionControlContent({ canViewExecutive, canViewDiagnostics }
 
   const loading = coverageLoading || qualityLoading;
 
+  const ribbonCoverage = coveragePercent;
+  const ribbonIssues = qualityIssueCount;
+  const ribbonAsOf = coverageUpdatedAt ? new Date(coverageUpdatedAt) : null;
+
   return (
     <section className="space-y-4">
       {/* Header row */}
@@ -124,17 +142,38 @@ function DashboardMissionControlContent({ canViewExecutive, canViewDiagnostics }
         <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
           Mission Control
         </h2>
-        {canViewExecutive && (
+        <div className="flex items-center gap-2">
           <Button
             size="sm"
-            variant="outline"
-            className="px-3 w-fit"
-            onClick={() => navigate("/executive")}
+            variant="ghost"
+            className="px-2"
+            onClick={handleRefresh}
+            disabled={loading}
           >
-            Open Executive Brief <ArrowRight className="h-4 w-4 ml-1" />
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
           </Button>
-        )}
+          {canViewExecutive && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="px-3 w-fit"
+              onClick={() => navigate("/executive")}
+            >
+              Open Executive Brief <ArrowRight className="h-4 w-4 ml-1" />
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* Confidence Ribbon */}
+      {!loading && (coverageData || qualityData) && (
+        <ConfidenceRibbon
+          coveragePercent={ribbonCoverage}
+          issuesCount={ribbonIssues}
+          asOf={ribbonAsOf}
+          compact
+        />
+      )}
 
       {/* Cards */}
       <DashboardGrid columns={2}>
