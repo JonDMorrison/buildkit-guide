@@ -32,6 +32,7 @@ const LAYOUT_LG: DashboardWidget[] = [
   { i: 'myday', x: 3, y: 6, w: 3, h: 4, minH: 3, maxH: 5, minW: 3 },
   { i: 'blockers', x: 6, y: 6, w: 3, h: 4, minH: 3, maxH: 5, minW: 3 },
   { i: 'safety', x: 9, y: 6, w: 3, h: 4, minH: 3, maxH: 5, minW: 3 },
+  { i: 'econdrift', x: 0, y: 10, w: 4, h: 4, minH: 3, maxH: 5, minW: 3 },
 ];
 
 // Tablet layout (md: 768-1199px, 8 cols)
@@ -44,18 +45,20 @@ const LAYOUT_MD: DashboardWidget[] = [
   { i: 'myday', x: 0, y: 11, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
   { i: 'blockers', x: 4, y: 11, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
   { i: 'safety', x: 0, y: 15, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
+  { i: 'econdrift', x: 4, y: 15, w: 4, h: 4, minH: 3, maxH: 5, minW: 3 },
 ];
 
 // Mobile layout (sm: <768px, 1 col stacked)
 const LAYOUT_SM: DashboardWidget[] = [
   { i: 'metrics', x: 0, y: 0, w: 4, h: 6, minH: 5, maxH: 7, minW: 4 },
   { i: 'econhealth', x: 0, y: 6, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
-  { i: 'health', x: 0, y: 10, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
-  { i: 'myday', x: 0, y: 14, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
-  { i: 'blockers', x: 0, y: 18, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
-  { i: 'safety', x: 0, y: 22, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
-  { i: 'activity', x: 0, y: 26, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
-  { i: 'distribution', x: 0, y: 30, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
+  { i: 'econdrift', x: 0, y: 10, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
+  { i: 'health', x: 0, y: 14, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
+  { i: 'myday', x: 0, y: 18, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
+  { i: 'blockers', x: 0, y: 22, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
+  { i: 'safety', x: 0, y: 26, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
+  { i: 'activity', x: 0, y: 30, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
+  { i: 'distribution', x: 0, y: 34, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
 ];
 
 const DEFAULT_LAYOUTS: ResponsiveLayouts = {

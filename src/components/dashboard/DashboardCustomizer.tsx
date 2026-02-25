@@ -23,6 +23,7 @@ const WIDGET_NAMES: Record<string, string> = {
   myday: 'My Day',
   safety: 'Safety & Compliance',
   blockers: 'Blockers & Risks',
+  econdrift: 'Economic Drift',
   ai: 'AI Assistant',
   'hours-tracking': 'Hours Tracking',
 };
