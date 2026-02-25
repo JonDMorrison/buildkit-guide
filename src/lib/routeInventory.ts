@@ -85,6 +85,7 @@ export const ROUTE_WRAPPER_MAP: Record<string, RouteWrapper[]> = {
   '/data-health': ['protected', 'adminOrPM'],
   '/release': ['protected', 'adminOrPM'],
   '/executive': ['protected', 'adminOrPM'],
+  '/health': ['protected', 'adminOrPM'],
 
   // Protected + AdminRoute
   '/admin/time-diagnostics': ['protected', 'admin'],
@@ -136,6 +137,7 @@ export function canAccessRoute(path: string, role: RoleName): boolean {
     case '/executive':
     case '/data-health':
     case '/users':
+    case '/health':
       return isAdmin || isPM;
     case '/intelligence':
     case '/deficiencies':
