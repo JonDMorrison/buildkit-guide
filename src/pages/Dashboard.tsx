@@ -146,6 +146,7 @@ export default function Dashboard() {
     gcTime: 30 * 60 * 1000,
   });
 
+  // Safety forms — deferred, not needed for top fold
   const { data: safetyForms = [] } = useQuery({
     queryKey: ["dashboard-safety", currentProjectId],
     queryFn: async () => {
@@ -159,8 +160,8 @@ export default function Dashboard() {
       if (error) throw error;
       return data || [];
     },
-    enabled: !!(currentProjectId && (isPM || isForeman)),
-    staleTime: 5 * 60 * 1000,
+    enabled: false, // deferred — not used on page, only by modals if needed
+    staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });
 
@@ -219,6 +220,8 @@ export default function Dashboard() {
 
   const activeTrades = activeTradesData.length;
 
+  // Team members — only needed when crew modal opens, defer initial load
+  const [crewModalOpened, setCrewModalOpened] = useState(false);
   const { data: teamMembers = [] } = useQuery({
     queryKey: ["dashboard-team-members", currentProjectId],
     queryFn: async () => {
@@ -233,7 +236,7 @@ export default function Dashboard() {
         email: m.profile?.email || "", role: m.role, trade_name: m.trade?.name || null,
       }));
     },
-    enabled: !!currentProjectId,
+    enabled: !!currentProjectId && crewModalOpened,
     staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });
@@ -327,7 +330,7 @@ export default function Dashboard() {
         blockedCount={blockedTasks}
         staleLogDate={logIsStale ? recentLog?.log_date : null}
         onWeatherClick={() => setWeatherPopoverOpen(true)}
-        onCrewClick={() => setCrewPopoverOpen(true)}
+        onCrewClick={() => { setCrewModalOpened(true); setCrewPopoverOpen(true); }}
         onTradesClick={() => setTradesPopoverOpen(true)}
         onStartingClick={() => setStartingModalOpen(true)}
         onFinishingClick={() => setFinishingModalOpen(true)}
@@ -345,8 +348,8 @@ export default function Dashboard() {
         </DashboardGrid>
       </DashboardSection>
 
-      {/* ── Row 2: Project Health Signal ─────────────────────────────── */}
-      <DashboardSection title="Project Health">
+      {/* ── Row 2: Project Health Signal (lazy — below fold) ────────── */}
+      <DashboardSection title="Project Health" lazy skeletonHeight="h-56">
         <ProjectHealthSignalCard projectId={currentProjectId} />
       </DashboardSection>
 

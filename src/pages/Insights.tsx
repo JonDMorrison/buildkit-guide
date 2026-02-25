@@ -221,18 +221,18 @@ const Insights = () => {
           <ReceiptsPipelineCard />
         </DashboardSection>
 
-        {/* ── Section 3: Job Cost Alerts ────────────────────────────── */}
-        <DashboardSection title="Job Cost Alerts">
+        {/* ── Section 3: Job Cost Alerts (lazy) ─────────────────────── */}
+        <DashboardSection title="Job Cost Alerts" lazy skeletonHeight="h-40">
           <JobCostAlertsCard rows={filteredRows} loading={loading} />
         </DashboardSection>
 
-        {/* ── Section 4: Invoice Pipeline ───────────────────────────── */}
-        <DashboardSection title="Invoice Pipeline">
+        {/* ── Section 4: Invoice Pipeline (lazy) ────────────────────── */}
+        <DashboardSection title="Invoice Pipeline" lazy skeletonHeight="h-40">
           <InvoicePipelineCard />
         </DashboardSection>
 
-        {/* ── Section 5: Financial Trends ───────────────────────────── */}
-        <DashboardSection title="Financial Trends">
+        {/* ── Section 5: Financial Trends (lazy) ────────────────────── */}
+        <DashboardSection title="Financial Trends" lazy skeletonHeight="h-56">
           {/* Date range filters */}
           <div className="flex flex-wrap gap-3 mb-4 items-end">
             <div className="space-y-1">
@@ -386,24 +386,26 @@ const Insights = () => {
               </div>
             </DashboardSection>
 
-            {/* Weekly AI Ops Summary */}
-            <div className="mb-6">
+            {/* Weekly AI Ops Summary (lazy) */}
+            <DashboardSection lazy skeletonHeight="h-40">
               <WeeklyInsightCard title="Weekly Ops Summary" />
-            </div>
+            </DashboardSection>
 
-            {/* Recommendations */}
-            <RecommendationsPanel recommendations={portfolioRecs} title="Top Recommendations" />
+            {/* Recommendations (lazy) */}
+            <DashboardSection lazy skeletonHeight="h-32">
+              <RecommendationsPanel recommendations={portfolioRecs} title="Top Recommendations" />
+            </DashboardSection>
 
-            {/* Scope Estimation Learning */}
-            <div className="mb-6">
+            {/* Scope Estimation Learning (lazy) */}
+            <DashboardSection lazy skeletonHeight="h-40">
               <OrgScopeLearningPanel rows={orgScopeRows} loading={orgScopeLoading} />
-            </div>
+            </DashboardSection>
 
-            {/* Operational Patterns */}
+            {/* Operational Patterns (lazy) */}
             {activeOrganizationId && (
-              <div className="mb-6">
+              <DashboardSection lazy skeletonHeight="h-40">
                 <OperationalPatternsPanel organizationId={activeOrganizationId} />
-              </div>
+              </DashboardSection>
             )}
 
             {/* Variance Leaderboard */}
