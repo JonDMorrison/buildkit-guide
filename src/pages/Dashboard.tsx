@@ -21,7 +21,7 @@ import {
   BlockersPreviewModal,
 } from "@/components/dashboard/widgets";
 import type { SnapshotTask, SnapshotTrade } from "@/components/dashboard/widgets";
-import { ArrowRight, Building2, Plus } from "lucide-react";
+import { ArrowRight, Building2, Plus, Loader2 } from "lucide-react";
 import { CertificationBadge } from "@/components/CertificationBadge";
 import { useCertificationTier } from "@/hooks/useCertificationTier";
 import { EconomicPulseStrip } from "@/components/dashboard/EconomicPulseStrip";
@@ -71,7 +71,7 @@ export default function Dashboard() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent" />
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       </DashboardLayout>
     );
@@ -100,7 +100,7 @@ function DashboardRedirect({ to }: { to: string }) {
   return (
     <DashboardLayout>
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent" />
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     </DashboardLayout>
   );
@@ -350,7 +350,7 @@ function DashboardContent() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent" />
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       </DashboardLayout>
     );

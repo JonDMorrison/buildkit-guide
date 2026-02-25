@@ -15,6 +15,7 @@ import { OperationalPatternsPanel } from "@/components/insights/OperationalPatte
 import { NoAccess } from "@/components/NoAccess";
 import { UnratedLaborBanner } from "@/components/UnratedLaborBanner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DashboardCard } from "@/components/dashboard/shared/DashboardCard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +24,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { DollarSign, TrendingUp, AlertTriangle, BarChart3, Clock, Activity, ShieldAlert, ChevronLeft, ChevronRight, CalendarIcon, Camera } from "lucide-react";
+import { DollarSign, TrendingUp, AlertTriangle, BarChart3, Clock, Activity, ShieldAlert, ChevronLeft, ChevronRight, CalendarIcon, Camera, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
 import { getDataQualityFlags } from "@/lib/dataQualityFlags";
@@ -179,7 +180,7 @@ const Insights = () => {
     return (
       <Layout>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       </Layout>
     );
@@ -219,38 +220,35 @@ const Insights = () => {
         {/* ── Section 1b: Exceptions Needing Action ────────────────── */}
         {withoutBudget.length > 0 && (
           <DashboardSection title="Exceptions Needing Action">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <ShieldAlert className="h-4 w-4 text-destructive" />
-                  {withoutBudget.length} project{withoutBudget.length !== 1 ? 's' : ''} missing budget — excluded from portfolio KPIs
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-1.5">
-                  {withoutBudget.slice(0, 8).map(r => (
-                    <div
-                      key={r.project_id}
-                      className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm hover:bg-muted/40 transition-colors cursor-pointer"
-                      onClick={() => navigate(`/projects/${r.project_id}`)}
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-mono text-xs text-muted-foreground">{r.job_number || '—'}</span>
-                        <span className="font-medium truncate">{r.project_name}</span>
-                      </div>
-                      <Badge variant="outline" className="text-xs text-destructive border-destructive/30 shrink-0">
-                        No Budget
-                      </Badge>
+            <DashboardCard
+              title={`${withoutBudget.length} project${withoutBudget.length !== 1 ? 's' : ''} missing budget`}
+              description="Excluded from portfolio KPIs"
+              icon={ShieldAlert}
+              variant="alert"
+            >
+              <div className="space-y-1.5">
+                {withoutBudget.slice(0, 8).map(r => (
+                  <div
+                    key={r.project_id}
+                    className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm hover:bg-muted/40 transition-colors cursor-pointer"
+                    onClick={() => navigate(`/projects/${r.project_id}`)}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-mono text-xs text-muted-foreground">{r.job_number || '—'}</span>
+                      <span className="font-medium truncate">{r.project_name}</span>
                     </div>
-                  ))}
-                  {withoutBudget.length > 8 && (
-                    <p className="text-xs text-muted-foreground text-center pt-1">
-                      + {withoutBudget.length - 8} more
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                    <Badge variant="error" className="text-xs shrink-0">
+                      No Budget
+                    </Badge>
+                  </div>
+                ))}
+                {withoutBudget.length > 8 && (
+                  <p className="text-xs text-muted-foreground text-center pt-1">
+                    + {withoutBudget.length - 8} more
+                  </p>
+                )}
+              </div>
+            </DashboardCard>
           </DashboardSection>
         )}
 
@@ -362,66 +360,56 @@ const Insights = () => {
                 </div>
               </div>
 
-              <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 ${loading ? "opacity-60" : ""}`}>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium">Total Contract Value</CardTitle>
-                    <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{kpis ? formatCurrency(kpis.totalContract) : "—"}</div>
-                    <p className="text-xs text-muted-foreground">
-                      {kpis ? `${kpis.includedCount} of ${kpis.totalCount} projects` : "Loading…"}
-                      {kpis && kpis.excludedCount > 0 && (
-                        <span className="text-destructive"> · {kpis.excludedCount} missing budget</span>
-                      )}
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium">Total Actual Cost</CardTitle>
-                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{kpis ? formatCurrency(kpis.totalActual) : "—"}</div>
-                    <p className="text-xs text-muted-foreground">
-                      {kpis ? `Planned: ${formatCurrency(kpis.totalPlanned)}` : "Loading…"}
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium">Avg Margin</CardTitle>
-                    <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      {kpis
-                        ? kpis.totalContract > 0
-                          ? `${kpis.weightedMargin.toFixed(1)}%`
-                          : "N/A"
-                        : "—"}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Weighted by contract value
-                      {kpis && kpis.excludedCount > 0 && " · budgeted only"}
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium">Over Budget</CardTitle>
-                    <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{kpis ? kpis.overBudget : "—"}</div>
-                    <p className="text-xs text-muted-foreground">
-                      {kpis ? `of ${kpis.includedCount} budgeted projects` : "Loading…"}
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
+              <DashboardGrid columns={4} className={loading ? "opacity-60" : ""}>
+                <DashboardCard
+                  title="Total Contract Value"
+                  icon={DollarSign}
+                  variant="metric"
+                  value={kpis ? formatCurrency(kpis.totalContract) : "—"}
+                  loading={!kpis && loading}
+                >
+                  <p className="text-xs text-muted-foreground">
+                    {kpis ? `${kpis.includedCount} of ${kpis.totalCount} projects` : "Loading…"}
+                    {kpis && kpis.excludedCount > 0 && (
+                      <span className="text-destructive"> · {kpis.excludedCount} missing budget</span>
+                    )}
+                  </p>
+                </DashboardCard>
+                <DashboardCard
+                  title="Total Actual Cost"
+                  icon={TrendingUp}
+                  variant="metric"
+                  value={kpis ? formatCurrency(kpis.totalActual) : "—"}
+                  loading={!kpis && loading}
+                >
+                  <p className="text-xs text-muted-foreground">
+                    {kpis ? `Planned: ${formatCurrency(kpis.totalPlanned)}` : "Loading…"}
+                  </p>
+                </DashboardCard>
+                <DashboardCard
+                  title="Avg Margin"
+                  icon={BarChart3}
+                  variant="metric"
+                  value={kpis ? (kpis.totalContract > 0 ? `${kpis.weightedMargin.toFixed(1)}%` : "N/A") : "—"}
+                  loading={!kpis && loading}
+                >
+                  <p className="text-xs text-muted-foreground">
+                    Weighted by contract value
+                    {kpis && kpis.excludedCount > 0 && " · budgeted only"}
+                  </p>
+                </DashboardCard>
+                <DashboardCard
+                  title="Over Budget"
+                  icon={AlertTriangle}
+                  variant="metric"
+                  value={kpis ? kpis.overBudget : "—"}
+                  loading={!kpis && loading}
+                >
+                  <p className="text-xs text-muted-foreground">
+                    {kpis ? `of ${kpis.includedCount} budgeted projects` : "Loading…"}
+                  </p>
+                </DashboardCard>
+              </DashboardGrid>
             </DashboardSection>
 
             {/* Weekly AI Ops Summary (lazy) */}
