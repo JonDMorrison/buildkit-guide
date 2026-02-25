@@ -32,6 +32,7 @@ import { format, subWeeks } from "date-fns";
 import { cn } from "@/lib/utils";
 import { ConfidenceRibbon } from "@/components/ConfidenceRibbon";
 import { useDataQualityAudit } from "@/hooks/rpc/useDataQualityAudit";
+import { HealthContextBanner } from "@/components/HealthContextBanner";
 // Shared dashboard system
 import { DashboardHeader } from "@/components/dashboard/shared/DashboardHeader";
 import { DashboardSection } from "@/components/dashboard/shared/DashboardSection";
@@ -200,6 +201,7 @@ const Insights = () => {
   return (
     <Layout>
       <div className="container max-w-6xl mx-auto px-4 py-6 space-y-5">
+        <HealthContextBanner />
 
         {/* Header */}
         <DashboardHeader

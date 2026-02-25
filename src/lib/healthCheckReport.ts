@@ -74,5 +74,8 @@ export function buildHealthCheckReport(input: HealthCheckReportInput): string {
     lines.push('');
   }
 
+  lines.push('Triggered actions may include from=health&check=<id> routing.');
+  lines.push('');
+
   return lines.join('\n');
 }

@@ -8,6 +8,7 @@ import {
   AlertTriangle, CheckCircle2, TrendingUp, TrendingDown, Flame, ChevronDown, Download,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { HealthContextBanner } from '@/components/HealthContextBanner';
 import { getCause } from '@/lib/causesDictionary';
 import { useAuthRole } from '@/hooks/useAuthRole';
 import { useCurrentProject } from '@/hooks/useCurrentProject';
@@ -284,6 +285,7 @@ export default function ExecutiveDashboard() {
   return (
     <TooltipProvider>
       <DashboardLayout>
+        <HealthContextBanner />
         {/* ── Header ──────────────────────────────────────────── */}
         <DashboardHeader
           title="Executive Overview"

@@ -54,6 +54,7 @@ import { AttentionInbox } from "@/components/executive/AttentionInbox";
 import { useOrganization } from "@/hooks/useOrganization";
 import { usePrefetchRoute } from "@/hooks/usePrefetchRoute";
 import { useExecutiveChangeFeed } from "@/hooks/rpc/useExecutiveChangeFeed";
+import { HealthContextBanner } from "@/components/HealthContextBanner";
 
 /* ------------------------------------------------------------------ */
 /* Gate — resolves role before mounting content or firing queries       */
@@ -378,6 +379,7 @@ function DashboardContent() {
 
   return (
     <DashboardLayout>
+      <HealthContextBanner />
       {/* Header */}
       <DashboardHeader
         title={isForeman() ? "Site Operations" : "Today on Site"}

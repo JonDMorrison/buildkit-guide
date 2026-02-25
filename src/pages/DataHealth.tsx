@@ -24,6 +24,7 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
+import { HealthContextBanner } from "@/components/HealthContextBanner";
 
 /* ------------------------------------------------------------------ */
 /* Types                                                               */
@@ -394,6 +395,7 @@ const DataHealth = () => {
   return (
     <Layout>
       <div className="container max-w-5xl mx-auto px-4 py-6 space-y-6">
+        <HealthContextBanner />
         <div className="flex items-center justify-between">
           <SectionHeader title="Data Health" />
           <Button
