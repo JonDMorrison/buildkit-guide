@@ -274,6 +274,7 @@ const Tasks = () => {
                   onTaskClick={handleTaskClick} 
                   canReorder={canCreateTasks}
                   onTasksReordered={() => fetchTasks()}
+                  onTaskStatusChanged={() => fetchTasks()}
                 />
               )}
               {viewMode === 'kanban' && (

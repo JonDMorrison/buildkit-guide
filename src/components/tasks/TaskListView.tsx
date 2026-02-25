@@ -67,6 +67,7 @@ interface TaskListViewProps {
   onTaskClick: (taskId: string) => void;
   canReorder?: boolean;
   onTasksReordered?: (tasks: Task[]) => void;
+  onTaskStatusChanged?: () => void;
 }
 
 interface SortableTaskItemProps {
@@ -74,6 +75,7 @@ interface SortableTaskItemProps {
   onTaskClick: (taskId: string) => void;
   canReorder: boolean;
   isOptional?: boolean;
+  onTaskStatusChanged?: () => void;
 }
 
 const getInitials = (name: string | null, email: string) => {
@@ -127,10 +129,11 @@ const AssignedWorkersAvatars = ({ assignments }: { assignments?: AssignedWorker[
   );
 };
 
-const SortableTaskItem = ({ task, onTaskClick, canReorder, isOptional = false }: SortableTaskItemProps) => {
+const SortableTaskItem = ({ task, onTaskClick, canReorder, isOptional = false, onTaskStatusChanged }: SortableTaskItemProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [optimisticStatus, setOptimisticStatus] = useState<string | null>(null);
   const {
     attributes,
     listeners,
@@ -146,8 +149,11 @@ const SortableTaskItem = ({ task, onTaskClick, canReorder, isOptional = false }:
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const currentStatus = optimisticStatus ?? task.status;
+
   const handleCheckboxChange = async (checked: boolean) => {
     const newStatus = checked ? 'done' : 'not_started';
+    setOptimisticStatus(newStatus);
     try {
       const { error } = await supabase
         .from('tasks')
@@ -159,12 +165,14 @@ const SortableTaskItem = ({ task, onTaskClick, canReorder, isOptional = false }:
       // Invalidate task queries so the UI updates
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-tasks"] });
+      onTaskStatusChanged?.();
       
       toast({
         title: checked ? 'Task completed' : 'Task reopened',
         description: task.title,
       });
     } catch (err: any) {
+      setOptimisticStatus(null);
       toast({
         title: 'Error updating task',
         description: err.message,
@@ -218,7 +226,7 @@ const SortableTaskItem = ({ task, onTaskClick, canReorder, isOptional = false }:
         </button>
       )}
       <Checkbox
-        checked={task.status === 'done'}
+        checked={currentStatus === 'done'}
         onCheckedChange={handleCheckboxChange}
         onClick={(e) => e.stopPropagation()}
         className="flex-shrink-0"
@@ -233,7 +241,7 @@ const SortableTaskItem = ({ task, onTaskClick, canReorder, isOptional = false }:
               task.priority === 1 ? 'Urgent' : ''
             )
           }
-          leading={<StatusBadge status={getStatusBadgeType(task.status)} label={getStatusLabel(task.status)} />}
+          leading={<StatusBadge status={getStatusBadgeType(currentStatus)} label={getStatusLabel(currentStatus)} />}
           trailing={
             <div className="flex items-center gap-2">
               {task.is_generated && (
@@ -263,7 +271,7 @@ const SortableTaskItem = ({ task, onTaskClick, canReorder, isOptional = false }:
 };
 const DENSITY_THRESHOLD = 40;
 
-export const TaskListView = ({ tasks, onTaskClick, canReorder = false, onTasksReordered }: TaskListViewProps) => {
+export const TaskListView = ({ tasks, onTaskClick, canReorder = false, onTasksReordered, onTaskStatusChanged }: TaskListViewProps) => {
   const { toast } = useToast();
   const [localTasks, setLocalTasks] = useState(tasks);
   const [optionalExpanded, setOptionalExpanded] = useState(false);
@@ -351,6 +359,7 @@ export const TaskListView = ({ tasks, onTaskClick, canReorder = false, onTasksRe
       onTaskClick={onTaskClick}
       canReorder={canReorder}
       isOptional={isOptional}
+      onTaskStatusChanged={onTaskStatusChanged}
     />
   );
 
