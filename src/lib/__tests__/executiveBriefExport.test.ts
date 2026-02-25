@@ -13,9 +13,11 @@ const BASE_PARAMS: ExecutiveBriefParams = {
 };
 
 describe('buildExecutiveBriefExport', () => {
-  it('produces deterministic output for fixed inputs', () => {
-    const a = buildExecutiveBriefExport(BASE_PARAMS);
-    const b = buildExecutiveBriefExport(BASE_PARAMS);
+  // ── Report format (default / original) ───────────────────────────────
+
+  it('produces deterministic output for fixed inputs (report)', () => {
+    const a = buildExecutiveBriefExport({ ...BASE_PARAMS, format: 'report' });
+    const b = buildExecutiveBriefExport({ ...BASE_PARAMS, format: 'report' });
     expect(a.text).toBe(b.text);
     expect(a.filename).toBe(b.filename);
   });
@@ -33,7 +35,6 @@ describe('buildExecutiveBriefExport', () => {
       burn_change: 0,
     }));
     const { text } = buildExecutiveBriefExport({ ...BASE_PARAMS, attentionItems: items });
-    // Should contain Project 0 through Project 9, not Project 10+
     expect(text).toContain('Project 9');
     expect(text).not.toContain('Project 10');
   });
@@ -55,7 +56,6 @@ describe('buildExecutiveBriefExport', () => {
 
   it('trims trailing whitespace from decision note', () => {
     const { text } = buildExecutiveBriefExport({ ...BASE_PARAMS, decisionNoteBody: 'Note with spaces   \n  \n' });
-    // The note body should appear trimmed (no trailing spaces/newlines before the final separator)
     expect(text).toContain('Note with spaces\n\n═');
     expect(text).not.toContain('Note with spaces   ');
   });
@@ -64,5 +64,42 @@ describe('buildExecutiveBriefExport', () => {
     const { text } = buildExecutiveBriefExport(BASE_PARAMS);
     expect(text).toContain('🔴 Critical');
     expect(text).toContain('🟡 Watch');
+  });
+
+  it('defaults to report format when format not specified', () => {
+    const { text } = buildExecutiveBriefExport(BASE_PARAMS);
+    expect(text).toContain('═══════════════════════════════════════════════');
+  });
+
+  // ── Simple format ────────────────────────────────────────────────────
+
+  it('simple format has no box-drawing characters', () => {
+    const { text } = buildExecutiveBriefExport({ ...BASE_PARAMS, format: 'simple' });
+    expect(text).not.toContain('═');
+    expect(text).not.toContain('─');
+  });
+
+  it('simple format produces deterministic output', () => {
+    const a = buildExecutiveBriefExport({ ...BASE_PARAMS, format: 'simple' });
+    const b = buildExecutiveBriefExport({ ...BASE_PARAMS, format: 'simple' });
+    expect(a.text).toBe(b.text);
+  });
+
+  it('simple format includes inline confidence', () => {
+    const { text } = buildExecutiveBriefExport({ ...BASE_PARAMS, format: 'simple' });
+    expect(text).toContain('Coverage: 85%');
+    expect(text).toContain('Issues: 3');
+  });
+
+  // ── Timestamp formatting ─────────────────────────────────────────────
+
+  it('timestamp uses UTC abbreviation, not locale output', () => {
+    const { text } = buildExecutiveBriefExport({ ...BASE_PARAMS, format: 'report' });
+    // Must contain deterministic UTC format
+    expect(text).toContain('2025-06-15 12:00 UTC');
+    // Must contain ISO in parentheses
+    expect(text).toContain('(2025-06-15T12:00:00.000Z)');
+    // Must NOT contain locale-dependent strings like "AM", "PM", or comma-separated locale dates
+    expect(text).not.toMatch(/\d{1,2}\/\d{1,2}\/\d{4}/); // no MM/DD/YYYY
   });
 });
