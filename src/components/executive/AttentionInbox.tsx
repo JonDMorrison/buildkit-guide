@@ -1,14 +1,22 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { DashboardCard } from '@/components/dashboard/shared/DashboardCard';
-import { Badge } from '@/components/ui/badge';
+import { SeverityBadge } from '@/components/SeverityBadge';
 import { Button } from '@/components/ui/button';
 import { useRouteAccess } from '@/hooks/useRouteAccess';
 import {
   AlertTriangle, TrendingDown, TrendingUp, Flame, CheckCircle2,
   ExternalLink, Eye, ArrowRight,
 } from 'lucide-react';
+import {
+  CLASSIFICATION_LABEL, CLASSIFICATION_SEVERITY,
+  classificationMatchesFilter,
+  ATTENTION_FILTER_LABELS,
+  type AttentionFilterCategory,
+} from '@/lib/severity';
+import type { SeverityLevel } from '@/components/SeverityBadge';
 
-// ── Types (reuse shapes from ChangeFeedData) ────────────────────────────
+// ── Types ────────────────────────────────────────────────────────────────
 
 interface TopChange {
   project_id: string;
@@ -42,14 +50,6 @@ function nextStepText(classification: string): string {
   return NEXT_STEP[classification] ?? 'Review project details';
 }
 
-// ── Evidence route mapping by classification ────────────────────────────
-
-function evidenceRoute(projectId: string, classification: string): string {
-  // All evidence routes point to the project overview with attention context
-  // The ProjectContextBanner will handle scroll-to-section behavior
-  return `/projects/${projectId}?from=attention&issue=${classification}`;
-}
-
 // ── Classification helpers ──────────────────────────────────────────────
 
 function classificationIcon(c: string) {
@@ -60,25 +60,6 @@ function classificationIcon(c: string) {
     case 'worsening':      return <TrendingDown  className="h-4 w-4 text-destructive" />;
     case 'burn_increase':  return <Flame         className="h-4 w-4 text-accent-foreground" />;
     default:               return <Eye           className="h-4 w-4 text-muted-foreground" />;
-  }
-}
-
-const CLASS_LABEL: Record<string, string> = {
-  new_risks: 'New Risk',
-  resolved_risks: 'Resolved',
-  improving: 'Improving',
-  worsening: 'Worsening',
-  burn_increase: 'Burn ↑',
-};
-
-function severityVariant(c: string): 'destructive' | 'warning' | 'success' | 'secondary' {
-  switch (c) {
-    case 'new_risks':
-    case 'worsening':     return 'destructive';
-    case 'burn_increase': return 'warning';
-    case 'resolved_risks':
-    case 'improving':     return 'success';
-    default:              return 'secondary';
   }
 }
 
@@ -93,25 +74,43 @@ function DeltaValue({ value, suffix = '', invert = false }: { value: number; suf
   );
 }
 
+// ── Filter bar ──────────────────────────────────────────────────────────
+
+function FilterBar({ active, onChange }: { active: AttentionFilterCategory; onChange: (f: AttentionFilterCategory) => void }) {
+  const filters = Object.entries(ATTENTION_FILTER_LABELS) as [AttentionFilterCategory, string][];
+  return (
+    <div className="flex items-center gap-1 mb-3">
+      {filters.map(([key, label]) => (
+        <Button
+          key={key}
+          variant={active === key ? 'default' : 'ghost'}
+          size="sm"
+          className="h-7 text-xs px-3"
+          onClick={() => onChange(key)}
+        >
+          {label}
+        </Button>
+      ))}
+    </div>
+  );
+}
+
 // ── Main component ──────────────────────────────────────────────────────
 
 interface Props {
-  /** attention_ranked_projects from rpc_executive_change_feed */
   attentionProjects: AttentionProject[];
-  /** top_changes from rpc_executive_change_feed — used for classification lookup */
   topChanges?: TopChange[];
-  /** Compact mode shows fewer items and smaller cards (for PM dashboard) */
   compact?: boolean;
   loading?: boolean;
 }
 
 export function AttentionInbox({ attentionProjects, topChanges = [], compact = false, loading = false }: Props) {
   const { canViewDiagnostics, canViewExecutive } = useRouteAccess();
+  const [filter, setFilter] = useState<AttentionFilterCategory>('all');
 
   const limit = compact ? 5 : 25;
-  const items = attentionProjects.slice(0, limit);
 
-  // Build a map of project_id -> classification from topChanges
+  // Build classification map
   const classificationMap = new Map<string, string>();
   topChanges.forEach(c => {
     if (!classificationMap.has(c.project_id)) {
@@ -119,7 +118,6 @@ export function AttentionInbox({ attentionProjects, topChanges = [], compact = f
     }
   });
 
-  // Derive classification for each attention project
   function getClassification(p: AttentionProject): string {
     const fromChanges = classificationMap.get(p.project_id);
     if (fromChanges) return fromChanges;
@@ -129,6 +127,12 @@ export function AttentionInbox({ attentionProjects, topChanges = [], compact = f
     if (p.risk_change < -5) return 'improving';
     return 'worsening';
   }
+
+  // Apply filter, then limit
+  const filtered = attentionProjects.filter(p => classificationMatchesFilter(getClassification(p), filter));
+  const items = filtered.slice(0, limit);
+
+  const severity = (cls: string): SeverityLevel => CLASSIFICATION_SEVERITY[cls] ?? 'medium';
 
   if (compact) {
     return (
@@ -154,9 +158,7 @@ export function AttentionInbox({ attentionProjects, topChanges = [], compact = f
                 <span className="text-sm font-medium text-foreground truncate flex-1 group-hover:text-primary transition-colors">
                   {p.project_name}
                 </span>
-                <Badge variant={severityVariant(cls)} className="text-[10px] px-1.5 py-0">
-                  {CLASS_LABEL[cls] ?? 'Attention'}
-                </Badge>
+                <SeverityBadge severity={severity(cls)} label={CLASSIFICATION_LABEL[cls] ?? 'Attention'} className="text-[10px] px-1.5 py-0" />
                 <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
               </Link>
             );
@@ -170,7 +172,7 @@ export function AttentionInbox({ attentionProjects, topChanges = [], compact = f
   return (
     <DashboardCard
       title="Attention Inbox"
-      description={`Top ${items.length} projects requiring executive review`}
+      description={`${items.length} project${items.length !== 1 ? 's' : ''} requiring executive review`}
       icon={Eye}
       loading={loading}
       variant="table"
@@ -178,6 +180,7 @@ export function AttentionInbox({ attentionProjects, topChanges = [], compact = f
       empty={!loading && items.length === 0}
       emptyMessage="No urgent attention items right now."
     >
+      <FilterBar active={filter} onChange={setFilter} />
       <div className="space-y-2">
         {items.map((p, i) => {
           const cls = getClassification(p);
@@ -199,9 +202,9 @@ export function AttentionInbox({ attentionProjects, topChanges = [], compact = f
                   {p.project_name}
                   <ExternalLink className="h-3 w-3 shrink-0" />
                 </Link>
-                <Badge variant={severityVariant(cls)} className="text-[10px] ml-auto shrink-0">
-                  {CLASS_LABEL[cls] ?? 'Attention'}
-                </Badge>
+                <div className="ml-auto shrink-0">
+                  <SeverityBadge severity={severity(cls)} label={CLASSIFICATION_LABEL[cls] ?? 'Attention'} className="text-[10px]" />
+                </div>
               </div>
 
               {/* Row 2: Deltas + Score */}
@@ -220,7 +223,7 @@ export function AttentionInbox({ attentionProjects, topChanges = [], compact = f
                 <div className="flex items-center gap-2 shrink-0">
                   {(canViewDiagnostics || canViewExecutive) && (
                     <Button variant="ghost" size="sm" className="h-6 text-[11px] px-2" asChild>
-                      <Link to={evidenceRoute(p.project_id, cls)}>
+                      <Link to={`/projects/${p.project_id}?from=attention&issue=${cls}`}>
                         View Evidence
                       </Link>
                     </Button>

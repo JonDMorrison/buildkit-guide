@@ -3,6 +3,8 @@ import { useDataQualityAudit } from "@/hooks/rpc/useDataQualityAudit";
 import { DashboardCard } from "@/components/dashboard/shared/DashboardCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SeverityBadge } from "@/components/SeverityBadge";
+import { normalizeSeverity } from "@/lib/severity";
 import { ShieldAlert, CheckCircle2, ChevronRight } from "lucide-react";
 
 export function DataIntegrityBannerCard() {
@@ -78,11 +80,6 @@ export function DataIntegrityBannerCard() {
 
 function IssueRow({ issue, severity, onNavigate }: { issue: any; severity: string; onNavigate: any }) {
   const label = issue.issue_key?.replace(/_/g, " ") || issue.label || "Unknown issue";
-  const badgeClass = severity === "critical"
-    ? "text-destructive border-destructive/30"
-    : severity === "warning"
-    ? "text-accent-foreground border-accent/30"
-    : "text-muted-foreground border-border";
 
   return (
     <div
@@ -90,9 +87,7 @@ function IssueRow({ issue, severity, onNavigate }: { issue: any; severity: strin
       onClick={() => issue.project_id && onNavigate(`/insights/project?projectId=${issue.project_id}`)}
     >
       <div className="flex items-center gap-2 min-w-0">
-        <Badge variant="outline" className={`text-[10px] shrink-0 ${badgeClass}`}>
-          {label}
-        </Badge>
+        <SeverityBadge severity={normalizeSeverity(severity)} label={label} className="text-[10px] shrink-0" />
         {issue.project_name && (
           <span className="text-xs text-muted-foreground truncate">{issue.project_name}</span>
         )}

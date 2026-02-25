@@ -1,6 +1,7 @@
 import { DashboardCard } from '@/components/dashboard/shared/DashboardCard';
 import { DashboardGrid } from '@/components/dashboard/shared/DashboardGrid';
-import { Badge } from '@/components/ui/badge';
+import { SeverityBadge } from '@/components/SeverityBadge';
+import type { SeverityLevel } from '@/components/SeverityBadge';
 import { Link } from 'react-router-dom';
 import { ExternalLink, BarChart3 } from 'lucide-react';
 
@@ -14,10 +15,26 @@ interface TopProject {
   executive_summary: string;
 }
 
+const POSITION_SEVERITY: Record<string, SeverityLevel> = {
+  at_risk:  'critical',
+  volatile: 'medium',
+  stable:   'low',
+};
+
+const POSITION_LABEL: Record<string, string> = {
+  at_risk:  'At Risk',
+  volatile: 'Volatile',
+  stable:   'Stable',
+};
+
 function PositionBadge({ position }: { position: string }) {
-  if (position === 'at_risk')  return <Badge className="bg-destructive/10 text-destructive border-destructive/30 border text-xs">At Risk</Badge>;
-  if (position === 'volatile') return <Badge className="bg-secondary text-secondary-foreground border text-xs">Volatile</Badge>;
-  return <Badge className="bg-primary/10 text-primary border-primary/30 border text-xs">Stable</Badge>;
+  return (
+    <SeverityBadge
+      severity={POSITION_SEVERITY[position] ?? 'medium'}
+      label={POSITION_LABEL[position] ?? position}
+      className="text-xs"
+    />
+  );
 }
 
 function RiskBar({ score }: { score: number }) {

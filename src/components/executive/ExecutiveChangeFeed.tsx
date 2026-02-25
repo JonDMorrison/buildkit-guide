@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { SeverityBadge } from '@/components/SeverityBadge';
+import { CLASSIFICATION_LABEL, normalizeSeverity } from '@/lib/severity';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 import {
@@ -76,14 +77,7 @@ function classificationIcon(c: string) {
 }
 
 function classificationLabel(c: string) {
-  const map: Record<string, string> = {
-    new_risks:      'New Risk',
-    resolved_risks: 'Resolved',
-    improving:      'Improving',
-    worsening:      'Worsening',
-    burn_increase:  'Burn ↑',
-  };
-  return map[c] ?? c;
+  return CLASSIFICATION_LABEL[c] ?? c;
 }
 
 // ── Component ──────────────────────────────────────────────────────────────
@@ -278,7 +272,7 @@ export function ExecutiveChangeFeed({ orgId }: Props) {
                       <td className="px-3 py-2">
                         <span className="inline-flex items-center gap-1">
                           {classificationIcon(c.classification)}
-                          <span className="text-foreground">{classificationLabel(c.classification)}</span>
+                          <SeverityBadge severity={normalizeSeverity(c.classification)} label={classificationLabel(c.classification)} className="text-[10px]" />
                         </span>
                       </td>
                       <td className="px-3 py-2 text-right">
