@@ -20,6 +20,7 @@ import { ExecutiveChangeFeed } from '@/components/executive/ExecutiveChangeFeed'
 import { useAuthRole } from '@/hooks/useAuthRole';
 import { useCurrentProject } from '@/hooks/useCurrentProject';
 import { NoAccess } from '@/components/NoAccess';
+import { LazySection } from '@/components/LazySection';
 import { Loader2 } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -672,63 +673,67 @@ export default function ExecutiveDashboard() {
                 </Card>
               </div>
 
-              {/* ── Block 3: Top Risk Projects ───────────────────── */}
-              {data.top_risk_projects.length > 0 && (
-                <div className="space-y-3">
-                  <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                    Top Projects by Risk Score
-                  </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {data.top_risk_projects.map((p, i) => (
-                      <Card
-                        key={p.project_id}
-                        className={
-                          p.economic_position === 'at_risk'
-                            ? 'border-destructive/40'
-                            : p.economic_position === 'volatile'
-                            ? 'border-accent'
-                            : 'border-primary/20'
-                        }
-                      >
-                        <CardContent className="p-4 space-y-3">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <span className="text-xs text-muted-foreground font-mono shrink-0">#{i + 1}</span>
-                              <span className="text-sm font-semibold leading-tight truncate">{p.project_name}</span>
+              {/* ── Block 3: Top Risk Projects (lazy) ────────────── */}
+              <LazySection skeletonHeight="h-48" skeletonCount={2}>
+                {data.top_risk_projects.length > 0 && (
+                  <div className="space-y-3">
+                    <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                      Top Projects by Risk Score
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {data.top_risk_projects.map((p, i) => (
+                        <Card
+                          key={p.project_id}
+                          className={
+                            p.economic_position === 'at_risk'
+                              ? 'border-destructive/40'
+                              : p.economic_position === 'volatile'
+                              ? 'border-accent'
+                              : 'border-primary/20'
+                          }
+                        >
+                          <CardContent className="p-4 space-y-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span className="text-xs text-muted-foreground font-mono shrink-0">#{i + 1}</span>
+                                <span className="text-sm font-semibold leading-tight truncate">{p.project_name}</span>
+                              </div>
+                              <PositionBadge position={p.economic_position} />
                             </div>
-                            <PositionBadge position={p.economic_position} />
-                          </div>
 
-                          <RiskBar score={p.risk_score} />
+                            <RiskBar score={p.risk_score} />
 
-                          <p className="text-xs text-muted-foreground leading-relaxed">
-                            {p.executive_summary}
-                          </p>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              {p.executive_summary}
+                            </p>
 
-                          <Link
-                            to={`/projects/${p.project_id}`}
-                            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                          >
-                            <ExternalLink className="h-3 w-3" /> View Project
-                          </Link>
-                        </CardContent>
-                      </Card>
-                    ))}
+                            <Link
+                              to={`/projects/${p.project_id}`}
+                              className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                            >
+                              <ExternalLink className="h-3 w-3" /> View Project
+                            </Link>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {data.top_risk_projects.length === 0 && (
-                <Card className="border-primary/20">
-                  <CardContent className="p-6 text-center text-sm text-muted-foreground">
-                    No active projects found for this organization.
-                  </CardContent>
-                </Card>
-              )}
+                {data.top_risk_projects.length === 0 && (
+                  <Card className="border-primary/20">
+                    <CardContent className="p-6 text-center text-sm text-muted-foreground">
+                      No active projects found for this organization.
+                    </CardContent>
+                  </Card>
+                )}
+              </LazySection>
 
-              {/* ── Block 4: Data Integrity Scan ─────────────────── */}
+              {/* ── Block 4: Data Integrity Scan (lazy) ───────────── */}
               {data.data_integrity && (
-                <DataIntegrityPanel integrity={data.data_integrity} />
+                <LazySection skeletonHeight="h-40" skeletonCount={1}>
+                  <DataIntegrityPanel integrity={data.data_integrity} />
+                </LazySection>
               )}
             </>
           )}

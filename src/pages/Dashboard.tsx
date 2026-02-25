@@ -39,6 +39,7 @@ import {
 import { CertificationBadge } from "@/components/CertificationBadge";
 import { useCertificationTier } from "@/hooks/useCertificationTier";
 import { EconomicPulseStrip } from "@/components/dashboard/EconomicPulseStrip";
+import { LazySection } from "@/components/LazySection";
 import { QuickAddModal } from "@/components/dashboard/QuickAddModal";
 import { format, isAfter, isBefore, addDays, startOfDay, subDays } from "date-fns";
 import { Responsive, WidthProvider, Layout as GridLayout } from "react-grid-layout";
@@ -537,49 +538,51 @@ export default function Dashboard() {
             currentProjectId={currentProjectId}
           />
 
-          {/* Widget Grid */}
-          <div className={isEditMode ? "rounded-xl border-2 border-dashed border-primary/40 p-3 bg-primary/5" : ""}>
-            {isEditMode && (
-              <div className="bg-primary text-primary-foreground px-4 py-2.5 rounded-lg flex items-center gap-2 mb-4">
-                <MoveIcon className="h-4 w-4" />
-                <span className="text-sm font-medium">Drag to rearrange • Resize from corners</span>
-              </div>
-            )}
-            
-            <ResponsiveGridLayout
-              className="layout"
-              layouts={{
-                lg: layouts.lg,
-                md: layouts.md,
-                sm: layouts.sm,
-                xs: layouts.sm,
-                xxs: layouts.sm,
-              }}
-              breakpoints={{ lg: 1200, md: 768, sm: 480, xs: 0, xxs: 0 }}
-              cols={{ lg: 12, md: 8, sm: 4, xs: 4, xxs: 4 }}
-              rowHeight={78}
-              isDraggable={isEditMode}
-              isResizable={isEditMode}
-              compactType="vertical"
-              onLayoutChange={handleLayoutChange}
-              onBreakpointChange={handleBreakpointChange}
-              draggableHandle=".drag-handle"
-              margin={[16, 16]}
-              containerPadding={[0, 0]}
-              useCSSTransforms={true}
-            >
-              {widgetIds.filter(id => !hiddenWidgets.includes(id)).map(widgetId => (
-                <div key={widgetId} className={`widget-wrapper ${isEditMode ? "ring-1 ring-primary/20" : ""}`}>
-                  {isEditMode && (
-                    <div className="drag-handle absolute top-2 right-2 cursor-move z-10 bg-primary text-primary-foreground p-1.5 rounded-md shadow-sm">
-                      <MoveIcon className="h-3 w-3" />
-                    </div>
-                  )}
-                  {renderWidget(widgetId)}
+          {/* Widget Grid — lazy-loaded below the fold */}
+          <LazySection skeletonHeight="h-64" skeletonCount={3} rootMargin="100px">
+            <div className={isEditMode ? "rounded-xl border-2 border-dashed border-primary/40 p-3 bg-primary/5" : ""}>
+              {isEditMode && (
+                <div className="bg-primary text-primary-foreground px-4 py-2.5 rounded-lg flex items-center gap-2 mb-4">
+                  <MoveIcon className="h-4 w-4" />
+                  <span className="text-sm font-medium">Drag to rearrange • Resize from corners</span>
                 </div>
-              ))}
-            </ResponsiveGridLayout>
-          </div>
+              )}
+              
+              <ResponsiveGridLayout
+                className="layout"
+                layouts={{
+                  lg: layouts.lg,
+                  md: layouts.md,
+                  sm: layouts.sm,
+                  xs: layouts.sm,
+                  xxs: layouts.sm,
+                }}
+                breakpoints={{ lg: 1200, md: 768, sm: 480, xs: 0, xxs: 0 }}
+                cols={{ lg: 12, md: 8, sm: 4, xs: 4, xxs: 4 }}
+                rowHeight={78}
+                isDraggable={isEditMode}
+                isResizable={isEditMode}
+                compactType="vertical"
+                onLayoutChange={handleLayoutChange}
+                onBreakpointChange={handleBreakpointChange}
+                draggableHandle=".drag-handle"
+                margin={[16, 16]}
+                containerPadding={[0, 0]}
+                useCSSTransforms={true}
+              >
+                {widgetIds.filter(id => !hiddenWidgets.includes(id)).map(widgetId => (
+                  <div key={widgetId} className={`widget-wrapper ${isEditMode ? "ring-1 ring-primary/20" : ""}`}>
+                    {isEditMode && (
+                      <div className="drag-handle absolute top-2 right-2 cursor-move z-10 bg-primary text-primary-foreground p-1.5 rounded-md shadow-sm">
+                        <MoveIcon className="h-3 w-3" />
+                      </div>
+                    )}
+                    {renderWidget(widgetId)}
+                  </div>
+                ))}
+              </ResponsiveGridLayout>
+            </div>
+          </LazySection>
         </div>
       </div>
     </Layout>
