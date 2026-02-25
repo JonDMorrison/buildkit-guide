@@ -30,15 +30,23 @@ function issueSeverity(issue: string): 'destructive' | 'warning' | 'success' | '
   }
 }
 
-// ── Section anchor mapping ──────────────────────────────────────────────
+// ── Issue → section anchor mapping ──────────────────────────────────────
 
-const ISSUE_SECTION_ID: Record<string, string> = {
-  new_risks: 'economic-control',
-  worsening: 'economic-control',
-  burn_increase: 'economic-control',
-  resolved_risks: 'economic-control',
-  improving: 'economic-control',
+const ISSUE_ANCHOR: Record<string, string> = {
+  new_risks:      'economic-control',
+  worsening:      'economic-control',
+  burn_increase:  'economic-control',
+  resolved_risks: 'section-stats',
+  improving:      'section-stats',
+  blockers:       'section-blockers',
+  blocked:        'section-blockers',
+  deadline:       'section-deadlines',
+  data_quality:   'economic-control',
+  volatility:     'economic-control',
+  labor:          'economic-control',
 };
+
+const FALLBACK_ANCHOR = 'economic-control';
 
 // ── Component ───────────────────────────────────────────────────────────
 
@@ -56,19 +64,22 @@ export function ProjectContextBanner() {
   useEffect(() => {
     if (from !== 'attention' || !issue || scrolledRef.current) return;
 
-    const sectionId = ISSUE_SECTION_ID[issue];
-    if (!sectionId) return;
+    const targetId = ISSUE_ANCHOR[issue] ?? FALLBACK_ANCHOR;
 
     // Wait for DOM to settle after data loads
     const timer = setTimeout(() => {
-      const el = document.getElementById(sectionId);
-      if (el && !scrolledRef.current) {
+      if (scrolledRef.current) return;
+      // Try the mapped anchor first, fall back to economic-control
+      let el = document.getElementById(targetId);
+      if (!el && targetId !== FALLBACK_ANCHOR) {
+        el = document.getElementById(FALLBACK_ANCHOR);
+      }
+      if (el) {
         scrolledRef.current = true;
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        // Add highlight effect
         el.classList.add('ring-2', 'ring-primary/40', 'rounded-lg', 'transition-all');
         setTimeout(() => {
-          el.classList.remove('ring-2', 'ring-primary/40', 'rounded-lg', 'transition-all');
+          el!.classList.remove('ring-2', 'ring-primary/40', 'rounded-lg', 'transition-all');
         }, 4000);
       }
     }, 800);
@@ -96,7 +107,8 @@ export function ProjectContextBanner() {
           size="sm"
           className="h-7 text-xs"
           onClick={() => {
-            const el = document.getElementById('economic-control');
+            const targetId = issue ? (ISSUE_ANCHOR[issue] ?? FALLBACK_ANCHOR) : FALLBACK_ANCHOR;
+            const el = document.getElementById(targetId) || document.getElementById(FALLBACK_ANCHOR);
             if (el) {
               el.scrollIntoView({ behavior: 'smooth', block: 'start' });
               el.classList.add('ring-2', 'ring-primary/40', 'rounded-lg');
