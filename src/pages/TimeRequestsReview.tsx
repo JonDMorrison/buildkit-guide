@@ -78,10 +78,34 @@ function getWarningBadges(request: TimeAdjustmentRequest) {
   return badges;
 }
 
+/** PM/Admin/HR/Foreman-only: review pending time adjustment requests. */
 export default function TimeRequestsReview() {
+  const { canReviewRequests, isLoading: roleLoading } = useOrganizationRole();
+
+  if (roleLoading) {
+    return (
+      <Layout>
+        <div className="p-4 md:p-6 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!canReviewRequests) {
+    return (
+      <Layout>
+        <NoAccess message="PM, Admin, HR, or Foreman access required." />
+      </Layout>
+    );
+  }
+
+  return <TimeRequestsReviewContent />;
+}
+
+function TimeRequestsReviewContent() {
   const { currentProjectId } = useCurrentProject();
   const { data: requests = [], isLoading, refetch } = usePendingTimeRequests(currentProjectId || undefined);
-  const { canReviewRequests, isLoading: roleLoading } = useOrganizationRole();
   const { toast } = useToast();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [reviewingRequest, setReviewingRequest] = useState<TimeAdjustmentRequest | null>(null);
@@ -152,20 +176,6 @@ export default function TimeRequestsReview() {
       setIsSubmitting(false);
     }
   };
-
-  if (roleLoading) {
-    return (
-      <Layout>
-        <div className="p-4 md:p-6 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      </Layout>
-    );
-  }
-
-  if (!canReviewRequests) {
-    return <NoAccess />;
-  }
 
   return (
     <Layout>
