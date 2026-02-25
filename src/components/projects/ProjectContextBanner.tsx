@@ -1,34 +1,10 @@
 import { useSearchParams, Link, useParams } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
-import { Badge } from '@/components/ui/badge';
+import { SeverityBadge } from '@/components/SeverityBadge';
 import { Button } from '@/components/ui/button';
 import { useRouteAccess } from '@/hooks/useRouteAccess';
-import { ArrowLeft, ArrowRight, FileSearch, X } from 'lucide-react';
-
-// ── Classification label mapping (matches AttentionInbox) ────────────────
-
-const ISSUE_LABEL: Record<string, string> = {
-  new_risks: 'New Risk Detected',
-  worsening: 'Worsening Trend',
-  burn_increase: 'Labor Burn Increase',
-  resolved_risks: 'Risk Resolved',
-  improving: 'Improving Trend',
-};
-
-function issueLabel(issue: string): string {
-  return ISSUE_LABEL[issue] ?? issue.replace(/_/g, ' ');
-}
-
-function issueSeverity(issue: string): 'destructive' | 'warning' | 'success' | 'secondary' {
-  switch (issue) {
-    case 'new_risks':
-    case 'worsening':     return 'destructive';
-    case 'burn_increase': return 'warning';
-    case 'resolved_risks':
-    case 'improving':     return 'success';
-    default:              return 'secondary';
-  }
-}
+import { ArrowLeft, FileSearch, X } from 'lucide-react';
+import { CLASSIFICATION_LABEL, normalizeSeverity } from '@/lib/severity';
 
 // ── Issue → section anchor mapping ──────────────────────────────────────
 
@@ -66,10 +42,8 @@ export function ProjectContextBanner() {
 
     const targetId = ISSUE_ANCHOR[issue] ?? FALLBACK_ANCHOR;
 
-    // Wait for DOM to settle after data loads
     const timer = setTimeout(() => {
       if (scrolledRef.current) return;
-      // Try the mapped anchor first, fall back to economic-control
       let el = document.getElementById(targetId);
       if (!el && targetId !== FALLBACK_ANCHOR) {
         el = document.getElementById(FALLBACK_ANCHOR);
@@ -87,15 +61,14 @@ export function ProjectContextBanner() {
     return () => clearTimeout(timer);
   }, [from, issue]);
 
-  // Only render when navigated from attention inbox
   if (from !== 'attention' || !issue || dismissed) return null;
+
+  const issueLabel = CLASSIFICATION_LABEL[issue] ?? issue.replace(/_/g, ' ');
 
   return (
     <div className="flex items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2.5 mb-4">
       <div className="flex items-center gap-2 flex-1 min-w-0">
-        <Badge variant={issueSeverity(issue)} className="text-[11px] shrink-0">
-          {issueLabel(issue)}
-        </Badge>
+        <SeverityBadge severity={normalizeSeverity(issue)} label={issueLabel} className="text-[11px] shrink-0" />
         <span className="text-sm text-muted-foreground truncate">
           Opened from Attention Inbox
         </span>
