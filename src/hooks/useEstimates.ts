@@ -15,7 +15,7 @@ export const useEstimates = (projectId?: string | null) => {
     setLoading(true);
     let query = supabase
       .from('estimates')
-      .select('*, projects(name, job_number), clients(name)')
+      .select('*, projects(name, job_number), clients:clients!estimates_client_id_fkey(name)')
       .eq('organization_id', activeOrganizationId)
       .order('created_at', { ascending: false });
 

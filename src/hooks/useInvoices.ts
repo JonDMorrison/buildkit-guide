@@ -18,7 +18,7 @@ export const useInvoices = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('invoices')
-      .select('*, clients(name, contact_name, email, billing_address, city, province, postal_code), projects(name, job_number)')
+      .select('*, clients:clients!invoices_client_id_fkey(name, contact_name, email, billing_address, city, province, postal_code), projects(name, job_number)')
       .eq('organization_id', activeOrganizationId)
       .order('created_at', { ascending: false });
     if (error) {
