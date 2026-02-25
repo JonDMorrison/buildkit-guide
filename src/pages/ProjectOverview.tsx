@@ -34,7 +34,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, AlertTriangle, Shield, CheckCircle2, FileText, Users, Calendar, Plus, MoreVertical, Archive, Receipt, Pencil, FileImage, Trash2, Zap, DollarSign } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Shield, CheckCircle2, FileText, Users, Calendar, Plus, MoreVertical, Archive, Receipt, Pencil, FileImage, Trash2, Zap, DollarSign, Loader2 } from 'lucide-react';
+import { DashboardGrid } from '@/components/dashboard/shared/DashboardGrid';
+import { DashboardCard } from '@/components/dashboard/shared/DashboardCard';
 import { IntegrityBadge } from '@/components/IntegrityBadge';
 import { useProjectIntegrity } from '@/hooks/useProjectIntegrity';
 import { ProjectScopeTab } from '@/components/scope/ProjectScopeTab';
@@ -180,13 +182,9 @@ const ProjectOverview = () => {
     return (
       <Layout>
         <div className="container max-w-4xl mx-auto px-4 py-6">
-          <Skeleton className="h-8 w-64 mb-6" />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <Skeleton className="h-32" />
-            <Skeleton className="h-32" />
-            <Skeleton className="h-32" />
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
-          <Skeleton className="h-96" />
         </div>
       </Layout>
     );
@@ -302,69 +300,26 @@ const ProjectOverview = () => {
         </div>
 
         {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Overall Progress
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-2xl font-bold">{completion}%</span>
-                  <CheckCircle2 className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <Progress value={completion} />
-                <p className="text-xs text-muted-foreground">
-                  {stats?.completedTasks} of {stats?.totalTasks} tasks complete
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+        <DashboardGrid columns={3}>
+          <DashboardCard title="Overall Progress" icon={CheckCircle2} variant="metric" value={`${completion}%`}>
+            <Progress value={completion} />
+            <p className="text-xs text-muted-foreground">
+              {stats?.completedTasks} of {stats?.totalTasks} tasks complete
+            </p>
+          </DashboardCard>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Blocked Tasks
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-2xl font-bold text-status-issue">
-                    {stats?.blockedTasks || 0}
-                  </span>
-                  <AlertTriangle className="h-5 w-5 text-status-issue" />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {stats?.blockedTasks ? 'Requires immediate attention' : 'No blockers'}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          <DashboardCard title="Blocked Tasks" icon={AlertTriangle} variant="metric" value={stats?.blockedTasks || 0}>
+            <p className="text-xs text-muted-foreground">
+              {stats?.blockedTasks ? 'Requires immediate attention' : 'No blockers'}
+            </p>
+          </DashboardCard>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Safety Compliance
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-2xl font-bold text-status-complete">
-                    {stats?.safetyCompliance || 0}%
-                  </span>
-                  <Shield className="h-5 w-5 text-status-complete" />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  This week's forms reviewed
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+          <DashboardCard title="Safety Compliance" icon={Shield} variant="metric" value={`${stats?.safetyCompliance || 0}%`}>
+            <p className="text-xs text-muted-foreground">
+              This week's forms reviewed
+            </p>
+          </DashboardCard>
+        </DashboardGrid>
 
         {/* AI Insights Section */}
         <AIInsightsSection projectId={projectId} />
