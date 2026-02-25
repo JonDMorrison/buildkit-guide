@@ -190,7 +190,7 @@ const Insights = () => {
 
   return (
     <Layout>
-      <div className="container max-w-6xl mx-auto px-4 py-6 space-y-6">
+      <div className="container max-w-6xl mx-auto px-4 py-6 space-y-5">
 
         {/* Header */}
         <DashboardHeader
@@ -305,23 +305,17 @@ const Insights = () => {
 
         {/* ── KPI Summary Cards ─────────────────────────────────────── */}
         {error && (
-          <Card>
-            <CardContent className="py-8 text-center">
-              <AlertTriangle className="h-8 w-8 text-destructive mx-auto mb-2" />
-              <p className="text-destructive">{error}</p>
-            </CardContent>
-          </Card>
+          <DashboardCard title="Error" variant="alert" error={String(error)} />
         )}
 
         {!error && rows.length === 0 && !loading && (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <BarChart3 className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground">
-                No project data available. Create projects and set budgets to see insights.
-              </p>
-            </CardContent>
-          </Card>
+          <DashboardCard
+            title="Portfolio Insights"
+            icon={BarChart3}
+            variant="metric"
+            empty
+            emptyMessage="No project data available. Create projects and set budgets to see insights."
+          />
         )}
 
         {!error && (kpis || (loading && sorted.length > 0)) && (

@@ -79,7 +79,7 @@ function DeltaValue({ value, suffix = '', invert = false }: { value: number; suf
 function FilterBar({ active, onChange }: { active: AttentionFilterCategory; onChange: (f: AttentionFilterCategory) => void }) {
   const filters = Object.entries(ATTENTION_FILTER_LABELS) as [AttentionFilterCategory, string][];
   return (
-    <div className="flex items-center gap-1 mb-3">
+    <div className="flex items-center gap-1 pb-3 mb-3 border-b border-border/50">
       {filters.map(([key, label]) => (
         <Button
           key={key}

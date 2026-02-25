@@ -300,7 +300,7 @@ const ProjectOverview = () => {
         </div>
 
         {/* Stats Overview */}
-        <div id="section-stats">
+        <div id="section-stats" className="pt-1">
         <DashboardGrid columns={3}>
           <DashboardCard title="Overall Progress" icon={CheckCircle2} variant="metric" value={`${completion}%`}>
             <Progress value={completion} />

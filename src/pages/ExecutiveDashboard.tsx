@@ -92,13 +92,13 @@ function WeeklyBriefHero({
   const tier = data?.os_score?.tier;
 
   return (
-    <div className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 via-background to-accent/5 p-5 space-y-4">
+    <div className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 via-background to-accent/5 p-6 space-y-5">
       {/* Top row: title + actions */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Weekly Executive Brief</h2>
+          <h2 className="text-lg font-semibold text-foreground leading-tight">Weekly Executive Brief</h2>
           {snapshotRange && (
-            <p className="text-xs text-muted-foreground font-mono mt-0.5">{snapshotRange}</p>
+            <p className="text-xs text-muted-foreground font-mono mt-1">{snapshotRange}</p>
           )}
         </div>
         <Button variant="outline" size="sm" onClick={onCopy} className="shrink-0">
@@ -111,12 +111,12 @@ function WeeklyBriefHero({
 
       {/* Headline change metrics */}
       {headlines.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
           {headlines.map(h => (
             <div key={h.label} className="text-center rounded-lg bg-card border border-border/50 p-3">
-              <h.icon className={`h-4 w-4 mx-auto mb-1 ${h.color}`} />
-              <div className={`text-2xl font-bold tabular-nums ${h.color}`}>{h.value}</div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">{h.label}</div>
+              <h.icon className={`h-4 w-4 mx-auto mb-1.5 ${h.color}`} />
+              <div className={`text-2xl font-bold tabular-nums leading-none ${h.color}`}>{h.value}</div>
+              <div className="text-[10px] text-muted-foreground mt-1.5">{h.label}</div>
             </div>
           ))}
         </div>
@@ -124,7 +124,7 @@ function WeeklyBriefHero({
 
       {/* Confidence line */}
       {data && (
-        <div className="flex items-center gap-4 flex-wrap text-xs text-muted-foreground border-t border-border/50 pt-3">
+        <div className="flex items-center gap-4 flex-wrap text-xs text-muted-foreground border-t border-border/40 pt-3">
           <span>{activeCount} active project{activeCount !== 1 ? 's' : ''}</span>
           <span className="text-destructive font-medium">{atRiskCount} at risk</span>
           <span>Avg margin: <span className="font-mono font-medium text-foreground">{avgMargin.toFixed(1)}%</span></span>
@@ -201,7 +201,7 @@ export default function ExecutiveDashboard() {
   if (roleLoading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center py-20">
+        <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       </DashboardLayout>
