@@ -1,0 +1,1 @@
+ALTER FUNCTION public.rpc_get_executive_risk_summary(uuid) VOLATILE;

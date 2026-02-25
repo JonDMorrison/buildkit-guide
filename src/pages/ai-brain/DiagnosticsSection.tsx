@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Play, Download, ChevronDown, CheckCircle2, XCircle, AlertTriangle, Copy, Brain, Shield, Eye, Zap, Lock, RefreshCw, User, FlaskConical, ExternalLink, Microscope, Beaker, Activity } from 'lucide-react';
+import { Play, Download, ChevronDown, CheckCircle2, XCircle, AlertTriangle, Copy, Brain, Shield, Eye, Zap, Lock, RefreshCw, User, FlaskConical, ExternalLink, Microscope, Beaker, Activity, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import type { Session } from '@supabase/supabase-js';
@@ -399,7 +399,7 @@ function SystemDiagnosticsPanel({ orgId }: { orgId: string | null }) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const [traceProjects, setTraceProjects] = useState<{ id: string; name: string }[]>([]);
   const [traceProjectId, setTraceProjectId] = useState<string>('');
-  const { Search } = require('lucide-react');
+  // Search icon imported at top of file
 
   useEffect(() => {
     if (!orgId) return;
