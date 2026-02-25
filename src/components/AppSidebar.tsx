@@ -23,7 +23,7 @@ interface SectionDef {
 const SECTIONS: SectionDef[] = [
   {
     title: "Operations",
-    paths: ["/dashboard", "/workflow", "/tasks", "/time", "/hours-tracking", "/lookahead", "/manpower"],
+    paths: ["/dashboard", "/workflow", "/tasks", "/time", "/hours-tracking", "/lookahead", "/manpower", "/daily-logs"],
   },
   {
     title: "Financial",
@@ -31,15 +31,15 @@ const SECTIONS: SectionDef[] = [
   },
   {
     title: "Field & Compliance",
-    paths: ["/drawings", "/deficiencies", "/safety"],
+    paths: ["/drawings", "/deficiencies", "/safety", "/documents"],
   },
   {
     title: "Executive",
     paths: ["/executive"],
   },
   {
-    title: "Settings",
-    paths: ["/insights/ai-brain", "/settings/labor-rates", "/playbooks", "/release"],
+    title: "Admin",
+    paths: ["/users", "/data-health", "/insights/ai-brain", "/settings/labor-rates", "/playbooks", "/release"],
   },
 ];
 

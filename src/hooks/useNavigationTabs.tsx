@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Home, CheckSquare, Calendar, Users, AlertCircle, Shield, Receipt, Clock, Layers, BarChart3, DollarSign, FileText, TrendingUp, Workflow, Settings, Brain, FileDiff, Rocket, BookOpen, Crown, Cpu } from "lucide-react";
+import { Home, CheckSquare, Calendar, Users, AlertCircle, Shield, Receipt, Clock, Layers, BarChart3, DollarSign, FileText, TrendingUp, Workflow, Settings, Brain, FileDiff, Rocket, BookOpen, Crown, Cpu, FolderOpen, ClipboardList } from "lucide-react";
 import { useProjectRole } from "@/hooks/useProjectRole";
 import { useOrganizationRole } from "@/hooks/useOrganizationRole";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -45,8 +45,11 @@ export const tabs: TabConfig[] = [
   { name: "Drawings", path: "/drawings", icon: Layers, tiers: ['all'] },
   { name: "Deficiencies", path: "/deficiencies", icon: AlertCircle, tiers: ['all'] },
   { name: "Safety", path: "/safety", icon: Shield, tiers: ['all', 'field'] },
+  { name: "Daily Logs", path: "/daily-logs", icon: ClipboardList, tiers: ['all', 'field'] },
   { name: "Receipts", path: "/receipts", icon: Receipt, tiers: ['all', 'office', 'field', 'minimal'] },
+  { name: "Documents", path: "/documents", icon: FolderOpen, tiers: ['all', 'office'] },
   { name: "Labor Rates", path: "/settings/labor-rates", icon: Settings, tiers: ['all', 'office'] },
+  { name: "Users", path: "/users", icon: Users, tiers: ['all'] },
   { name: "Executive", path: "/executive", icon: Crown, tiers: ['all'] },
   { name: "Data Health", path: "/data-health", icon: Shield, tiers: ['all'] },
   { name: "AI Brain", path: "/insights/ai-brain", icon: Cpu, tiers: ['all'] },
@@ -119,6 +122,7 @@ export const useNavigationTabs = () => {
         // Admin or PM routes
         case '/executive':
         case '/data-health':
+        case '/users':
           return isAdmin || isPM;
 
         // Admin, PM, or Foreman
