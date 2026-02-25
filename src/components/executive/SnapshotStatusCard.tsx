@@ -45,7 +45,9 @@ export function SnapshotStatusCard({ orgId }: Props) {
         { p_org_id: orgId },
       );
       if (rpcErr) throw new Error(rpcErr.message);
-      setData(result as SnapshotCoverageData);
+      // Normalize: RPC may return the object or null
+      const parsed = result as SnapshotCoverageData | null;
+      setData(parsed ? { ...parsed, projects: parsed.projects ?? [] } : null);
     } catch (e: any) {
       setError(e.message);
     } finally {
