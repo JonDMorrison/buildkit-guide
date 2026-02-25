@@ -247,11 +247,11 @@ const ProjectOverview = () => {
         {/* ── 5-Tab Bar ── */}
         <Tabs defaultValue="overview" className="w-full">
           <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="work">Work</TabsTrigger>
-            <TabsTrigger value="financials">Financials</TabsTrigger>
-            <TabsTrigger value="documents">Documents</TabsTrigger>
-            <TabsTrigger value="issues">Issues</TabsTrigger>
+            <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
+            <TabsTrigger value="work" className="text-xs sm:text-sm">Work</TabsTrigger>
+            <TabsTrigger value="financials" className="text-xs sm:text-sm">Financials</TabsTrigger>
+            <TabsTrigger value="documents" className="text-xs sm:text-sm">Docs</TabsTrigger>
+            <TabsTrigger value="issues" className="text-xs sm:text-sm">Issues</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="mt-4">
