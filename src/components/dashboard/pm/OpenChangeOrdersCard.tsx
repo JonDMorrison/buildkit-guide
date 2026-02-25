@@ -22,8 +22,8 @@ export function OpenChangeOrdersCard({ projectId }: Props) {
       return { open: open.length, total: (cos || []).length, pendingAmount };
     },
     enabled: !!projectId,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 15 * 60 * 1000,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 
   return (

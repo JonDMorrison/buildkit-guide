@@ -185,16 +185,16 @@ export default function ExecutiveDashboard() {
           </DashboardSection>
         )}
 
-        {/* ── 2. Portfolio Health ─────────────────────────────── */}
+        {/* ── 2. Portfolio Health (lazy) ────────────────────────── */}
         {(data || loading) && (
-          <DashboardSection title="Portfolio Health">
+          <DashboardSection title="Portfolio Health" lazy skeletonHeight="h-48">
             <PortfolioHealthCard data={portfolioData} loading={loading} />
           </DashboardSection>
         )}
 
-        {/* ── 3. Attention Required ──────────────────────────── */}
+        {/* ── 3. Attention Required (lazy) ───────────────────── */}
         {(feedData || loading) && (
-          <DashboardSection title="Attention Required">
+          <DashboardSection title="Attention Required" lazy skeletonHeight="h-56">
             <AttentionRequiredTable
               projects={feedData?.attention_ranked_projects ?? []}
               loading={loading && !feedData}

@@ -48,8 +48,8 @@ export function ProjectHealthSignalCard({ projectId }: Props) {
       return data as any;
     },
     enabled: !!projectId,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 15 * 60 * 1000,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 
   const { data: snapshotHistory } = useQuery({
@@ -63,8 +63,8 @@ export function ProjectHealthSignalCard({ projectId }: Props) {
       return (data as any[]) ?? [];
     },
     enabled: !!projectId,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 15 * 60 * 1000,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 
   const position = marginControl?.economic_position ?? null;

@@ -1,4 +1,5 @@
-import { useState, useCallback } from 'react';
+import { useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from '@/hooks/useOrganization';
 import { DashboardCard } from '@/components/dashboard/shared/DashboardCard';
@@ -7,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import {
   AlertTriangle, TrendingDown, TrendingUp, Flame, CheckCircle2,
-  ExternalLink, Sparkles, RefreshCw,
+  Sparkles, RefreshCw,
 } from 'lucide-react';
 
 interface TopChange {
@@ -48,42 +49,30 @@ const classLabel: Record<string, string> = {
 
 export function AIChangeFeedCard() {
   const { activeOrganizationId } = useOrganization();
-  const [feed, setFeed] = useState<FeedData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [needsSnapshot, setNeedsSnapshot] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+  const queryClient = useQueryClient();
 
-  const fetchFeed = useCallback(async () => {
-    if (!activeOrganizationId) return;
-    setLoading(true);
-    setError(null);
-    try {
+  const { data: feed, isLoading, error, isFetching } = useQuery({
+    queryKey: ['ai-change-feed', activeOrganizationId],
+    queryFn: async () => {
       const { data, error: rpcErr } = await (supabase as any).rpc(
         'rpc_executive_change_feed',
         { p_org_id: activeOrganizationId },
       );
       if (rpcErr) throw new Error(rpcErr.message);
-      if (!data || !data.latest_snapshot_date) {
-        setNeedsSnapshot(true);
-        setFeed(null);
-      } else {
-        setNeedsSnapshot(false);
-        setFeed(data as FeedData);
-      }
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [activeOrganizationId]);
+      return (data?.latest_snapshot_date ? data : null) as FeedData | null;
+    },
+    enabled: !!activeOrganizationId,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  });
 
-  if (!loaded && activeOrganizationId) {
-    setLoaded(true);
-    fetchFeed();
-  }
+  const refresh = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['ai-change-feed', activeOrganizationId] });
+  }, [queryClient, activeOrganizationId]);
 
-  if (needsSnapshot && !loading) {
+  const needsSnapshot = !isLoading && feed === null && !error;
+
+  if (needsSnapshot) {
     return (
       <DashboardCard
         title="AI Change Feed"
@@ -101,12 +90,12 @@ export function AIChangeFeedCard() {
       title="AI Change Feed"
       description={feed ? `${feed.previous_snapshot_date} → ${feed.latest_snapshot_date}` : undefined}
       icon={Sparkles}
-      loading={loading && !feed}
-      error={error}
+      loading={isLoading}
+      error={error ? (error as Error).message : null}
       traceSource="rpc_executive_change_feed"
       actions={
-        <Button variant="ghost" size="sm" onClick={fetchFeed} disabled={loading} className="shrink-0">
-          <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
+        <Button variant="ghost" size="sm" onClick={refresh} disabled={isFetching} className="shrink-0">
+          <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isFetching ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
       }
