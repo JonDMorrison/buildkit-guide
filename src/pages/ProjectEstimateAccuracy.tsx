@@ -216,7 +216,7 @@ function ProjectEstimateAccuracyContent() {
                   <Button
                     size="sm"
                     className="ml-4 shrink-0"
-                    onClick={() => navigate(`/project-overview?projectId=${selectedProject}&tab=budget`)}
+                    onClick={() => navigate(`/projects/${selectedProject}?tab=financials`)}
                   >
                     <DollarSign className="h-4 w-4 mr-1" />
                     Create Budget
