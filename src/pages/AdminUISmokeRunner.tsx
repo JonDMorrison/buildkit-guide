@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useRouteAccess } from '@/hooks/useRouteAccess';
 import { NoAccess } from '@/components/NoAccess';
 import { Layout } from '@/components/Layout';
@@ -7,11 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Loader2, Play, Download, ChevronDown, CheckCircle2, XCircle, ArrowRight, AlertTriangle } from 'lucide-react';
-import { runSmokeTest, formatReport, getSmokeRoutes, type RouteResult } from '@/lib/uiSmokeRunner';
+import { Loader2, Play, Download, Copy, ChevronDown, CheckCircle2, XCircle, ArrowRight, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { runSmokeTest, formatReport, getSmokeRoutes, getSmokeRoutesForRole, classifyResult, type RouteResult, type Severity } from '@/lib/uiSmokeRunner';
 import { runProbesForRoute } from '@/lib/uiSmokeProbes';
 import { downloadText } from '@/lib/downloadText';
+import { SeverityBadge } from '@/components/SeverityBadge';
+import type { RoleName } from '@/lib/routeInventory';
+import { toast } from 'sonner';
 
 // ── Gate ────────────────────────────────────────────────────────────────────
 
@@ -33,26 +37,45 @@ export default function AdminUISmokeRunner() {
   return <SmokeRunnerContent />;
 }
 
+// ── Severity helpers ──────────────────────────────────────────────────────
+
+type TestProfile = 'admin' | 'pm' | 'foreman' | 'internal_worker';
+
+const PROFILE_LABELS: Record<TestProfile, string> = {
+  admin: 'Admin',
+  pm: 'PM',
+  foreman: 'Foreman',
+  internal_worker: 'Worker',
+};
+
+function severityToVariant(severity: Severity): 'critical' | 'high' | 'medium' | 'low' {
+  switch (severity) {
+    case 'BLOCKER': return 'critical';
+    case 'MAJOR': return 'high';
+    case 'MINOR': return 'medium';
+    case 'INFO': return 'low';
+  }
+}
+
 // ── Content ────────────────────────────────────────────────────────────────
 
 function SmokeRunnerContent() {
   const navigate = useNavigate();
-  const location = useLocation();
   const [results, setResults] = useState<RouteResult[]>([]);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState({ completed: 0, total: 0 });
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-  const abortRef = useRef(false);
+  const [testProfile, setTestProfile] = useState<TestProfile>('admin');
 
-  const routes = getSmokeRoutes();
+  const routes = testProfile === 'admin' ? getSmokeRoutes() : getSmokeRoutesForRole(testProfile as RoleName);
 
   const handleRun = useCallback(async () => {
     setRunning(true);
     setResults([]);
     setProgress({ completed: 0, total: routes.length });
-    abortRef.current = false;
 
     try {
+      const roleParam = testProfile === 'admin' ? undefined : testProfile as RoleName;
       const allResults = await runSmokeTest({
         navigate: (path) => navigate(path),
         getPathname: () => window.location.pathname,
@@ -62,6 +85,7 @@ function SmokeRunnerContent() {
           setResults(prev => [...prev, current]);
         },
         runProbes: runProbesForRoute,
+        testRole: roleParam,
       });
 
       // Navigate back to the smoke runner page
@@ -72,12 +96,21 @@ function SmokeRunnerContent() {
     } finally {
       setRunning(false);
     }
-  }, [navigate, routes.length]);
+  }, [navigate, routes.length, testProfile]);
 
   const handleExport = useCallback(() => {
-    const report = formatReport(results);
-    downloadText(report, `ui-smoke-report-${new Date().toISOString().slice(0, 10)}.txt`);
-  }, [results]);
+    const roleParam = testProfile === 'admin' ? undefined : testProfile as RoleName;
+    const report = formatReport(results, roleParam);
+    downloadText(report, `ui-smoke-report-${testProfile}-${new Date().toISOString().slice(0, 10)}.txt`);
+  }, [results, testProfile]);
+
+  const handleCopyReport = useCallback(() => {
+    const roleParam = testProfile === 'admin' ? undefined : testProfile as RoleName;
+    const report = formatReport(results, roleParam);
+    navigator.clipboard.writeText(report).then(() => {
+      toast.success('Report copied to clipboard');
+    });
+  }, [results, testProfile]);
 
   const toggleRow = (path: string) => {
     setExpandedRows(prev => {
@@ -91,19 +124,39 @@ function SmokeRunnerContent() {
   const passed = results.filter(r => r.status === 'pass').length;
   const failed = results.filter(r => r.status === 'fail').length;
   const redirected = results.filter(r => r.status === 'redirect').length;
+  const blockers = results.filter(r => r.severity === 'BLOCKER').length;
+  const majors = results.filter(r => r.severity === 'MAJOR').length;
+  const minors = results.filter(r => r.severity === 'MINOR').length;
 
   return (
     <Layout>
       <div className="container mx-auto py-8 space-y-6 max-w-5xl">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-2xl font-bold">UI Smoke Runner</h1>
             <p className="text-sm text-muted-foreground">
-              Admin-only. Navigates {routes.length} routes, detects crashes, captures console errors.
+              Navigates {routes.length} routes as <strong>{PROFILE_LABELS[testProfile]}</strong>, detects crashes & console errors.
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center flex-wrap">
+            {/* Role profile selector */}
+            <Select
+              value={testProfile}
+              onValueChange={(v) => setTestProfile(v as TestProfile)}
+              disabled={running}
+            >
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Test Profile" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="pm">PM</SelectItem>
+                <SelectItem value="foreman">Foreman</SelectItem>
+                <SelectItem value="internal_worker">Worker</SelectItem>
+              </SelectContent>
+            </Select>
+
             <Button onClick={handleRun} disabled={running}>
               {running ? (
                 <>
@@ -113,15 +166,22 @@ function SmokeRunnerContent() {
               ) : (
                 <>
                   <Play className="h-4 w-4 mr-2" />
-                  Run Smoke Test
+                  Run
                 </>
               )}
             </Button>
+
             {results.length > 0 && (
-              <Button variant="outline" onClick={handleExport}>
-                <Download className="h-4 w-4 mr-2" />
-                Export
-              </Button>
+              <>
+                <Button variant="outline" onClick={handleCopyReport} size="sm">
+                  <Copy className="h-4 w-4 mr-1" />
+                  Copy
+                </Button>
+                <Button variant="outline" onClick={handleExport} size="sm">
+                  <Download className="h-4 w-4 mr-1" />
+                  Export
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -141,9 +201,9 @@ function SmokeRunnerContent() {
           </Card>
         )}
 
-        {/* Summary */}
+        {/* Summary with severity counts */}
         {results.length > 0 && !running && (
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
             <Badge variant="default" className="text-sm px-3 py-1">
               <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
               {passed} passed
@@ -156,6 +216,15 @@ function SmokeRunnerContent() {
               <ArrowRight className="h-3.5 w-3.5 mr-1" />
               {redirected} redirected
             </Badge>
+            {blockers > 0 && (
+              <SeverityBadge severity="critical" label={`${blockers} Blocker${blockers > 1 ? 's' : ''}`} />
+            )}
+            {majors > 0 && (
+              <SeverityBadge severity="high" label={`${majors} Major`} />
+            )}
+            {minors > 0 && (
+              <SeverityBadge severity="medium" label={`${minors} Minor`} />
+            )}
           </div>
         )}
 
@@ -168,25 +237,29 @@ function SmokeRunnerContent() {
             <CardContent className="p-0">
               <div className="divide-y divide-border">
                 {/* Header row */}
-                <div className="grid grid-cols-[1fr_80px_80px_100px_1fr] gap-2 px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/30">
+                <div className="grid grid-cols-[1fr_80px_70px_80px_80px_1fr] gap-2 px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/30">
                   <span>Route</span>
                   <span>Status</span>
+                  <span>Severity</span>
                   <span>Duration</span>
-                  <span>Console Errors</span>
+                  <span>Errors</span>
                   <span>Notes</span>
                 </div>
                 {results.map(r => (
                   <Collapsible key={r.path} open={expandedRows.has(r.path)}>
                     <CollapsibleTrigger asChild>
                       <button
-                        className="grid grid-cols-[1fr_80px_80px_100px_1fr] gap-2 px-4 py-3 w-full text-left text-sm hover:bg-muted/20 transition-colors"
+                        className="grid grid-cols-[1fr_80px_70px_80px_80px_1fr] gap-2 px-4 py-3 w-full text-left text-sm hover:bg-muted/20 transition-colors"
                         onClick={() => toggleRow(r.path)}
                       >
                         <span className="font-mono text-xs truncate">{r.path}</span>
                         <span>
                           {r.status === 'pass' && <Badge variant="default" className="text-xs">Pass</Badge>}
                           {r.status === 'fail' && <Badge variant="destructive" className="text-xs">Fail</Badge>}
-                          {r.status === 'redirect' && <Badge variant="secondary" className="text-xs">Redirect</Badge>}
+                          {r.status === 'redirect' && <Badge variant="secondary" className="text-xs">Redir</Badge>}
+                        </span>
+                        <span>
+                          <SeverityBadge severity={severityToVariant(r.severity)} label={r.severity} className="text-[10px]" />
                         </span>
                         <span className="text-muted-foreground">{r.durationMs}ms</span>
                         <span>
@@ -249,7 +322,7 @@ function SmokeRunnerContent() {
         {results.length === 0 && !running && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Route Inventory ({routes.length} routes)</CardTitle>
+              <CardTitle className="text-base">Route Inventory ({routes.length} routes for {PROFILE_LABELS[testProfile]})</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-1 text-xs font-mono">
