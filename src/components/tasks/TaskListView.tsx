@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   DndContext,
   closestCenter,
@@ -129,6 +130,7 @@ const AssignedWorkersAvatars = ({ assignments }: { assignments?: AssignedWorker[
 const SortableTaskItem = ({ task, onTaskClick, canReorder, isOptional = false }: SortableTaskItemProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const {
     attributes,
     listeners,
@@ -153,6 +155,10 @@ const SortableTaskItem = ({ task, onTaskClick, canReorder, isOptional = false }:
         .eq('id', task.id);
 
       if (error) throw error;
+      
+      // Invalidate task queries so the UI updates
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-tasks"] });
       
       toast({
         title: checked ? 'Task completed' : 'Task reopened',
