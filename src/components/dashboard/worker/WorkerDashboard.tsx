@@ -1,0 +1,360 @@
+import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useCurrentProject } from "@/hooks/useCurrentProject";
+import { format, startOfDay, isBefore, addDays } from "date-fns";
+import { DashboardLayout } from "@/components/dashboard/shared/DashboardLayout";
+import { DashboardHeader } from "@/components/dashboard/shared/DashboardHeader";
+import { DashboardSection } from "@/components/dashboard/shared/DashboardSection";
+import { DashboardGrid } from "@/components/dashboard/shared/DashboardGrid";
+import { DashboardCard } from "@/components/dashboard/shared/DashboardCard";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  CheckCircle2,
+  ListChecks,
+  AlertTriangle,
+  Building2,
+  Clock,
+  Camera,
+  Receipt,
+  ChevronRight,
+  PackageX,
+  ClipboardCheck,
+  ShieldAlert,
+} from "lucide-react";
+
+export function WorkerDashboard() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { currentProjectId } = useCurrentProject();
+  const today = startOfDay(new Date());
+
+  // ── Tasks assigned to this user ──────────────────────────────────────
+  const { data: myTasks = [], isLoading: tasksLoading } = useQuery({
+    queryKey: ["worker-my-tasks", user?.id, currentProjectId],
+    queryFn: async () => {
+      if (!user?.id || !currentProjectId) return [];
+      const { data, error } = await supabase
+        .from("tasks")
+        .select(`*, assigned_trade:trades(name), task_assignments!inner(user_id), blockers(id, is_resolved, reason)`)
+        .eq("project_id", currentProjectId)
+        .eq("is_deleted", false)
+        .eq("task_assignments.user_id", user.id);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user?.id && !!currentProjectId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+  });
+
+  // ── User projects ────────────────────────────────────────────────────
+  const { data: userProjects = [], isLoading: projectsLoading } = useQuery({
+    queryKey: ["worker-projects", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from("project_members")
+        .select(`project_id, role, trade:trades(name), projects(id, name, location, status)`)
+        .eq("user_id", user.id);
+      if (error) throw error;
+      return (data || []).map((pm: any) => ({
+        ...pm.projects,
+        role: pm.role,
+        trade_name: pm.trade?.name || null,
+      })).filter(Boolean);
+    },
+    enabled: !!user?.id,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  });
+
+  // ── Derived data ─────────────────────────────────────────────────────
+
+  const tasksDueToday = useMemo(() => myTasks.filter(
+    t => t.due_date && format(new Date(t.due_date), "yyyy-MM-dd") === format(today, "yyyy-MM-dd") && t.status !== "done"
+  ), [myTasks, today]);
+
+  const priorityTasks = useMemo(() => myTasks
+    .filter(t => t.status !== "done")
+    .sort((a, b) => {
+      if (a.status === "blocked" && b.status !== "blocked") return -1;
+      if (b.status === "blocked" && a.status !== "blocked") return 1;
+      const aDue = a.due_date ? new Date(a.due_date).getTime() : Infinity;
+      const bDue = b.due_date ? new Date(b.due_date).getTime() : Infinity;
+      return aDue - bDue;
+    })
+    .slice(0, 8), [myTasks]);
+
+  const activeBlockers = useMemo(() => {
+    const all: Array<{ id: string; reason: string; taskTitle: string; type: string }> = [];
+    myTasks.forEach(t => {
+      (t.blockers || []).forEach((b: any) => {
+        if (!b.is_resolved) {
+          const reason = (b.reason || "").toLowerCase();
+          let type = "other";
+          if (reason.includes("material") || reason.includes("supply")) type = "materials";
+          else if (reason.includes("inspect")) type = "inspection";
+          else if (reason.includes("safety")) type = "safety";
+          all.push({ id: b.id, reason: b.reason, taskTitle: t.title, type });
+        }
+      });
+    });
+    return all;
+  }, [myTasks]);
+
+  const materialBlockers = activeBlockers.filter(b => b.type === "materials");
+  const inspectionBlockers = activeBlockers.filter(b => b.type === "inspection");
+  const safetyBlockers = activeBlockers.filter(b => b.type === "safety");
+  const otherBlockers = activeBlockers.filter(b => b.type === "other");
+
+  const statusColors: Record<string, string> = {
+    blocked: "bg-destructive animate-pulse",
+    in_progress: "bg-primary",
+    not_started: "bg-muted-foreground/40",
+    done: "bg-primary/60",
+  };
+
+  return (
+    <DashboardLayout>
+      {/* Header */}
+      <DashboardHeader
+        title="My Day"
+        subtitle="Your tasks, blockers, and quick actions"
+        actions={
+          <Button onClick={() => navigate("/tasks")} size="sm" variant="outline" className="px-3 w-fit">
+            <ListChecks className="h-4 w-4 mr-1" /> All Tasks
+          </Button>
+        }
+      />
+
+      {/* ── Row 1: Tasks Due Today ──────────────────────────────────── */}
+      <DashboardSection title="Tasks Due Today">
+        <DashboardCard
+          title="Due Today"
+          description={`${tasksDueToday.length} task${tasksDueToday.length !== 1 ? "s" : ""} due`}
+          icon={Clock}
+          loading={tasksLoading}
+          variant="table"
+          empty={!tasksLoading && tasksDueToday.length === 0}
+          emptyMessage="No tasks due today — check your full task list."
+        >
+          <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+            {tasksDueToday.map(task => (
+              <div
+                key={task.id}
+                className="flex items-start gap-3 p-3 rounded-lg border border-border/50 bg-muted/5 hover:bg-muted/10 transition-all cursor-pointer"
+                onClick={() => navigate("/tasks")}
+              >
+                <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${statusColors[task.status] ?? "bg-muted-foreground/40"}`} />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm text-foreground truncate">{task.title}</p>
+                  {task.assigned_trade && (
+                    <Badge variant="outline" className="text-[10px] py-0 px-1.5 mt-0.5">
+                      {task.assigned_trade.name}
+                    </Badge>
+                  )}
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
+              </div>
+            ))}
+          </div>
+        </DashboardCard>
+      </DashboardSection>
+
+      {/* ── Row 2: My Tasks + Crew Assignments ──────────────────────── */}
+      <DashboardSection title="My Tasks">
+        <DashboardGrid columns={2}>
+          {/* Priority task list */}
+          <DashboardCard
+            title="Priority Tasks"
+            description={`${myTasks.filter(t => t.status !== "done").length} open`}
+            icon={CheckCircle2}
+            loading={tasksLoading}
+            variant="table"
+            empty={!tasksLoading && priorityTasks.length === 0}
+            emptyMessage="All caught up — no open tasks assigned to you."
+          >
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+              {priorityTasks.map(task => (
+                <div
+                  key={task.id}
+                  className="flex items-start gap-3 p-3 rounded-lg border border-border/50 bg-muted/5 hover:bg-muted/10 transition-all cursor-pointer"
+                  onClick={() => navigate("/tasks")}
+                >
+                  <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${statusColors[task.status] ?? "bg-muted-foreground/40"}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm text-foreground truncate">{task.title}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {task.due_date && (
+                        <span className={`text-xs ${isBefore(new Date(task.due_date), addDays(today, 1)) ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                          Due: {format(new Date(task.due_date), "MMM dd")}
+                        </span>
+                      )}
+                      {task.status === "blocked" && (
+                        <Badge className="bg-destructive/10 text-destructive border-destructive/30 border text-[10px] py-0 px-1">Blocked</Badge>
+                      )}
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
+                </div>
+              ))}
+            </div>
+          </DashboardCard>
+
+          {/* Active Jobs */}
+          <DashboardCard
+            title="Active Jobs"
+            description={`${userProjects.length} project${userProjects.length !== 1 ? "s" : ""}`}
+            icon={Building2}
+            loading={projectsLoading}
+            variant="table"
+            empty={!projectsLoading && userProjects.length === 0}
+            emptyMessage="No active projects assigned."
+          >
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+              {userProjects.map((project: any) => (
+                <div
+                  key={project.id}
+                  className="p-3 rounded-lg border border-border/50 bg-muted/5 hover:bg-muted/10 transition-all cursor-pointer"
+                  onClick={() => navigate(`/projects/${project.id}`)}
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="font-medium text-sm text-foreground truncate">{project.name}</p>
+                    <Badge variant="outline" className="text-[10px] py-0 px-1.5 shrink-0 capitalize">
+                      {(project.status || "active").replace(/_/g, " ")}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                    {project.location && <span className="truncate">{project.location}</span>}
+                    {project.trade_name && (
+                      <>
+                        <span>·</span>
+                        <span className="shrink-0">{project.trade_name}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </DashboardCard>
+        </DashboardGrid>
+      </DashboardSection>
+
+      {/* ── Row 3: Blockers ─────────────────────────────────────────── */}
+      <DashboardSection title="Blockers">
+        <DashboardGrid columns={2} className="grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+          <BlockerCategory
+            title="Materials"
+            icon={PackageX}
+            items={materialBlockers}
+            color="text-accent-foreground"
+          />
+          <BlockerCategory
+            title="Inspection"
+            icon={ClipboardCheck}
+            items={inspectionBlockers}
+            color="text-primary"
+          />
+          <BlockerCategory
+            title="Safety"
+            icon={ShieldAlert}
+            items={safetyBlockers}
+            color="text-destructive"
+          />
+          <BlockerCategory
+            title="Other"
+            icon={AlertTriangle}
+            items={otherBlockers}
+            color="text-muted-foreground"
+          />
+        </DashboardGrid>
+      </DashboardSection>
+
+      {/* ── Row 4: Quick Actions ────────────────────────────────────── */}
+      <DashboardSection title="Quick Actions">
+        <DashboardGrid columns={3}>
+          <QuickActionCard
+            title="Submit Time"
+            description="Log your hours for today"
+            icon={Clock}
+            onClick={() => navigate("/time-tracking")}
+          />
+          <QuickActionCard
+            title="Upload Receipt"
+            description="Submit expense receipts"
+            icon={Receipt}
+            onClick={() => navigate("/receipts")}
+          />
+          <QuickActionCard
+            title="Upload Photo"
+            description="Document site progress"
+            icon={Camera}
+            onClick={() => navigate(currentProjectId ? `/projects/${currentProjectId}` : "/projects")}
+          />
+        </DashboardGrid>
+      </DashboardSection>
+    </DashboardLayout>
+  );
+}
+
+/* ── Blocker Category Card ──────────────────────────────────────────── */
+
+function BlockerCategory({
+  title,
+  icon: Icon,
+  items,
+  color,
+}: {
+  title: string;
+  icon: React.ComponentType<{ className?: string }>;
+  items: Array<{ id: string; reason: string; taskTitle: string }>;
+  color: string;
+}) {
+  return (
+    <DashboardCard
+      title={title}
+      icon={Icon}
+      variant={items.length > 0 ? "alert" : "metric"}
+      empty={items.length === 0}
+      emptyMessage={`No ${title.toLowerCase()} issues`}
+    >
+      <div className="space-y-1.5">
+        {items.slice(0, 3).map(b => (
+          <div key={b.id} className="p-2 rounded-md border border-border/50 bg-card">
+            <p className="text-xs font-medium text-foreground line-clamp-1">{b.reason}</p>
+            <p className="text-[10px] text-muted-foreground truncate mt-0.5">{b.taskTitle}</p>
+          </div>
+        ))}
+        {items.length > 3 && (
+          <p className={`text-xs font-medium text-center ${color}`}>+{items.length - 3} more</p>
+        )}
+      </div>
+    </DashboardCard>
+  );
+}
+
+/* ── Quick Action Card ──────────────────────────────────────────────── */
+
+function QuickActionCard({
+  title,
+  description,
+  icon: Icon,
+  onClick,
+}: {
+  title: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+  onClick: () => void;
+}) {
+  return (
+    <DashboardCard title={title} description={description} icon={Icon} variant="metric">
+      <Button onClick={onClick} variant="outline" size="sm" className="w-full mt-1">
+        {title} <ChevronRight className="h-3.5 w-3.5 ml-1" />
+      </Button>
+    </DashboardCard>
+  );
+}
