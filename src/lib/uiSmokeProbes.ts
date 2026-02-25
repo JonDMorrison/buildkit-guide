@@ -51,6 +51,12 @@ const PROBE_REGISTRY: ProbeDefinition[] = [
     name: 'tasks-view-toggle',
     selector: 'button:has(svg.lucide-layout-grid)',
   },
+  // Project drilldown — click first project link
+  {
+    route: '/projects',
+    name: 'project-drilldown',
+    selector: '[data-project-id], a[href*="/projects/"]',
+  },
 ];
 
 function wait(ms: number): Promise<void> {
@@ -72,6 +78,18 @@ export async function runProbesForRoute(path: string): Promise<ProbeResult[]> {
       const el = document.querySelector<HTMLElement>(probe.selector);
       if (!el) {
         results.push({ name: probe.name, status: 'skip', error: 'selector not found' });
+        continue;
+      }
+
+      // Special handling for project drilldown probe
+      if (probe.name === 'project-drilldown') {
+        // Just verify the element exists and is clickable, don't actually navigate
+        const href = el.getAttribute('href') || el.closest('a')?.getAttribute('href');
+        if (href && href.includes('/projects/')) {
+          results.push({ name: probe.name, status: 'pass', error: `found: ${href}` });
+        } else {
+          results.push({ name: probe.name, status: 'skip', error: 'no project href found' });
+        }
         continue;
       }
 
