@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { CertificationBadge } from "@/components/CertificationBadge";
 import { useCertificationTier } from "@/hooks/useCertificationTier";
+import { EconomicPulseStrip } from "@/components/dashboard/EconomicPulseStrip";
 import { QuickAddModal } from "@/components/dashboard/QuickAddModal";
 import { format, isAfter, isBefore, addDays, startOfDay, subDays } from "date-fns";
 import { Responsive, WidthProvider, Layout as GridLayout } from "react-grid-layout";
@@ -66,6 +67,9 @@ export default function Dashboard() {
   const [blockersModalOpen, setBlockersModalOpen] = useState(false);
   const [quickAddModalOpen, setQuickAddModalOpen] = useState(false);
 
+  // Determine role hint for default layout
+  const roleHint = isForeman() ? 'foreman' as const : isPM() ? 'pm' as const : isAdmin ? 'admin' as const : 'other' as const;
+
   const {
     layouts,
     hiddenWidgets,
@@ -76,7 +80,7 @@ export default function Dashboard() {
     resetLayout,
     toggleWidget,
     updateLayouts,
-  } = useDashboardLayout(currentProjectId);
+  } = useDashboardLayout(currentProjectId, roleHint);
 
   const today = startOfDay(new Date());
   const nextWeek = addDays(today, 7);
@@ -467,6 +471,11 @@ export default function Dashboard() {
           </div>
 
           {/* Unrated labor issues now live in Control Center Issues tab */}
+
+          {/* Economic Pulse Strip — PM only */}
+          {isPM() && (
+            <EconomicPulseStrip projectId={currentProjectId} />
+          )}
 
           {/* Daily Snapshot Strip */}
           <DailySnapshotStrip
