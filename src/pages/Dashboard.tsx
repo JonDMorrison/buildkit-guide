@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDefaultHomeRoute } from "@/hooks/useDefaultHomeRoute";
 import { useRouteAccess } from "@/hooks/useRouteAccess";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -373,24 +374,15 @@ function DashboardContent() {
       {/* Economic Pulse Strip — PM only */}
       {isPM() && <EconomicPulseStrip projectId={currentProjectId} />}
 
-      {/* Daily Snapshot Strip */}
-      <DailySnapshotStrip
-        weather={todayLog?.weather || null}
-        crewCount={todayLog?.crew_count || 0}
-        activeTrades={activeTrades}
-        tasksStarting={tasksStartingToday}
-        tasksFinishing={tasksFinishingToday}
-        blockedCount={blockedTasks}
-        staleLogDate={logIsStale ? recentLog?.log_date : null}
-        onWeatherClick={() => setWeatherPopoverOpen(true)}
-        onCrewClick={() => { setCrewModalOpened(true); setCrewPopoverOpen(true); }}
-        onTradesClick={() => setTradesPopoverOpen(true)}
-        onStartingClick={() => setStartingModalOpen(true)}
-        onFinishingClick={() => setFinishingModalOpen(true)}
-        onBlockersClick={() => setBlockersModalOpen(true)}
-      />
+      {/* ── Focus: My Day + Blockers (decisions first) ───────────── */}
+      <DashboardSection title="Focus">
+        <DashboardGrid columns={2}>
+          <MyDayTaskList tasks={priorityTasks} />
+          <BlockersCard blockers={unresolvedBlockers} />
+        </DashboardGrid>
+      </DashboardSection>
 
-      {/* ── Row 1: Top Strip — 5 KPI cards ──────────────────────────── */}
+      {/* ── At a Glance: KPI strip ──────────────────────────────── */}
       <DashboardSection title="At a Glance">
         <DashboardGrid columns={5} className="grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
           <TodayTasksCard todayCount={tasksFinishingToday} totalOpen={openTasks} />
@@ -401,31 +393,50 @@ function DashboardContent() {
         </DashboardGrid>
       </DashboardSection>
 
-      {/* ── Row 2: Project Health Signal (lazy — below fold) ────────── */}
-      <DashboardSection title="Project Health" lazy skeletonHeight="h-56">
-        <ProjectHealthSignalCard projectId={currentProjectId} />
+      {/* ── Ops: Tabbed operational panels (below fold) ──────────── */}
+      <DashboardSection title="Operations">
+        <Tabs defaultValue="site" className="w-full">
+          <TabsList className="mb-4">
+            <TabsTrigger value="site">Site Status</TabsTrigger>
+            <TabsTrigger value="health">Project Health</TabsTrigger>
+            <TabsTrigger value="planning">Planning</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="site" className="mt-0 space-y-4">
+            <DailySnapshotStrip
+              weather={todayLog?.weather || null}
+              crewCount={todayLog?.crew_count || 0}
+              activeTrades={activeTrades}
+              tasksStarting={tasksStartingToday}
+              tasksFinishing={tasksFinishingToday}
+              blockedCount={blockedTasks}
+              staleLogDate={logIsStale ? recentLog?.log_date : null}
+              onWeatherClick={() => setWeatherPopoverOpen(true)}
+              onCrewClick={() => { setCrewModalOpened(true); setCrewPopoverOpen(true); }}
+              onTradesClick={() => setTradesPopoverOpen(true)}
+              onStartingClick={() => setStartingModalOpen(true)}
+              onFinishingClick={() => setFinishingModalOpen(true)}
+              onBlockersClick={() => setBlockersModalOpen(true)}
+            />
+          </TabsContent>
+
+          <TabsContent value="health" className="mt-0">
+            <ProjectHealthSignalCard projectId={currentProjectId} />
+          </TabsContent>
+
+          <TabsContent value="planning" className="mt-0">
+            <DashboardGrid columns={2}>
+              <LookaheadPreview projectId={currentProjectId} />
+              <ManpowerOverview projectId={currentProjectId} />
+            </DashboardGrid>
+          </TabsContent>
+        </Tabs>
       </DashboardSection>
 
-      {/* ── Row 3: My Day + Blockers ────────────────────────────────── */}
-      <DashboardSection title="Focus">
-        <DashboardGrid columns={2}>
-          <MyDayTaskList tasks={priorityTasks} />
-          <BlockersCard blockers={unresolvedBlockers} />
-        </DashboardGrid>
-      </DashboardSection>
-
-      {/* ── Row 4: Lookahead + Manpower (lazy) ──────────────────────── */}
-      <DashboardSection title="Planning" lazy skeletonHeight="h-48" skeletonCount={2}>
-        <DashboardGrid columns={2}>
-          <LookaheadPreview projectId={currentProjectId} />
-          <ManpowerOverview projectId={currentProjectId} />
-        </DashboardGrid>
-      </DashboardSection>
-
-      {/* ── Row 5: AI Insights (lazy) ──────────────────────────────── */}
+      {/* ── AI Insights (lazy, below fold) ──────────────────────── */}
       <AIInsightsSection showChangeFeed projectId={currentProjectId} />
 
-      {/* ── All Modals (preserved) ───────────────────────────────────── */}
+      {/* ── All Modals (preserved) ───────────────────────────────── */}
       <WeatherInfoModal todayLog={todayLog} open={weatherPopoverOpen} onOpenChange={setWeatherPopoverOpen} projectId={currentProjectId} />
       <CrewInfoModal crewCount={todayLog?.crew_count || 0} teamMembers={teamMembers} open={crewPopoverOpen} onOpenChange={setCrewPopoverOpen} />
       <ActiveTradesModal trades={activeTradesData} open={tradesPopoverOpen} onOpenChange={setTradesPopoverOpen} />

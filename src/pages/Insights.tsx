@@ -208,8 +208,8 @@ const Insights = () => {
           }
         />
 
-        {/* ── Section 1: Data Integrity Banner ──────────────────────── */}
-        <DashboardSection title="Data Integrity">
+        {/* ── Section 1: Data Quality Overview ──────────────────────── */}
+        <DashboardSection title="Data Quality Overview">
           <DashboardGrid columns={1}>
             <DataIntegrityBannerCard />
           </DashboardGrid>

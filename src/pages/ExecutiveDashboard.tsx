@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from '@/hooks/useOrganization';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { RefreshCw, Copy, Check, ExternalLink, Activity, Loader2, BarChart3 } from 'lucide-react';
+import { RefreshCw, Copy, Check, ExternalLink, Loader2, BarChart3, Activity } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getCause } from '@/lib/causesDictionary';
 import { useAuthRole } from '@/hooks/useAuthRole';
@@ -12,6 +12,7 @@ import { NoAccess } from '@/components/NoAccess';
 import { DashboardLayout } from '@/components/dashboard/shared/DashboardLayout';
 import { DashboardHeader } from '@/components/dashboard/shared/DashboardHeader';
 import { DashboardSection } from '@/components/dashboard/shared/DashboardSection';
+import { DashboardGrid } from '@/components/dashboard/shared/DashboardGrid';
 import { DashboardCard } from '@/components/dashboard/shared/DashboardCard';
 
 import { ExecutiveBriefCard, type ChangeFeedData } from '@/components/executive/ExecutiveBriefCard';
@@ -185,16 +186,9 @@ export default function ExecutiveDashboard() {
           </DashboardSection>
         )}
 
-        {/* ── 2. Portfolio Health (lazy) ────────────────────────── */}
-        {(data || loading) && (
-          <DashboardSection title="Portfolio Health" lazy skeletonHeight="h-48">
-            <PortfolioHealthCard data={portfolioData} loading={loading} />
-          </DashboardSection>
-        )}
-
-        {/* ── 3. Attention Required (lazy) ───────────────────── */}
+        {/* ── 2. Attention Required ──────────────────────────── */}
         {(feedData || loading) && (
-          <DashboardSection title="Attention Required" lazy skeletonHeight="h-56">
+          <DashboardSection title="Where Leadership Should Look First" lazy skeletonHeight="h-56">
             <AttentionRequiredTable
               projects={feedData?.attention_ranked_projects ?? []}
               loading={loading && !feedData}
@@ -202,7 +196,13 @@ export default function ExecutiveDashboard() {
           </DashboardSection>
         )}
 
-        {/* ── 4. Economic Signals (lazy) ─────────────────────── */}
+        {/* ── 3. Portfolio Health + Economic Signals ─────────── */}
+        {(data || loading) && (
+          <DashboardSection title="Portfolio Health" lazy skeletonHeight="h-48">
+            <PortfolioHealthCard data={portfolioData} loading={loading} />
+          </DashboardSection>
+        )}
+
         {data && (
           <DashboardSection title="Economic Signals" lazy skeletonHeight="h-48" skeletonCount={2}>
             <EconomicSignalsCard
@@ -212,25 +212,23 @@ export default function ExecutiveDashboard() {
           </DashboardSection>
         )}
 
-        {/* ── 5. Data Integrity (lazy) ───────────────────────── */}
-        {(data || loading) && (
-          <DashboardSection title="Data Integrity" lazy skeletonHeight="h-40">
-            <DataIntegrityCard
-              integrity={data?.data_integrity ?? null}
-              loading={loading}
-            />
+        {/* ── 4. Confidence & Evidence (below fold) ─────────── */}
+        {(data || loading || activeOrganizationId) && (
+          <DashboardSection title="Confidence & Evidence" lazy skeletonHeight="h-40" skeletonCount={2}>
+            <DashboardGrid columns={activeOrganizationId ? 2 : 1}>
+              <DataIntegrityCard
+                integrity={data?.data_integrity ?? null}
+                loading={loading}
+              />
+              {activeOrganizationId && (
+                <SnapshotStatusCard orgId={activeOrganizationId} />
+              )}
+            </DashboardGrid>
           </DashboardSection>
         )}
 
-        {/* ── 6. AI Insights (lazy) ────────────────────────── */}
+        {/* ── 5. AI Change Feed (below fold, collapsed) ────────── */}
         <AIInsightsSection showChangeFeed />
-
-        {/* ── 7. Snapshot Status (lazy) ──────────────────────── */}
-        {activeOrganizationId && (
-          <DashboardSection title="Snapshot Status" lazy skeletonHeight="h-40">
-            <SnapshotStatusCard orgId={activeOrganizationId} />
-          </DashboardSection>
-        )}
       </DashboardLayout>
     </TooltipProvider>
   );
