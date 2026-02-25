@@ -137,9 +137,11 @@ export function TimeEntryDetailDrawer({
 
   const formatDuration = (hours: number | null, minutes: number | null) => {
     if (hours === null && minutes === null) return '—';
-    const h = hours || 0;
-    const m = minutes || 0;
+    const totalMinutes = ((hours || 0) * 60) + (minutes || 0);
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
     if (h === 0) return `${m}m`;
+    if (m === 0) return `${h}h`;
     return `${h}h ${m}m`;
   };
 
