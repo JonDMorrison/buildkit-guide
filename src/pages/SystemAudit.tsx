@@ -175,6 +175,29 @@ const fmt = (n: number | null | undefined) =>
 
 export default function SystemAudit() {
   const { isAdmin, loading: authLoading } = useAuthRole();
+
+  if (authLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <Layout>
+        <NoAccess />
+      </Layout>
+    );
+  }
+
+  return <SystemAuditContent />;
+}
+
+function SystemAuditContent() {
   const { currentProjectId } = useCurrentProject();
 
   // Fetch project name for display
@@ -236,24 +259,6 @@ export default function SystemAudit() {
     a.click();
     URL.revokeObjectURL(url);
   }, [results]);
-
-  if (authLoading) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
-        </div>
-      </Layout>
-    );
-  }
-
-  if (!isAdmin) {
-    return (
-      <Layout>
-        <NoAccess />
-      </Layout>
-    );
-  }
 
   const s = results?.sections;
   const allPass =

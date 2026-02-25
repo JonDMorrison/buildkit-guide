@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useOrganizationRole } from '@/hooks/useOrganizationRole';
 import { NoAccess } from '@/components/NoAccess';
 import { RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,39 +11,17 @@ import DiagnosticsSection from './ai-brain/DiagnosticsSection';
 import MarginToolsSection from './ai-brain/MarginToolsSection';
 import OSOperationsSection from './ai-brain/OSOperationsSection';
 
+/**
+ * Gate: checks admin before rendering content (which has queries).
+ */
 export default function AIBrainDiagnostics() {
-  const { session } = useAuth();
-  const { isAdmin, loading: roleLoading } = useUserRole();
-  const { activeOrganizationId } = useOrganization();
-  const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
+  const { isAdmin: isGlobalAdmin, loading: roleLoading } = useUserRole();
+  const { isAdmin: isOrgAdmin, isLoading: orgLoading } = useOrganizationRole();
 
-  // Shared DB auth state (needed by MarginTools + OSOperations)
-  const [dbAuthOk, setDbAuthOk] = useState(false);
-  const [dbAuthLoading, setDbAuthLoading] = useState(true);
+  const loading = roleLoading || orgLoading;
+  const isAdmin = isGlobalAdmin || isOrgAdmin;
 
-  // Fetch projects
-  useEffect(() => {
-    if (!activeOrganizationId) return;
-    supabase.from('projects').select('id, name').eq('organization_id', activeOrganizationId)
-      .order('name').then(({ data }) => setProjects(data || []));
-  }, [activeOrganizationId]);
-
-  // DB auth check for child sections
-  useEffect(() => {
-    (async () => {
-      setDbAuthLoading(true);
-      try {
-        const { data, error } = await (supabase as any).rpc('rpc_whoami');
-        setDbAuthOk(!error && !!data?.uid);
-      } catch {
-        setDbAuthOk(false);
-      } finally {
-        setDbAuthLoading(false);
-      }
-    })();
-  }, []);
-
-  if (roleLoading) {
+  if (loading) {
     return (
       <Layout>
         <div className="flex items-center justify-center py-20">
@@ -59,6 +38,40 @@ export default function AIBrainDiagnostics() {
       </Layout>
     );
   }
+
+  return <AIBrainContent />;
+}
+
+/**
+ * Content: all queries live here, only rendered after admin check passes.
+ */
+function AIBrainContent() {
+  const { session } = useAuth();
+  const { activeOrganizationId } = useOrganization();
+  const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
+
+  const [dbAuthOk, setDbAuthOk] = useState(false);
+  const [dbAuthLoading, setDbAuthLoading] = useState(true);
+
+  useEffect(() => {
+    if (!activeOrganizationId) return;
+    supabase.from('projects').select('id, name').eq('organization_id', activeOrganizationId)
+      .order('name').then(({ data }) => setProjects(data || []));
+  }, [activeOrganizationId]);
+
+  useEffect(() => {
+    (async () => {
+      setDbAuthLoading(true);
+      try {
+        const { data, error } = await (supabase as any).rpc('rpc_whoami');
+        setDbAuthOk(!error && !!data?.uid);
+      } catch {
+        setDbAuthOk(false);
+      } finally {
+        setDbAuthLoading(false);
+      }
+    })();
+  }, []);
 
   return (
     <Layout>
