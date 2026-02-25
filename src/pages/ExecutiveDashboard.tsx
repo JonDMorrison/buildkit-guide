@@ -34,7 +34,7 @@ import { DataIntegrityCard, type DataIntegrityData } from '@/components/executiv
 import { AIInsightsSection } from '@/components/ai-insights';
 import { SnapshotStatusCard } from '@/components/executive/SnapshotStatusCard';
 import { DecisionNotesPanel } from '@/components/executive/DecisionNotesPanel';
-import { buildExecutiveBriefExport } from '@/lib/executiveBriefExport';
+import { buildExecutiveBriefExport, type ExportFormat } from '@/lib/executiveBriefExport';
 import { downloadText } from '@/lib/downloadText';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -159,6 +159,7 @@ export default function ExecutiveDashboard() {
   const [changeLogOpen, setChangeLogOpen] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<number>(0);
   const [briefCopied, setBriefCopied] = useState(false);
+  const [briefFormat, setBriefFormat] = useState<ExportFormat>('simple');
   const decisionBodyRef = useRef<string>('');
 
   // Shared change feed hook (canonical key: rpc-executive-change-feed)
@@ -233,17 +234,17 @@ export default function ExecutiveDashboard() {
   }), [activeOrganization, ribbonAsOf, feedData, ribbonCoverage, ribbonIssues]);
 
   const handleCopyBrief = useCallback(() => {
-    const { text } = buildExecutiveBriefExport(buildBriefParams());
+    const { text } = buildExecutiveBriefExport({ ...buildBriefParams(), format: briefFormat });
     navigator.clipboard.writeText(text).then(() => {
       setBriefCopied(true);
       setTimeout(() => setBriefCopied(false), 2000);
     });
-  }, [buildBriefParams]);
+  }, [buildBriefParams, briefFormat]);
 
   const handleDownloadBrief = useCallback(() => {
-    const { text, filename } = buildExecutiveBriefExport(buildBriefParams());
+    const { text, filename } = buildExecutiveBriefExport({ ...buildBriefParams(), format: briefFormat });
     downloadText(text, filename);
-  }, [buildBriefParams]);
+  }, [buildBriefParams, briefFormat]);
 
   const portfolioData: PortfolioHealthData | null = data ? {
     projects_active_count: data.projects_active_count,
@@ -342,6 +343,31 @@ export default function ExecutiveDashboard() {
         {/* ── Export Brief actions ─────────────────────────────── */}
         {(feedData || data) && (
           <div className="flex items-center gap-2">
+            {/* Format toggle */}
+            <div className="inline-flex rounded-md border border-border overflow-hidden text-xs">
+              <button
+                type="button"
+                onClick={() => setBriefFormat('simple')}
+                className={`px-3 py-1.5 font-medium transition-colors ${
+                  briefFormat === 'simple'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-card text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Simple
+              </button>
+              <button
+                type="button"
+                onClick={() => setBriefFormat('report')}
+                className={`px-3 py-1.5 font-medium transition-colors border-l border-border ${
+                  briefFormat === 'report'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-card text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Report
+              </button>
+            </div>
             <Button variant="outline" size="sm" onClick={handleCopyBrief}>
               {briefCopied
                 ? <><Check className="h-3.5 w-3.5 mr-1.5 text-primary" />Brief Copied</>
