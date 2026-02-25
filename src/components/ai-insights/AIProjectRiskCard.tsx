@@ -1,14 +1,22 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useOrganization } from '@/hooks/useOrganization';
 import { DashboardCard } from '@/components/dashboard/shared/DashboardCard';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { Sparkles, ShieldAlert, ShieldCheck, Loader2, BarChart3 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Props {
   projectId: string | null;
 }
 
 export function AIProjectRiskCard({ projectId }: Props) {
+  const { activeOrganizationId: orgId } = useOrganization();
+  const queryClient = useQueryClient();
+  const [generating, setGenerating] = useState(false);
+
   const { data: snapshotCount, isLoading: countLoading } = useQuery({
     queryKey: ['ai-risk-snapshot-count', projectId],
     queryFn: async () => {
@@ -41,6 +49,26 @@ export function AIProjectRiskCard({ projectId }: Props) {
 
   const loading = countLoading || riskLoading;
 
+  async function handleGenerate() {
+    if (!orgId) return;
+    setGenerating(true);
+    try {
+      const { error } = await (supabase as any).rpc(
+        'rpc_capture_org_economic_snapshots',
+        { p_org_id: orgId, p_force: true },
+      );
+      if (error) throw error;
+      toast.success('Analysis data generated. It may take a moment to process.');
+      // Invalidate to re-check snapshot count
+      queryClient.invalidateQueries({ queryKey: ['ai-risk-snapshot-count', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['ai-project-risk', projectId] });
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to generate analysis data');
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   if (!countLoading && !hasEnoughSnapshots) {
     return (
       <DashboardCard
@@ -49,9 +77,30 @@ export function AIProjectRiskCard({ projectId }: Props) {
         variant="metric"
         traceSource="project_economic_snapshots count"
         helpText="Calculates a risk score based on margin pressure, labor burn, and data confidence."
-        empty
-        emptyMessage="This project needs at least 2 economic snapshots to show trends. Snapshots are captured daily."
-      />
+      >
+        <div className="space-y-3 py-2">
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Not enough data yet to assess risk. The system needs to analyze your project financials over at least two checkpoints.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={handleGenerate}
+            disabled={generating || !orgId}
+          >
+            {generating ? (
+              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+            ) : (
+              <BarChart3 className="h-3.5 w-3.5 mr-1.5" />
+            )}
+            {generating ? 'Generating…' : 'Generate Analysis'}
+          </Button>
+          <p className="text-[10px] text-muted-foreground text-center">
+            This captures a financial checkpoint for all your projects. Run it twice (or wait a day) to unlock trends.
+          </p>
+        </div>
+      </DashboardCard>
     );
   }
 
