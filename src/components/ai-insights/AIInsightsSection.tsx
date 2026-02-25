@@ -22,7 +22,7 @@ export function AIInsightsSection({ showChangeFeed, projectId }: Props) {
   const columns = showChangeFeed && hasProjectCards ? 3 : showChangeFeed ? 1 : 2;
 
   return (
-    <DashboardSection title="AI Insights" helpText="AI-generated analysis comparing your latest economic snapshots. Shows which projects changed, risk levels, and margin trends." lazy skeletonHeight="h-48" skeletonCount={columns}>
+    <DashboardSection title="Insights" helpText="AI-generated analysis comparing your latest economic snapshots. Shows which projects changed, risk levels, and margin trends." lazy skeletonHeight="h-48" skeletonCount={columns}>
       <DashboardGrid columns={columns} className={columns === 1 ? 'grid-cols-1' : undefined}>
         {showChangeFeed && <AIChangeFeedCard />}
         {hasProjectCards && <AIProjectRiskCard projectId={projectId} />}

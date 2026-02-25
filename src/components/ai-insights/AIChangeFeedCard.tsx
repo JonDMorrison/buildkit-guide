@@ -34,19 +34,19 @@ export function AIChangeFeedCard() {
   if (needsSnapshot) {
     return (
       <DashboardCard
-        title="AI Change Feed"
+        title="What Changed"
         icon={Sparkles}
         variant="metric"
         traceSource="rpc_executive_change_feed"
         empty
-        emptyMessage="Capture one more snapshot to unlock AI insights."
+        emptyMessage="Capture one more snapshot to unlock insights."
       />
     );
   }
 
   return (
     <DashboardCard
-      title="AI Change Feed"
+      title="What Changed"
       description={feed ? `${feed.previous_snapshot_date} → ${feed.latest_snapshot_date}` : undefined}
       icon={Sparkles}
       loading={isLoading}

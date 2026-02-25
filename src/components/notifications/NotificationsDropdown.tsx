@@ -164,7 +164,7 @@ export const NotificationsDropdown = () => {
               </TabsTrigger>
               <TabsTrigger value="insights" className="text-xs gap-1.5">
                 <Lightbulb className="h-3.5 w-3.5" />
-                AI Insights
+                Insights
                 {insightsCount > 0 && (
                   <Badge variant="secondary" className="h-4 min-w-[16px] px-1 text-[10px]">
                     {insightsCount}
@@ -234,7 +234,7 @@ export const NotificationsDropdown = () => {
             <ScrollArea className="h-[320px]">
               {!currentProjectId ? (
                 <div className="p-8 text-center text-sm text-muted-foreground">
-                  Select a project to see AI insights
+                  Select a project to see insights
                 </div>
               ) : insightsLoading && insights.length === 0 ? (
                 <div className="flex items-center justify-center py-8">

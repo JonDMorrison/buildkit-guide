@@ -73,7 +73,7 @@ export function AIInsightsList({ onClose }: AIInsightsListProps) {
   if (!currentProjectId) {
     return (
       <div className="p-6 text-center text-sm text-muted-foreground">
-        Select a project to see AI insights
+        Select a project to see insights
       </div>
     );
   }

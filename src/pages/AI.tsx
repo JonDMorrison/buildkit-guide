@@ -116,7 +116,7 @@ const AI = () => {
       <div className="container max-w-4xl mx-auto px-4 py-6 space-y-6 pb-20">
         <div className="flex flex-col gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-foreground">AI Assistant</h2>
+            <h2 className="text-2xl font-bold text-foreground">Assistant</h2>
             <p className="text-sm text-muted-foreground mt-1">
               Upload documents and ask questions about your project
             </p>
