@@ -1,23 +1,18 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
-import { SectionHeader } from "@/components/SectionHeader";
 import { usePortfolioInsights, PortfolioRow } from "@/hooks/usePortfolioInsights";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useProjectRole } from "@/hooks/useProjectRole";
 import { useOrgSnapshots } from "@/hooks/useOrgSnapshots";
 import { useOrgScopeAccuracy } from "@/hooks/useOrgScopeAccuracy";
 import { PortfolioExportCSV } from "@/components/insights/PortfolioExportCSV";
-import { MarginTrendChart } from "@/components/insights/charts/MarginTrendChart";
-import { CostTrendChart } from "@/components/insights/charts/CostTrendChart";
-import { OverBudgetTrendChart } from "@/components/insights/charts/OverBudgetTrendChart";
 import { RecommendationsPanel } from "@/components/insights/RecommendationsPanel";
 import { OrgScopeLearningPanel } from "@/components/insights/OrgScopeLearningPanel";
 import { WeeklyInsightCard } from "@/components/insights/WeeklyInsightCard";
 import { getPortfolioRecommendations } from "@/lib/recommendations/rules";
 import { OperationalPatternsPanel } from "@/components/insights/OperationalPatternsPanel";
 import { NoAccess } from "@/components/NoAccess";
-import { DataIntegrityBanner } from "@/components/insights/DataIntegrityBanner";
 import { UnratedLaborBanner } from "@/components/UnratedLaborBanner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -26,15 +21,28 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { DollarSign, TrendingUp, AlertTriangle, BarChart3, Clock, Activity, ShieldAlert, ChevronLeft, ChevronRight, CalendarIcon, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
 import { getDataQualityFlags } from "@/lib/dataQualityFlags";
 import { format, subWeeks } from "date-fns";
 import { cn } from "@/lib/utils";
+
+// Shared dashboard system
+import { DashboardHeader } from "@/components/dashboard/shared/DashboardHeader";
+import { DashboardSection } from "@/components/dashboard/shared/DashboardSection";
+import { DashboardGrid } from "@/components/dashboard/shared/DashboardGrid";
+
+// Accounting card components
+import {
+  DataIntegrityBannerCard,
+  ReceiptsPipelineCard,
+  JobCostAlertsCard,
+  InvoicePipelineCard,
+  FinancialTrendsSection,
+} from "@/components/insights/accounting";
 
 const statusOptions = [
   { value: "active", label: "Active (Default)" },
@@ -181,109 +189,85 @@ const Insights = () => {
 
   return (
     <Layout>
-      <div className="container max-w-6xl mx-auto px-4 py-6">
-        <SectionHeader title="Portfolio Insights" />
-        <DataIntegrityBanner />
-        <UnratedLaborBanner />
+      <div className="container max-w-6xl mx-auto px-4 py-6 space-y-6">
 
-        {/* Filters */}
-        <div className="flex flex-wrap gap-4 mb-6 items-end">
-          <div className="space-y-1.5 min-w-[180px]">
-            <Label>Status</Label>
-            <Select value={statusFilter} onValueChange={handleStatusChange}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {statusOptions.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>From</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("w-[140px] justify-start text-left font-normal", !dateFrom && "text-muted-foreground")}>
-                  <CalendarIcon className="h-4 w-4 mr-1.5" />
-                  {dateFrom ? format(dateFrom, "MMM d, yy") : "Start"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} initialFocus className={cn("p-3 pointer-events-auto")} />
-              </PopoverContent>
-            </Popover>
-          </div>
-          <div className="space-y-1.5">
-            <Label>To</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("w-[140px] justify-start text-left font-normal", !dateTo && "text-muted-foreground")}>
-                  <CalendarIcon className="h-4 w-4 mr-1.5" />
-                  {dateTo ? format(dateTo, "MMM d, yy") : "End"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={dateTo} onSelect={setDateTo} initialFocus className={cn("p-3 pointer-events-auto")} />
-              </PopoverContent>
-            </Popover>
-          </div>
+        {/* Header */}
+        <DashboardHeader
+          title="Portfolio Insights"
+          subtitle="Financial health, receipts, invoices, and cost alerts"
+          actions={
+            <>
+              <Button variant="outline" size="sm" onClick={() => navigate("/insights/snapshots")}>
+                <Camera className="h-4 w-4 mr-1.5" /> Snapshots
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => navigate("/data-health")}>
+                <Activity className="h-4 w-4 mr-1.5" /> Data Health
+              </Button>
+              {filteredRows.length > 0 && <PortfolioExportCSV rows={filteredRows} />}
+            </>
+          }
+        />
 
-          {/* Data Quality Filters */}
-          <div className="space-y-1.5">
-            <Label className="flex items-center gap-1">
-              <ShieldAlert className="h-3.5 w-3.5" />
-              Data Quality
-            </Label>
-            <div className="flex gap-3">
-              {dataQualityFilterOptions.map((opt) => (
-                <label key={opt.key} className="flex items-center gap-1.5 text-sm cursor-pointer">
-                  <Checkbox
-                    checked={qualityFilters.has(opt.key)}
-                    onCheckedChange={() => toggleQualityFilter(opt.key)}
-                  />
-                  {opt.label}
-                </label>
-              ))}
+        {/* ── Section 1: Data Integrity Banner ──────────────────────── */}
+        <DashboardSection title="Data Integrity">
+          <DashboardGrid columns={1}>
+            <DataIntegrityBannerCard />
+          </DashboardGrid>
+          <UnratedLaborBanner />
+        </DashboardSection>
+
+        {/* ── Section 2: Receipts Pipeline ──────────────────────────── */}
+        <DashboardSection title="Receipts Pipeline">
+          <ReceiptsPipelineCard />
+        </DashboardSection>
+
+        {/* ── Section 3: Job Cost Alerts ────────────────────────────── */}
+        <DashboardSection title="Job Cost Alerts">
+          <JobCostAlertsCard rows={filteredRows} loading={loading} />
+        </DashboardSection>
+
+        {/* ── Section 4: Invoice Pipeline ───────────────────────────── */}
+        <DashboardSection title="Invoice Pipeline">
+          <InvoicePipelineCard />
+        </DashboardSection>
+
+        {/* ── Section 5: Financial Trends ───────────────────────────── */}
+        <DashboardSection title="Financial Trends">
+          {/* Date range filters */}
+          <div className="flex flex-wrap gap-3 mb-4 items-end">
+            <div className="space-y-1">
+              <Label className="text-xs">From</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-[130px] justify-start text-left font-normal text-xs", !dateFrom && "text-muted-foreground")}>
+                    <CalendarIcon className="h-3.5 w-3.5 mr-1" />
+                    {dateFrom ? format(dateFrom, "MMM d, yy") : "Start"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} initialFocus className="p-3 pointer-events-auto" />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">To</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-[130px] justify-start text-left font-normal text-xs", !dateTo && "text-muted-foreground")}>
+                    <CalendarIcon className="h-3.5 w-3.5 mr-1" />
+                    {dateTo ? format(dateTo, "MMM d, yy") : "End"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={dateTo} onSelect={setDateTo} initialFocus className="p-3 pointer-events-auto" />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
+          <FinancialTrendsSection snapshots={snapshots} loading={snapshotsLoading} />
+        </DashboardSection>
 
-          <div className="ml-auto flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate("/insights/snapshots")}
-            >
-              <Camera className="h-4 w-4 mr-1.5" />
-              Snapshots
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate("/data-health")}
-            >
-              <Activity className="h-4 w-4 mr-1.5" />
-              Data Health
-            </Button>
-            {filteredRows.length > 0 && <PortfolioExportCSV rows={filteredRows} />}
-          </div>
-        </div>
-
-        {/* Initial load skeleton */}
-        {loading && sorted.length === 0 && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {[...Array(4)].map((_, i) => (
-                <Skeleton key={i} className="h-28" />
-              ))}
-            </div>
-            <Skeleton className="h-64" />
-          </div>
-        )}
-
+        {/* ── KPI Summary Cards ─────────────────────────────────────── */}
         {error && (
           <Card>
             <CardContent className="py-8 text-center">
@@ -307,66 +291,100 @@ const Insights = () => {
         {!error && (kpis || (loading && sorted.length > 0)) && (
           <>
             {/* KPI Cards */}
-            <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 ${loading ? "opacity-60" : ""}`}>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium">Total Contract Value</CardTitle>
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{kpis ? formatCurrency(kpis.totalContract) : "—"}</div>
-                  <p className="text-xs text-muted-foreground">
-                    {kpis ? `${kpis.includedCount} of ${kpis.totalCount} projects` : "Loading…"}
-                    {kpis && kpis.excludedCount > 0 && (
-                      <span className="text-status-issue"> · {kpis.excludedCount} missing budget</span>
-                    )}
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium">Total Actual Cost</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{kpis ? formatCurrency(kpis.totalActual) : "—"}</div>
-                  <p className="text-xs text-muted-foreground">
-                    {kpis ? `Planned: ${formatCurrency(kpis.totalPlanned)}` : "Loading…"}
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium">Avg Margin</CardTitle>
-                  <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {kpis
-                      ? kpis.totalContract > 0
-                        ? `${kpis.weightedMargin.toFixed(1)}%`
-                        : "N/A"
-                      : "—"}
+            <DashboardSection title="Portfolio Summary">
+              <div className="flex flex-wrap gap-3 mb-4 items-end">
+                <div className="space-y-1 min-w-[160px]">
+                  <Label className="text-xs">Status</Label>
+                  <Select value={statusFilter} onValueChange={handleStatusChange}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {statusOptions.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="flex items-center gap-1 text-xs">
+                    <ShieldAlert className="h-3 w-3" /> Data Quality
+                  </Label>
+                  <div className="flex gap-3">
+                    {dataQualityFilterOptions.map((opt) => (
+                      <label key={opt.key} className="flex items-center gap-1.5 text-xs cursor-pointer">
+                        <Checkbox
+                          checked={qualityFilters.has(opt.key)}
+                          onCheckedChange={() => toggleQualityFilter(opt.key)}
+                        />
+                        {opt.label}
+                      </label>
+                    ))}
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Weighted by contract value
-                    {kpis && kpis.excludedCount > 0 && " · budgeted only"}
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium">Over Budget</CardTitle>
-                  <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{kpis ? kpis.overBudget : "—"}</div>
-                  <p className="text-xs text-muted-foreground">
-                    {kpis ? `of ${kpis.includedCount} budgeted projects` : "Loading…"}
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+                </div>
+              </div>
+
+              <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 ${loading ? "opacity-60" : ""}`}>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium">Total Contract Value</CardTitle>
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{kpis ? formatCurrency(kpis.totalContract) : "—"}</div>
+                    <p className="text-xs text-muted-foreground">
+                      {kpis ? `${kpis.includedCount} of ${kpis.totalCount} projects` : "Loading…"}
+                      {kpis && kpis.excludedCount > 0 && (
+                        <span className="text-destructive"> · {kpis.excludedCount} missing budget</span>
+                      )}
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium">Total Actual Cost</CardTitle>
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{kpis ? formatCurrency(kpis.totalActual) : "—"}</div>
+                    <p className="text-xs text-muted-foreground">
+                      {kpis ? `Planned: ${formatCurrency(kpis.totalPlanned)}` : "Loading…"}
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium">Avg Margin</CardTitle>
+                    <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {kpis
+                        ? kpis.totalContract > 0
+                          ? `${kpis.weightedMargin.toFixed(1)}%`
+                          : "N/A"
+                        : "—"}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Weighted by contract value
+                      {kpis && kpis.excludedCount > 0 && " · budgeted only"}
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium">Over Budget</CardTitle>
+                    <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{kpis ? kpis.overBudget : "—"}</div>
+                    <p className="text-xs text-muted-foreground">
+                      {kpis ? `of ${kpis.includedCount} budgeted projects` : "Loading…"}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </DashboardSection>
 
             {/* Weekly AI Ops Summary */}
             <div className="mb-6">
@@ -375,29 +393,6 @@ const Insights = () => {
 
             {/* Recommendations */}
             <RecommendationsPanel recommendations={portfolioRecs} title="Top Recommendations" />
-
-            {/* Trend Charts from Snapshots */}
-            {snapshots.length > 0 && (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-                <MarginTrendChart snapshots={snapshots} loading={snapshotsLoading} />
-                <CostTrendChart snapshots={snapshots} loading={snapshotsLoading} />
-                <OverBudgetTrendChart snapshots={snapshots} loading={snapshotsLoading} />
-              </div>
-            )}
-            {!snapshotsLoading && snapshots.length === 0 && (
-              <Card className="mb-6">
-                <CardContent className="py-6 text-center">
-                  <Camera className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">
-                    No weekly snapshots yet.{" "}
-                    <button className="underline text-primary" onClick={() => navigate("/insights/snapshots")}>
-                      Generate snapshots
-                    </button>{" "}
-                    to see trend charts.
-                  </p>
-                </CardContent>
-              </Card>
-            )}
 
             {/* Scope Estimation Learning */}
             <div className="mb-6">
@@ -475,7 +470,7 @@ const Insights = () => {
                                 {r.has_budget ? (
                                   <Badge variant="secondary" className="text-xs">Set</Badge>
                                 ) : (
-                                  <Badge variant="outline" className="text-xs text-status-issue border-status-issue/30">
+                                  <Badge variant="outline" className="text-xs text-destructive border-destructive/30">
                                     Missing
                                   </Badge>
                                 )}
@@ -489,7 +484,7 @@ const Insights = () => {
                                       <Badge
                                         key={f.key}
                                         variant="outline"
-                                        className={`text-xs ${f.severity === "error" ? "text-destructive border-destructive/30" : "text-status-issue border-status-issue/30"}`}
+                                        className={`text-xs ${f.severity === "error" ? "text-destructive border-destructive/30" : "text-accent-foreground border-accent/30"}`}
                                       >
                                         {f.label}
                                       </Badge>
@@ -510,7 +505,7 @@ const Insights = () => {
                               </TableCell>
                               <TableCell className="text-right">
                                 {r.has_budget ? (
-                                  <span className={`font-medium ${isOver ? "text-destructive" : "text-status-complete"}`}>
+                                  <span className={`font-medium ${isOver ? "text-destructive" : "text-primary"}`}>
                                     {isOver ? "-" : "+"}
                                     {formatCurrency(Math.abs(r.total_cost_delta))}
                                   </span>
@@ -520,7 +515,7 @@ const Insights = () => {
                               </TableCell>
                               <TableCell className="text-right">
                                 {r.has_budget ? (
-                                  <span className={isOver ? "text-destructive" : "text-status-complete"}>
+                                  <span className={isOver ? "text-destructive" : "text-primary"}>
                                     {deltaPct.toFixed(1)}%
                                   </span>
                                 ) : (
@@ -529,7 +524,7 @@ const Insights = () => {
                               </TableCell>
                               <TableCell className="text-right">
                                 {r.has_budget && r.contract_value > 0 ? (
-                                  <span className={`font-medium ${r.actual_margin_percent < 0 ? "text-destructive" : "text-status-complete"}`}>
+                                  <span className={`font-medium ${r.actual_margin_percent < 0 ? "text-destructive" : "text-primary"}`}>
                                     {r.actual_margin_percent.toFixed(1)}%
                                   </span>
                                 ) : (
