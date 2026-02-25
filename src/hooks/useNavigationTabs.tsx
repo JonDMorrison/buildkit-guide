@@ -97,6 +97,30 @@ export const useNavigationTabs = () => {
     return 'minimal';
   }, [isLoading, isGlobalAdmin, orgRole, projectRoles, hasRole]);
 
+  // Derived role booleans for route-level access filtering
+  const isAdmin = isGlobalAdmin || orgRole === 'admin';
+  const isPM = orgRole === 'pm' || projectRoles.some(r => r.role === 'project_manager');
+  const isForeman = orgRole === 'foreman' || projectRoles.some(r => r.role === 'foreman');
+
+  /**
+   * Route-level access filter — mirrors page-level gates.
+   * Returns false for routes the current role cannot actually access.
+   */
+  const canAccessRoute = useMemo(() => {
+    return (path: string): boolean => {
+      switch (path) {
+        // Admin-only routes
+        case '/insights/ai-brain':
+          return isAdmin;
+        // Admin or PM routes
+        case '/executive':
+          return isAdmin || isPM;
+        default:
+          return true;
+      }
+    };
+  }, [isAdmin, isPM]);
+
   const visibleTabs = useMemo(() => {
     if (isLoading) return tabs;
 
@@ -104,9 +128,10 @@ export const useNavigationTabs = () => {
       if (!tab.tiers.includes(navTier)) return false;
       if (tab.requiresTimeTracking && !timeTrackingEnabled) return false;
       if (tab.requiresWorkflow && !workflowEnabled) return false;
+      if (!canAccessRoute(tab.path)) return false;
       return true;
     });
-  }, [navTier, timeTrackingEnabled, workflowEnabled, isLoading]);
+  }, [navTier, timeTrackingEnabled, workflowEnabled, isLoading, canAccessRoute]);
 
   return { tabs, visibleTabs, isLoading };
 };
