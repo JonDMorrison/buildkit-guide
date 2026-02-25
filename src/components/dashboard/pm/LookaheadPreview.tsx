@@ -52,7 +52,7 @@ export function LookaheadPreview({ projectId }: Props) {
       icon={Calendar}
       loading={isLoading}
       variant="table"
-      traceSource="tasks → start_date within 14 days"
+      helpText="Tasks scheduled to start in the next 2 weeks. Plan ahead for resources."
       empty={!isLoading && tasks.length === 0}
       emptyMessage="No tasks scheduled for the next 2 weeks."
       actions={

@@ -26,7 +26,7 @@ export const BlockersCard = memo(function BlockersCard({ blockers, loading }: Pr
       icon={AlertTriangle}
       loading={loading}
       variant={blockers.length > 0 ? "alert" : "table"}
-      traceSource="blockers → is_resolved = false"
+      helpText="Unresolved issues preventing tasks from moving forward. Click to see all blocked tasks."
       empty={!loading && blockers.length === 0}
       emptyMessage="No blockers — all tasks running smoothly."
     >
