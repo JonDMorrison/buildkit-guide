@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 import {
   AlertTriangle, TrendingDown, TrendingUp, Flame, CheckCircle2,
-  ExternalLink, Camera, Loader2, Megaphone, Eye,
+  ExternalLink, Camera, Loader2, Megaphone, Eye, RefreshCw,
 } from 'lucide-react';
 
 // ── Types (mirroring RPC return shape) ─────────────────────────────────────
@@ -213,16 +213,30 @@ export function ExecutiveChangeFeed({ orgId }: Props) {
       {/* ── Section 1: Executive Brief ──────────────────────── */}
       <Card className="border-primary/30">
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
-            <Megaphone className="h-4 w-4" />
-            Executive Brief
-            <span className="text-xs text-muted-foreground font-normal ml-1">
-              (Compared to previous snapshot)
-            </span>
-          </CardTitle>
-          <p className="text-xs text-muted-foreground font-mono mt-1">
-            {feed.previous_snapshot_date} → {feed.latest_snapshot_date}
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+                <Megaphone className="h-4 w-4" />
+                Executive Brief
+                <span className="text-xs text-muted-foreground font-normal ml-1">
+                  (Compared to previous snapshot)
+                </span>
+              </CardTitle>
+              <p className="text-xs text-muted-foreground font-mono mt-1">
+                {feed.previous_snapshot_date} → {feed.latest_snapshot_date}
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={fetchFeed}
+              disabled={loading}
+              className="shrink-0"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="pt-0 space-y-4">
           {/* Headline metrics */}
