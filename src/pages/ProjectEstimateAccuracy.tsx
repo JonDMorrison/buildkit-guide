@@ -204,6 +204,25 @@ function ProjectEstimateAccuracyContent() {
           </Card>
         )}
 
+        {selectedProject && !loading && !error && !variance && (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <DollarSign className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+              <p className="text-sm font-medium text-foreground mb-1">No Financial Data Available</p>
+              <p className="text-sm text-muted-foreground mb-4">
+                This project has no estimate or cost data yet. Add a budget, scope items, or log time entries to start tracking accuracy.
+              </p>
+              <Button
+                size="sm"
+                onClick={() => navigate(`/projects/${selectedProject}?tab=financials`)}
+              >
+                <DollarSign className="h-4 w-4 mr-1" />
+                Set Up Financials
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {selectedProject && !loading && variance && (
           <>
             {/* Missing budget warning */}
