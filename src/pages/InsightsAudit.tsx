@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
+import { useUserRole } from '@/hooks/useUserRole';
+import { NoAccess } from '@/components/NoAccess';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -7,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Download, ChevronDown, AlertTriangle, CheckCircle2, HelpCircle, Server, Monitor, Wrench, ShieldAlert, Copy, Ban } from 'lucide-react';
+import { Play, Download, ChevronDown, AlertTriangle, CheckCircle2, HelpCircle, Server, Monitor, Wrench, ShieldAlert, Copy, Ban, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { runPromptsAudit, type PromptsAuditResult, type AuditCheck, type AuditStatus } from '@/lib/promptsAudit';
 import { useOrganization } from '@/hooks/useOrganization';
@@ -100,18 +102,43 @@ function CheckCard({ check }: { check: AuditCheck }) {
   );
 }
 
+/** Admin-only: exposes P0/P1 audit checks for RLS, currency, variance, etc. */
 export default function InsightsAudit() {
+  const { isAdmin, loading: roleLoading } = useUserRole();
   const { activeOrganizationId } = useOrganization();
+
+  if (roleLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <Layout>
+        <NoAccess message="Admin access required." />
+      </Layout>
+    );
+  }
+
+  return <InsightsAuditContent orgId={activeOrganizationId} />;
+}
+
+function InsightsAuditContent({ orgId }: { orgId: string | null }) {
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<PromptsAuditResult | null>(null);
 
   useEffect(() => {
-    if (!activeOrganizationId) return;
-    supabase.from('projects').select('id, name').eq('organization_id', activeOrganizationId)
+    if (!orgId) return;
+    supabase.from('projects').select('id, name').eq('organization_id', orgId)
       .order('name').then(({ data }) => setProjects(data || []));
-  }, [activeOrganizationId]);
+  }, [orgId]);
 
   const handleRun = async () => {
     setRunning(true);
