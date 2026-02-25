@@ -300,6 +300,7 @@ const ProjectOverview = () => {
         </div>
 
         {/* Stats Overview */}
+        <div id="section-stats">
         <DashboardGrid columns={3}>
           <DashboardCard title="Overall Progress" icon={CheckCircle2} variant="metric" value={`${completion}%`}>
             <Progress value={completion} />
@@ -320,9 +321,12 @@ const ProjectOverview = () => {
             </p>
           </DashboardCard>
         </DashboardGrid>
+        </div>
 
         {/* AI Insights Section */}
-        <AIInsightsSection projectId={projectId} />
+        <div id="section-ai-insights">
+          <AIInsightsSection projectId={projectId} />
+        </div>
 
         {/* Tabbed Content */}
         <Tabs defaultValue="overview" className="w-full">
@@ -765,6 +769,7 @@ const ProjectOverviewTab = ({ projectId, stats }: { projectId: string; stats: Pr
       )}
 
       {/* Blocked Tasks */}
+      <div id="section-blockers">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -792,8 +797,10 @@ const ProjectOverviewTab = ({ projectId, stats }: { projectId: string; stats: Pr
           )}
         </CardContent>
       </Card>
+      </div>
 
       {/* Upcoming Deadlines */}
+      <div id="section-deadlines">
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Upcoming Deadlines (Next 7 Days)</CardTitle>
@@ -825,6 +832,7 @@ const ProjectOverviewTab = ({ projectId, stats }: { projectId: string; stats: Pr
           )}
         </CardContent>
       </Card>
+      </div>
 
       {/* Recent Activity */}
       <Card>
