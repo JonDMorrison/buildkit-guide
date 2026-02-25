@@ -403,7 +403,7 @@ function DashboardContent() {
       {/* ── 1. Your Priorities (merged Focus + At a Glance) ────────── */}
       <DashboardSection
         title="Your Priorities"
-        helpText="Your most urgent tasks, active blockers, and key numbers for today."
+        helpText="Shows your top tasks by priority and due date, any active blockers, and today's key metrics like crew count and open tasks. Start here each morning."
       >
         <DashboardGrid columns={2}>
           <MyDayTaskList tasks={priorityTasks} />
@@ -422,7 +422,7 @@ function DashboardContent() {
       {(isPM() || isAdmin) && (
         <DashboardSection
           title="Attention Needed"
-          helpText="Projects flagged for risk or data quality issues that need your review."
+          helpText="Projects ranked by urgency — margin drops, missing data, or overdue items. Review these first to catch problems before they escalate."
         >
           {changeFeed?.attention_ranked_projects?.length > 0 && (
             <AttentionInbox
@@ -440,7 +440,7 @@ function DashboardContent() {
       {isForeman() ? (
         <DashboardSection
           title="Site Operations"
-          helpText="Live site conditions, project health signals, and upcoming work planning."
+          helpText="Today's weather, crew size, active trades, and task counts. Use the tabs to check project health metrics or plan upcoming work."
         >
           <DailySnapshotStrip
             weather={todayLog?.weather || null}
@@ -461,7 +461,7 @@ function DashboardContent() {
       ) : (
         <DashboardSection
           title="Site Operations"
-          helpText="Live site conditions, project health signals, and upcoming work planning."
+          helpText="Today's weather, crew size, active trades, and task counts. Use the tabs to check project health metrics or plan upcoming work."
         >
           <Tabs defaultValue="site" className="w-full">
             <TabsList className="mb-4">

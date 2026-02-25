@@ -126,7 +126,7 @@ export function WorkerDashboard() {
       {/* ── 1. Today's Work (merged Due Today + Priority Tasks) ────── */}
       <DashboardSection
         title="Today's Work"
-        helpText="Tasks assigned to you today, sorted by urgency. Tap any task to see details."
+        helpText="Everything assigned to you for today, sorted by priority. Tap a task to mark progress, add photos, or flag a blocker."
       >
         <DashboardGrid columns={2}>
           {/* Due today card */}
@@ -203,7 +203,7 @@ export function WorkerDashboard() {
       {/* ── 2. Blockers (single flat list) ──────────────────────────── */}
       <DashboardSection
         title="Blockers"
-        helpText="Issues preventing your tasks from moving forward. Talk to your foreman if stuck."
+        helpText="Problems stopping your work — waiting on materials, another trade, or a decision. Let your foreman know so they can help resolve it."
       >
         <DashboardCard
           title="Active Blockers"
@@ -232,7 +232,7 @@ export function WorkerDashboard() {
       {/* ── 3. Quick Actions ────────────────────────────────────── */}
       <DashboardSection
         title="Quick Actions"
-        helpText="Shortcuts to log time, upload receipts, or document site progress."
+        helpText="One-tap shortcuts: log your hours, snap a receipt photo, or submit a daily update without navigating away from the dashboard."
       >
         <DashboardGrid columns={3}>
           <QuickActionCard

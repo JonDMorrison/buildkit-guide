@@ -32,7 +32,7 @@ export function OpenChangeOrdersCard({ projectId }: Props) {
       icon={FileText}
       loading={isLoading}
       variant="metric"
-      helpText="Change orders in pending or draft status that need your action."
+      helpText="Change orders still in draft or pending approval. These affect your contract value — review and approve or reject them promptly."
     >
       <div className={`text-4xl font-bold tabular-nums ${(data?.open ?? 0) > 0 ? "text-accent-foreground" : "text-foreground"}`}>
         {data?.open ?? 0}
