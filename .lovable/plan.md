@@ -1,117 +1,78 @@
 
+# Fix the AI Insights Section on Dashboard
 
-# Simplify the Project Overview Page
+## Problems Found
 
-## What's Wrong Today
+1. **Duplicate "AI INSIGHTS" header** -- The Dashboard wraps `AIInsightsSection` inside a `DashboardSection` with title "AI Insights" (line 505), and `AIInsightsSection` itself renders *another* `DashboardSection` with the same title (line 25). This produces the two stacked headers visible in the screenshot.
 
-The project page is overwhelming. Here's what you see scrolling top-to-bottom:
+2. **AI Change Feed card is empty** -- The card shows dates ("2026-02-24 -> 2026-02-25") but the body is blank. This happens when the feed exists (has snapshot dates) but all classification counts are 0 and `top_changes` is empty. The card renders nothing in the `{feed && ...}` block because all conditional badges and list items evaluate to false. There is no "all stable" fallback message.
 
-1. A breadcrumb showing a raw UUID (not the project name)
-2. A "Back to Projects" button
-3. Optional context/labor banners
-4. A header with the project name, job number, integrity badge, status dropdown, and currency selector -- all crammed on one line
-5. Three stat cards (Progress, Blocked Tasks, Safety Compliance) in a 3-column grid that wastes space when data is 0
-6. An AI Insights section with 2 cards
-7. An **11-tab bar** (Overview, Tasks, Scope, Budget, Drawings, Lookahead, Trades, Safety, Docs, Issues, Receipts) that's nearly unreadable on most screens
-8. Inside the Overview tab: Economic Control Panel, Customer & Contacts (3-column), Drawings & Plans, Pending Manpower, Blocked Tasks (again), Upcoming Deadlines, Recent Activity, a full-width "Add Task" button, and an AI Workflow toggle
+3. **AI Risk Assessment and AI Margin Signal say "Capture one more snapshot"** -- The selected project (37a409ca...) has 0 snapshots in `project_economic_snapshots`. The margin signal RPC returns `snapshot_count: 0`. These cards correctly gate on >= 2 snapshots, but the message is misleading since the user needs *two*, not "one more."
 
-That's roughly **15+ distinct visual blocks** before you even switch tabs.
+4. **No explanation of what this section is for** -- A non-technical user has no way to understand what "AI Change Feed," "AI Risk Assessment," or "AI Margin Signal" mean.
 
-## The Simplification Plan
+5. **"My Attention" blank items** -- The `AttentionInbox` renders items from `attention_ranked_projects` but if `project_name` is null/empty (from the RPC), the link text is blank. The recent migration should fix this, but a defensive fallback is needed.
 
-### 1. Fix the breadcrumb
+## Plan
 
-Replace the raw UUID with the project name (e.g., `Projects > Margin Stress Test Project`).
+### 1. Fix the duplicate header
 
-### 2. Consolidate the header
+**File: `src/pages/Dashboard.tsx`** (lines 504-511)
 
-- Merge the "Back to Projects" button into the breadcrumb (clicking "Projects" navigates back).
-- Move the currency selector and integrity badge into the kebab/more menu -- they're rarely changed.
-- Keep only: **Project Name**, **Job Number**, **Status dropdown**, and **kebab menu**.
+Remove the outer `DashboardSection` wrapper. The `AIInsightsSection` component already renders its own `DashboardSection`. Just render `<AIInsightsSection>` directly, keeping `lazy` behavior by adding the `lazy` prop usage that already exists inside `AIInsightsSection`.
 
-### 3. Replace the 3 stat cards with a compact summary strip
+### 2. Add "all stable" fallback in AI Change Feed
 
-Instead of 3 large cards taking up an entire screen fold, show a single horizontal strip:
-```text
-[=== 45% complete ===]  12 tasks | 2 blocked | Safety: 100%
-```
-One line, always visible, no cards.
+**File: `src/components/ai-insights/AIChangeFeedCard.tsx`**
 
-### 4. Move AI Insights below the tabs (not above)
+When `feed` exists but all counts are 0 and `top_changes` is empty, show a positive message like:
 
-AI Insights currently sits between the stats and the tabs, pushing the tab bar far down the page. Move it into the Overview tab content or make it a collapsible section at the bottom.
+> "All projects stable -- no risk changes detected between snapshots."
 
-### 5. Reduce 11 tabs to 5 grouped tabs
+This replaces the blank card body.
 
-Current 11 tabs are too many. Group them:
+### 3. Fix empty-state messaging on Risk and Margin cards
 
-| New Tab | Contains |
-|---|---|
-| **Overview** | Summary strip, Economic Control, Customer & Contacts, recent activity |
-| **Work** | Tasks list, Blockers, Lookahead, Manpower -- everything about "what's being done" |
-| **Financials** | Scope, Budget, Receipts -- everything about money |
-| **Documents** | Drawings, Docs, Safety forms -- everything you upload/review |
-| **Issues** | Deficiencies/punch list, trades list |
+**Files: `src/components/ai-insights/AIProjectRiskCard.tsx`, `src/components/ai-insights/AIMarginSignalCard.tsx`**
 
-This reduces cognitive load from 11 choices to 5 clear categories.
+Change `emptyMessage` from "Capture one more snapshot to unlock AI insights." to "This project needs at least 2 economic snapshots to show trends. Snapshots are captured daily." -- clearer and more helpful.
 
-### 6. Simplify the Overview tab content
+### 4. Add help text to the AI Insights section
 
-Current Overview tab has 8 sections stacked vertically. Simplify to:
+**File: `src/components/ai-insights/AIInsightsSection.tsx`**
 
-- **At a Glance** -- the compact progress strip (from change #3) + Economic Control (collapsed by default if position is "Stable")
-- **Key Contacts** -- Customer & Contacts card (kept, it's useful)
-- **What Needs Attention** -- merge Blocked Tasks + Upcoming Deadlines into one "attention" list, hide if empty
-- Remove: standalone "Recent Activity" card (low value), standalone "Add Task" button (redundant with sidebar nav), standalone Drawings preview (now in Documents tab), Workflow Toggle (move to kebab menu)
+Add a `helpText` prop to the `DashboardSection`:
 
-### 7. Add help tooltips to each section
+> "AI-generated analysis comparing your latest economic snapshots. Shows which projects changed, risk levels, and margin trends."
 
-Using the existing `SectionHelp` component, add `?` tooltips to every section header so new users understand what each area does.
+### 5. Add defensive fallback for blank project names in AttentionInbox
+
+**File: `src/components/executive/AttentionInbox.tsx`**
+
+Change `{p.project_name}` to `{p.project_name || 'Unnamed Project'}` in both compact and full modes. This prevents blank rows if the RPC returns null names.
+
+### 6. Add human-readable card descriptions
+
+**Files: `AIChangeFeedCard.tsx`, `AIProjectRiskCard.tsx`, `AIMarginSignalCard.tsx`**
+
+Add `helpText` to each `DashboardCard`:
+- Change Feed: "Shows what changed across your projects between the two most recent snapshots."
+- Risk Assessment: "Calculates a risk score based on margin pressure, labor burn, and data confidence."
+- Margin Signal: "Tracks projected margin and risk score trends over the last 30 days."
 
 ---
 
 ## Technical Details
 
 ### Files to edit:
+- `src/pages/Dashboard.tsx` -- Remove duplicate `DashboardSection` wrapper (lines 504-511)
+- `src/components/ai-insights/AIInsightsSection.tsx` -- Add helpText to its `DashboardSection`
+- `src/components/ai-insights/AIChangeFeedCard.tsx` -- Add "all stable" fallback + helpText
+- `src/components/ai-insights/AIProjectRiskCard.tsx` -- Fix empty message + helpText
+- `src/components/ai-insights/AIMarginSignalCard.tsx` -- Fix empty message + helpText
+- `src/components/executive/AttentionInbox.tsx` -- Defensive fallback for blank project names
 
-- **`src/pages/ProjectOverview.tsx`** -- Main restructure:
-  - Fix breadcrumb to show project name
-  - Remove "Back to Projects" button (breadcrumb handles it)
-  - Simplify header (move currency/integrity into kebab menu)
-  - Replace 3 stat cards with compact `ProgressStrip` component
-  - Move AI Insights into Overview tab
-  - Reduce TabsList from 11 to 5 tabs
-  - Reorganize tab content into grouped views
-  - Simplify Overview tab (merge blockers + deadlines, remove low-value cards)
-  - Move Workflow Toggle into kebab menu
-
-### Files to create:
-
-- **`src/components/project/ProgressStrip.tsx`** -- Compact single-line progress summary (progress bar + key stats in one row)
-- **`src/components/project/WorkTab.tsx`** -- Combined Tasks + Blockers + Lookahead + Manpower tab
-- **`src/components/project/FinancialsTab.tsx`** -- Combined Scope + Budget + Receipts tab
-- **`src/components/project/DocumentsTab.tsx`** -- Combined Drawings + Docs + Safety tab
-
-### Files unchanged:
-
-- All existing tab content components (ProjectTasks, ProjectDrawings, etc.) are reused inside the new grouped tabs -- no logic rewrite needed
-- No backend changes, no new queries, no schema changes
-- EconomicControlPanel stays as-is, just repositioned
-- CustomerHierarchyCard stays as-is
-
-### Summary of what gets removed/moved:
-
-| Element | Action |
-|---|---|
-| Raw UUID breadcrumb | Replace with project name |
-| "Back to Projects" button | Remove (breadcrumb handles it) |
-| 3 large stat cards | Replace with 1-line ProgressStrip |
-| AI Insights above tabs | Move into Overview tab content |
-| 11-tab bar | Consolidate to 5 tabs |
-| Drawings preview in Overview | Remove (now in Documents tab) |
-| "Add Task" full-width button | Remove (Tasks tab + sidebar) |
-| Recent Activity card | Remove (low signal) |
-| Workflow Toggle card | Move into kebab menu |
-| Currency selector in header | Move into kebab menu |
-| Integrity badge in header | Move into kebab menu |
-
+### No backend changes
+- No RPCs, schemas, or RLS policies modified
+- No new queries or hooks created
+- All changes are UI-layer text and conditional rendering fixes
