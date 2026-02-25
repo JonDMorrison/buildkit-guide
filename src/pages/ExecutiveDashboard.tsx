@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getCause } from '@/lib/causesDictionary';
+import { ExecutiveChangeFeed } from '@/components/executive/ExecutiveChangeFeed';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -556,6 +557,11 @@ export default function ExecutiveDashboard() {
                 <p className="text-sm">Click <strong>Load Dashboard</strong> to fetch the latest risk data.</p>
               </CardContent>
             </Card>
+          )}
+
+          {/* ── Executive Change Feed (always visible when org loaded) ── */}
+          {activeOrganizationId && (
+            <ExecutiveChangeFeed orgId={activeOrganizationId} />
           )}
 
           {data && (
