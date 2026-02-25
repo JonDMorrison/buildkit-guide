@@ -18,6 +18,7 @@ import { RecommendationsPanel } from "@/components/insights/RecommendationsPanel
 import { WeeklyInsightCard } from "@/components/insights/WeeklyInsightCard";
 import { getProjectRecommendations } from "@/lib/recommendations/rules";
 import { NoAccess } from "@/components/NoAccess";
+import { useAuthRole } from "@/hooks/useAuthRole";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -27,10 +28,35 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
-import { DollarSign, Clock, Package, Wrench, TrendingUp, AlertTriangle, Download, Info } from "lucide-react";
+import { DollarSign, Clock, Package, Wrench, TrendingUp, AlertTriangle, Download, Info, Loader2 } from "lucide-react";
 import { formatCurrency, formatNumber } from "@/lib/formatters";
 
+/**
+ * Admin/PM-only: financial estimate accuracy page.
+ * Route-level <AdminOrPMRoute> provides redirect + console warning;
+ * this page-level gate prevents data fetching before the role check resolves.
+ */
 const ProjectEstimateAccuracy = () => {
+  const { isAdmin, isPM, loading: authLoading } = useAuthRole();
+
+  if (authLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!isAdmin && !isPM()) {
+    return <Layout><NoAccess message="Admin or PM access required." /></Layout>;
+  }
+
+  return <ProjectEstimateAccuracyContent />;
+};
+
+function ProjectEstimateAccuracyContent() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { currentProjectId } = useCurrentProject();
