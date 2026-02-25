@@ -1,124 +1,117 @@
 
 
-# Dashboard UX Overhaul: Clarity, Simplicity, and Help Tooltips
+# Simplify the Project Overview Page
 
-## Problem
+## What's Wrong Today
 
-The current `/dashboard` is confusing because:
-1. **Too many sections** stacked vertically with unclear purpose: Mission Control, Header, Economic Pulse, Focus, My Attention, At a Glance, Operations (with 3 tabs), AI Insights -- that's 7+ visual sections.
-2. **Jargon-heavy labels** like "Mission Control", "Economic Pulse", "Confidence Ribbon", "At a Glance" don't explain what they do.
-3. **No contextual help** -- there are `traceSource` tooltips for developers but nothing for end users.
-4. **Worker dashboard** has the same issue: section names like "Blockers" with 4 sub-categories (Materials, Inspection, Safety, Other) is over-structured for a field worker.
+The project page is overwhelming. Here's what you see scrolling top-to-bottom:
 
-## Solution Overview
+1. A breadcrumb showing a raw UUID (not the project name)
+2. A "Back to Projects" button
+3. Optional context/labor banners
+4. A header with the project name, job number, integrity badge, status dropdown, and currency selector -- all crammed on one line
+5. Three stat cards (Progress, Blocked Tasks, Safety Compliance) in a 3-column grid that wastes space when data is 0
+6. An AI Insights section with 2 cards
+7. An **11-tab bar** (Overview, Tasks, Scope, Budget, Drawings, Lookahead, Trades, Safety, Docs, Issues, Receipts) that's nearly unreadable on most screens
+8. Inside the Overview tab: Economic Control Panel, Customer & Contacts (3-column), Drawings & Plans, Pending Manpower, Blocked Tasks (again), Upcoming Deadlines, Recent Activity, a full-width "Add Task" button, and an AI Workflow toggle
 
-**A) Add a `SectionHelp` tooltip component** -- a small `?` icon in the top-right of each `DashboardSection` that shows a plain-English hover explanation of what that section does.
+That's roughly **15+ distinct visual blocks** before you even switch tabs.
 
-**B) Simplify the PM/Admin dashboard layout** -- reduce from 7 sections down to 4 clear ones with human-readable names.
+## The Simplification Plan
 
-**C) Simplify the Worker dashboard** -- consolidate blocker categories into a single list, rename sections.
+### 1. Fix the breadcrumb
 
-**D) Simplify the Foreman dashboard** -- same help tooltips, clearer naming.
+Replace the raw UUID with the project name (e.g., `Projects > Margin Stress Test Project`).
 
----
+### 2. Consolidate the header
 
-## Detailed Changes
+- Merge the "Back to Projects" button into the breadcrumb (clicking "Projects" navigates back).
+- Move the currency selector and integrity badge into the kebab/more menu -- they're rarely changed.
+- Keep only: **Project Name**, **Job Number**, **Status dropdown**, and **kebab menu**.
 
-### 1. New Component: `SectionHelp`
+### 3. Replace the 3 stat cards with a compact summary strip
 
-**File:** `src/components/dashboard/shared/SectionHelp.tsx`
-
-A small `HelpCircle` icon that shows a hover card with a plain-English explanation. Used in every `DashboardSection`.
-
-### 2. Update `DashboardSection` to accept a `helpText` prop
-
-**File:** `src/components/dashboard/shared/DashboardSection.tsx`
-
-Add an optional `helpText?: string` prop. When provided, render the `SectionHelp` icon next to the section title.
-
-### 3. Simplify PM/Admin Dashboard (`src/pages/Dashboard.tsx`)
-
-**Current layout (7+ sections):**
+Instead of 3 large cards taking up an entire screen fold, show a single horizontal strip:
 ```text
-Mission Control (Data Confidence + Top Issues)
-Header (Today on Site)
-Economic Pulse Strip
-Focus (My Day + Blockers)
-My Attention (Attention Inbox)
-At a Glance (5 KPI cards)
-Operations (3 tabs: Site Status / Project Health / Planning)
-AI Insights
+[=== 45% complete ===]  12 tasks | 2 blocked | Safety: 100%
 ```
+One line, always visible, no cards.
 
-**New layout (4 sections):**
-```text
-Header ("Today on Site" -- kept as-is)
+### 4. Move AI Insights below the tabs (not above)
 
-1. "Your Priorities" (was Focus + At a Glance)
-   - Row 1: My Day tasks + Active Blockers (side by side)
-   - Row 2: 4-5 KPI metric cards (Today's Tasks, Blocked, Crew, Projects, Change Orders)
-   - Help: "Your most urgent tasks, active blockers, and key numbers for today."
+AI Insights currently sits between the stats and the tabs, pushing the tab bar far down the page. Move it into the Overview tab content or make it a collapsible section at the bottom.
 
-2. "Attention Needed" (was My Attention + Mission Control, PM/Admin only)
-   - Attention Inbox (if items exist)
-   - Data Confidence + Top Issues cards (moved from Mission Control)
-   - Help: "Projects flagged for risk changes and data quality alerts."
+### 5. Reduce 11 tabs to 5 grouped tabs
 
-3. "Site Operations" (was Operations tabs, kept but simplified label)
-   - Same 3 tabs (Site Status / Project Health / Planning)
-   - Foreman sees this without tabs, just Site Status
-   - Help: "Live site conditions, project health signals, and upcoming work."
+Current 11 tabs are too many. Group them:
 
-4. "AI Insights" (kept, lazy loaded)
-   - Help: "AI-generated observations based on your project data."
-```
+| New Tab | Contains |
+|---|---|
+| **Overview** | Summary strip, Economic Control, Customer & Contacts, recent activity |
+| **Work** | Tasks list, Blockers, Lookahead, Manpower -- everything about "what's being done" |
+| **Financials** | Scope, Budget, Receipts -- everything about money |
+| **Documents** | Drawings, Docs, Safety forms -- everything you upload/review |
+| **Issues** | Deficiencies/punch list, trades list |
 
-Key simplifications:
-- **Remove** the standalone "Mission Control" section header and fold its cards into "Attention Needed"
-- **Remove** the separate "Economic Pulse Strip" (it's PM-only niche data that adds visual noise -- move to the Operations > Project Health tab)
-- **Merge** "Focus" and "At a Glance" into one "Your Priorities" section
-- Every section gets a `?` help tooltip
+This reduces cognitive load from 11 choices to 5 clear categories.
 
-### 4. Simplify Worker Dashboard (`src/components/dashboard/worker/WorkerDashboard.tsx`)
+### 6. Simplify the Overview tab content
 
-**Current:** 4 sections (Tasks Due Today, My Tasks, Blockers with 4 categories, Quick Actions)
+Current Overview tab has 8 sections stacked vertically. Simplify to:
 
-**New:** 3 sections with help tooltips:
-- "Today's Work" -- merge Tasks Due Today + Priority Tasks into one card. Help: "Tasks assigned to you, sorted by urgency."
-- "Blockers" -- single flat list instead of 4 category cards. Help: "Issues preventing your tasks from moving forward. Report new ones to your foreman."
-- "Quick Actions" -- kept, with help: "Shortcuts to common actions like logging time or uploading photos."
+- **At a Glance** -- the compact progress strip (from change #3) + Economic Control (collapsed by default if position is "Stable")
+- **Key Contacts** -- Customer & Contacts card (kept, it's useful)
+- **What Needs Attention** -- merge Blocked Tasks + Upcoming Deadlines into one "attention" list, hide if empty
+- Remove: standalone "Recent Activity" card (low value), standalone "Add Task" button (redundant with sidebar nav), standalone Drawings preview (now in Documents tab), Workflow Toggle (move to kebab menu)
 
-### 5. Add help to `DashboardCard` (optional per-card `?`)
+### 7. Add help tooltips to each section
 
-**File:** `src/components/dashboard/shared/DashboardCard.tsx`
-
-Add an optional `helpText?: string` prop. When provided, render a `HelpCircle` icon (alongside existing `traceSource` info icon) that shows a user-facing tooltip. This replaces the developer-only `traceSource` for end users.
+Using the existing `SectionHelp` component, add `?` tooltips to every section header so new users understand what each area does.
 
 ---
 
 ## Technical Details
 
-### Files to create:
-- `src/components/dashboard/shared/SectionHelp.tsx`
-
 ### Files to edit:
-- `src/components/dashboard/shared/DashboardSection.tsx` -- add `helpText` prop
-- `src/components/dashboard/shared/DashboardCard.tsx` -- add `helpText` prop
-- `src/pages/Dashboard.tsx` -- restructure sections, add help text strings
-- `src/components/dashboard/worker/WorkerDashboard.tsx` -- simplify blockers, add help text
-- `src/components/dashboard/DashboardMissionControl.tsx` -- no longer a standalone section; export inner content for embedding
 
-### No backend changes. No new queries. All existing data reused.
+- **`src/pages/ProjectOverview.tsx`** -- Main restructure:
+  - Fix breadcrumb to show project name
+  - Remove "Back to Projects" button (breadcrumb handles it)
+  - Simplify header (move currency/integrity into kebab menu)
+  - Replace 3 stat cards with compact `ProgressStrip` component
+  - Move AI Insights into Overview tab
+  - Reduce TabsList from 11 to 5 tabs
+  - Reorganize tab content into grouped views
+  - Simplify Overview tab (merge blockers + deadlines, remove low-value cards)
+  - Move Workflow Toggle into kebab menu
 
-### Help text dictionary (all roles):
+### Files to create:
 
-| Section | Help Text |
+- **`src/components/project/ProgressStrip.tsx`** -- Compact single-line progress summary (progress bar + key stats in one row)
+- **`src/components/project/WorkTab.tsx`** -- Combined Tasks + Blockers + Lookahead + Manpower tab
+- **`src/components/project/FinancialsTab.tsx`** -- Combined Scope + Budget + Receipts tab
+- **`src/components/project/DocumentsTab.tsx`** -- Combined Drawings + Docs + Safety tab
+
+### Files unchanged:
+
+- All existing tab content components (ProjectTasks, ProjectDrawings, etc.) are reused inside the new grouped tabs -- no logic rewrite needed
+- No backend changes, no new queries, no schema changes
+- EconomicControlPanel stays as-is, just repositioned
+- CustomerHierarchyCard stays as-is
+
+### Summary of what gets removed/moved:
+
+| Element | Action |
 |---|---|
-| Your Priorities | Your most urgent tasks, active blockers, and key numbers for today. |
-| Attention Needed | Projects flagged for risk or data quality issues that need your review. |
-| Site Operations | Live site conditions, project health signals, and upcoming work planning. |
-| AI Insights | AI-generated observations and recommendations based on your project data. |
-| Today's Work (worker) | Tasks assigned to you today, sorted by urgency. Tap any task to see details. |
-| Blockers (worker) | Issues preventing your tasks from moving forward. Talk to your foreman if stuck. |
-| Quick Actions (worker) | Shortcuts to log time, upload receipts, or document site progress. |
+| Raw UUID breadcrumb | Replace with project name |
+| "Back to Projects" button | Remove (breadcrumb handles it) |
+| 3 large stat cards | Replace with 1-line ProgressStrip |
+| AI Insights above tabs | Move into Overview tab content |
+| 11-tab bar | Consolidate to 5 tabs |
+| Drawings preview in Overview | Remove (now in Documents tab) |
+| "Add Task" full-width button | Remove (Tasks tab + sidebar) |
+| Recent Activity card | Remove (low signal) |
+| Workflow Toggle card | Move into kebab menu |
+| Currency selector in header | Move into kebab menu |
+| Integrity badge in header | Move into kebab menu |
 
