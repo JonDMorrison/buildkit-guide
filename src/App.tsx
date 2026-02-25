@@ -13,6 +13,7 @@ import { PublicRoute } from "@/components/PublicRoute";
 import { TimeTrackingGate } from "@/components/TimeTrackingGate";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AdminRoute } from "@/components/AdminRoute";
+import { AdminOrPMRoute } from "@/components/AdminOrPMRoute";
 
 // Lazy load all pages for code splitting
 const Landing = lazy(() => import("./pages/Landing"));
@@ -485,11 +486,14 @@ const App = () => (
                     </ProtectedRoute>
                   }
                 />
+                {/* Admin/PM-only: financial estimate accuracy — nav filtering alone is insufficient */}
                 <Route
                   path="/insights/project"
                   element={
                     <ProtectedRoute>
-                      <ProjectEstimateAccuracy />
+                      <AdminOrPMRoute>
+                        <ProjectEstimateAccuracy />
+                      </AdminOrPMRoute>
                     </ProtectedRoute>
                   }
                 />
