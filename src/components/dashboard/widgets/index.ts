@@ -14,5 +14,6 @@ export { WeatherInfoModal } from './WeatherInfoModal';
 export { CrewInfoModal } from './CrewInfoModal';
 export { BlockersPreviewModal } from './BlockersPreviewModal';
 export { EconomicHealthWidget } from './EconomicHealthWidget';
+export { EconomicDriftWidget } from './EconomicDriftWidget';
 export type { SnapshotTask, SnapshotTrade } from './DailySnapshotStrip';
 

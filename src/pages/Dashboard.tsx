@@ -27,6 +27,7 @@ import {
   CrewInfoModal,
   BlockersPreviewModal,
   EconomicHealthWidget,
+  EconomicDriftWidget,
 } from "@/components/dashboard/widgets";
 import type { SnapshotTask, SnapshotTrade } from "@/components/dashboard/widgets";
 import {
@@ -403,11 +404,12 @@ export default function Dashboard() {
       case 'safety': return <SafetyWidget formsToday={formsToday} formsThisWeek={safetyFormsThisWeek} incidents={incidents} />;
       case 'blockers': return <BlockersWidget blockers={blockers.filter(b => !b.is_resolved)} />;
       case 'econhealth': return <EconomicHealthWidget projectId={currentProjectId} />;
+      case 'econdrift': return <EconomicDriftWidget projectId={currentProjectId} />;
       default: return null;
     }
   };
 
-  const widgetIds = ['metrics', 'activity', 'health', 'distribution', 'myday', 'safety', 'blockers', 'econhealth'];
+  const widgetIds = ['metrics', 'activity', 'health', 'distribution', 'myday', 'safety', 'blockers', 'econhealth', 'econdrift'];
 
   return (
     <Layout>
