@@ -1,11 +1,11 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from '@/hooks/useOrganization';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import {
   RefreshCw, Copy, Check, ExternalLink, Loader2, BarChart3, Activity,
-  AlertTriangle, CheckCircle2, TrendingUp, TrendingDown, Flame, ChevronDown,
+  AlertTriangle, CheckCircle2, TrendingUp, TrendingDown, Flame, ChevronDown, Download,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getCause } from '@/lib/causesDictionary';
@@ -34,6 +34,8 @@ import { DataIntegrityCard, type DataIntegrityData } from '@/components/executiv
 import { AIInsightsSection } from '@/components/ai-insights';
 import { SnapshotStatusCard } from '@/components/executive/SnapshotStatusCard';
 import { DecisionNotesPanel } from '@/components/executive/DecisionNotesPanel';
+import { buildExecutiveBriefExport } from '@/lib/executiveBriefExport';
+import { downloadText } from '@/lib/downloadText';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -144,7 +146,7 @@ function WeeklyBriefHero({
 // ── Main component ─────────────────────────────────────────────────────────
 
 export default function ExecutiveDashboard() {
-  const { activeOrganizationId } = useOrganization();
+  const { activeOrganizationId, activeOrganization } = useOrganization();
   const { currentProjectId } = useCurrentProject();
   const { isAdmin, isPM, loading: roleLoading } = useAuthRole(currentProjectId || undefined);
   const { prefetchRoute } = usePrefetchRoute();
@@ -156,6 +158,8 @@ export default function ExecutiveDashboard() {
   const [copied, setCopied] = useState(false);
   const [changeLogOpen, setChangeLogOpen] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<number>(0);
+  const [briefCopied, setBriefCopied] = useState(false);
+  const decisionBodyRef = useRef<string>('');
 
   // Shared change feed hook (canonical key: rpc-executive-change-feed)
   const { data: feedData } = useExecutiveChangeFeed();
@@ -219,6 +223,27 @@ export default function ExecutiveDashboard() {
       setTimeout(() => setCopied(false), 2000);
     });
   }, [data, feedData]);
+
+  const buildBriefParams = useCallback(() => ({
+    orgName: activeOrganization?.name ?? 'Organization',
+    asOf: ribbonAsOf instanceof Date ? ribbonAsOf.toISOString() : String(ribbonAsOf ?? new Date().toISOString()),
+    attentionItems: feedData?.attention_ranked_projects ?? [],
+    confidence: { coveragePercent: ribbonCoverage, issuesCount: ribbonIssues },
+    decisionNoteBody: decisionBodyRef.current || undefined,
+  }), [activeOrganization, ribbonAsOf, feedData, ribbonCoverage, ribbonIssues]);
+
+  const handleCopyBrief = useCallback(() => {
+    const { text } = buildExecutiveBriefExport(buildBriefParams());
+    navigator.clipboard.writeText(text).then(() => {
+      setBriefCopied(true);
+      setTimeout(() => setBriefCopied(false), 2000);
+    });
+  }, [buildBriefParams]);
+
+  const handleDownloadBrief = useCallback(() => {
+    const { text, filename } = buildExecutiveBriefExport(buildBriefParams());
+    downloadText(text, filename);
+  }, [buildBriefParams]);
 
   const portfolioData: PortfolioHealthData | null = data ? {
     projects_active_count: data.projects_active_count,
@@ -314,6 +339,21 @@ export default function ExecutiveDashboard() {
         {/* ── 1. Weekly Brief Hero ────────────────────────────── */}
         <WeeklyBriefHero feedData={feedData} data={data} onCopy={copySummary} copied={copied} />
 
+        {/* ── Export Brief actions ─────────────────────────────── */}
+        {(feedData || data) && (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleCopyBrief}>
+              {briefCopied
+                ? <><Check className="h-3.5 w-3.5 mr-1.5 text-primary" />Brief Copied</>
+                : <><Copy className="h-3.5 w-3.5 mr-1.5" />Copy Brief</>
+              }
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleDownloadBrief}>
+              <Download className="h-3.5 w-3.5 mr-1.5" />Download Brief
+            </Button>
+          </div>
+        )}
+
         {/* Change feed data now comes from useExecutiveChangeFeed shared hook */}
 
         {/* ── 2. Attention Inbox (primary body) ───────────────── */}
@@ -395,6 +435,7 @@ export default function ExecutiveDashboard() {
               topAttentionNames={(feedData?.attention_ranked_projects ?? []).slice(0, 3).map((p: any) => p.project_name)}
               orgId={activeOrganizationId!}
               isAdmin={isAdmin}
+              onBodyChange={(b: string) => { decisionBodyRef.current = b; }}
             />
           </DashboardSection>
         )}
