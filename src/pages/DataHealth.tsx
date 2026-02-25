@@ -348,9 +348,11 @@ const DataHealth = () => {
   };
 
   useEffect(() => {
+    // Exit early while role is still loading to prevent race condition
+    if (roleLoading) return;
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeOrganizationId, canView]);
+  }, [activeOrganizationId, canView, roleLoading]);
 
   const totalIssues = useMemo(
     () =>
