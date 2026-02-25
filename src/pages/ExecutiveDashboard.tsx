@@ -33,6 +33,7 @@ import { EconomicSignalsCard } from '@/components/executive/EconomicSignalsCard'
 import { DataIntegrityCard, type DataIntegrityData } from '@/components/executive/DataIntegrityCard';
 import { AIInsightsSection } from '@/components/ai-insights';
 import { SnapshotStatusCard } from '@/components/executive/SnapshotStatusCard';
+import { DecisionNotesPanel } from '@/components/executive/DecisionNotesPanel';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -386,7 +387,17 @@ export default function ExecutiveDashboard() {
           </DashboardSection>
         )}
 
-        {/* ── 5. Confidence Footer (compact row) ──────────────── */}
+        {/* ── 5. Decision Notes ─────────────────────────────── */}
+        {(feedData || data) && (
+          <DashboardSection title="Decision Capture">
+            <DecisionNotesPanel
+              asOf={ribbonAsOf}
+              topAttentionNames={(feedData?.attention_ranked_projects ?? []).slice(0, 3).map((p: any) => p.project_name)}
+            />
+          </DashboardSection>
+        )}
+
+        {/* ── 6. Confidence Footer (compact row) ──────────────── */}
         {(data || loading || activeOrganizationId) && (
           <DashboardSection title="Confidence & Evidence">
             <DashboardGrid columns={activeOrganizationId ? 2 : 1}>
