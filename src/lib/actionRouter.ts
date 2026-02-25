@@ -61,12 +61,12 @@ function buildBundle(
         description: 'Snapshots may be stale — check the executive brief for latest data.',
         primary: {
           label: 'Open Executive Brief',
-          to: '/executive?from=health',
+          to: '/executive?from=health&check=snapshot_freshness',
           requires: ['executive'],
         },
         secondary: ctx.canViewDiagnostics
           ? { label: 'View Diagnostics', to: '/insights/ai-brain', requires: ['diagnostics'] }
-          : { label: 'View Release Status', to: '/release', requires: ['executive'] },
+          : { label: 'View Release Status', to: '/release?from=health&check=snapshot_freshness', requires: ['executive'] },
       };
 
     case 'snapshot_coverage':
@@ -75,12 +75,12 @@ function buildBundle(
         description: 'Some projects are missing snapshots — review confidence data.',
         primary: {
           label: 'Open Executive Brief',
-          to: '/executive?from=health',
+          to: '/executive?from=health&check=snapshot_coverage',
           requires: ['executive'],
         },
         secondary: {
           label: 'View Mission Control',
-          to: '/dashboard',
+          to: '/dashboard?from=health&check=snapshot_coverage',
         },
       };
 
@@ -90,11 +90,11 @@ function buildBundle(
         description: 'Data quality problems may invalidate conclusions — review affected projects.',
         primary: {
           label: 'Open Portfolio Insights',
-          to: '/insights',
+          to: '/insights?from=health&check=data_quality',
         },
         secondary: {
           label: 'Open Data Health',
-          to: '/data-health',
+          to: '/data-health?from=health&check=data_quality',
           requires: ['executive'],
         },
         tertiary: {
@@ -109,12 +109,12 @@ function buildBundle(
         description: 'Change feed may be empty — check if snapshots are generating changes.',
         primary: {
           label: 'Open Executive Brief',
-          to: '/executive?from=health',
+          to: '/executive?from=health&check=exec_intelligence',
           requires: ['executive'],
         },
         secondary: {
           label: 'Open Portfolio Insights',
-          to: '/insights',
+          to: '/insights?from=health&check=exec_intelligence',
         },
       };
 
@@ -123,8 +123,8 @@ function buildBundle(
         title: 'Investigate UI Errors',
         description: 'Core routes encountered errors during probing — review smoke test details.',
         primary: ctx.canViewDiagnostics
-          ? { label: 'Run UI Smoke Test', to: '/admin/ui-smoke', requires: ['diagnostics'] }
-          : { label: 'View Release Status', to: '/release', requires: ['executive'] },
+          ? { label: 'Run UI Smoke Test', to: '/admin/ui-smoke?from=health&check=ui_reliability', requires: ['diagnostics'] }
+          : { label: 'View Release Status', to: '/release?from=health&check=ui_reliability', requires: ['executive'] },
         secondary: {
           label: 'Go to Dashboard',
           to: '/dashboard',

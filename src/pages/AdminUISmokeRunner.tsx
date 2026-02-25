@@ -16,6 +16,7 @@ import { downloadText } from '@/lib/downloadText';
 import { SeverityBadge } from '@/components/SeverityBadge';
 import type { RoleName } from '@/lib/routeInventory';
 import { toast } from 'sonner';
+import { HealthContextBanner } from '@/components/HealthContextBanner';
 
 // ── Gate ────────────────────────────────────────────────────────────────────
 
@@ -131,6 +132,7 @@ function SmokeRunnerContent() {
   return (
     <Layout>
       <div className="container mx-auto py-8 space-y-6 max-w-5xl">
+        <HealthContextBanner />
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>

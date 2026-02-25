@@ -14,6 +14,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { HealthContextBanner } from '@/components/HealthContextBanner';
 
 /* ─── Types ─── */
 interface AuditRunRow {
@@ -149,6 +150,7 @@ function ReleaseContent() {
   return (
     <Layout>
       <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-6">
+        <HealthContextBanner />
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>

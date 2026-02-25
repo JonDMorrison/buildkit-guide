@@ -29,6 +29,11 @@ function stripQuery(path: string): string {
   return path.split('?')[0];
 }
 
+function getQueryParams(path: string): URLSearchParams {
+  const qIndex = path.indexOf('?');
+  return new URLSearchParams(qIndex >= 0 ? path.slice(qIndex) : '');
+}
+
 describe('actionRouter', () => {
   it('returns a bundle for every checkId with admin context', () => {
     for (const id of HEALTH_CHECK_IDS) {
@@ -61,8 +66,8 @@ describe('actionRouter', () => {
     const adminBundle = getActionsForHealthCheck('ui_reliability', ADMIN_CTX);
     const pmBundle = getActionsForHealthCheck('ui_reliability', PM_CTX);
     // Admin gets /admin/ui-smoke as primary; PM should not
-    expect(adminBundle!.primary.to).toBe('/admin/ui-smoke');
-    expect(pmBundle!.primary.to).not.toBe('/admin/ui-smoke');
+    expect(stripQuery(adminBundle!.primary.to)).toBe('/admin/ui-smoke');
+    expect(stripQuery(pmBundle!.primary.to)).not.toBe('/admin/ui-smoke');
   });
 
   it('filters executive-only actions for minimal context', () => {
@@ -99,5 +104,42 @@ describe('actionRouter', () => {
     // data_quality should have all three for admin
     expect(bundle!.secondary).toBeDefined();
     expect(bundle!.tertiary).toBeDefined();
+  });
+
+  // ── check= param tests ──────────────────────────────────────────────────
+
+  it('appends check=<checkId> to all from=health links deterministically', () => {
+    const checksWithHealthLinks: Array<{ id: string; expected: string }> = [
+      { id: 'snapshot_freshness', expected: 'snapshot_freshness' },
+      { id: 'snapshot_coverage', expected: 'snapshot_coverage' },
+      { id: 'data_quality', expected: 'data_quality' },
+      { id: 'exec_intelligence', expected: 'exec_intelligence' },
+      { id: 'ui_reliability', expected: 'ui_reliability' },
+    ];
+
+    for (const { id, expected } of checksWithHealthLinks) {
+      const bundle = getActionsForHealthCheck(id, ADMIN_CTX);
+      if (!bundle) continue;
+
+      // Check all links that have from=health also have check=<id>
+      const allLinks = [bundle.primary, bundle.secondary, bundle.tertiary].filter(Boolean);
+      for (const link of allLinks) {
+        if (!link) continue;
+        const params = getQueryParams(link.to);
+        if (params.get('from') === 'health') {
+          expect(params.get('check')).toBe(expected);
+        }
+      }
+    }
+  });
+
+  it('does not add check= to links without from=health', () => {
+    const bundle = getActionsForHealthCheck('data_quality', ADMIN_CTX);
+    if (bundle?.tertiary) {
+      const params = getQueryParams(bundle.tertiary.to);
+      // tertiary is /projects with no from=health
+      expect(params.get('from')).toBeNull();
+      expect(params.get('check')).toBeNull();
+    }
   });
 });

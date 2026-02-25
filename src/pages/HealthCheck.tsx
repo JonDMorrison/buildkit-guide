@@ -1,10 +1,11 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouteAccess } from '@/hooks/useRouteAccess';
 import { useOrganization } from '@/hooks/useOrganization';
 import { useSnapshotCoverageReport } from '@/hooks/rpc/useSnapshotCoverageReport';
 import { useDataQualityAudit } from '@/hooks/rpc/useDataQualityAudit';
-import { useExecutiveChangeFeed } from '@/hooks/rpc/useExecutiveChangeFeed';
+import { useExecutiveChangeFeed, CHANGE_FEED_QUERY_KEY } from '@/hooks/rpc/useExecutiveChangeFeed';
 import { NoAccess } from '@/components/NoAccess';
 import { Layout } from '@/components/Layout';
 import { ConfidenceRibbon } from '@/components/ConfidenceRibbon';
@@ -12,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Loader2, Download, Copy, CheckCircle2, AlertTriangle, XCircle, ChevronDown, ShieldCheck, Activity } from 'lucide-react';
+import { Loader2, Download, Copy, CheckCircle2, AlertTriangle, XCircle, ChevronDown, ShieldCheck, Activity, RefreshCw } from 'lucide-react';
 import { startConsoleCapture } from '@/lib/consoleCapture';
 import { buildHealthCheckReport, type HealthCheckResult, type CheckStatus } from '@/lib/healthCheckReport';
 import { downloadText } from '@/lib/downloadText';
@@ -119,6 +120,7 @@ async function runLightweightRouteProbes(
 
 function HealthCheckContent() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { activeOrganization, activeOrganizationId } = useOrganization();
   const { isAdmin, isPM, canViewDiagnostics, canViewExecutive } = useRouteAccess();
 
@@ -130,6 +132,43 @@ function HealthCheckContent() {
   const [routeProbeResults, setRouteProbeResults] = useState<RouteProbeResult[] | null>(null);
   const [probing, setProbing] = useState(false);
   const [probedAt, setProbedAt] = useState<Date | null>(null);
+  const [rechecking, setRechecking] = useState<Set<string>>(new Set());
+
+  const handleRecheck = useCallback(async (checkName: string) => {
+    setRechecking(prev => new Set(prev).add(checkName));
+    try {
+      switch (checkName) {
+        case 'snapshot_freshness':
+        case 'snapshot_coverage':
+          await queryClient.invalidateQueries({ queryKey: ['rpc-snapshot-coverage', activeOrganizationId] });
+          break;
+        case 'data_quality':
+          await queryClient.invalidateQueries({ queryKey: ['rpc-data-quality-audit', activeOrganizationId] });
+          break;
+        case 'exec_intelligence':
+          await queryClient.invalidateQueries({ queryKey: [CHANGE_FEED_QUERY_KEY, activeOrganizationId] });
+          break;
+        case 'ui_reliability': {
+          const results = await runLightweightRouteProbes(
+            (path) => navigate(path),
+            () => window.location.pathname,
+          );
+          navigate('/health');
+          setRouteProbeResults(results);
+          setProbedAt(new Date());
+          break;
+        }
+      }
+    } catch (e) {
+      console.error('Re-check error:', e);
+    } finally {
+      setRechecking(prev => {
+        const next = new Set(prev);
+        next.delete(checkName);
+        return next;
+      });
+    }
+  }, [queryClient, activeOrganizationId, navigate]);
 
   const dataLoading = coverageLoading || qualityLoading || feedLoading;
   const orgName = activeOrganization?.name ?? 'Organization';
@@ -443,7 +482,25 @@ function HealthCheckContent() {
                   </Collapsible>
                 )}
 
-                {/* Action CTA for non-pass checks */}
+                {/* Re-check + Action CTA for non-pass checks */}
+                {check.status !== 'pass' && check.name !== 'access' && (
+                  <div className="flex items-center gap-2 mt-3">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs px-2"
+                      disabled={rechecking.has(check.name)}
+                      onClick={() => handleRecheck(check.name)}
+                    >
+                      {rechecking.has(check.name) ? (
+                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                      ) : (
+                        <RefreshCw className="h-3 w-3 mr-1" />
+                      )}
+                      Re-check
+                    </Button>
+                  </div>
+                )}
                 {check.status !== 'pass' && (() => {
                   const bundle = getActionsForHealthCheck(check.name, actionCtx);
                   return bundle ? <ActionRow bundle={bundle} /> : null;
