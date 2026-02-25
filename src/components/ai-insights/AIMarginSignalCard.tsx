@@ -65,7 +65,7 @@ export function AIMarginSignalCard({ projectId }: Props) {
         icon={Sparkles}
         variant="metric"
         traceSource="rpc_get_margin_snapshot_history"
-        helpText="Tracks projected margin and risk score trends over the last 30 days."
+        helpText="Charts your projected margin %, risk score, and labor burn ratio over the past 30 days so you can spot trends early."
       >
         <div className="space-y-3 py-2">
           <p className="text-xs text-muted-foreground leading-relaxed">
@@ -122,7 +122,7 @@ export function AIMarginSignalCard({ projectId }: Props) {
       loading={isLoading}
       variant="metric"
       traceSource="rpc_get_margin_snapshot_history → projected_margin_pct, risk_score, labor_burn_ratio"
-      helpText="Tracks projected margin and risk score trends over the last 30 days."
+      helpText="Charts your projected margin %, risk score, and labor burn ratio over the past 30 days so you can spot trends early."
     >
       {latest && (
         <div className="space-y-3">

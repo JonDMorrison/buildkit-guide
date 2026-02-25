@@ -14,7 +14,7 @@ export function BlockedTasksCard({ blockedCount, loading }: Props) {
       icon={ShieldAlert}
       loading={loading}
       variant={isAlert ? "alert" : "metric"}
-      helpText="Tasks currently marked as blocked. Resolve blockers to keep work moving."
+      helpText="Count of tasks that can't proceed due to an open blocker. Tap to see which tasks are affected and why."
     >
       <div className={`text-4xl font-bold tabular-nums ${isAlert ? "text-destructive" : "text-foreground"}`}>
         {blockedCount}

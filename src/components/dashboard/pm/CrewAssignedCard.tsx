@@ -14,7 +14,7 @@ export function CrewAssignedCard({ crewCount, activeTrades, loading }: Props) {
       icon={HardHat}
       loading={loading}
       variant="metric"
-      helpText="Crew count from today's daily log and number of trades with active tasks."
+      helpText="Today's crew size from the daily log and how many trades have active tasks. If crew shows 0, the daily log hasn't been submitted yet."
     >
       <div className="text-4xl font-bold tabular-nums text-foreground">{crewCount}</div>
       <p className="text-xs text-muted-foreground">

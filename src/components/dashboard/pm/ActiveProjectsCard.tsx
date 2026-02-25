@@ -21,7 +21,7 @@ export function ActiveProjectsCard({ projects, loading }: Props) {
       icon={Building2}
       loading={loading}
       variant="metric"
-      helpText="Projects you're assigned to. Click to view the full project list."
+      helpText="Projects you're currently assigned to. Use the project selector in the sidebar to switch between them."
     >
       <div className="text-4xl font-bold tabular-nums text-foreground">{active.length || projects.length}</div>
       <p className="text-xs text-muted-foreground">

@@ -52,7 +52,7 @@ export function AIChangeFeedCard() {
       loading={isLoading}
       error={error ? (error as Error).message : null}
       traceSource="rpc_executive_change_feed"
-      helpText="Shows what changed across your projects between the two most recent snapshots."
+      helpText="Compares your two most recent weekly snapshots and lists which projects had the biggest cost, margin, or schedule changes."
       actions={
         <Button variant="ghost" size="sm" onClick={refresh} disabled={isFetching} className="shrink-0">
           <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isFetching ? 'animate-spin' : ''}`} />

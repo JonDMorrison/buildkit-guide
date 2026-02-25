@@ -182,7 +182,7 @@ function DashboardMissionControlContent({ canViewExecutive, canViewDiagnostics }
               : null
           }
           variant="metric"
-          helpText="How complete and reliable your project data is. Higher coverage means better decisions."
+          helpText="Measures how much of the required project data is filled in — estimates, time entries, daily logs, etc. Aim for 80%+ for reliable reporting."
           className="border-t-2 border-t-primary/40"
           value={
             coveragePercent !== null
@@ -217,7 +217,7 @@ function DashboardMissionControlContent({ canViewExecutive, canViewDiagnostics }
           loading={loading}
           error={qualityError && !coverageError ? null : undefined}
           variant="table"
-          helpText="The most common data quality problems across your projects. Fix these to improve confidence."
+          helpText="Top recurring data gaps across all projects — like missing estimates or unlogged hours. Fixing these directly improves your confidence score."
           className="border-t-2 border-t-destructive/30"
           empty={topIssues.length === 0 && !qualityError}
           emptyMessage="No data quality issues found"

@@ -35,7 +35,7 @@ export const MyDayTaskList = memo(function MyDayTaskList({ tasks, loading }: Pro
       icon={CheckCircle2}
       loading={loading}
       variant="table"
-      helpText="Your highest-priority and soonest-due tasks. Click any task to view details."
+      helpText="Your top tasks sorted by priority then due date. Click any row to open the task and update progress or add notes."
       empty={!loading && tasks.length === 0}
       emptyMessage="All caught up — no urgent tasks today."
     >

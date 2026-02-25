@@ -76,7 +76,7 @@ export function AIProjectRiskCard({ projectId }: Props) {
         icon={Sparkles}
         variant="metric"
         traceSource="project_economic_snapshots count"
-        helpText="Calculates a risk score based on margin pressure, labor burn, and data confidence."
+        helpText="A 0–100 risk score combining margin erosion, labor overspend, and data completeness. Higher means more attention needed."
       >
         <div className="space-y-3 py-2">
           <p className="text-xs text-muted-foreground leading-relaxed">
@@ -122,7 +122,7 @@ export function AIProjectRiskCard({ projectId }: Props) {
       loading={loading}
       variant="metric"
       traceSource="rpc_generate_project_margin_control → risk_score, economic_position"
-      helpText="Calculates a risk score based on margin pressure, labor burn, and data confidence."
+      helpText="A 0–100 risk score combining margin erosion, labor overspend, and data completeness. Higher means more attention needed."
     >
       {riskData && (
         <div className="space-y-3">

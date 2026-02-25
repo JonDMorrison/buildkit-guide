@@ -86,7 +86,7 @@ export function ProjectHealthSignalCard({ projectId }: Props) {
       icon={Activity}
       loading={loading}
       variant="chart"
-      helpText="Margin trends and economic signals for this project. Link an estimate to start tracking."
+      helpText="Projected vs. actual margin and cost signals. You need an approved estimate linked to this project for data to appear."
       empty={!loading && !marginControl}
       emptyMessage="No economic data. Link an approved estimate to begin tracking."
     >
