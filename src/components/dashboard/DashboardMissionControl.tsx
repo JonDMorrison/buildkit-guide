@@ -136,13 +136,21 @@ function DashboardMissionControlContent({ canViewExecutive, canViewDiagnostics }
   const ribbonAsOf = coverageUpdatedAt ? new Date(coverageUpdatedAt) : null;
 
   return (
-    <section className="space-y-4">
-      {/* Header row */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
-          Mission Control
-        </h2>
-        <div className="flex items-center gap-2">
+    <div className="space-y-4">
+      {/* Confidence Ribbon */}
+      {!loading && (coverageData || qualityData) && (
+        <ConfidenceRibbon
+          coveragePercent={ribbonCoverage}
+          issuesCount={ribbonIssues}
+          asOf={ribbonAsOf}
+          compact
+        />
+      )}
+
+      {/* Cards */}
+      <DashboardGrid columns={2}>
+        {/* Header actions row */}
+        <div className="col-span-full flex items-center justify-end gap-2">
           <Button
             size="sm"
             variant="ghost"
@@ -163,20 +171,6 @@ function DashboardMissionControlContent({ canViewExecutive, canViewDiagnostics }
             </Button>
           )}
         </div>
-      </div>
-
-      {/* Confidence Ribbon */}
-      {!loading && (coverageData || qualityData) && (
-        <ConfidenceRibbon
-          coveragePercent={ribbonCoverage}
-          issuesCount={ribbonIssues}
-          asOf={ribbonAsOf}
-          compact
-        />
-      )}
-
-      {/* Cards */}
-      <DashboardGrid columns={2}>
         {/* A) Confidence Status */}
         <DashboardCard
           title="Data Confidence"
@@ -257,6 +251,6 @@ function DashboardMissionControlContent({ canViewExecutive, canViewDiagnostics }
           )}
         </DashboardCard>
       </DashboardGrid>
-    </section>
+    </div>
   );
 }
