@@ -78,12 +78,36 @@ function getStatusBadge(status: string) {
   }
 }
 
+/** Admin/HR-only: manage timesheet period approval and locking. */
 export default function TimesheetPeriods() {
+  const { canLockPeriods, canApproveTimesheets, isLoading: roleLoading } = useOrganizationRole();
+
+  if (roleLoading) {
+    return (
+      <Layout>
+        <div className="p-4 md:p-6 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!canApproveTimesheets && !canLockPeriods) {
+    return (
+      <Layout>
+        <NoAccess message="Admin or HR access required." />
+      </Layout>
+    );
+  }
+
+  return <TimesheetPeriodsContent canLockPeriods={canLockPeriods} canApproveTimesheets={canApproveTimesheets} />;
+}
+
+function TimesheetPeriodsContent({ canLockPeriods, canApproveTimesheets }: { canLockPeriods: boolean; canApproveTimesheets: boolean }) {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const { data: periods = [], isLoading, refetch } = useOrganizationTimesheetPeriods(
     statusFilter === 'all' ? undefined : statusFilter
   );
-  const { canLockPeriods, canApproveTimesheets, isLoading: roleLoading } = useOrganizationRole();
   const { toast } = useToast();
   const [actionPeriod, setActionPeriod] = useState<TimesheetPeriod | null>(null);
   const [actionType, setActionType] = useState<'approve' | 'lock' | null>(null);
@@ -136,20 +160,6 @@ export default function TimesheetPeriods() {
       setIsSubmitting(false);
     }
   };
-
-  if (roleLoading) {
-    return (
-      <Layout>
-        <div className="p-4 md:p-6 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      </Layout>
-    );
-  }
-
-  if (!canApproveTimesheets && !canLockPeriods) {
-    return <NoAccess />;
-  }
 
   return (
     <Layout>
