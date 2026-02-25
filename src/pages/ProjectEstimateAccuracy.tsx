@@ -290,6 +290,7 @@ function ProjectEstimateAccuracyContent() {
                 unit="$"
                 icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
                 budgetMissing={!hasBudget}
+                projectId={selectedProject ?? undefined}
               />
               <VarianceCard
                 label="Labor Hours"
@@ -298,6 +299,7 @@ function ProjectEstimateAccuracyContent() {
                 unit="h"
                 icon={<Clock className="h-4 w-4 text-muted-foreground" />}
                 budgetMissing={!hasBudget}
+                projectId={selectedProject ?? undefined}
               />
               <VarianceCard
                 label="Materials"
@@ -306,6 +308,7 @@ function ProjectEstimateAccuracyContent() {
                 unit="$"
                 icon={<Package className="h-4 w-4 text-muted-foreground" />}
                 budgetMissing={!hasBudget}
+                projectId={selectedProject ?? undefined}
               />
               <VarianceCard
                 label="Machine"
@@ -314,6 +317,7 @@ function ProjectEstimateAccuracyContent() {
                 unit="$"
                 icon={<Wrench className="h-4 w-4 text-muted-foreground" />}
                 budgetMissing={!hasBudget}
+                projectId={selectedProject ?? undefined}
               />
               <VarianceCard
                 label="Profit"
