@@ -1,102 +1,105 @@
 
-# Rename AI-Branded Labels Across the App
 
-## Philosophy
+# Simplify the Executive Dashboard
 
-AI should work quietly in the background. Users care about *what* the information tells them, not *that* it comes from AI. The rename shifts labels from tech-jargon ("AI Change Feed") to outcome-oriented names ("What Changed", "Risk Assessment", "Margin Trends").
+## Current State
 
-## Complete Inventory of AI-Branded Labels
+The /executive page has **11 sections** with significant overlap. Three different areas show "which projects need attention" (Attention Inbox, Economic Signals, Change Log). Two areas show aggregate risk stats (Hero and Portfolio Health). Diagnostic cards (Confidence Ribbon, Data Integrity, Snapshot Status) belong on /data-health, not an executive view. The Insights section is duplicated from /dashboard.
 
-Here is every place in the app that surfaces "AI" in user-facing text, grouped by priority:
+## Proposed Simplified Layout
 
-### Tier 1 — Dashboard Cards (the ones you saw)
+Strip it down to **4 sections** that answer the 4 questions an executive actually asks:
 
-| Current Label | New Label | File |
-|---|---|---|
-| "AI Change Feed" | "What Changed" | `src/components/ai-insights/AIChangeFeedCard.tsx` |
-| "AI Risk Assessment" | "Risk Assessment" | `src/components/ai-insights/AIProjectRiskCard.tsx` |
-| "AI Margin Signal" | "Margin Trends" | `src/components/ai-insights/AIMarginSignalCard.tsx` |
-| "AI Insights" (section header) | "Insights" | `src/components/ai-insights/AIInsightsSection.tsx` |
+```text
++--------------------------------------------------+
+| Header: "Executive Overview"     [Refresh] [Export]|
++--------------------------------------------------+
+| 1. BRIEF: What happened this week?                |
+|    5 headline metrics + date range                |
+|    (existing Weekly Brief Hero, keep as-is)       |
++--------------------------------------------------+
+| 2. ATTENTION: Which projects need me?             |
+|    Attention Inbox (ranked list, keep as-is)      |
+|    + Change Log collapsed inside (already there)  |
++--------------------------------------------------+
+| 3. HEALTH: How's the portfolio overall?           |
+|    Portfolio Health card (keep, it has OS score)   |
++--------------------------------------------------+
+| 4. NOTES: What did we decide? (collapsed)         |
+|    Decision Notes (collapsed by default)          |
++--------------------------------------------------+
+```
 
-### Tier 2 — Navigation and Breadcrumbs
+## What Gets Removed
 
-| Current Label | New Label | File |
-|---|---|---|
-| "AI Brain" (nav item) | "Diagnostics" | `src/hooks/useNavigationTabs.tsx` (line 55) |
-| "AI Assistant" (breadcrumb) | "Assistant" | `src/components/Breadcrumbs.tsx` (line 20) |
-| "AI Assistant" (dashboard widget label) | "Assistant" | `src/components/dashboard/DashboardCustomizer.tsx` (line 27) |
+1. **Confidence Ribbon** -- Move to /data-health where it belongs. Executives don't need "72% coverage" on their main screen.
 
-### Tier 3 — Pages and Headings
+2. **Export Brief actions row** (Simple/Report toggle + Copy Brief + Download Brief) -- Consolidate into the Hero card. The Hero already has "Copy Summary". Replace it with a single dropdown: Copy / Download / Report format. Eliminates a whole visual row.
 
-| Current Label | New Label | File |
-|---|---|---|
-| "AI Assistant" (page heading) | "Assistant" | `src/pages/AI.tsx` (line 119) |
-| "AI Brain Diagnostics" (page heading) | "System Diagnostics" | `src/pages/ai-brain/DiagnosticsSection.tsx` (lines 732, 735, 786) |
-| "AI Brain Test Runner" / "AI Brain Scenario Suite" (release checklist) | "Test Runner" / "Scenario Suite" | `src/pages/AdminReleaseChecklist.tsx` (lines 363, 371) |
+3. **Economic Signals section** -- Redundant with Attention Inbox. Both show "top risk projects." The Inbox version is more actionable (has next-step CTAs). Remove entirely.
 
-### Tier 4 — Notifications and Control Center
+4. **Confidence and Evidence footer** (Data Integrity + Snapshot Status) -- This is diagnostic detail. Already accessible via the "Data Health" link in the header. Remove from this page.
 
-| Current Label | New Label | File |
-|---|---|---|
-| "AI Insights" (notification tab) | "Insights" | `src/components/notifications/NotificationsDropdown.tsx` (line 167) |
-| "Select a project to see AI insights" | "Select a project to see insights" | `src/components/notifications/NotificationsDropdown.tsx` (line 237) |
-| "Select a project to see AI insights" | "Select a project to see insights" | `src/components/control-center/AIInsightsList.tsx` (line 76) |
-| "AI insights" (empty message in change feed) | "insights" | `src/components/ai-insights/AIChangeFeedCard.tsx` (line 42) |
+5. **Insights section** (AIInsightsSection) -- Already on /dashboard. Remove the duplicate. Executives who want project-level risk/margin cards can go to /dashboard.
 
-### Tier 5 — Marketing / Onboarding (recommend but lower priority)
+6. **Manual "Load Dashboard" button** -- Auto-fetch on mount so the page is useful immediately. The Refresh button stays for manual re-fetch.
 
-| Current Label | New Label | File |
-|---|---|---|
-| "AI Assistant" (features page) | "Smart Assistant" | `src/pages/Features.tsx` (line 145) |
-| "AI Assistant" (welcome wizard) | "Smart Assistant" | `src/components/onboarding/WelcomeWizard.tsx` (line 80) |
-| "AI assistant" (org onboarding) | "assistant" | `src/components/onboarding/OrgOnboardingWizard.tsx` (line 308) |
+## What Stays (4 sections)
 
-### Tier 6 — Internal/Developer Only (no rename needed)
+1. **Header** -- Simplified to just "Executive Overview" with Refresh + a single Export dropdown
+2. **Weekly Brief Hero** -- The 5 headline metrics. Move export actions (copy/download) into the Hero as a small dropdown
+3. **Attention Inbox** -- The ranked project list with the Change Log collapsed inside it (already works this way)
+4. **Portfolio Health** -- OS score, risk breakdown, top causes. The one "big picture" card
+5. **Decision Notes** -- Collapsed by default so it doesn't dominate the page
 
-These are internal trace sources, RPC keys, and backend function names that users never see:
-- `rpc-tracer.ts` card labels (trace only, not rendered to users as headings)
-- `actionRouter.ts` label "View AI Brain" (change to "View Diagnostics")
-- Edge function error messages ("AI service not configured") -- keep as-is, these are error logs
+## Technical Changes
 
----
+### File: `src/pages/ExecutiveDashboard.tsx`
 
-## Implementation Plan
+**Auto-fetch on mount:**
+- Add `useEffect` that calls `refresh()` on mount when `activeOrganizationId` is present and `data` is null. Eliminates the empty state entirely.
 
-### Step 1: Rename the 3 dashboard card titles + section header
-- `AIChangeFeedCard.tsx`: title "AI Change Feed" -> "What Changed"
-- `AIProjectRiskCard.tsx`: title "AI Risk Assessment" -> "Risk Assessment"
-- `AIMarginSignalCard.tsx`: title "AI Margin Signal" -> "Margin Trends"
-- `AIInsightsSection.tsx`: section title "AI Insights" -> "Insights"
-- `AIChangeFeedCard.tsx`: empty message remove "AI" from "AI insights"
+**Remove sections:**
+- Delete the Confidence Ribbon render block (lines 331-338)
+- Delete the Export Brief actions row (lines 344-381)
+- Delete the Economic Signals section (lines 447-454)
+- Delete the Confidence and Evidence footer section (lines 472-484)
+- Delete the AIInsightsSection render (line 487)
 
-### Step 2: Rename nav item and breadcrumb
-- `useNavigationTabs.tsx` line 55: "AI Brain" -> "Diagnostics"
-- `Breadcrumbs.tsx` line 20: "AI Assistant" -> "Assistant"
-- `DashboardCustomizer.tsx` line 27: "AI Assistant" -> "Assistant"
+**Remove unused imports:**
+- `ConfidenceRibbon`
+- `EconomicSignalsCard`
+- `DataIntegrityCard`
+- `SnapshotStatusCard`
+- `AIInsightsSection`
+- `useSnapshotCoverageReport`, `useDataQualityAudit`
+- Related state: `ribbonCoverage`, `ribbonIssues`, `ribbonAsOf` computations
+- Brief format state: `briefFormat`, `briefCopied`, `setBriefFormat`, `handleCopyBrief`, `handleDownloadBrief`
 
-### Step 3: Rename page headings
-- `AI.tsx` line 119: "AI Assistant" -> "Assistant"
-- `DiagnosticsSection.tsx`: "AI Brain Diagnostics" -> "System Diagnostics", button "Run AI Brain Tests" -> "Run Diagnostics"
+**Move export into Hero:**
+- Add a small "Export" dropdown button inside `WeeklyBriefHero` next to the existing "Copy Summary" button. Options: "Copy as text", "Download as file". Uses the existing `buildExecutiveBriefExport` utility with 'simple' format (remove the format toggle -- simple is fine for executives).
 
-### Step 4: Rename notification and control center labels
-- `NotificationsDropdown.tsx`: "AI Insights" tab -> "Insights", empty message drop "AI"
-- `AIInsightsList.tsx`: empty message drop "AI"
+**Simplify header actions:**
+- Remove "Data Health" and "Full Report" buttons from header. Keep just "Refresh".
+- Move Data Health + Full Report links into a subtle footer or the Portfolio Health card as secondary links.
 
-### Step 5: Rename release checklist labels
-- `AdminReleaseChecklist.tsx`: "AI Brain Test Runner" -> "Test Runner", "AI Brain Scenario Suite" -> "Scenario Suite"
+**Collapse Decision Notes by default:**
+- Wrap in a `Collapsible` with `defaultOpen={false}` so it doesn't take up space on first load.
 
-### Step 6: Update action router label
-- `actionRouter.ts`: "View AI Brain" -> "View Diagnostics"
+### File: `src/components/executive/WeeklyBriefHero` (inline in ExecutiveDashboard.tsx)
 
-### Not Changed (intentional)
-- File names (e.g. `AIChangeFeedCard.tsx`) stay as-is to avoid import churn
-- Backend table/RPC names unchanged
-- Edge function error messages unchanged
-- Internal trace source strings unchanged
-- Marketing pages left for a separate pass (lower priority, different audience)
+- Add `onDownload` and export actions as a small dropdown next to "Copy Summary"
 
-## Technical Scope
-- ~12 files edited, all UI-layer string changes
-- No backend, RPC, or schema changes
-- No new components or hooks
-- No logic changes -- purely label/text swaps
+### Files NOT changed:
+- No component files deleted (they may be used elsewhere)
+- No backend/RPC changes
+- No schema changes
+
+## Result
+
+- Page goes from **11 sections to 4** (plus collapsed notes)
+- No redundant data shown
+- Auto-loads on mount -- no "click to start"
+- Diagnostic details stay on /data-health where they belong
+- Export is consolidated into one spot instead of scattered across 2 rows
+
