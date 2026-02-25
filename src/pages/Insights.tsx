@@ -17,6 +17,7 @@ import { WeeklyInsightCard } from "@/components/insights/WeeklyInsightCard";
 import { getPortfolioRecommendations } from "@/lib/recommendations/rules";
 import { OperationalPatternsPanel } from "@/components/insights/OperationalPatternsPanel";
 import { NoAccess } from "@/components/NoAccess";
+import { DataIntegrityBanner } from "@/components/insights/DataIntegrityBanner";
 import { UnratedLaborBanner } from "@/components/UnratedLaborBanner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -182,6 +183,7 @@ const Insights = () => {
     <Layout>
       <div className="container max-w-6xl mx-auto px-4 py-6">
         <SectionHeader title="Portfolio Insights" />
+        <DataIntegrityBanner />
         <UnratedLaborBanner />
 
         {/* Filters */}

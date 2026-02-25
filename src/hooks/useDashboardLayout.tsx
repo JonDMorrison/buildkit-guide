@@ -22,7 +22,7 @@ export interface ResponsiveLayouts {
   sm: DashboardWidget[];
 }
 
-// Desktop layout (lg: 1200px+, 12 cols)
+// Desktop layout (lg: 1200px+, 12 cols) — PM default
 const LAYOUT_LG: DashboardWidget[] = [
   { i: 'metrics', x: 0, y: 0, w: 12, h: 2, minH: 2, maxH: 3, minW: 8 },
   { i: 'activity', x: 0, y: 2, w: 6, h: 4, minH: 3, maxH: 5, minW: 4 },
@@ -67,16 +67,67 @@ const DEFAULT_LAYOUTS: ResponsiveLayouts = {
   sm: LAYOUT_SM,
 };
 
+// Foreman default: prioritize My Day, Blockers, Safety — hide economic widgets
+const FOREMAN_LAYOUT_LG: DashboardWidget[] = [
+  { i: 'metrics', x: 0, y: 0, w: 12, h: 2, minH: 2, maxH: 3, minW: 8 },
+  { i: 'myday', x: 0, y: 2, w: 6, h: 4, minH: 3, maxH: 5, minW: 4 },
+  { i: 'blockers', x: 6, y: 2, w: 6, h: 4, minH: 3, maxH: 5, minW: 4 },
+  { i: 'safety', x: 0, y: 6, w: 4, h: 4, minH: 3, maxH: 5, minW: 3 },
+  { i: 'health', x: 4, y: 6, w: 4, h: 4, minH: 3, maxH: 5, minW: 3 },
+  { i: 'activity', x: 8, y: 6, w: 4, h: 4, minH: 3, maxH: 5, minW: 3 },
+  { i: 'distribution', x: 0, y: 10, w: 4, h: 4, minH: 3, maxH: 5, minW: 3 },
+];
+
+const FOREMAN_LAYOUT_MD: DashboardWidget[] = [
+  { i: 'metrics', x: 0, y: 0, w: 8, h: 3, minH: 2, maxH: 4, minW: 6 },
+  { i: 'myday', x: 0, y: 3, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
+  { i: 'blockers', x: 4, y: 3, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
+  { i: 'safety', x: 0, y: 7, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
+  { i: 'health', x: 4, y: 7, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
+  { i: 'activity', x: 0, y: 11, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
+  { i: 'distribution', x: 4, y: 11, w: 4, h: 4, minH: 3, maxH: 5, minW: 3 },
+];
+
+const FOREMAN_LAYOUT_SM: DashboardWidget[] = [
+  { i: 'metrics', x: 0, y: 0, w: 4, h: 6, minH: 5, maxH: 7, minW: 4 },
+  { i: 'myday', x: 0, y: 6, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
+  { i: 'blockers', x: 0, y: 10, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
+  { i: 'safety', x: 0, y: 14, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
+  { i: 'health', x: 0, y: 18, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
+  { i: 'activity', x: 0, y: 22, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
+  { i: 'distribution', x: 0, y: 26, w: 4, h: 4, minH: 3, maxH: 5, minW: 4 },
+];
+
+const FOREMAN_DEFAULTS: ResponsiveLayouts = {
+  lg: FOREMAN_LAYOUT_LG,
+  md: FOREMAN_LAYOUT_MD,
+  sm: FOREMAN_LAYOUT_SM,
+};
+
+const FOREMAN_HIDDEN_WIDGETS = ['econhealth', 'econdrift'];
+
+export function getDefaultLayoutsForRole(role: 'foreman' | 'pm' | 'admin' | 'other'): {
+  layouts: ResponsiveLayouts;
+  hiddenWidgets: string[];
+} {
+  if (role === 'foreman') {
+    return { layouts: FOREMAN_DEFAULTS, hiddenWidgets: FOREMAN_HIDDEN_WIDGETS };
+  }
+  return { layouts: DEFAULT_LAYOUTS, hiddenWidgets: [] };
+}
+
 interface LayoutData {
   layouts: ResponsiveLayouts;
   hiddenWidgets: string[];
 }
 
-export const useDashboardLayout = (projectId: string | null) => {
+export const useDashboardLayout = (projectId: string | null, roleHint?: 'foreman' | 'pm' | 'admin' | 'other') => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [isEditMode, setIsEditMode] = useState(false);
   const [localLayouts, setLocalLayouts] = useState<ResponsiveLayouts | null>(null);
+
+  const roleDefaults = getDefaultLayoutsForRole(roleHint || 'other');
 
   const queryKey = ['dashboard-layout', user?.id, projectId];
 
@@ -85,7 +136,7 @@ export const useDashboardLayout = (projectId: string | null) => {
     queryKey,
     queryFn: async () => {
       if (!user?.id || !projectId) {
-        return { layouts: DEFAULT_LAYOUTS, hiddenWidgets: [] };
+        return roleDefaults;
       }
 
       const { data, error } = await supabase
@@ -97,7 +148,7 @@ export const useDashboardLayout = (projectId: string | null) => {
 
       if (error) {
         console.error('Error loading dashboard layout:', error);
-        return { layouts: DEFAULT_LAYOUTS, hiddenWidgets: [] };
+        return roleDefaults;
       }
 
       if (data) {
@@ -113,7 +164,7 @@ export const useDashboardLayout = (projectId: string | null) => {
             sm: LAYOUT_SM,
           };
         } else {
-          layouts = DEFAULT_LAYOUTS;
+          layouts = roleDefaults.layouts;
         }
         
         return {
@@ -122,12 +173,12 @@ export const useDashboardLayout = (projectId: string | null) => {
         };
       }
 
-      return { layouts: DEFAULT_LAYOUTS, hiddenWidgets: [] };
+      return roleDefaults;
     },
     enabled: !!user?.id && !!projectId,
-    staleTime: 30 * 60 * 1000, // 30 minutes - layout rarely changes
-    gcTime: 60 * 60 * 1000, // 1 hour cache
-    placeholderData: { layouts: DEFAULT_LAYOUTS, hiddenWidgets: [] },
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    placeholderData: roleDefaults,
   });
 
   // Mutation for saving layout
