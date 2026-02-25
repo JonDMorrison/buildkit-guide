@@ -94,6 +94,7 @@ export const ROUTE_WRAPPER_MAP: Record<string, RouteWrapper[]> = {
   '/admin/release-checklist': ['protected', 'admin'],
   '/dashboard-diagnostics': ['protected', 'admin'],
   '/admin/tenant-isolation': ['protected', 'admin'],
+  '/admin/ui-smoke': ['protected', 'admin'],
   '/system-audit': ['protected', 'admin'],
 };
 
