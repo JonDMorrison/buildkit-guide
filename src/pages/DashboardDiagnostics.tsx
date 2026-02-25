@@ -86,6 +86,11 @@ function aggregate(traces: readonly RpcTraceEntry[]): AggStat[] {
 /* Page component                                                      */
 /* ------------------------------------------------------------------ */
 
+/**
+ * ADMIN-ONLY: This page exposes internal RPC diagnostics (timing, error rates,
+ * card-to-RPC mappings) and must remain restricted to admin users.
+ * Route-level gate enforced by AdminRoute in App.tsx.
+ */
 export default function DashboardDiagnostics() {
   const traces = useTraces();
 
