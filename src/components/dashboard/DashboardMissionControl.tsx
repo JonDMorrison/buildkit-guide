@@ -183,6 +183,7 @@ function DashboardMissionControlContent({ canViewExecutive, canViewDiagnostics }
           }
           variant="metric"
           helpText="How complete and reliable your project data is. Higher coverage means better decisions."
+          className="border-t-2 border-t-primary/40"
           value={
             coveragePercent !== null
               ? `${coveragePercent}%`
@@ -217,6 +218,7 @@ function DashboardMissionControlContent({ canViewExecutive, canViewDiagnostics }
           error={qualityError && !coverageError ? null : undefined}
           variant="table"
           helpText="The most common data quality problems across your projects. Fix these to improve confidence."
+          className="border-t-2 border-t-destructive/30"
           empty={topIssues.length === 0 && !qualityError}
           emptyMessage="No data quality issues found"
           actions={

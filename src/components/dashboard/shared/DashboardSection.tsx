@@ -39,9 +39,9 @@ export const DashboardSection = forwardRef<HTMLElement, DashboardSectionProps>(
     ref,
   ) {
     const content = (
-      <section ref={ref} className={cn("space-y-3 pt-2", className)}>
+      <section ref={ref} className={cn("space-y-3 pt-4 first:pt-0", className)}>
         {title && (
-          <div className="flex items-center justify-between pb-1">
+          <div className="flex items-center justify-between pb-1 border-b border-border/30 mb-1">
             <h2 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
               {title}
             </h2>
