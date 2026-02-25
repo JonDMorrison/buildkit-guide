@@ -68,6 +68,7 @@ const PromptsAudit = lazy(() => import("./pages/PromptsAudit"));
 const InsightsAudit = lazy(() => import("./pages/InsightsAudit"));
 const ConversionTestHarness = lazy(() => import("./pages/ConversionTestHarness"));
 const AIBrainDiagnostics = lazy(() => import("./pages/AIBrainDiagnostics"));
+const DashboardDiagnostics = lazy(() => import("./pages/DashboardDiagnostics"));
 const ExecutiveDashboard = lazy(() => import("./pages/ExecutiveDashboard"));
 const ExecutiveReport = lazy(() => import("./pages/ExecutiveReport"));
 const OrgSettings = lazy(() => import("./pages/OrgSettings"));
@@ -584,6 +585,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <AdminReleaseChecklist />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard-diagnostics"
+                  element={
+                    <ProtectedRoute>
+                      <DashboardDiagnostics />
                     </ProtectedRoute>
                   }
                 />
