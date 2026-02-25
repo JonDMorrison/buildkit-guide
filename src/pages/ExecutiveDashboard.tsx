@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from '@/hooks/useOrganization';
@@ -11,6 +11,7 @@ import { Link } from 'react-router-dom';
 import { getCause } from '@/lib/causesDictionary';
 import { useAuthRole } from '@/hooks/useAuthRole';
 import { useCurrentProject } from '@/hooks/useCurrentProject';
+import { usePrefetchRoute } from '@/hooks/usePrefetchRoute';
 import { NoAccess } from '@/components/NoAccess';
 import { DashboardLayout } from '@/components/dashboard/shared/DashboardLayout';
 import { DashboardHeader } from '@/components/dashboard/shared/DashboardHeader';
@@ -141,6 +142,7 @@ export default function ExecutiveDashboard() {
   const { activeOrganizationId } = useOrganization();
   const { currentProjectId } = useCurrentProject();
   const { isAdmin, isPM, loading: roleLoading } = useAuthRole(currentProjectId || undefined);
+  const { prefetchRoute } = usePrefetchRoute();
 
   const [data, setData] = useState<RiskSummary | null>(null);
   const [loading, setLoading] = useState(false);
@@ -149,6 +151,13 @@ export default function ExecutiveDashboard() {
   const [copied, setCopied] = useState(false);
   const [feedData, setFeedData] = useState<ChangeFeedData | null>(null);
   const [changeLogOpen, setChangeLogOpen] = useState(false);
+
+  // Cross-page warming: admin on /executive warms /dashboard mission control data
+  useEffect(() => {
+    if (!roleLoading && (isAdmin || isPM()) && activeOrganizationId) {
+      prefetchRoute('/dashboard');
+    }
+  }, [roleLoading, isAdmin, isPM, activeOrganizationId, prefetchRoute]);
 
   const refresh = useCallback(async () => {
     if (!activeOrganizationId) return;
@@ -201,8 +210,14 @@ export default function ExecutiveDashboard() {
   if (roleLoading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        {/* Reserve space for hero + inbox + footer to prevent layout shift */}
+        <div className="space-y-6">
+          <div className="rounded-xl border border-border bg-muted/20 h-36 animate-pulse" />
+          <div className="rounded-xl border border-border bg-muted/20 h-64 animate-pulse" />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="rounded-xl border border-border bg-muted/20 h-32 animate-pulse" />
+            <div className="rounded-xl border border-border bg-muted/20 h-32 animate-pulse" />
+          </div>
         </div>
       </DashboardLayout>
     );

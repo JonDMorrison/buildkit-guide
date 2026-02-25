@@ -1,5 +1,7 @@
 import { NavLink } from "../NavLink";
 import { cn } from "@/lib/utils";
+import { usePrefetchRoute } from "@/hooks/usePrefetchRoute";
+import { useCallback } from "react";
 
 interface NavItemProps {
   label: string;
@@ -10,9 +12,17 @@ interface NavItemProps {
 }
 
 export const NavItem = ({ label, icon: Icon, route, badgeCount, collapsed }: NavItemProps) => {
+  const { prefetchRoute } = usePrefetchRoute();
+
+  const handleMouseEnter = useCallback(() => {
+    prefetchRoute(route);
+  }, [prefetchRoute, route]);
+
   return (
     <NavLink
       to={route}
+      onMouseEnter={handleMouseEnter}
+      onFocus={handleMouseEnter}
       className={cn(
         "group relative flex items-center gap-3 rounded-lg transition-all duration-150 ease-out",
         "text-sidebar-foreground/50 hover:text-sidebar-foreground/85",
