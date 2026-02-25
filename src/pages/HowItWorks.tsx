@@ -214,7 +214,7 @@ export default function HowItWorks() {
         <div className="container mx-auto max-w-6xl">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-muted-foreground">
-              © 2025 Project Path. Built for the field.
+              © 2026 Project Path. Built for the field.
             </p>
             <div className="flex gap-4">
               <Button 

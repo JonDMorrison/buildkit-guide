@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle, FileX, Ban, FolderSearch, MessageSquareWarning, FileStack, TrendingDown, Clock, MapPin, Brain, Shield, Wifi, WifiOff, ChevronDown, ChevronUp, Receipt, FileCheck, Mic, ClipboardList, AlertTriangle, Calendar, HardHat, Users, Sparkles } from "lucide-react";
+import { CheckCircle, FileX, Ban, FolderSearch, MessageSquareWarning, FileStack, TrendingDown, Clock, MapPin, Brain, Shield, Wifi, WifiOff, ChevronDown, ChevronUp, Receipt, FileCheck, Mic, ClipboardList, AlertTriangle, Calendar, HardHat, Users, Sparkles, DollarSign, BarChart3, PieChart, LayoutDashboard, Inbox, FileBarChart, Award, HeartPulse } from "lucide-react";
 import { useState } from "react";
 import heroBackground from "@/assets/hero-construction-bg.jpg";
 import screenshotTasks from "@/assets/screenshot-tasks.png";
@@ -66,7 +66,7 @@ export default function Landing() {
                 Take Every Project From Chaos to Clarity
               </h1>
               <p className="text-lg sm:text-xl md:text-2xl text-gray-200 mb-4 md:mb-6 leading-relaxed">
-                Track tasks, time, and safety across every trade — from one app.
+                Coordinate tasks, track costs, and run diagnostics across every trade and project — from one app.
               </p>
               <p className="text-sm sm:text-base text-white/70 mb-6 md:mb-8">
                 No credit card required • Free 14-day trial • Setup in minutes
@@ -268,6 +268,92 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Financial Intelligence - Text Left, Image Right */}
+      <section className="py-16 md:py-24 px-4 bg-muted/30">
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid lg:grid-cols-2 gap-10 md:gap-16 items-center">
+            <div>
+              <p className="text-primary font-semibold mb-3 uppercase tracking-wide text-sm">Financial Intelligence</p>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-6 leading-tight">
+                Know Where Your Money Is Going — Before It's Gone
+              </h2>
+              <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
+                Budget builder, estimate-vs-actual tracking, and profit risk alerts that catch cost overruns early.
+              </p>
+              <div className="space-y-4">
+                {[
+                  { icon: DollarSign, text: "Budget builder with line-item estimates" },
+                  { icon: BarChart3, text: "Variance tracking: budget, labor, and materials" },
+                  { icon: PieChart, text: "Profit risk scoring per project" },
+                  { icon: Receipt, text: "Receipt capture with AI categorization" }
+                ].map((item, index) => {
+                  const Icon = item.icon;
+                  return (
+                    <div key={index} className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Icon className="h-5 w-5 text-primary" />
+                      </div>
+                      <p className="text-foreground font-medium">{item.text}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div>
+              <img 
+                src={screenshotAi} 
+                alt="Financial intelligence dashboard" 
+                className="w-full rounded-xl shadow-2xl border border-border"
+                loading="lazy"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Executive Portfolio View - Text Right, Image Left */}
+      <section className="py-16 md:py-24 px-4 bg-background">
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid lg:grid-cols-2 gap-10 md:gap-16 items-center">
+            <div className="order-2 lg:order-1">
+              <img 
+                src={screenshotLookahead} 
+                alt="Executive portfolio dashboard" 
+                className="w-full rounded-xl shadow-2xl border border-border"
+                loading="lazy"
+              />
+            </div>
+            <div className="order-1 lg:order-2">
+              <p className="text-primary font-semibold mb-3 uppercase tracking-wide text-sm">Executive Portfolio View</p>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-6 leading-tight">
+                Every Project. One Dashboard. Zero Surprises.
+              </h2>
+              <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
+                Cross-project KPIs, attention inbox, and change feed so leadership sees what matters without chasing PMs.
+              </p>
+              <div className="space-y-4">
+                {[
+                  { icon: LayoutDashboard, text: "Portfolio-level margin and cost rollups" },
+                  { icon: Inbox, text: "Attention inbox surfaces what needs action now" },
+                  { icon: FileBarChart, text: "Weekly AI-generated insight reports" },
+                  { icon: Award, text: "Certification scoring tracks operational maturity" }
+                ].map((item, index) => {
+                  const Icon = item.icon;
+                  return (
+                    <div key={index} className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Icon className="h-5 w-5 text-primary" />
+                      </div>
+                      <p className="text-foreground font-medium">{item.text}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* AI Section - Text Right, Image Left */}
       <section className="py-16 md:py-24 px-4 bg-primary">
         <div className="container mx-auto max-w-6xl">
@@ -289,13 +375,14 @@ export default function Landing() {
                 AI That Actually Understands Construction
               </h2>
               <p className="text-lg text-primary-foreground/80 mb-6 leading-relaxed">
-                Ask questions about your project documents in plain English. Draft professional escalation emails in seconds. Get hazard suggestions based on real conditions.
+                Ask questions about your project documents in plain English. Get weekly insight reports, hazard suggestions, and escalation emails — all powered by AI that knows your projects.
               </p>
               <div className="space-y-4">
                 {[
                   { icon: FolderSearch, text: "Document Q&A with source references" },
-                  { icon: MessageSquareWarning, text: "Escalation emails drafted instantly" },
-                  { icon: Receipt, text: "Receipt scanning and categorization" }
+                  { icon: FileBarChart, text: "Weekly insight reports from project snapshots" },
+                  { icon: AlertTriangle, text: "Hazard suggestions based on weather and tasks" },
+                  { icon: MessageSquareWarning, text: "Escalation emails drafted instantly" }
                 ].map((item, index) => {
                   const Icon = item.icon;
                   return (
@@ -324,12 +411,13 @@ export default function Landing() {
               Designed for gloved hands, bright sunlight, and spotty cell signal.
             </p>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-5">
             {[
               { icon: WifiOff, title: "Works Offline", description: "Sync when you reconnect" },
               { icon: CheckCircle, title: "Big Tap Targets", description: "One-hand operation" },
               { icon: Shield, title: "High Contrast", description: "Readable in sunlight" },
-              { icon: Mic, title: "Voice Input", description: "Dictate notes hands-free" }
+              { icon: Mic, title: "Voice Input", description: "Dictate notes hands-free" },
+              { icon: HeartPulse, title: "Self-Diagnosing", description: "Built-in health checks catch data gaps before they become problems" }
             ].map((item, index) => {
               const Icon = item.icon;
               return (
@@ -512,7 +600,7 @@ export default function Landing() {
             <div className="flex items-center gap-2">
               <img src={projectPathLogo} alt="Project Path" className="h-16 w-auto max-w-[240px]" />
               <p className="text-sm text-foreground/70">
-                © 2025 Project Path. Built for the field.
+                © 2026 Project Path. Built for the field.
               </p>
             </div>
             <div className="flex flex-wrap justify-center gap-4">
