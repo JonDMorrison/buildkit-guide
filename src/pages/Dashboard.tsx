@@ -369,12 +369,12 @@ function DashboardContent() {
   return (
     <DashboardLayout>
       {/* Mission Control — Admin/PM only, gate+content pattern */}
-      <DashboardMissionControl />
+      {(isPM() || isAdmin) && <DashboardMissionControl />}
 
       {/* Header */}
       <DashboardHeader
-        title="Today on Site"
-        subtitle="Operational clarity — project status and priorities"
+        title={isForeman() ? "Site Operations" : "Today on Site"}
+        subtitle={isForeman() ? "Your crew, tasks, and blockers" : "Operational clarity — project status and priorities"}
         badge={tier !== "none" ? <CertificationBadge tier={tier} reasons={certification?.reasons} /> : undefined}
         actions={
           <>
@@ -421,49 +421,69 @@ function DashboardContent() {
           <BlockedTasksCard blockedCount={blockedTasks} />
           <CrewAssignedCard crewCount={todayLog?.crew_count || 0} activeTrades={activeTrades} />
           <ActiveProjectsCard projects={userProjects || []} />
-          <OpenChangeOrdersCard projectId={currentProjectId} />
+          {(isPM() || isAdmin) && <OpenChangeOrdersCard projectId={currentProjectId} />}
         </DashboardGrid>
       </DashboardSection>
 
-      {/* ── Ops: Tabbed operational panels (below fold) ──────────── */}
-      <DashboardSection title="Operations">
-        <Tabs defaultValue="site" className="w-full">
-          <TabsList className="mb-4">
-            <TabsTrigger value="site">Site Status</TabsTrigger>
-            <TabsTrigger value="health">Project Health</TabsTrigger>
-            <TabsTrigger value="planning">Planning</TabsTrigger>
-          </TabsList>
+      {/* ── Site Status — always visible (foreman primary, PM in tabs) ─── */}
+      {isForeman() ? (
+        <DashboardSection title="Site Status">
+          <DailySnapshotStrip
+            weather={todayLog?.weather || null}
+            crewCount={todayLog?.crew_count || 0}
+            activeTrades={activeTrades}
+            tasksStarting={tasksStartingToday}
+            tasksFinishing={tasksFinishingToday}
+            blockedCount={blockedTasks}
+            staleLogDate={logIsStale ? recentLog?.log_date : null}
+            onWeatherClick={() => setWeatherPopoverOpen(true)}
+            onCrewClick={() => { setCrewModalOpened(true); setCrewPopoverOpen(true); }}
+            onTradesClick={() => setTradesPopoverOpen(true)}
+            onStartingClick={() => setStartingModalOpen(true)}
+            onFinishingClick={() => setFinishingModalOpen(true)}
+            onBlockersClick={() => setBlockersModalOpen(true)}
+          />
+        </DashboardSection>
+      ) : (
+        <DashboardSection title="Operations">
+          <Tabs defaultValue="site" className="w-full">
+            <TabsList className="mb-4">
+              <TabsTrigger value="site">Site Status</TabsTrigger>
+              <TabsTrigger value="health">Project Health</TabsTrigger>
+              <TabsTrigger value="planning">Planning</TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="site" className="mt-0 space-y-4">
-            <DailySnapshotStrip
-              weather={todayLog?.weather || null}
-              crewCount={todayLog?.crew_count || 0}
-              activeTrades={activeTrades}
-              tasksStarting={tasksStartingToday}
-              tasksFinishing={tasksFinishingToday}
-              blockedCount={blockedTasks}
-              staleLogDate={logIsStale ? recentLog?.log_date : null}
-              onWeatherClick={() => setWeatherPopoverOpen(true)}
-              onCrewClick={() => { setCrewModalOpened(true); setCrewPopoverOpen(true); }}
-              onTradesClick={() => setTradesPopoverOpen(true)}
-              onStartingClick={() => setStartingModalOpen(true)}
-              onFinishingClick={() => setFinishingModalOpen(true)}
-              onBlockersClick={() => setBlockersModalOpen(true)}
-            />
-          </TabsContent>
+            <TabsContent value="site" className="mt-0 space-y-4">
+              <DailySnapshotStrip
+                weather={todayLog?.weather || null}
+                crewCount={todayLog?.crew_count || 0}
+                activeTrades={activeTrades}
+                tasksStarting={tasksStartingToday}
+                tasksFinishing={tasksFinishingToday}
+                blockedCount={blockedTasks}
+                staleLogDate={logIsStale ? recentLog?.log_date : null}
+                onWeatherClick={() => setWeatherPopoverOpen(true)}
+                onCrewClick={() => { setCrewModalOpened(true); setCrewPopoverOpen(true); }}
+                onTradesClick={() => setTradesPopoverOpen(true)}
+                onStartingClick={() => setStartingModalOpen(true)}
+                onFinishingClick={() => setFinishingModalOpen(true)}
+                onBlockersClick={() => setBlockersModalOpen(true)}
+              />
+            </TabsContent>
 
-          <TabsContent value="health" className="mt-0">
-            <ProjectHealthSignalCard projectId={currentProjectId} />
-          </TabsContent>
+            <TabsContent value="health" className="mt-0">
+              <ProjectHealthSignalCard projectId={currentProjectId} />
+            </TabsContent>
 
-          <TabsContent value="planning" className="mt-0">
-            <DashboardGrid columns={2}>
-              <LookaheadPreview projectId={currentProjectId} />
-              <ManpowerOverview projectId={currentProjectId} />
-            </DashboardGrid>
-          </TabsContent>
-        </Tabs>
-      </DashboardSection>
+            <TabsContent value="planning" className="mt-0">
+              <DashboardGrid columns={2}>
+                <LookaheadPreview projectId={currentProjectId} />
+                <ManpowerOverview projectId={currentProjectId} />
+              </DashboardGrid>
+            </TabsContent>
+          </Tabs>
+        </DashboardSection>
+      )}
 
       {/* ── AI Insights (lazy, below fold) ──────────────────────── */}
       <AIInsightsSection showChangeFeed projectId={currentProjectId} />

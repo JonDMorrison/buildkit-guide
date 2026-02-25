@@ -216,6 +216,44 @@ const Insights = () => {
           <UnratedLaborBanner />
         </DashboardSection>
 
+        {/* ── Section 1b: Exceptions Needing Action ────────────────── */}
+        {withoutBudget.length > 0 && (
+          <DashboardSection title="Exceptions Needing Action">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <ShieldAlert className="h-4 w-4 text-destructive" />
+                  {withoutBudget.length} project{withoutBudget.length !== 1 ? 's' : ''} missing budget — excluded from portfolio KPIs
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-1.5">
+                  {withoutBudget.slice(0, 8).map(r => (
+                    <div
+                      key={r.project_id}
+                      className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm hover:bg-muted/40 transition-colors cursor-pointer"
+                      onClick={() => navigate(`/projects/${r.project_id}`)}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-mono text-xs text-muted-foreground">{r.job_number || '—'}</span>
+                        <span className="font-medium truncate">{r.project_name}</span>
+                      </div>
+                      <Badge variant="outline" className="text-xs text-destructive border-destructive/30 shrink-0">
+                        No Budget
+                      </Badge>
+                    </div>
+                  ))}
+                  {withoutBudget.length > 8 && (
+                    <p className="text-xs text-muted-foreground text-center pt-1">
+                      + {withoutBudget.length - 8} more
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </DashboardSection>
+        )}
+
         {/* ── Section 2: Receipts Pipeline ──────────────────────────── */}
         <DashboardSection title="Receipts Pipeline">
           <ReceiptsPipelineCard />

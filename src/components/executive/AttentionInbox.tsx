@@ -42,6 +42,21 @@ function nextStepText(classification: string): string {
   return NEXT_STEP[classification] ?? 'Review project details';
 }
 
+// ── Evidence route mapping by classification ────────────────────────────
+
+function evidenceRoute(projectId: string, classification: string): string {
+  switch (classification) {
+    case 'burn_increase':
+      return `/projects/${projectId}/financials?from=attention&issue=${classification}`;
+    case 'new_risks':
+    case 'worsening':
+    case 'resolved_risks':
+    case 'improving':
+    default:
+      return `/projects/${projectId}/financials?from=attention&issue=${classification}`;
+  }
+}
+
 // ── Classification helpers ──────────────────────────────────────────────
 
 function classificationIcon(c: string) {
@@ -115,12 +130,11 @@ export function AttentionInbox({ attentionProjects, topChanges = [], compact = f
   function getClassification(p: AttentionProject): string {
     const fromChanges = classificationMap.get(p.project_id);
     if (fromChanges) return fromChanges;
-    // Fallback: derive from deltas
     if (p.risk_change > 10) return 'new_risks';
     if (p.risk_change > 0) return 'worsening';
     if (p.burn_change > 0.05) return 'burn_increase';
     if (p.risk_change < -5) return 'improving';
-    return 'worsening'; // default for attention items
+    return 'worsening';
   }
 
   if (compact) {
@@ -135,12 +149,12 @@ export function AttentionInbox({ attentionProjects, topChanges = [], compact = f
         emptyMessage="No urgent attention items right now."
       >
         <div className="space-y-1.5">
-          {items.map((p, i) => {
+          {items.map((p) => {
             const cls = getClassification(p);
             return (
               <Link
                 key={p.project_id}
-                to={`/projects/${p.project_id}`}
+                to={`/projects/${p.project_id}?from=attention&issue=${cls}`}
                 className="flex items-center gap-2.5 rounded-md border border-border px-3 py-2 hover:bg-muted/40 transition-colors group"
               >
                 {classificationIcon(cls)}
@@ -186,7 +200,7 @@ export function AttentionInbox({ attentionProjects, topChanges = [], compact = f
                 </span>
                 {classificationIcon(cls)}
                 <Link
-                  to={`/projects/${p.project_id}`}
+                  to={`/projects/${p.project_id}?from=attention&issue=${cls}`}
                   className="text-sm font-semibold text-primary hover:underline inline-flex items-center gap-1 truncate"
                 >
                   {p.project_name}
@@ -213,13 +227,13 @@ export function AttentionInbox({ attentionProjects, topChanges = [], compact = f
                 <div className="flex items-center gap-2 shrink-0">
                   {(canViewDiagnostics || canViewExecutive) && (
                     <Button variant="ghost" size="sm" className="h-6 text-[11px] px-2" asChild>
-                      <Link to={`/projects/${p.project_id}/financials`}>
+                      <Link to={evidenceRoute(p.project_id, cls)}>
                         View Evidence
                       </Link>
                     </Button>
                   )}
                   <Button variant="outline" size="sm" className="h-6 text-[11px] px-2" asChild>
-                    <Link to={`/projects/${p.project_id}`}>
+                    <Link to={`/projects/${p.project_id}?from=attention&issue=${cls}`}>
                       Open Project
                     </Link>
                   </Button>

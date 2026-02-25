@@ -170,15 +170,17 @@ const Tasks = () => {
     setDetailModalOpen(true);
   };
 
-  if (loading) {
+  if (loading || roleLoading) {
     return (
       <Layout>
         <div className="container max-w-6xl mx-auto px-4 py-6">
-          <Skeleton className="h-12 w-64 mb-6" />
+          <Skeleton className="h-10 w-48 mb-2" />
+          <Skeleton className="h-5 w-64 mb-6" />
           <div className="space-y-3">
-            <Skeleton className="h-16" />
-            <Skeleton className="h-16" />
-            <Skeleton className="h-16" />
+            <Skeleton className="h-14 w-full rounded-lg" />
+            <Skeleton className="h-14 w-full rounded-lg" />
+            <Skeleton className="h-14 w-full rounded-lg" />
+            <Skeleton className="h-14 w-full rounded-lg" />
           </div>
         </div>
       </Layout>
