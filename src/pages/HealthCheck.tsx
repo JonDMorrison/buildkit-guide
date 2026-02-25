@@ -16,6 +16,8 @@ import { Loader2, Download, Copy, CheckCircle2, AlertTriangle, XCircle, ChevronD
 import { startConsoleCapture } from '@/lib/consoleCapture';
 import { buildHealthCheckReport, type HealthCheckResult, type CheckStatus } from '@/lib/healthCheckReport';
 import { downloadText } from '@/lib/downloadText';
+import { getActionsForHealthCheck, type ActionContext } from '@/lib/actionRouter';
+import { ActionRow } from '@/components/ActionRow';
 import { toast } from 'sonner';
 
 // ── Gate ────────────────────────────────────────────────────────────────────
@@ -117,8 +119,8 @@ async function runLightweightRouteProbes(
 
 function HealthCheckContent() {
   const navigate = useNavigate();
-  const { activeOrganization } = useOrganization();
-  const { isAdmin, isPM } = useRouteAccess();
+  const { activeOrganization, activeOrganizationId } = useOrganization();
+  const { isAdmin, isPM, canViewDiagnostics, canViewExecutive } = useRouteAccess();
 
   // Reuse existing shared hooks
   const { data: coverageData, dataUpdatedAt: coverageUpdatedAt, isLoading: coverageLoading, error: coverageError } = useSnapshotCoverageReport();
@@ -154,16 +156,16 @@ function HealthCheckContent() {
     // 1. Access & Role Gate
     results.push({
       name: 'access',
-      status: 'pass',
+      status: 'pass' as CheckStatus,
       label: 'Access & Role Gate',
       detail: `${isAdmin ? 'Admin' : 'PM'} access confirmed for ${orgName}.`,
     });
 
     // 2. Snapshot Freshness
     if (coverageError) {
-      results.push({ name: 'freshness', status: 'fail', label: 'Snapshot Freshness', detail: 'Coverage data unavailable.' });
+      results.push({ name: 'snapshot_freshness', status: 'fail', label: 'Snapshot Freshness', detail: 'Coverage data unavailable.' });
     } else if (!coverageData) {
-      results.push({ name: 'freshness', status: 'warn', label: 'Snapshot Freshness', detail: 'Loading snapshot data...' });
+      results.push({ name: 'snapshot_freshness', status: 'warn', label: 'Snapshot Freshness', detail: 'Loading snapshot data...' });
     } else {
       // Check freshness based on latest snapshot across projects
       const latestProject = coverageData.projects
@@ -171,70 +173,70 @@ function HealthCheckContent() {
         .sort((a, b) => (b.latest_snapshot ?? '').localeCompare(a.latest_snapshot ?? ''))[0];
 
       if (!latestProject?.latest_snapshot) {
-        results.push({ name: 'freshness', status: 'fail', label: 'Snapshot Freshness', detail: 'No snapshots found.' });
+        results.push({ name: 'snapshot_freshness', status: 'fail', label: 'Snapshot Freshness', detail: 'No snapshots found.' });
       } else {
         const hoursSince = (Date.now() - new Date(latestProject.latest_snapshot).getTime()) / (1000 * 60 * 60);
         if (hoursSince <= 36) {
-          results.push({ name: 'freshness', status: 'pass', label: 'Snapshot Freshness', detail: `Latest snapshot: ${latestProject.latest_snapshot}. Within 36h.` });
+          results.push({ name: 'snapshot_freshness', status: 'pass', label: 'Snapshot Freshness', detail: `Latest snapshot: ${latestProject.latest_snapshot}. Within 36h.` });
         } else {
-          results.push({ name: 'freshness', status: 'warn', label: 'Snapshot Freshness', detail: `Latest snapshot: ${latestProject.latest_snapshot}. ${Math.round(hoursSince)}h ago — stale.` });
+          results.push({ name: 'snapshot_freshness', status: 'warn', label: 'Snapshot Freshness', detail: `Latest snapshot: ${latestProject.latest_snapshot}. ${Math.round(hoursSince)}h ago — stale.` });
         }
       }
     }
 
     // 3. Snapshot Coverage
     if (coverageError) {
-      results.push({ name: 'coverage', status: 'fail', label: 'Snapshot Coverage', detail: 'Coverage data unavailable.' });
+      results.push({ name: 'snapshot_coverage', status: 'fail', label: 'Snapshot Coverage', detail: 'Coverage data unavailable.' });
     } else if (coveragePercent === null) {
-      results.push({ name: 'coverage', status: 'warn', label: 'Snapshot Coverage', detail: 'Loading...' });
+      results.push({ name: 'snapshot_coverage', status: 'warn', label: 'Snapshot Coverage', detail: 'Loading...' });
     } else if (coveragePercent >= 90) {
-      results.push({ name: 'coverage', status: 'pass', label: 'Snapshot Coverage', detail: `${coveragePercent}% of projects have snapshots.` });
+      results.push({ name: 'snapshot_coverage', status: 'pass', label: 'Snapshot Coverage', detail: `${coveragePercent}% of projects have snapshots.` });
     } else if (coveragePercent >= 70) {
-      results.push({ name: 'coverage', status: 'warn', label: 'Snapshot Coverage', detail: `${coveragePercent}% coverage — some projects missing snapshots.` });
+      results.push({ name: 'snapshot_coverage', status: 'warn', label: 'Snapshot Coverage', detail: `${coveragePercent}% coverage — some projects missing snapshots.` });
     } else {
-      results.push({ name: 'coverage', status: 'fail', label: 'Snapshot Coverage', detail: `${coveragePercent}% coverage — significant gaps in snapshot data.` });
+      results.push({ name: 'snapshot_coverage', status: 'fail', label: 'Snapshot Coverage', detail: `${coveragePercent}% coverage — significant gaps in snapshot data.` });
     }
 
     // 4. Data Quality
     if (qualityError) {
-      results.push({ name: 'quality', status: 'fail', label: 'Data Quality', detail: 'Quality audit unavailable.' });
+      results.push({ name: 'data_quality', status: 'fail', label: 'Data Quality', detail: 'Quality audit unavailable.' });
     } else if (issuesCount === null) {
-      results.push({ name: 'quality', status: 'warn', label: 'Data Quality', detail: 'Loading...' });
+      results.push({ name: 'data_quality', status: 'warn', label: 'Data Quality', detail: 'Loading...' });
     } else if (issuesCount <= 1) {
-      results.push({ name: 'quality', status: 'pass', label: 'Data Quality', detail: `${issuesCount} project${issuesCount !== 1 ? 's' : ''} with issues. Data is clean.` });
+      results.push({ name: 'data_quality', status: 'pass', label: 'Data Quality', detail: `${issuesCount} project${issuesCount !== 1 ? 's' : ''} with issues. Data is clean.` });
     } else if (issuesCount <= 5) {
-      results.push({ name: 'quality', status: 'warn', label: 'Data Quality', detail: `${issuesCount} projects with data quality issues.` });
+      results.push({ name: 'data_quality', status: 'warn', label: 'Data Quality', detail: `${issuesCount} projects with data quality issues.` });
     } else {
-      results.push({ name: 'quality', status: 'fail', label: 'Data Quality', detail: `${issuesCount} projects with issues — conclusions may be unreliable.` });
+      results.push({ name: 'data_quality', status: 'fail', label: 'Data Quality', detail: `${issuesCount} projects with issues — conclusions may be unreliable.` });
     }
 
     // 5. Executive Intelligence
     if (feedError) {
-      results.push({ name: 'intelligence', status: 'warn', label: 'Executive Intelligence', detail: 'Change feed unavailable.' });
+      results.push({ name: 'exec_intelligence', status: 'warn', label: 'Executive Intelligence', detail: 'Change feed unavailable.' });
     } else if (!feedData) {
-      results.push({ name: 'intelligence', status: 'warn', label: 'Executive Intelligence', detail: 'Loading...' });
+      results.push({ name: 'exec_intelligence', status: 'warn', label: 'Executive Intelligence', detail: 'Loading...' });
     } else {
       const hasChanges = (feedData.attention_ranked_projects?.length ?? 0) > 0 ||
         feedData.new_risks > 0 || feedData.resolved_risks > 0;
       if (hasChanges) {
-        results.push({ name: 'intelligence', status: 'pass', label: 'Executive Intelligence', detail: `Change feed active. ${feedData.attention_ranked_projects?.length ?? 0} projects ranked for attention.` });
+        results.push({ name: 'exec_intelligence', status: 'pass', label: 'Executive Intelligence', detail: `Change feed active. ${feedData.attention_ranked_projects?.length ?? 0} projects ranked for attention.` });
       } else {
-        results.push({ name: 'intelligence', status: 'warn', label: 'Executive Intelligence', detail: 'Change feed returned no changes.' });
+        results.push({ name: 'exec_intelligence', status: 'warn', label: 'Executive Intelligence', detail: 'Change feed returned no changes.' });
       }
     }
 
     // 6. UI Reliability
     if (!routeProbeResults) {
-      results.push({ name: 'ui', status: 'warn', label: 'UI Reliability', detail: 'Not tested yet. Click "Run Health Check" to probe core routes.' });
+      results.push({ name: 'ui_reliability', status: 'warn', label: 'UI Reliability', detail: 'Not tested yet. Click "Run Health Check" to probe core routes.' });
     } else {
       const crashes = routeProbeResults.filter(r => r.crashed || r.errorCount > 0);
       const warns = routeProbeResults.filter(r => r.warnCount > 0 && r.errorCount === 0 && !r.crashed);
       if (crashes.length > 0) {
-        results.push({ name: 'ui', status: 'fail', label: 'UI Reliability', detail: `${crashes.length} route${crashes.length > 1 ? 's' : ''} with errors: ${crashes.map(r => r.path).join(', ')}` });
+        results.push({ name: 'ui_reliability', status: 'fail', label: 'UI Reliability', detail: `${crashes.length} route${crashes.length > 1 ? 's' : ''} with errors: ${crashes.map(r => r.path).join(', ')}` });
       } else if (warns.length > 0) {
-        results.push({ name: 'ui', status: 'warn', label: 'UI Reliability', detail: `${warns.length} route${warns.length > 1 ? 's' : ''} with warnings.` });
+        results.push({ name: 'ui_reliability', status: 'warn', label: 'UI Reliability', detail: `${warns.length} route${warns.length > 1 ? 's' : ''} with warnings.` });
       } else {
-        results.push({ name: 'ui', status: 'pass', label: 'UI Reliability', detail: `All ${HEALTH_PROBE_ROUTES.length} core routes loaded cleanly.` });
+        results.push({ name: 'ui_reliability', status: 'pass', label: 'UI Reliability', detail: `All ${HEALTH_PROBE_ROUTES.length} core routes loaded cleanly.` });
       }
     }
 
@@ -260,6 +262,12 @@ function HealthCheckContent() {
       setProbing(false);
     }
   }, [navigate]);
+
+  const actionCtx = useMemo((): ActionContext => ({
+    orgId: activeOrganizationId ?? undefined,
+    canViewDiagnostics,
+    canViewExecutive,
+  }), [activeOrganizationId, canViewDiagnostics, canViewExecutive]);
 
   const reportInput = useMemo(() => ({
     orgName,
@@ -364,7 +372,7 @@ function HealthCheckContent() {
                 <p className="text-sm text-muted-foreground">{check.detail}</p>
 
                 {/* Expandable details for specific checks */}
-                {check.name === 'coverage' && coverageData && coverageData.projects.length > 0 && (
+                {check.name === 'snapshot_coverage' && coverageData && coverageData.projects.length > 0 && (
                   <Collapsible className="mt-3">
                     <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
                       <ChevronDown className="h-3 w-3" />
@@ -384,7 +392,7 @@ function HealthCheckContent() {
                   </Collapsible>
                 )}
 
-                {check.name === 'intelligence' && feedData?.attention_ranked_projects && feedData.attention_ranked_projects.length > 0 && (
+                {check.name === 'exec_intelligence' && feedData?.attention_ranked_projects && feedData.attention_ranked_projects.length > 0 && (
                   <Collapsible className="mt-3">
                     <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
                       <ChevronDown className="h-3 w-3" />
@@ -403,7 +411,7 @@ function HealthCheckContent() {
                   </Collapsible>
                 )}
 
-                {check.name === 'ui' && routeProbeResults && (
+                {check.name === 'ui_reliability' && routeProbeResults && (
                   <Collapsible className="mt-3">
                     <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
                       <ChevronDown className="h-3 w-3" />
@@ -434,6 +442,12 @@ function HealthCheckContent() {
                     </CollapsibleContent>
                   </Collapsible>
                 )}
+
+                {/* Action CTA for non-pass checks */}
+                {check.status !== 'pass' && (() => {
+                  const bundle = getActionsForHealthCheck(check.name, actionCtx);
+                  return bundle ? <ActionRow bundle={bundle} /> : null;
+                })()}
               </CardContent>
             </Card>
           ))}
