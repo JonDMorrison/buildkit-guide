@@ -42,6 +42,9 @@ export const Breadcrumbs = () => {
   const segments = location.pathname.split("/").filter(Boolean);
   if (segments.length <= 1) return null;
 
+  // Hide global breadcrumb on project detail pages — they render their own breadcrumb with the project name
+  if (segments[0] === 'projects' && segments.length === 2 && segments[1] !== '') return null;
+
   const crumbs = segments.map((seg, i) => ({
     label: routeLabels[seg] || seg.charAt(0).toUpperCase() + seg.slice(1),
     path: "/" + segments.slice(0, i + 1).join("/"),
