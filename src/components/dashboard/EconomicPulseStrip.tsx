@@ -25,13 +25,14 @@ export function EconomicPulseStrip({ projectId }: Props) {
         p_days: 14,
       });
       if (error) throw error;
-      return (data as SnapshotEntry[]) || [];
+      const result = Array.isArray(data) ? data : [];
+      return result as SnapshotEntry[];
     },
     enabled: !!projectId,
     staleTime: 5 * 60 * 1000,
   });
 
-  if (isLoading || !data || data.length === 0) return null;
+  if (isLoading || !data || data.length === 0 || !data[0]?.snapshot_date) return null;
 
   const latest = data[0];
   const previous = data.length > 1 ? data[1] : null;
