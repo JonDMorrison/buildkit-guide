@@ -1,78 +1,102 @@
 
-# Fix the AI Insights Section on Dashboard
+# Rename AI-Branded Labels Across the App
 
-## Problems Found
+## Philosophy
 
-1. **Duplicate "AI INSIGHTS" header** -- The Dashboard wraps `AIInsightsSection` inside a `DashboardSection` with title "AI Insights" (line 505), and `AIInsightsSection` itself renders *another* `DashboardSection` with the same title (line 25). This produces the two stacked headers visible in the screenshot.
+AI should work quietly in the background. Users care about *what* the information tells them, not *that* it comes from AI. The rename shifts labels from tech-jargon ("AI Change Feed") to outcome-oriented names ("What Changed", "Risk Assessment", "Margin Trends").
 
-2. **AI Change Feed card is empty** -- The card shows dates ("2026-02-24 -> 2026-02-25") but the body is blank. This happens when the feed exists (has snapshot dates) but all classification counts are 0 and `top_changes` is empty. The card renders nothing in the `{feed && ...}` block because all conditional badges and list items evaluate to false. There is no "all stable" fallback message.
+## Complete Inventory of AI-Branded Labels
 
-3. **AI Risk Assessment and AI Margin Signal say "Capture one more snapshot"** -- The selected project (37a409ca...) has 0 snapshots in `project_economic_snapshots`. The margin signal RPC returns `snapshot_count: 0`. These cards correctly gate on >= 2 snapshots, but the message is misleading since the user needs *two*, not "one more."
+Here is every place in the app that surfaces "AI" in user-facing text, grouped by priority:
 
-4. **No explanation of what this section is for** -- A non-technical user has no way to understand what "AI Change Feed," "AI Risk Assessment," or "AI Margin Signal" mean.
+### Tier 1 — Dashboard Cards (the ones you saw)
 
-5. **"My Attention" blank items** -- The `AttentionInbox` renders items from `attention_ranked_projects` but if `project_name` is null/empty (from the RPC), the link text is blank. The recent migration should fix this, but a defensive fallback is needed.
+| Current Label | New Label | File |
+|---|---|---|
+| "AI Change Feed" | "What Changed" | `src/components/ai-insights/AIChangeFeedCard.tsx` |
+| "AI Risk Assessment" | "Risk Assessment" | `src/components/ai-insights/AIProjectRiskCard.tsx` |
+| "AI Margin Signal" | "Margin Trends" | `src/components/ai-insights/AIMarginSignalCard.tsx` |
+| "AI Insights" (section header) | "Insights" | `src/components/ai-insights/AIInsightsSection.tsx` |
 
-## Plan
+### Tier 2 — Navigation and Breadcrumbs
 
-### 1. Fix the duplicate header
+| Current Label | New Label | File |
+|---|---|---|
+| "AI Brain" (nav item) | "Diagnostics" | `src/hooks/useNavigationTabs.tsx` (line 55) |
+| "AI Assistant" (breadcrumb) | "Assistant" | `src/components/Breadcrumbs.tsx` (line 20) |
+| "AI Assistant" (dashboard widget label) | "Assistant" | `src/components/dashboard/DashboardCustomizer.tsx` (line 27) |
 
-**File: `src/pages/Dashboard.tsx`** (lines 504-511)
+### Tier 3 — Pages and Headings
 
-Remove the outer `DashboardSection` wrapper. The `AIInsightsSection` component already renders its own `DashboardSection`. Just render `<AIInsightsSection>` directly, keeping `lazy` behavior by adding the `lazy` prop usage that already exists inside `AIInsightsSection`.
+| Current Label | New Label | File |
+|---|---|---|
+| "AI Assistant" (page heading) | "Assistant" | `src/pages/AI.tsx` (line 119) |
+| "AI Brain Diagnostics" (page heading) | "System Diagnostics" | `src/pages/ai-brain/DiagnosticsSection.tsx` (lines 732, 735, 786) |
+| "AI Brain Test Runner" / "AI Brain Scenario Suite" (release checklist) | "Test Runner" / "Scenario Suite" | `src/pages/AdminReleaseChecklist.tsx` (lines 363, 371) |
 
-### 2. Add "all stable" fallback in AI Change Feed
+### Tier 4 — Notifications and Control Center
 
-**File: `src/components/ai-insights/AIChangeFeedCard.tsx`**
+| Current Label | New Label | File |
+|---|---|---|
+| "AI Insights" (notification tab) | "Insights" | `src/components/notifications/NotificationsDropdown.tsx` (line 167) |
+| "Select a project to see AI insights" | "Select a project to see insights" | `src/components/notifications/NotificationsDropdown.tsx` (line 237) |
+| "Select a project to see AI insights" | "Select a project to see insights" | `src/components/control-center/AIInsightsList.tsx` (line 76) |
+| "AI insights" (empty message in change feed) | "insights" | `src/components/ai-insights/AIChangeFeedCard.tsx` (line 42) |
 
-When `feed` exists but all counts are 0 and `top_changes` is empty, show a positive message like:
+### Tier 5 — Marketing / Onboarding (recommend but lower priority)
 
-> "All projects stable -- no risk changes detected between snapshots."
+| Current Label | New Label | File |
+|---|---|---|
+| "AI Assistant" (features page) | "Smart Assistant" | `src/pages/Features.tsx` (line 145) |
+| "AI Assistant" (welcome wizard) | "Smart Assistant" | `src/components/onboarding/WelcomeWizard.tsx` (line 80) |
+| "AI assistant" (org onboarding) | "assistant" | `src/components/onboarding/OrgOnboardingWizard.tsx` (line 308) |
 
-This replaces the blank card body.
+### Tier 6 — Internal/Developer Only (no rename needed)
 
-### 3. Fix empty-state messaging on Risk and Margin cards
-
-**Files: `src/components/ai-insights/AIProjectRiskCard.tsx`, `src/components/ai-insights/AIMarginSignalCard.tsx`**
-
-Change `emptyMessage` from "Capture one more snapshot to unlock AI insights." to "This project needs at least 2 economic snapshots to show trends. Snapshots are captured daily." -- clearer and more helpful.
-
-### 4. Add help text to the AI Insights section
-
-**File: `src/components/ai-insights/AIInsightsSection.tsx`**
-
-Add a `helpText` prop to the `DashboardSection`:
-
-> "AI-generated analysis comparing your latest economic snapshots. Shows which projects changed, risk levels, and margin trends."
-
-### 5. Add defensive fallback for blank project names in AttentionInbox
-
-**File: `src/components/executive/AttentionInbox.tsx`**
-
-Change `{p.project_name}` to `{p.project_name || 'Unnamed Project'}` in both compact and full modes. This prevents blank rows if the RPC returns null names.
-
-### 6. Add human-readable card descriptions
-
-**Files: `AIChangeFeedCard.tsx`, `AIProjectRiskCard.tsx`, `AIMarginSignalCard.tsx`**
-
-Add `helpText` to each `DashboardCard`:
-- Change Feed: "Shows what changed across your projects between the two most recent snapshots."
-- Risk Assessment: "Calculates a risk score based on margin pressure, labor burn, and data confidence."
-- Margin Signal: "Tracks projected margin and risk score trends over the last 30 days."
+These are internal trace sources, RPC keys, and backend function names that users never see:
+- `rpc-tracer.ts` card labels (trace only, not rendered to users as headings)
+- `actionRouter.ts` label "View AI Brain" (change to "View Diagnostics")
+- Edge function error messages ("AI service not configured") -- keep as-is, these are error logs
 
 ---
 
-## Technical Details
+## Implementation Plan
 
-### Files to edit:
-- `src/pages/Dashboard.tsx` -- Remove duplicate `DashboardSection` wrapper (lines 504-511)
-- `src/components/ai-insights/AIInsightsSection.tsx` -- Add helpText to its `DashboardSection`
-- `src/components/ai-insights/AIChangeFeedCard.tsx` -- Add "all stable" fallback + helpText
-- `src/components/ai-insights/AIProjectRiskCard.tsx` -- Fix empty message + helpText
-- `src/components/ai-insights/AIMarginSignalCard.tsx` -- Fix empty message + helpText
-- `src/components/executive/AttentionInbox.tsx` -- Defensive fallback for blank project names
+### Step 1: Rename the 3 dashboard card titles + section header
+- `AIChangeFeedCard.tsx`: title "AI Change Feed" -> "What Changed"
+- `AIProjectRiskCard.tsx`: title "AI Risk Assessment" -> "Risk Assessment"
+- `AIMarginSignalCard.tsx`: title "AI Margin Signal" -> "Margin Trends"
+- `AIInsightsSection.tsx`: section title "AI Insights" -> "Insights"
+- `AIChangeFeedCard.tsx`: empty message remove "AI" from "AI insights"
 
-### No backend changes
-- No RPCs, schemas, or RLS policies modified
-- No new queries or hooks created
-- All changes are UI-layer text and conditional rendering fixes
+### Step 2: Rename nav item and breadcrumb
+- `useNavigationTabs.tsx` line 55: "AI Brain" -> "Diagnostics"
+- `Breadcrumbs.tsx` line 20: "AI Assistant" -> "Assistant"
+- `DashboardCustomizer.tsx` line 27: "AI Assistant" -> "Assistant"
+
+### Step 3: Rename page headings
+- `AI.tsx` line 119: "AI Assistant" -> "Assistant"
+- `DiagnosticsSection.tsx`: "AI Brain Diagnostics" -> "System Diagnostics", button "Run AI Brain Tests" -> "Run Diagnostics"
+
+### Step 4: Rename notification and control center labels
+- `NotificationsDropdown.tsx`: "AI Insights" tab -> "Insights", empty message drop "AI"
+- `AIInsightsList.tsx`: empty message drop "AI"
+
+### Step 5: Rename release checklist labels
+- `AdminReleaseChecklist.tsx`: "AI Brain Test Runner" -> "Test Runner", "AI Brain Scenario Suite" -> "Scenario Suite"
+
+### Step 6: Update action router label
+- `actionRouter.ts`: "View AI Brain" -> "View Diagnostics"
+
+### Not Changed (intentional)
+- File names (e.g. `AIChangeFeedCard.tsx`) stay as-is to avoid import churn
+- Backend table/RPC names unchanged
+- Edge function error messages unchanged
+- Internal trace source strings unchanged
+- Marketing pages left for a separate pass (lower priority, different audience)
+
+## Technical Scope
+- ~12 files edited, all UI-layer string changes
+- No backend, RPC, or schema changes
+- No new components or hooks
+- No logic changes -- purely label/text swaps
