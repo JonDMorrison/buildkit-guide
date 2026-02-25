@@ -12,38 +12,20 @@ import { cn } from "@/lib/utils";
 export type CardVariant = "metric" | "table" | "chart" | "alert" | "ai_insight";
 
 export interface DashboardCardProps {
-  /** Card title */
   title: string;
-  /** Optional description below the title */
   description?: string;
-  /** Optional icon rendered next to the title */
   icon?: React.ComponentType<{ className?: string }>;
-  /** Loading state — renders a variant-aware skeleton */
   loading?: boolean;
-  /** Error state — renders an inline error message */
   error?: string | null;
-  /** Header action slot (buttons, badges, links) */
   actions?: ReactNode;
-  /** Card body content */
   children?: ReactNode;
-
-  /* ── Extended props (backwards-compatible) ── */
-
-  /** Layout / content variant — controls skeleton shape & accent styling */
   variant?: CardVariant;
-  /** Primary value display (metric variant) */
   value?: ReactNode;
-  /** Data source trace label shown in tooltip */
   traceSource?: string;
-  /** Empty state flag */
   empty?: boolean;
-  /** Custom empty message */
   emptyMessage?: string;
-  /** Additional className for the Card root */
   className?: string;
-  /** Additional className for the CardContent */
   contentClassName?: string;
-
   /** @deprecated Use `actions` instead */
   headerAction?: ReactNode;
   /** @deprecated Use `description` instead */
@@ -63,7 +45,7 @@ const variantAccent: Record<CardVariant, string> = {
 };
 
 /* ------------------------------------------------------------------ */
-/* Skeleton loaders per variant                                        */
+/* Skeleton loaders                                                    */
 /* ------------------------------------------------------------------ */
 
 function MetricSkeleton() {
@@ -121,27 +103,34 @@ const skeletonMap: Record<CardVariant, () => JSX.Element> = {
 };
 
 /* ------------------------------------------------------------------ */
+/* Base styles                                                         */
+/* ------------------------------------------------------------------ */
+
+const BASE_CARD = [
+  "relative rounded-xl border border-border/60 bg-card",
+  // Consistent min-height for visual alignment
+  "min-h-[140px]",
+  // Shadows & transitions
+  "shadow-elevation-1 transition-all duration-200 ease-out",
+  // Hover elevation
+  "hover:shadow-elevation-2 hover:-translate-y-0.5",
+  // Card-enter animation (stagger delay set by parent .stagger-in)
+  "animate-card-enter",
+].join(" ");
+
+/* ------------------------------------------------------------------ */
 /* Component                                                           */
 /* ------------------------------------------------------------------ */
 
-const BASE_CARD =
-  "relative rounded-xl border border-border/60 bg-card shadow-sm transition-shadow duration-200 hover:shadow-md";
-
-/**
- * Universal dashboard card with variant-aware skeletons, error states,
- * trace tooltips, and clean SaaS styling.
- *
- * Works with all existing RPC data responses — just pass the data as children.
- */
 export function DashboardCard({
   title,
   description,
-  subtitle, // deprecated alias
+  subtitle,
   icon: Icon,
   loading = false,
   error = null,
   actions,
-  headerAction, // deprecated alias
+  headerAction,
   children,
   variant = "metric",
   value,
@@ -154,11 +143,11 @@ export function DashboardCard({
   const resolvedDescription = description || subtitle;
   const resolvedActions = actions || headerAction;
 
-  /* ── Loading state ──────────────────────────────────────────────── */
+  /* ── Loading ─────────────────────────────────────────────────── */
   if (loading) {
     const SkeletonComponent = skeletonMap[variant];
     return (
-      <Card className={cn(BASE_CARD, variantAccent[variant], className)}>
+      <Card className={cn(BASE_CARD, variantAccent[variant], "hover:translate-y-0", className)}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-5 pt-5">
           <div className="flex items-center gap-2">
             <Skeleton className="h-4 w-4 rounded" />
@@ -173,7 +162,7 @@ export function DashboardCard({
     );
   }
 
-  /* ── Error state ────────────────────────────────────────────────── */
+  /* ── Error ───────────────────────────────────────────────────── */
   if (error) {
     return (
       <Card className={cn(BASE_CARD, "border-destructive/30", className)}>
@@ -192,7 +181,7 @@ export function DashboardCard({
     );
   }
 
-  /* ── Normal render ──────────────────────────────────────────────── */
+  /* ── Normal ──────────────────────────────────────────────────── */
   return (
     <Card className={cn(BASE_CARD, variantAccent[variant], className)}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-5 pt-5">

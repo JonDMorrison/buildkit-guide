@@ -147,6 +147,14 @@ export default {
           "20%, 60%": { transform: "translateX(-6px)" },
           "40%, 80%": { transform: "translateX(6px)" },
         },
+        "card-enter": {
+          "0%": { opacity: "0", transform: "translateY(12px) scale(0.97)" },
+          "100%": { opacity: "1", transform: "translateY(0) scale(1)" },
+        },
+        "counter-up": {
+          "0%": { opacity: "0", transform: "translateY(8px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -160,6 +168,8 @@ export default {
         "pulse-soft": "pulse-soft 1.5s ease-in-out infinite",
         "success-pop": "success-pop 0.4s ease-out",
         "shake": "shake 0.4s ease-out",
+        "card-enter": "card-enter 0.4s ease-out both",
+        "counter-up": "counter-up 0.3s ease-out",
       },
     },
   },
