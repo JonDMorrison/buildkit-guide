@@ -462,6 +462,8 @@ export default function ExecutiveDashboard() {
               orgId={activeOrganizationId!}
               isAdmin={isAdmin}
               onBodyChange={(b: string) => { decisionBodyRef.current = b; }}
+              currentAttentionNames={(feedData?.attention_ranked_projects ?? []).map((p: any) => p.project_name)}
+              currentAsOf={feedData?.latest_snapshot_date}
             />
           </DashboardSection>
         )}

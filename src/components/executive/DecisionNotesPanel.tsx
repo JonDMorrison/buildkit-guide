@@ -13,6 +13,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { useExecutiveDecisionNotes, type DecisionNote } from '@/hooks/useExecutiveDecisionNotes';
 import { djb2Hash } from '@/lib/hash';
+import { DecisionFollowThrough } from '@/components/executive/DecisionFollowThrough';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -148,9 +149,18 @@ interface DecisionNotesPanelProps {
   isAdmin?: boolean;
   /** Called whenever the draft/viewed body changes, so parent can use it for export */
   onBodyChange?: (body: string) => void;
+  /** Current attention project names from change feed (ordered) for follow-through */
+  currentAttentionNames?: string[];
+  /** Current as-of date from change feed */
+  currentAsOf?: string;
+  /** Callback to scroll to a project in AttentionInbox */
+  onScrollToProject?: (projectName: string) => void;
 }
 
-export function DecisionNotesPanel({ asOf, topAttentionNames, orgId, isAdmin = false, onBodyChange }: DecisionNotesPanelProps) {
+export function DecisionNotesPanel({
+  asOf, topAttentionNames, orgId, isAdmin = false, onBodyChange,
+  currentAttentionNames = [], currentAsOf, onScrollToProject,
+}: DecisionNotesPanelProps) {
   const { user } = useAuth();
   const { notes: dbNotes, isError: dbError, insertNote, deleteNote, isInserting } = useExecutiveDecisionNotes(orgId);
 
@@ -439,6 +449,19 @@ export function DecisionNotesPanel({ asOf, topAttentionNames, orgId, isAdmin = f
           <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={handleClear}>
             Back to draft
           </Button>
+        </div>
+      )}
+
+      {/* ── Follow-through (only for saved notes with feed data) ── */}
+      {isViewing && currentAsOf && viewingNote.top3Projects.length > 0 && (
+        <div className="mb-3">
+          <DecisionFollowThrough
+            noteAsOf={viewingNote.asOf}
+            noteTop3Projects={viewingNote.top3Projects}
+            currentAsOf={currentAsOf}
+            currentAttentionByName={new Set(currentAttentionNames)}
+            onScrollToProject={onScrollToProject}
+          />
         </div>
       )}
 
