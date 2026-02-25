@@ -339,7 +339,7 @@ export default function Features() {
             <div className="flex items-center gap-2">
               <img src={projectPathLogo} alt="Project Path" className="h-16 w-auto max-w-[240px]" />
               <p className="text-sm text-muted-foreground">
-                © 2025 Project Path. Built for the field.
+                © 2026 Project Path. Built for the field.
               </p>
             </div>
             <div className="flex flex-wrap justify-center gap-4">
