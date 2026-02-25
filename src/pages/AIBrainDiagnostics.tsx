@@ -405,6 +405,26 @@ function SystemDiagnosticsPanel({ orgId }: { orgId: string | null }) {
   const [running, setRunning] = useState(false);
   const [traceRunning, setTraceRunning] = useState(false);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+  const [traceProjects, setTraceProjects] = useState<{ id: string; name: string }[]>([]);
+  const [traceProjectId, setTraceProjectId] = useState<string>('');
+
+  // Fetch active projects for the dropdown
+  useEffect(() => {
+    if (!orgId) return;
+    const fetchProjects = async () => {
+      const { data } = await supabase
+        .from('projects')
+        .select('id, name')
+        .eq('organization_id', orgId)
+        .eq('is_deleted', false)
+        .order('name');
+      if (data && data.length > 0) {
+        setTraceProjects(data);
+        setTraceProjectId(prev => prev || data[0].id);
+      }
+    };
+    fetchProjects();
+  }, [orgId]);
 
   const handleRun = async () => {
     if (!orgId) return;
@@ -426,44 +446,26 @@ function SystemDiagnosticsPanel({ orgId }: { orgId: string | null }) {
   };
 
   const handleRevenueTrace = async () => {
-    if (!orgId) return;
-    setTraceRunning(true);
-
-    let projectId: string | null = null;
-    const sysState = results['rpc_os_system_state']?.data;
-    if (sysState?.projects?.length > 0) {
-      projectId = sysState.projects[0].project_id ?? sysState.projects[0].id ?? null;
-    }
-
-    if (!projectId) {
-      try {
-        const { data } = await (supabase.rpc as any)('rpc_os_system_state', { p_org_id: orgId });
-        if (data?.projects?.length > 0) {
-          projectId = data.projects[0].project_id ?? data.projects[0].id ?? null;
-        }
-      } catch {}
-    }
-
-    if (!projectId) {
-      setResults(prev => ({ ...prev, rpc_revenue_trace: { error: 'No active projects found from rpc_os_system_state' } }));
-      setOpenSections(prev => ({ ...prev, rpc_revenue_trace: true }));
-      setTraceRunning(false);
+    if (!traceProjectId) {
+      setResults(prev => ({ ...prev, rpc_revenue_trace_v2: { error: 'No project selected' } }));
+      setOpenSections(prev => ({ ...prev, rpc_revenue_trace_v2: true }));
       return;
     }
+    setTraceRunning(true);
 
     try {
-      const { data, error } = await (supabase.rpc as any)('rpc_revenue_trace', { p_project_id: projectId });
-      setResults(prev => ({ ...prev, rpc_revenue_trace: error ? { error: error.message } : { data } }));
+      const { data, error } = await (supabase.rpc as any)('rpc_revenue_trace_v2', { p_project_id: traceProjectId });
+      setResults(prev => ({ ...prev, rpc_revenue_trace_v2: error ? { error: error.message } : { data } }));
     } catch (e: any) {
-      setResults(prev => ({ ...prev, rpc_revenue_trace: { error: e.message } }));
+      setResults(prev => ({ ...prev, rpc_revenue_trace_v2: { error: e.message } }));
     }
-    setOpenSections(prev => ({ ...prev, rpc_revenue_trace: true }));
+    setOpenSections(prev => ({ ...prev, rpc_revenue_trace_v2: true }));
     setTraceRunning(false);
   };
 
   const toggle = (key: string) => setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
 
-  const allKeys = [...DIAG_RPCS, 'rpc_revenue_trace'] as const;
+  const allKeys = [...DIAG_RPCS, 'rpc_revenue_trace_v2'] as const;
 
   return (
     <Card className="border-dashed border-2 border-muted-foreground/30">
@@ -474,9 +476,20 @@ function SystemDiagnosticsPanel({ orgId }: { orgId: string | null }) {
             <span className="text-sm font-semibold text-muted-foreground">System Diagnostics (Temp)</span>
           </div>
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" onClick={handleRevenueTrace} disabled={traceRunning || !orgId}>
+            {traceProjects.length > 0 && (
+              <select
+                className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                value={traceProjectId}
+                onChange={e => setTraceProjectId(e.target.value)}
+              >
+                {traceProjects.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            )}
+            <Button size="sm" variant="outline" onClick={handleRevenueTrace} disabled={traceRunning || !traceProjectId}>
               <Search className="h-4 w-4 mr-1" />
-              {traceRunning ? 'Tracing…' : 'Revenue Trace'}
+              {traceRunning ? 'Tracing…' : 'Revenue Trace v2'}
             </Button>
             <Button size="sm" variant="outline" onClick={handleRun} disabled={running || !orgId}>
               <Beaker className="h-4 w-4 mr-1" />
