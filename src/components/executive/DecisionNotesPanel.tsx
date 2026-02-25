@@ -144,9 +144,11 @@ interface DecisionNotesPanelProps {
   asOf: string | Date | null;
   topAttentionNames: string[];
   orgId: string;
+  /** Whether the current user has admin role (controls delete visibility) */
+  isAdmin?: boolean;
 }
 
-export function DecisionNotesPanel({ asOf, topAttentionNames, orgId }: DecisionNotesPanelProps) {
+export function DecisionNotesPanel({ asOf, topAttentionNames, orgId, isAdmin = false }: DecisionNotesPanelProps) {
   const { user } = useAuth();
   const { notes: dbNotes, isError: dbError, insertNote, deleteNote, isInserting } = useExecutiveDecisionNotes(orgId);
 
@@ -400,14 +402,16 @@ export function DecisionNotesPanel({ asOf, topAttentionNames, orgId }: DecisionN
                     >
                       <CopyPlus className="h-3 w-3" />
                     </Button>
-                    <Button
-                      variant="ghost" size="sm"
-                      className={`h-6 w-6 p-0 ${confirmDeleteId === note.id ? 'text-destructive' : 'text-muted-foreground hover:text-destructive'}`}
-                      title={confirmDeleteId === note.id ? 'Click again to confirm' : 'Delete note'}
-                      onClick={() => handleDeleteNote(note)}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+                    {isAdmin && (
+                      <Button
+                        variant="ghost" size="sm"
+                        className={`h-6 w-6 p-0 ${confirmDeleteId === note.id ? 'text-destructive' : 'text-muted-foreground hover:text-destructive'}`}
+                        title={confirmDeleteId === note.id ? 'Click again to confirm' : 'Delete note'}
+                        onClick={() => handleDeleteNote(note)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}
