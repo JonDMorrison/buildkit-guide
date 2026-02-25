@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { useRoleHomeRedirect } from "@/hooks/useRoleHomeRedirect";
+import { useDefaultHomeRoute } from "@/hooks/useDefaultHomeRoute";
+import { useRouteAccess } from "@/hooks/useRouteAccess";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -50,9 +51,63 @@ import {
 import { AIInsightsSection } from "@/components/ai-insights";
 import { DashboardMissionControl } from "@/components/dashboard/DashboardMissionControl";
 
+/* ------------------------------------------------------------------ */
+/* Gate — resolves role before mounting content or firing queries       */
+/* ------------------------------------------------------------------ */
+
 export default function Dashboard() {
+  const { loading: routeAccessLoading, isAdmin, isPM, isForeman } = useRouteAccess();
+  const { homeRoute, loading: homeRouteLoading } = useDefaultHomeRoute();
   const navigate = useNavigate();
-  useRoleHomeRedirect();
+
+  const loading = routeAccessLoading || homeRouteLoading;
+
+  // While roles are resolving, show loading — no content mounts, no queries fire
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Worker-tier users should not be on /dashboard — redirect to their home route
+  const canViewDashboard = isAdmin || isPM || isForeman;
+  if (!canViewDashboard) {
+    // If their home is /dashboard we'd loop, so fall through; otherwise redirect
+    if (homeRoute !== '/dashboard') {
+      return <DashboardRedirect to={homeRoute} />;
+    }
+    // Fallback: show worker dashboard if they somehow belong here
+    return <WorkerDashboard />;
+  }
+
+  return <DashboardContent />;
+}
+
+/** Tiny component so the redirect runs as an effect, not during render */
+function DashboardRedirect({ to }: { to: string }) {
+  const navigate = useNavigate();
+  useEffect(() => {
+    navigate(to, { replace: true });
+  }, [to, navigate]);
+  return (
+    <DashboardLayout>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent" />
+      </div>
+    </DashboardLayout>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Content — only mounted after gate passes; safe to query              */
+/* ------------------------------------------------------------------ */
+
+function DashboardContent() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { currentProjectId, setCurrentProject } = useCurrentProject();
   const { isPM, isForeman, isAdmin, isInternalWorker, isExternalTrade, loading: roleLoading } = useAuthRole(currentProjectId || undefined);
@@ -269,12 +324,6 @@ export default function Dashboard() {
   const unresolvedBlockers = useMemo(() => blockers.filter(b => !b.is_resolved), [blockers]);
 
   // ── Guards ────────────────────────────────────────────────────────────
-
-  const isWorkerRole = !roleLoading && !isAdmin && !isPM() && !isForeman() && (isInternalWorker() || isExternalTrade());
-
-  if (isWorkerRole) {
-    return <WorkerDashboard />;
-  }
 
   if ((layoutLoading && !layouts) || roleLoading) {
     return (
