@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { DashboardLayout } from "@/components/dashboard/shared/DashboardLayout";
+import { DashboardHeader } from "@/components/dashboard/shared/DashboardHeader";
 import { Layout } from "@/components/Layout";
-import { SectionHeader } from "@/components/SectionHeader";
 import { useClients } from "@/hooks/useClients";
 import { useInvoices } from "@/hooks/useInvoices";
 import { useInvoicePayments } from "@/hooks/useInvoicePayments";
@@ -553,9 +554,8 @@ const Invoicing = () => {
   const fmt = (n: number) => `${currencySymbol}${n.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
 
   return (
-    <Layout>
-      <div className="container max-w-6xl mx-auto px-4 py-6">
-        <SectionHeader title="Invoicing" />
+    <DashboardLayout>
+      <DashboardHeader title="Invoicing" subtitle="Create and manage invoices" />
 
         <Tabs defaultValue="invoices" className="space-y-4">
           <TooltipProvider>
@@ -1325,8 +1325,7 @@ const Invoicing = () => {
             else { await createTemplate(data); toast({ title: "Recurring template created" }); }
           }}
         />
-      </div>
-    </Layout>
+    </DashboardLayout>
   );
 };
 

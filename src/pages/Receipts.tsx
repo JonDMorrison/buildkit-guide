@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { DashboardLayout } from '@/components/dashboard/shared/DashboardLayout';
+import { DashboardHeader } from '@/components/dashboard/shared/DashboardHeader';
 import { Layout } from '@/components/Layout';
-import { SectionHeader } from '@/components/SectionHeader';
 import { Button } from '@/components/ui/button';
 import { Camera } from 'lucide-react';
 import { useCurrentProject } from '@/hooks/useCurrentProject';
@@ -77,14 +78,11 @@ const Receipts = () => {
   };
 
   return (
-    <Layout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <SectionHeader
-            title="Receipts"
-            subtitle="Upload and manage project receipts"
-          />
+    <DashboardLayout>
+      <DashboardHeader
+        title="Receipts"
+        subtitle="Upload and manage project receipts"
+        actions={
           <div className="flex items-center gap-2">
             {canExport && <ExportReceiptsButton receipts={receipts} projectId={currentProjectId} />}
             <Button onClick={() => setUploadModalOpen(true)} className="shrink-0">
@@ -92,7 +90,8 @@ const Receipts = () => {
               Upload Receipt
             </Button>
           </div>
-        </div>
+        }
+      />
 
         {/* Filters */}
         <ReceiptsFilters
@@ -119,16 +118,13 @@ const Receipts = () => {
           </Button>
         </div>
 
-        {/* Receipts List */}
         <ReceiptsList
           receipts={receipts}
           loading={loading}
           onReceiptClick={handleReceiptClick}
           getSignedUrl={getSignedUrl}
         />
-      </div>
 
-      {/* Upload Modal */}
       <UploadReceiptModal
         open={uploadModalOpen}
         onOpenChange={setUploadModalOpen}
@@ -136,7 +132,6 @@ const Receipts = () => {
         onUploadComplete={refetch}
       />
 
-      {/* Detail Modal */}
       <ReceiptDetailModal
         open={detailModalOpen}
         onOpenChange={setDetailModalOpen}
@@ -145,7 +140,7 @@ const Receipts = () => {
         getSignedUrl={getSignedUrl}
         onDelete={deleteReceipt}
       />
-    </Layout>
+    </DashboardLayout>
   );
 };
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+import { DashboardLayout } from "@/components/dashboard/shared/DashboardLayout";
+import { DashboardHeader } from "@/components/dashboard/shared/DashboardHeader";
 import { Layout } from "@/components/Layout";
-import { SectionHeader } from "@/components/SectionHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -230,17 +231,17 @@ const Drawings = () => {
   }
 
   return (
-    <Layout>
-      <div className="container max-w-6xl mx-auto px-4 py-6">
-        <SectionHeader
-          title="Drawings"
-          count={filteredDrawings.length}
-          action={canUpload ? {
-            label: "Upload",
-            icon: <Plus className="h-6 w-6" />,
-            onClick: () => setUploadModalOpen(true),
-          } : undefined}
-        />
+    <DashboardLayout>
+      <DashboardHeader
+        title="Drawings"
+        subtitle={`${filteredDrawings.length} drawings`}
+        actions={canUpload ? (
+          <Button onClick={() => setUploadModalOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Upload
+          </Button>
+        ) : undefined}
+      />
 
         {/* Filters */}
         <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -430,8 +431,7 @@ const Drawings = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-      </div>
-    </Layout>
+    </DashboardLayout>
   );
 };
 

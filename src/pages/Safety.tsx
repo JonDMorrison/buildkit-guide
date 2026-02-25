@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
+import { DashboardLayout } from "@/components/dashboard/shared/DashboardLayout";
+import { DashboardHeader } from "@/components/dashboard/shared/DashboardHeader";
 import { Layout } from "@/components/Layout";
 import { NoAccess } from "@/components/NoAccess";
-import { SectionHeader } from "@/components/SectionHeader";
 import { SafetyLanding } from "@/components/safety/SafetyLanding";
 import { SafetyFormModal } from "@/components/safety/SafetyFormModal";
 import { SafetyFormDetailModal } from "@/components/safety/SafetyFormDetailModal";
@@ -196,24 +197,21 @@ const Safety = () => {
   }
 
   return (
-    <Layout>
-      <div className="container max-w-4xl mx-auto px-4 py-6">
-        <div className="flex items-center justify-between mb-6">
-          <SectionHeader
-            title="Safety"
-            count={forms.length}
-          />
-          {canCreateSafety && (
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setIsBatchExportOpen(true)}
-            >
-              <FileArchive className="mr-2 h-4 w-4" />
-              Batch Export
-            </Button>
-          )}
-        </div>
+    <DashboardLayout>
+      <DashboardHeader
+        title="Safety"
+        subtitle={`${forms.length} forms`}
+        actions={canCreateSafety ? (
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setIsBatchExportOpen(true)}
+          >
+            <FileArchive className="mr-2 h-4 w-4" />
+            Batch Export
+          </Button>
+        ) : undefined}
+      />
 
         <SafetyLanding
           forms={forms}
@@ -270,8 +268,7 @@ const Safety = () => {
           onClose={() => setIsBatchExportOpen(false)}
           currentProjectId={currentProjectId}
         />
-      </div>
-    </Layout>
+    </DashboardLayout>
   );
 };
 

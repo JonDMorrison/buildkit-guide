@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { DashboardLayout } from "@/components/dashboard/shared/DashboardLayout";
+import { DashboardHeader } from "@/components/dashboard/shared/DashboardHeader";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -229,39 +231,23 @@ const UserManagement = () => {
   }
 
   return (
-    <Layout>
-      <div className="container max-w-6xl mx-auto px-4 py-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="rounded-full bg-primary/10 p-2">
-              <Users className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">User Management</h1>
-              <p className="text-sm text-muted-foreground">
-                Manage project members and their roles
-              </p>
-            </div>
-          </div>
-          
+    <DashboardLayout>
+      <DashboardHeader
+        title="User Management"
+        subtitle="Manage project members and their roles"
+        actions={
           <div className="flex gap-2">
-            <Button
-              onClick={() => setInviteModalOpen(true)}
-              variant="outline"
-              size="sm"
-            >
+            <Button onClick={() => setInviteModalOpen(true)} variant="outline" size="sm">
               <UserPlus className="h-4 w-4 mr-2" />
               Invite User
             </Button>
-            <Button
-              onClick={() => setAddModalOpen(true)}
-              disabled={!selectedProject}
-            >
+            <Button onClick={() => setAddModalOpen(true)} disabled={!selectedProject}>
               <UserPlus className="h-4 w-4 mr-2" />
               Add to Project
             </Button>
           </div>
-        </div>
+        }
+      />
 
         {/* Main view tabs */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'projects' | 'invitations')} className="mb-6">
@@ -409,8 +395,7 @@ const UserManagement = () => {
             setInviteModalOpen(false);
           }}
         />
-      </div>
-    </Layout>
+    </DashboardLayout>
   );
 };
 

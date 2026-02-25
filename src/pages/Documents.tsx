@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { DashboardLayout } from "@/components/dashboard/shared/DashboardLayout";
+import { DashboardHeader } from "@/components/dashboard/shared/DashboardHeader";
 import { Layout } from "@/components/Layout";
-import { SectionHeader } from "@/components/SectionHeader";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -81,17 +82,17 @@ const Documents = () => {
   }
 
   return (
-    <Layout>
-      <div className="container max-w-6xl mx-auto px-4 py-6">
-        <SectionHeader
-          title="Documents"
-          count={documents.length}
-          action={canUploadDocuments ? {
-            label: "Upload",
-            icon: <Plus className="h-6 w-6" />,
-            onClick: () => setUploadModalOpen(true),
-          } : undefined}
-        />
+    <DashboardLayout>
+      <DashboardHeader
+        title="Documents"
+        subtitle={`${documents.length} documents`}
+        actions={canUploadDocuments ? (
+          <Button onClick={() => setUploadModalOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Upload
+          </Button>
+        ) : undefined}
+      />
 
         {/* Project Selector */}
         <div className="mb-4">
@@ -200,8 +201,7 @@ const Documents = () => {
             onOpenChange={(open) => !open && setPreviewDoc(null)}
           />
         )}
-      </div>
-    </Layout>
+    </DashboardLayout>
   );
 };
 

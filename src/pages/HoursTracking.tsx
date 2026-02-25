@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { DashboardLayout } from "@/components/dashboard/shared/DashboardLayout";
+import { DashboardHeader } from "@/components/dashboard/shared/DashboardHeader";
 import { Layout } from "@/components/Layout";
-import { SectionHeader } from "@/components/SectionHeader";
 import { useHoursTracking, TaskHours, TradeHours } from "@/hooks/useHoursTracking";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
 import { useAuthRole } from "@/hooks/useAuthRole";
@@ -105,9 +106,9 @@ const HoursTracking = () => {
   const isNearBudget = stats.variance >= 0 && stats.percentComplete >= 80;
 
   return (
-    <Layout>
-      <div className="container max-w-6xl mx-auto px-4 py-6">
-        <SectionHeader title="Hours Tracking" />
+    <DashboardLayout>
+      <div className="max-w-6xl mx-auto">
+        <DashboardHeader title="Hours Tracking" subtitle="Budget vs actual hours" />
 
         {/* Project Filter */}
         <div className="mb-6">
@@ -243,7 +244,7 @@ const HoursTracking = () => {
           </TabsContent>
         </Tabs>
       </div>
-    </Layout>
+    </DashboardLayout>
   );
 };
 

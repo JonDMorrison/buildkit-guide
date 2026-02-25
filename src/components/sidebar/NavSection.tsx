@@ -20,7 +20,7 @@ export const NavSection = ({ title, collapsed, children }: NavSectionProps) => {
         <div className="mx-2 mb-2 border-t border-sidebar-border" />
       )}
 
-      <nav className={cn("flex flex-col gap-0.5", collapsed ? "px-1" : "px-2")}>
+      <nav className={cn("flex flex-col gap-1", collapsed ? "px-1" : "px-2")}>
         {children}
       </nav>
     </div>
