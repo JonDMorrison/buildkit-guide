@@ -1,4 +1,4 @@
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { UnratedLaborBanner } from '@/components/UnratedLaborBanner';
@@ -79,7 +79,11 @@ interface ProjectStats {
 
 const ProjectOverview = () => {
   const { projectId } = useParams<{ projectId: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const validTabs = ['overview', 'work', 'financials', 'documents', 'issues'];
+  const tabParam = searchParams.get('tab') ?? 'overview';
+  const initialTab = validTabs.includes(tabParam) ? tabParam : 'overview';
   const { toast } = useToast();
   const { can, loading: roleLoading } = useAuthRole(projectId);
   const [project, setProject] = useState<Project | null>(null);
@@ -245,7 +249,7 @@ const ProjectOverview = () => {
         />
 
         {/* ── 5-Tab Bar ── */}
-        <Tabs defaultValue="overview" className="w-full">
+        <Tabs defaultValue={initialTab} className="w-full">
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
             <TabsTrigger value="work" className="text-xs sm:text-sm">Work</TabsTrigger>
