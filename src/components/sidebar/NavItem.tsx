@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { NavLink } from "../NavLink";
 import { cn } from "@/lib/utils";
 import { usePrefetchRoute } from "@/hooks/usePrefetchRoute";
@@ -11,7 +12,7 @@ interface NavItemProps {
   collapsed?: boolean;
 }
 
-export const NavItem = ({ label, icon: Icon, route, badgeCount, collapsed }: NavItemProps) => {
+export const NavItem = forwardRef<HTMLAnchorElement, NavItemProps>(({ label, icon: Icon, route, badgeCount, collapsed }, ref) => {
   const { prefetchRoute } = usePrefetchRoute();
 
   const handleMouseEnter = useCallback(() => {
@@ -58,4 +59,6 @@ export const NavItem = ({ label, icon: Icon, route, badgeCount, collapsed }: Nav
       )}
     </NavLink>
   );
-};
+});
+
+NavItem.displayName = "NavItem";
