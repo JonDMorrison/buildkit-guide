@@ -1,5 +1,9 @@
 import { useState, useCallback } from 'react';
 import { Layout } from '@/components/Layout';
+import { useAuthRole } from '@/hooks/useAuthRole';
+import { useCurrentProject } from '@/hooks/useCurrentProject';
+import { NoAccess } from '@/components/NoAccess';
+import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -285,6 +289,8 @@ function CopySummaryButton({ data, date }: { data: RiskSummary; date: string }) 
 
 export default function ExecutiveReport() {
   const { activeOrganizationId } = useOrganization();
+  const { currentProjectId } = useCurrentProject();
+  const { isAdmin, isPM, loading: roleLoading } = useAuthRole(currentProjectId || undefined);
   const [data, setData]       = useState<RiskSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState<string | null>(null);
@@ -313,6 +319,14 @@ export default function ExecutiveReport() {
   return (
     <TooltipProvider>
     <Layout>
+      {roleLoading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : !isAdmin && !isPM() ? (
+        <NoAccess message="Admin or PM access required." />
+      ) : (
+      <>
       {/* Print-specific styles */}
       <style>{`
         @media print {
@@ -553,6 +567,8 @@ export default function ExecutiveReport() {
           </div>
         )}
       </div>
+      </>
+      )}
     </Layout>
     </TooltipProvider>
   );

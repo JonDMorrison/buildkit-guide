@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserRole } from '@/hooks/useUserRole';
+import { NoAccess } from '@/components/NoAccess';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -534,6 +536,7 @@ function SystemDiagnosticsPanel({ orgId }: { orgId: string | null }) {
 
 export default function AIBrainDiagnostics() {
   const { session } = useAuth();
+  const { isAdmin, loading: roleLoading } = useUserRole();
   const { activeOrganizationId } = useOrganization();
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('');
@@ -1092,6 +1095,26 @@ export default function AIBrainDiagnostics() {
 
   const passCount = sections.filter(s => s.status === 'pass').length;
   const failCount = sections.filter(s => s.status === 'fail').length;
+
+  // Role gate moved to top of component via useUserRole()
+
+  if (roleLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center py-20">
+          <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <Layout>
+        <NoAccess message="Admin access required." />
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
