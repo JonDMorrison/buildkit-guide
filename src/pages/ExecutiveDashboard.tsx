@@ -546,6 +546,12 @@ export default function ExecutiveDashboard() {
                 </Button>
               )}
               <Button variant="outline" size="sm" asChild>
+                <Link to="/data-health">
+                  <Activity className="h-4 w-4 mr-1.5" />
+                  Data Health
+                </Link>
+              </Button>
+              <Button variant="outline" size="sm" asChild>
                 <Link to="/executive-report">
                   <ExternalLink className="h-4 w-4 mr-1.5" />
                   Full Report
