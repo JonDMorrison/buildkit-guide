@@ -16,14 +16,10 @@ import {
   CheckCircle2,
   ListChecks,
   AlertTriangle,
-  Building2,
   Clock,
   Camera,
   Receipt,
   ChevronRight,
-  PackageX,
-  ClipboardCheck,
-  ShieldAlert,
 } from "lucide-react";
 
 export function WorkerDashboard() {
@@ -106,10 +102,6 @@ export function WorkerDashboard() {
     return all;
   }, [myTasks]);
 
-  const materialBlockers = activeBlockers.filter(b => b.type === "materials");
-  const inspectionBlockers = activeBlockers.filter(b => b.type === "inspection");
-  const safetyBlockers = activeBlockers.filter(b => b.type === "safety");
-  const otherBlockers = activeBlockers.filter(b => b.type === "other");
 
   const statusColors: Record<string, string> = {
     blocked: "bg-destructive animate-pulse",
@@ -131,44 +123,45 @@ export function WorkerDashboard() {
         }
       />
 
-      {/* ── Row 1: Tasks Due Today ──────────────────────────────────── */}
-      <DashboardSection title="Tasks Due Today">
-        <DashboardCard
-          title="Due Today"
-          description={`${tasksDueToday.length} task${tasksDueToday.length !== 1 ? "s" : ""} due`}
-          icon={Clock}
-          loading={tasksLoading}
-          variant="table"
-          empty={!tasksLoading && tasksDueToday.length === 0}
-          emptyMessage="No tasks due today — check your full task list."
-        >
-          <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-            {tasksDueToday.map(task => (
-              <div
-                key={task.id}
-                className="flex items-start gap-3 p-3 rounded-lg border border-border/50 bg-muted/5 hover:bg-muted/10 transition-all cursor-pointer"
-                onClick={() => navigate("/tasks")}
-              >
-                <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${statusColors[task.status] ?? "bg-muted-foreground/40"}`} />
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm text-foreground truncate">{task.title}</p>
-                  {task.assigned_trade && (
-                    <Badge variant="outline" className="text-[10px] py-0 px-1.5 mt-0.5">
-                      {task.assigned_trade.name}
-                    </Badge>
-                  )}
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
-              </div>
-            ))}
-          </div>
-        </DashboardCard>
-      </DashboardSection>
-
-      {/* ── Row 2: My Tasks + Crew Assignments ──────────────────────── */}
-      <DashboardSection title="My Tasks">
+      {/* ── 1. Today's Work (merged Due Today + Priority Tasks) ────── */}
+      <DashboardSection
+        title="Today's Work"
+        helpText="Tasks assigned to you today, sorted by urgency. Tap any task to see details."
+      >
         <DashboardGrid columns={2}>
-          {/* Priority task list */}
+          {/* Due today card */}
+          <DashboardCard
+            title="Due Today"
+            description={`${tasksDueToday.length} task${tasksDueToday.length !== 1 ? "s" : ""} due`}
+            icon={Clock}
+            loading={tasksLoading}
+            variant="table"
+            empty={!tasksLoading && tasksDueToday.length === 0}
+            emptyMessage="No tasks due today — check your full task list."
+          >
+            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+              {tasksDueToday.map(task => (
+                <div
+                  key={task.id}
+                  className="flex items-start gap-3 p-3 rounded-lg border border-border/50 bg-muted/5 hover:bg-muted/10 transition-all cursor-pointer"
+                  onClick={() => navigate("/tasks")}
+                >
+                  <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${statusColors[task.status] ?? "bg-muted-foreground/40"}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm text-foreground truncate">{task.title}</p>
+                    {task.assigned_trade && (
+                      <Badge variant="outline" className="text-[10px] py-0 px-1.5 mt-0.5">
+                        {task.assigned_trade.name}
+                      </Badge>
+                    )}
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
+                </div>
+              ))}
+            </div>
+          </DashboardCard>
+
+          {/* Priority tasks card */}
           <DashboardCard
             title="Priority Tasks"
             description={`${myTasks.filter(t => t.status !== "done").length} open`}
@@ -204,78 +197,43 @@ export function WorkerDashboard() {
               ))}
             </div>
           </DashboardCard>
-
-          {/* Active Jobs */}
-          <DashboardCard
-            title="Active Jobs"
-            description={`${userProjects.length} project${userProjects.length !== 1 ? "s" : ""}`}
-            icon={Building2}
-            loading={projectsLoading}
-            variant="table"
-            empty={!projectsLoading && userProjects.length === 0}
-            emptyMessage="No active projects assigned."
-          >
-            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-              {userProjects.map((project: any) => (
-                <div
-                  key={project.id}
-                  className="p-3 rounded-lg border border-border/50 bg-muted/5 hover:bg-muted/10 transition-all cursor-pointer"
-                  onClick={() => navigate(`/projects/${project.id}`)}
-                >
-                  <div className="flex items-center justify-between">
-                    <p className="font-medium text-sm text-foreground truncate">{project.name}</p>
-                    <Badge variant="outline" className="text-[10px] py-0 px-1.5 shrink-0 capitalize">
-                      {(project.status || "active").replace(/_/g, " ")}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                    {project.location && <span className="truncate">{project.location}</span>}
-                    {project.trade_name && (
-                      <>
-                        <span>·</span>
-                        <span className="shrink-0">{project.trade_name}</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </DashboardCard>
         </DashboardGrid>
       </DashboardSection>
 
-      {/* ── Row 3: Blockers ─────────────────────────────────────────── */}
-      <DashboardSection title="Blockers">
-        <DashboardGrid columns={2} className="grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-          <BlockerCategory
-            title="Materials"
-            icon={PackageX}
-            items={materialBlockers}
-            color="text-accent-foreground"
-          />
-          <BlockerCategory
-            title="Inspection"
-            icon={ClipboardCheck}
-            items={inspectionBlockers}
-            color="text-primary"
-          />
-          <BlockerCategory
-            title="Safety"
-            icon={ShieldAlert}
-            items={safetyBlockers}
-            color="text-destructive"
-          />
-          <BlockerCategory
-            title="Other"
-            icon={AlertTriangle}
-            items={otherBlockers}
-            color="text-muted-foreground"
-          />
-        </DashboardGrid>
+      {/* ── 2. Blockers (single flat list) ──────────────────────────── */}
+      <DashboardSection
+        title="Blockers"
+        helpText="Issues preventing your tasks from moving forward. Talk to your foreman if stuck."
+      >
+        <DashboardCard
+          title="Active Blockers"
+          description={`${activeBlockers.length} unresolved`}
+          icon={AlertTriangle}
+          variant={activeBlockers.length > 0 ? "alert" : "metric"}
+          empty={activeBlockers.length === 0}
+          emptyMessage="No blockers — all tasks running smoothly."
+        >
+          <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+            {activeBlockers.slice(0, 8).map(b => (
+              <div key={b.id} className="p-3 rounded-lg border border-border/50 bg-card">
+                <p className="text-sm font-medium text-foreground line-clamp-1">{b.reason}</p>
+                <p className="text-xs text-muted-foreground truncate mt-0.5">{b.taskTitle}</p>
+              </div>
+            ))}
+            {activeBlockers.length > 8 && (
+              <p className="text-xs font-medium text-center text-destructive">
+                +{activeBlockers.length - 8} more
+              </p>
+            )}
+          </div>
+        </DashboardCard>
       </DashboardSection>
 
-      {/* ── Row 4: Quick Actions ────────────────────────────────────── */}
-      <DashboardSection title="Quick Actions">
+      {/* ── 3. Quick Actions ────────────────────────────────────── */}
+      <DashboardSection
+        title="Quick Actions"
+        helpText="Shortcuts to log time, upload receipts, or document site progress."
+      >
         <DashboardGrid columns={3}>
           <QuickActionCard
             title="Submit Time"
@@ -298,42 +256,6 @@ export function WorkerDashboard() {
         </DashboardGrid>
       </DashboardSection>
     </DashboardLayout>
-  );
-}
-
-/* ── Blocker Category Card ──────────────────────────────────────────── */
-
-function BlockerCategory({
-  title,
-  icon: Icon,
-  items,
-  color,
-}: {
-  title: string;
-  icon: React.ComponentType<{ className?: string }>;
-  items: Array<{ id: string; reason: string; taskTitle: string }>;
-  color: string;
-}) {
-  return (
-    <DashboardCard
-      title={title}
-      icon={Icon}
-      variant={items.length > 0 ? "alert" : "metric"}
-      empty={items.length === 0}
-      emptyMessage={`No ${title.toLowerCase()} issues`}
-    >
-      <div className="space-y-1.5">
-        {items.slice(0, 3).map(b => (
-          <div key={b.id} className="p-2 rounded-md border border-border/50 bg-card">
-            <p className="text-xs font-medium text-foreground line-clamp-1">{b.reason}</p>
-            <p className="text-[10px] text-muted-foreground truncate mt-0.5">{b.taskTitle}</p>
-          </div>
-        ))}
-        {items.length > 3 && (
-          <p className={`text-xs font-medium text-center ${color}`}>+{items.length - 3} more</p>
-        )}
-      </div>
-    </DashboardCard>
   );
 }
 

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { AlertTriangle, Info } from "lucide-react";
+import { SectionHelp } from "@/components/dashboard/shared/SectionHelp";
 import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ */
@@ -22,6 +23,8 @@ export interface DashboardCardProps {
   variant?: CardVariant;
   value?: ReactNode;
   traceSource?: string;
+  /** Plain-English help tooltip for end users */
+  helpText?: string;
   empty?: boolean;
   emptyMessage?: string;
   className?: string;
@@ -135,6 +138,7 @@ export function DashboardCard({
   variant = "metric",
   value,
   traceSource,
+  helpText,
   empty = false,
   emptyMessage = "No data available",
   className,
@@ -201,6 +205,7 @@ export function DashboardCard({
 
         <div className="flex items-center gap-1.5 shrink-0">
           {resolvedActions}
+          {helpText && <SectionHelp text={helpText} />}
           {traceSource && (
             <TooltipProvider>
               <Tooltip>

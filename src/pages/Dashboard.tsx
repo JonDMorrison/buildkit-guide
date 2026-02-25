@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDefaultHomeRoute } from "@/hooks/useDefaultHomeRoute";
 import { useRouteAccess } from "@/hooks/useRouteAccess";
@@ -10,7 +10,6 @@ import { useAuthRole } from "@/hooks/useAuthRole";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
 import { useDashboardLayout } from "@/hooks/useDashboardLayout";
 import { Button } from "@/components/ui/button";
-import { DashboardCustomizer } from "@/components/dashboard/DashboardCustomizer";
 import { NewUserWelcome } from "@/components/dashboard/NewUserWelcome";
 import {
   DailySnapshotStrip,
@@ -26,7 +25,7 @@ import { CertificationBadge } from "@/components/CertificationBadge";
 import { useCertificationTier } from "@/hooks/useCertificationTier";
 import { EconomicPulseStrip } from "@/components/dashboard/EconomicPulseStrip";
 import { QuickAddModal } from "@/components/dashboard/QuickAddModal";
-import { format, isAfter, isBefore, addDays, startOfDay, subDays } from "date-fns";
+import { format, isBefore, addDays, startOfDay, subDays } from "date-fns";
 import { WorkerDashboard } from "@/components/dashboard/worker/WorkerDashboard";
 
 // Shared dashboard system
@@ -379,9 +378,6 @@ function DashboardContent() {
 
   return (
     <DashboardLayout>
-      {/* Mission Control — Admin/PM only, gate+content pattern */}
-      {(isPM() || isAdmin) && <DashboardMissionControl />}
-
       {/* Header */}
       <DashboardHeader
         title={isForeman() ? "Site Operations" : "Today on Site"}
@@ -402,31 +398,15 @@ function DashboardContent() {
         }
       />
 
-      {/* Economic Pulse Strip — PM only */}
-      {isPM() && <EconomicPulseStrip projectId={currentProjectId} />}
-
-      {/* ── Focus: My Day + Blockers (decisions first) ───────────── */}
-      <DashboardSection title="Focus">
+      {/* ── 1. Your Priorities (merged Focus + At a Glance) ────────── */}
+      <DashboardSection
+        title="Your Priorities"
+        helpText="Your most urgent tasks, active blockers, and key numbers for today."
+      >
         <DashboardGrid columns={2}>
           <MyDayTaskList tasks={priorityTasks} />
           <BlockersCard blockers={unresolvedBlockers} />
         </DashboardGrid>
-      </DashboardSection>
-
-      {/* ── My Attention: compact inbox (PM/Admin only) ──────────── */}
-      {(isPM() || isAdmin) && changeFeed?.attention_ranked_projects?.length > 0 && (
-        <DashboardSection title="My Attention">
-          <AttentionInbox
-            attentionProjects={changeFeed.attention_ranked_projects}
-            topChanges={changeFeed.top_changes ?? []}
-            compact
-            loading={feedLoading}
-          />
-        </DashboardSection>
-      )}
-
-      {/* ── At a Glance: KPI strip ──────────────────────────────── */}
-      <DashboardSection title="At a Glance">
         <DashboardGrid columns={5} className="grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
           <TodayTasksCard todayCount={tasksFinishingToday} totalOpen={openTasks} />
           <BlockedTasksCard blockedCount={blockedTasks} />
@@ -436,9 +416,30 @@ function DashboardContent() {
         </DashboardGrid>
       </DashboardSection>
 
-      {/* ── Site Status — always visible (foreman primary, PM in tabs) ─── */}
+      {/* ── 2. Attention Needed (PM/Admin only — merged Mission Control + Attention Inbox) ── */}
+      {(isPM() || isAdmin) && (
+        <DashboardSection
+          title="Attention Needed"
+          helpText="Projects flagged for risk or data quality issues that need your review."
+        >
+          {changeFeed?.attention_ranked_projects?.length > 0 && (
+            <AttentionInbox
+              attentionProjects={changeFeed.attention_ranked_projects}
+              topChanges={changeFeed.top_changes ?? []}
+              compact
+              loading={feedLoading}
+            />
+          )}
+          <DashboardMissionControl />
+        </DashboardSection>
+      )}
+
+      {/* ── 3. Site Operations (tabs for PM/Admin, flat for Foreman) ── */}
       {isForeman() ? (
-        <DashboardSection title="Site Status">
+        <DashboardSection
+          title="Site Operations"
+          helpText="Live site conditions, project health signals, and upcoming work planning."
+        >
           <DailySnapshotStrip
             weather={todayLog?.weather || null}
             crewCount={todayLog?.crew_count || 0}
@@ -456,7 +457,10 @@ function DashboardContent() {
           />
         </DashboardSection>
       ) : (
-        <DashboardSection title="Operations">
+        <DashboardSection
+          title="Site Operations"
+          helpText="Live site conditions, project health signals, and upcoming work planning."
+        >
           <Tabs defaultValue="site" className="w-full">
             <TabsList className="mb-4">
               <TabsTrigger value="site">Site Status</TabsTrigger>
@@ -482,7 +486,8 @@ function DashboardContent() {
               />
             </TabsContent>
 
-            <TabsContent value="health" className="mt-0">
+            <TabsContent value="health" className="mt-0 space-y-4">
+              <EconomicPulseStrip projectId={currentProjectId} />
               <ProjectHealthSignalCard projectId={currentProjectId} />
             </TabsContent>
 
@@ -496,8 +501,14 @@ function DashboardContent() {
         </DashboardSection>
       )}
 
-      {/* ── AI Insights (lazy, below fold) ──────────────────────── */}
-      <AIInsightsSection showChangeFeed projectId={currentProjectId} />
+      {/* ── 4. AI Insights (lazy, below fold) ──────────────────────── */}
+      <DashboardSection
+        title="AI Insights"
+        helpText="AI-generated observations and recommendations based on your project data."
+        lazy
+      >
+        <AIInsightsSection showChangeFeed projectId={currentProjectId} />
+      </DashboardSection>
 
       {/* ── All Modals (preserved) ───────────────────────────────── */}
       <WeatherInfoModal todayLog={todayLog} open={weatherPopoverOpen} onOpenChange={setWeatherPopoverOpen} projectId={currentProjectId} />

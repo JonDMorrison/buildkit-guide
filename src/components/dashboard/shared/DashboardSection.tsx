@@ -1,10 +1,13 @@
 import { ReactNode, forwardRef } from "react";
 import { LazySection } from "@/components/LazySection";
+import { SectionHelp } from "@/components/dashboard/shared/SectionHelp";
 import { cn } from "@/lib/utils";
 
 interface DashboardSectionProps {
   /** Section title */
   title?: string;
+  /** Plain-English help tooltip shown via a ? icon */
+  helpText?: string;
   /** Whether to lazy-load this section */
   lazy?: boolean;
   /** Skeleton height for lazy loading placeholder */
@@ -26,6 +29,7 @@ export const DashboardSection = forwardRef<HTMLElement, DashboardSectionProps>(
   function DashboardSection(
     {
       title,
+      helpText,
       lazy = false,
       skeletonHeight = "h-40",
       skeletonCount = 1,
@@ -37,9 +41,12 @@ export const DashboardSection = forwardRef<HTMLElement, DashboardSectionProps>(
     const content = (
       <section ref={ref} className={cn("space-y-3 pt-2", className)}>
         {title && (
-          <h2 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest pb-1">
-            {title}
-          </h2>
+          <div className="flex items-center justify-between pb-1">
+            <h2 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
+              {title}
+            </h2>
+            {helpText && <SectionHelp text={helpText} />}
+          </div>
         )}
         {children}
       </section>
