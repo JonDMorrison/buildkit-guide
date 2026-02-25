@@ -72,7 +72,7 @@ export function AIProjectRiskCard({ projectId }: Props) {
   if (!countLoading && !hasEnoughSnapshots) {
     return (
       <DashboardCard
-        title="AI Risk Assessment"
+        title="Risk Assessment"
         icon={Sparkles}
         variant="metric"
         traceSource="project_economic_snapshots count"
@@ -117,7 +117,7 @@ export function AIProjectRiskCard({ projectId }: Props) {
 
   return (
     <DashboardCard
-      title="AI Risk Assessment"
+      title="Risk Assessment"
       icon={Sparkles}
       loading={loading}
       variant="metric"

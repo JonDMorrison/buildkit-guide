@@ -52,7 +52,7 @@ export const tabs: TabConfig[] = [
   { name: "Users", path: "/users", icon: Users, tiers: ['all'] },
   { name: "Executive", path: "/executive", icon: Crown, tiers: ['all'] },
   { name: "Data Health", path: "/data-health", icon: Shield, tiers: ['all'] },
-  { name: "AI Brain", path: "/insights/ai-brain", icon: Cpu, tiers: ['all'] },
+  { name: "Diagnostics", path: "/insights/ai-brain", icon: Cpu, tiers: ['all'] },
   { name: "Playbooks", path: "/playbooks", icon: BookOpen, tiers: ['all'] },
   { name: "Release", path: "/release", icon: Rocket, tiers: ['all'] },
   { name: "Health Check", path: "/health", icon: Shield, tiers: ['all'] },

@@ -61,7 +61,7 @@ export function AIMarginSignalCard({ projectId }: Props) {
   if (!isLoading && !hasEnough) {
     return (
       <DashboardCard
-        title="AI Margin Signal"
+        title="Margin Trends"
         icon={Sparkles}
         variant="metric"
         traceSource="rpc_get_margin_snapshot_history"
@@ -116,7 +116,7 @@ export function AIMarginSignalCard({ projectId }: Props) {
 
   return (
     <DashboardCard
-      title="AI Margin Signal"
+      title="Margin Trends"
       description={`${snapshots.length} snapshots (30d)`}
       icon={Sparkles}
       loading={isLoading}

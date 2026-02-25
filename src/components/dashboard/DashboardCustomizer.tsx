@@ -24,7 +24,7 @@ const WIDGET_NAMES: Record<string, string> = {
   safety: 'Safety & Compliance',
   blockers: 'Blockers & Risks',
   econdrift: 'Economic Drift',
-  ai: 'AI Assistant',
+  ai: 'Assistant',
   'hours-tracking': 'Hours Tracking',
 };
 

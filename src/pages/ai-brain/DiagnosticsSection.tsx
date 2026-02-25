@@ -729,10 +729,10 @@ export default function DiagnosticsSection({ orgId, session, projects }: Diagnos
       <div>
         <div className="flex items-center gap-2">
           <Brain className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">AI Brain Diagnostics</h1>
+          <h1 className="text-2xl font-bold">System Diagnostics</h1>
         </div>
         <p className="text-sm text-muted-foreground mt-1">
-          One-click verification of existence, security, privileges, smoke tests, and determinism for the AI Brain layer.
+          One-click verification of existence, security, privileges, smoke tests, and determinism for the system layer.
         </p>
         {ranAt && (
           <p className="text-xs text-muted-foreground mt-1">
@@ -783,7 +783,7 @@ export default function DiagnosticsSection({ orgId, session, projects }: Diagnos
           </div>
           <Button onClick={handleRun} disabled={running || !dbAuthOk}>
             <Play className="h-4 w-4 mr-2" />
-            {running ? 'Running...' : 'Run AI Brain Tests'}
+            {running ? 'Running...' : 'Run Diagnostics'}
           </Button>
           {result && (
             <>

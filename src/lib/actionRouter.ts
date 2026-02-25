@@ -65,7 +65,7 @@ function buildBundle(
           requires: ['executive'],
         },
         secondary: ctx.canViewDiagnostics
-          ? { label: 'View AI Brain', to: '/insights/ai-brain', requires: ['diagnostics'] }
+          ? { label: 'View Diagnostics', to: '/insights/ai-brain', requires: ['diagnostics'] }
           : { label: 'View Release Status', to: '/release', requires: ['executive'] },
       };
 
