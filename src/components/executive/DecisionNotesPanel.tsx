@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useExecutiveDecisionNotes, type DecisionNote } from '@/hooks/useExecutiveDecisionNotes';
+import { djb2Hash } from '@/lib/hash';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -93,6 +94,12 @@ function makeAsOfISO(asOf: string | Date | null): string {
   if (!asOf) return new Date().toISOString();
   if (asOf instanceof Date) return asOf.toISOString();
   return String(asOf);
+}
+
+/** Deterministic hash for deduplication */
+function computeClientHash(asOfISO: string, templateType: string, body: string, top3: string[]): string {
+  const input = [asOfISO, templateType, body, top3.join('|')].join('\0');
+  return djb2Hash(input);
 }
 
 function formatDate(iso: string): string {
@@ -207,9 +214,10 @@ export function DecisionNotesPanel({ asOf, topAttentionNames, orgId }: DecisionN
     writeLocalNotes(orgId, updatedLocal);
     setLocalNotes(updatedLocal);
 
-    // Try DB insert
+    // Try DB insert with client_hash for deduplication
     if (user?.id) {
       try {
+        const hash = computeClientHash(asOfISO, template, body, top3);
         await insertNote({
           organization_id: orgId,
           created_by: user.id,
@@ -217,6 +225,7 @@ export function DecisionNotesPanel({ asOf, topAttentionNames, orgId }: DecisionN
           template_type: template,
           top3_projects: [...top3],
           body,
+          client_hash: hash,
         });
       } catch {
         // DB failed — localStorage fallback already saved
@@ -312,6 +321,7 @@ export function DecisionNotesPanel({ asOf, topAttentionNames, orgId }: DecisionN
     const toImport = localNotes.slice(0, 10);
     for (const ln of toImport) {
       try {
+        const hash = computeClientHash(ln.asOf, ln.templateType, ln.body, ln.top3Projects);
         await insertNote({
           organization_id: orgId,
           created_by: user.id,
@@ -319,8 +329,9 @@ export function DecisionNotesPanel({ asOf, topAttentionNames, orgId }: DecisionN
           template_type: ln.templateType,
           top3_projects: ln.top3Projects,
           body: ln.body,
+          client_hash: hash,
         });
-      } catch { /* skip failed */ }
+      } catch { /* duplicate or error — skip */ }
     }
     setImporting(false);
   }, [localNotes, orgId, user, insertNote]);

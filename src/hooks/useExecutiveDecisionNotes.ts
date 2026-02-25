@@ -24,6 +24,7 @@ export interface InsertDecisionNote {
   top3_projects: string[];
   body: string;
   source?: string;
+  client_hash?: string;
 }
 
 // ── Canonical key ──────────────────────────────────────────────────────────
@@ -58,6 +59,8 @@ export function useExecutiveDecisionNotes(orgId: string | null) {
         .insert(note)
         .select()
         .single();
+      // Treat unique constraint violation (duplicate client_hash) as success
+      if (error && error.code === '23505') return null;
       if (error) throw error;
       return data as DecisionNote;
     },
