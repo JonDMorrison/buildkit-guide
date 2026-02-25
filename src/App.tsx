@@ -81,6 +81,7 @@ const Release = lazy(() => import("./pages/Release"));
 const Playbooks = lazy(() => import("./pages/Playbooks"));
 const AdminReleaseChecklist = lazy(() => import("./pages/AdminReleaseChecklist"));
 const TenantIsolationSmoke = lazy(() => import("./pages/TenantIsolationSmoke"));
+const AdminUISmokeRunner = lazy(() => import("./pages/AdminUISmokeRunner"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -629,6 +630,17 @@ const App = () => (
                     <ProtectedRoute>
                       <AdminRoute>
                         <TenantIsolationSmoke />
+                      </AdminRoute>
+                    </ProtectedRoute>
+                  }
+                />
+                {/* Admin-only: UI smoke runner */}
+                <Route
+                  path="/admin/ui-smoke"
+                  element={
+                    <ProtectedRoute>
+                      <AdminRoute>
+                        <AdminUISmokeRunner />
                       </AdminRoute>
                     </ProtectedRoute>
                   }
