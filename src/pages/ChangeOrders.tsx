@@ -4,8 +4,7 @@ import { Layout } from "@/components/Layout";
 import { SectionHeader } from "@/components/SectionHeader";
 import { NoAccess } from "@/components/NoAccess";
 import { useOrganization } from "@/hooks/useOrganization";
-import { useOrganizationRole } from "@/hooks/useOrganizationRole";
-import { useProjectRole } from "@/hooks/useProjectRole";
+import { useFinancialAccess } from "@/hooks/useFinancialAccess";
 import { useChangeOrders, useChangeOrderMutations } from "@/hooks/useChangeOrders";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
 import { formatCurrency } from "@/lib/formatters";
@@ -26,7 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, FileText } from "lucide-react";
+import { Plus, Search, FileText, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -55,27 +54,41 @@ function useOrgProjects(orgId: string | null) {
   });
 }
 
+/** Admin/PM/Foreman-only: change order list page. */
 const ChangeOrders = () => {
+  const { canView, loading: accessLoading } = useFinancialAccess();
+
+  if (accessLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!canView) {
+    return <Layout><NoAccess message="Admin, PM, or Foreman access required." /></Layout>;
+  }
+
+  return <ChangeOrdersContent />;
+};
+
+function ChangeOrdersContent() {
   const navigate = useNavigate();
   const { activeOrganizationId } = useOrganization();
-  const { role: orgRole, isLoading: orgRoleLoading } = useOrganizationRole();
-  const { isGlobalAdmin, loading: roleLoading } = useProjectRole();
+  const { canWrite } = useFinancialAccess();
   const { data: orders, isLoading } = useChangeOrders(activeOrganizationId ?? null);
-  const { data: projects } = useOrgProjects(activeOrganizationId ?? null);
+  const { data: projects } = useOrgProjects(activeOrganizationId);
   const { create } = useChangeOrderMutations();
+  const { currentProjectId } = useCurrentProject();
 
-  const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const [newTitle, setNewTitle] = useState("");
   const [newReason, setNewReason] = useState("");
-  const [newProjectId, setNewProjectId] = useState("");
-
-  const canWrite = isGlobalAdmin || orgRole === 'admin' || orgRole === 'pm';
-  const canView = canWrite || orgRole === 'foreman';
-
-  if (!roleLoading && !orgRoleLoading && !canView) {
-    return <Layout><NoAccess /></Layout>;
-  }
+  const [newProjectId, setNewProjectId] = useState(currentProjectId || "");
 
   const filtered = (orders ?? []).filter((co) =>
     co.title.toLowerCase().includes(search.toLowerCase()) ||

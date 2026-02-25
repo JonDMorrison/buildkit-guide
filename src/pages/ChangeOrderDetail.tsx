@@ -2,8 +2,7 @@ import { useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { NoAccess } from "@/components/NoAccess";
-import { useProjectRole } from "@/hooks/useProjectRole";
-import { useOrganizationRole } from "@/hooks/useOrganizationRole";
+import { useFinancialAccess } from "@/hooks/useFinancialAccess";
 import {
   useChangeOrder,
   useChangeOrderLineItems,
@@ -25,7 +24,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  AlertTriangle, ArrowLeft, Check, X, Send, Plus, Trash2, Sparkles, ShieldAlert,
+  AlertTriangle, ArrowLeft, Check, X, Send, Plus, Trash2, Sparkles, ShieldAlert, Loader2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -37,18 +36,37 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
   rejected: { label: "Rejected", variant: "destructive" },
 };
 
+/** Admin/PM/Foreman-only: change order detail page. */
 const ChangeOrderDetail = () => {
+  const { canView, loading: accessLoading } = useFinancialAccess();
+
+  if (accessLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!canView) {
+    return <Layout><NoAccess message="Admin, PM, or Foreman access required." /></Layout>;
+  }
+
+  return <ChangeOrderDetailContent />;
+};
+
+function ChangeOrderDetailContent() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isGlobalAdmin, loading: roleLoading } = useProjectRole();
-  const { role: orgRole, isLoading: orgRoleLoading } = useOrganizationRole();
+  const { canWrite } = useFinancialAccess();
 
   const { data: co, isLoading: coLoading } = useChangeOrder(id ?? null);
   const { data: lineItems, isLoading: liLoading } = useChangeOrderLineItems(id ?? null);
   const { data: risk, isLoading: riskLoading } = useProfitRisk(co?.project_id ?? null);
   const { update, send, approve, addLineItem, updateLineItem, deleteLineItem, suggest } = useChangeOrderMutations();
 
-  const canWrite = isGlobalAdmin || orgRole === 'admin' || orgRole === 'pm';
   const isDraft = co?.status === 'draft';
   const isSent = co?.status === 'sent';
 
@@ -123,9 +141,7 @@ const ChangeOrderDetail = () => {
     setSuggestionData(null);
   }, [id, suggestionData, update, addLineItem]);
 
-  if (!roleLoading && !orgRoleLoading && !isGlobalAdmin && !orgRole) {
-    return <Layout><NoAccess /></Layout>;
-  }
+  // Access is already gated by the parent ChangeOrderDetail component
 
   if (coLoading) {
     return (
