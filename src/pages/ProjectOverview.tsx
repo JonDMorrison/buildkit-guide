@@ -43,6 +43,7 @@ import { ProjectStatusDropdown } from '@/components/ProjectStatusDropdown';
 import { Switch } from '@/components/ui/switch';
 import { useProjectWorkflow } from '@/hooks/useProjectWorkflow';
 import { EconomicControlPanel } from '@/components/project/EconomicControlPanel';
+import { AIInsightsSection } from '@/components/ai-insights';
 
 interface Project {
   id: string;
@@ -361,6 +362,9 @@ const ProjectOverview = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* AI Insights Section */}
+        <AIInsightsSection projectId={projectId} />
 
         {/* Tabbed Content */}
         <Tabs defaultValue="overview" className="w-full">

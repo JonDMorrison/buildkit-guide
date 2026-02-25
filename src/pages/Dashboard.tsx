@@ -47,6 +47,8 @@ import {
   ManpowerOverview,
 } from "@/components/dashboard/pm";
 
+import { AIInsightsSection } from "@/components/ai-insights";
+
 export default function Dashboard() {
   const navigate = useNavigate();
   useRoleHomeRedirect();
@@ -363,6 +365,9 @@ export default function Dashboard() {
           <ManpowerOverview projectId={currentProjectId} />
         </DashboardGrid>
       </DashboardSection>
+
+      {/* ── Row 5: AI Insights (lazy) ──────────────────────────────── */}
+      <AIInsightsSection showChangeFeed projectId={currentProjectId} />
 
       {/* ── All Modals (preserved) ───────────────────────────────────── */}
       <WeatherInfoModal todayLog={todayLog} open={weatherPopoverOpen} onOpenChange={setWeatherPopoverOpen} projectId={currentProjectId} />

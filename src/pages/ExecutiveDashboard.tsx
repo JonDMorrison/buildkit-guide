@@ -19,6 +19,7 @@ import { PortfolioHealthCard, type PortfolioHealthData } from '@/components/exec
 import { AttentionRequiredTable } from '@/components/executive/AttentionRequiredTable';
 import { EconomicSignalsCard } from '@/components/executive/EconomicSignalsCard';
 import { DataIntegrityCard, type DataIntegrityData } from '@/components/executive/DataIntegrityCard';
+import { AIInsightsSection } from '@/components/ai-insights';
 import { SnapshotStatusCard } from '@/components/executive/SnapshotStatusCard';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -221,7 +222,10 @@ export default function ExecutiveDashboard() {
           </DashboardSection>
         )}
 
-        {/* ── 6. Snapshot Status (lazy) ──────────────────────── */}
+        {/* ── 6. AI Insights (lazy) ────────────────────────── */}
+        <AIInsightsSection showChangeFeed />
+
+        {/* ── 7. Snapshot Status (lazy) ──────────────────────── */}
         {activeOrganizationId && (
           <DashboardSection title="Snapshot Status" lazy skeletonHeight="h-40">
             <SnapshotStatusCard orgId={activeOrganizationId} />
