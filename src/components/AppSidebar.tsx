@@ -34,8 +34,12 @@ const SECTIONS: SectionDef[] = [
     paths: ["/drawings", "/deficiencies", "/safety"],
   },
   {
+    title: "Executive",
+    paths: ["/executive"],
+  },
+  {
     title: "Settings",
-    paths: ["/settings/labor-rates", "/playbooks", "/release"],
+    paths: ["/insights/ai-brain", "/settings/labor-rates", "/playbooks", "/release"],
   },
 ];
 

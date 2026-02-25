@@ -545,6 +545,12 @@ export default function ExecutiveDashboard() {
                   }
                 </Button>
               )}
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/executive-report">
+                  <ExternalLink className="h-4 w-4 mr-1.5" />
+                  Full Report
+                </Link>
+              </Button>
               <Button onClick={refresh} disabled={loading || !activeOrganizationId} size="sm">
                 <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                 {loading ? 'Loading…' : data ? 'Refresh' : 'Load Dashboard'}
