@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Play, Download, ChevronDown, CheckCircle2, XCircle, AlertTriangle, Copy, Brain, Shield, Eye, Zap, Lock, RefreshCw, User, FlaskConical, ExternalLink, Microscope, Search, Beaker, GitBranch, FileCheck, Activity, Camera, BarChart3, Filter } from 'lucide-react';
+import { Play, Download, ChevronDown, CheckCircle2, XCircle, AlertTriangle, Copy, Brain, Shield, Eye, Zap, Lock, RefreshCw, User, FlaskConical, ExternalLink, Microscope, Search, Beaker, GitBranch, FileCheck, Activity, Camera, BarChart3, Filter, TrendingUp } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Link } from 'react-router-dom';
@@ -630,6 +630,7 @@ export default function AIBrainDiagnostics() {
   const [opsReleaseRawOpen, setOpsReleaseRawOpen] = useState(false);
   const [opsExecReport, setOpsExecReport] = useState<{ loading: boolean; data: any; error: string | null }>({ loading: false, data: null, error: null });
   const [opsDataQuality, setOpsDataQuality] = useState<{ data: any; error: string | null }>({ data: null, error: null });
+  const [opsChangeFeed, setOpsChangeFeed] = useState<{ loading: boolean; data: any; error: string | null }>({ loading: false, data: null, error: null });
 
   // Fetch data quality audit on mount
   useEffect(() => {
@@ -1002,6 +1003,16 @@ export default function AIBrainDiagnostics() {
       if (rpcErr) setOpsVolatility({ loading: false, data: null, error: rpcErr.message });
       else setOpsVolatility({ loading: false, data, error: null });
     } catch (e: any) { setOpsVolatility({ loading: false, data: null, error: e.message }); }
+  };
+
+  const handleOpsChangeFeed = async () => {
+    if (!activeOrganizationId || !dbAuthOk) return;
+    setOpsChangeFeed({ loading: true, data: null, error: null });
+    try {
+      const { data, error: rpcErr } = await (supabase as any).rpc('rpc_executive_change_feed', { p_org_id: activeOrganizationId });
+      if (rpcErr) setOpsChangeFeed({ loading: false, data: null, error: rpcErr.message });
+      else setOpsChangeFeed({ loading: false, data, error: null });
+    } catch (e: any) { setOpsChangeFeed({ loading: false, data: null, error: e.message }); }
   };
 
   const handleOpsCaptureAndRefresh = async () => {
@@ -2019,7 +2030,97 @@ export default function AIBrainDiagnostics() {
               <Brain className="h-4 w-4 mr-1.5" />
               {opsExecReport.loading ? 'Generating…' : 'Executive Report'}
             </Button>
+            <Button
+              size="sm"
+              onClick={handleOpsChangeFeed}
+              disabled={opsChangeFeed.loading || !dbAuthOk || !activeOrganizationId}
+            >
+              <TrendingUp className="h-4 w-4 mr-1.5" />
+              {opsChangeFeed.loading ? 'Running…' : 'Run Executive Brief'}
+            </Button>
           </div>
+
+          {/* Executive Change Feed Panel */}
+          {opsChangeFeed.error && (
+            <div className="flex items-start gap-2 p-3 bg-destructive/10 rounded text-destructive text-xs">
+              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>{opsChangeFeed.error}</span>
+            </div>
+          )}
+          {opsChangeFeed.data && (() => {
+            const d = opsChangeFeed.data;
+            if (d?.status === 'not_enough_history') {
+              return (
+                <Card className="border">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium text-sm">Executive Brief</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">Collect one more snapshot to activate change detection.</p>
+                  </CardContent>
+                </Card>
+              );
+            }
+            const changes = d?.changes || {};
+            const topChanges = d?.top_changes || [];
+            return (
+              <Card className="border">
+                <CardContent className="p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium text-sm">Executive Brief</span>
+                    </div>
+                    <StatusBadge ok={d?.success === true} />
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
+                    <div className="bg-muted rounded p-2"><span className="text-muted-foreground">New Risks</span><div className="font-medium text-destructive">{changes.new_risks_count ?? 0}</div></div>
+                    <div className="bg-muted rounded p-2"><span className="text-muted-foreground">Resolved Risks</span><div className="font-medium text-primary">{changes.resolved_risks_count ?? 0}</div></div>
+                    <div className="bg-muted rounded p-2"><span className="text-muted-foreground">Improving</span><div className="font-medium text-primary">{changes.improving_count ?? 0}</div></div>
+                    <div className="bg-muted rounded p-2"><span className="text-muted-foreground">Worsening</span><div className="font-medium text-destructive">{changes.worsening_count ?? 0}</div></div>
+                    <div className="bg-muted rounded p-2"><span className="text-muted-foreground">Burn ↑</span><div className="font-medium">{changes.burn_increase_count ?? 0}</div></div>
+                  </div>
+
+                  {topChanges.length > 0 && (
+                    <div className="text-xs space-y-1">
+                      <span className="font-medium text-muted-foreground">Top 5 Project Changes</span>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead><tr className="border-b text-muted-foreground">
+                            <th className="text-left py-1 pr-2">Project</th>
+                            <th className="text-right py-1 pr-2">Risk Δ</th>
+                            <th className="text-right py-1 pr-2">Margin Δ</th>
+                            <th className="text-right py-1 pr-2">Burn Δ</th>
+                            <th className="text-right py-1">Current Risk</th>
+                          </tr></thead>
+                          <tbody>
+                            {topChanges.map((r: any, i: number) => {
+                              const proj = projects.find(p => p.id === r.project_id);
+                              return (
+                                <tr key={i} className="border-b border-muted">
+                                  <td className="py-1 pr-2">
+                                    <TooltipProvider><Tooltip><TooltipTrigger>{proj ? proj.name : String(r.project_id).slice(0, 8) + '…'}</TooltipTrigger><TooltipContent><p className="font-mono text-xs">{r.project_id}</p></TooltipContent></Tooltip></TooltipProvider>
+                                  </td>
+                                  <td className={`text-right py-1 pr-2 font-medium ${r.risk_change > 0 ? 'text-destructive' : r.risk_change < 0 ? 'text-primary' : ''}`}>{r.risk_change > 0 ? '+' : ''}{r.risk_change}</td>
+                                  <td className={`text-right py-1 pr-2 ${r.margin_change > 0 ? 'text-primary' : r.margin_change < 0 ? 'text-destructive' : ''}`}>{r.margin_change > 0 ? '+' : ''}{r.margin_change}</td>
+                                  <td className={`text-right py-1 pr-2 ${r.burn_change > 0.05 ? 'text-destructive' : ''}`}>{r.burn_change > 0 ? '+' : ''}{r.burn_change}</td>
+                                  <td className="text-right py-1">{r.latest_risk_score}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  <p className="text-[10px] text-muted-foreground">Compared to previous snapshot · {d.previous_snapshot_date} → {d.latest_snapshot_date}</p>
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           {/* Executive Report Panel */}
           {opsExecReport.error && (
