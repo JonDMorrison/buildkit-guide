@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { SETUP_STEP_KEYS } from '@/lib/setupSteps';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from '@/hooks/useOrganization';
@@ -246,17 +247,9 @@ export function useSetupProgress() {
     };
   }, [savedProgress, autoDetectedSteps]);
 
-  // Calculate stats
-  const stepKeys: (keyof SetupProgress)[] = [
-    'step_org_created', 'step_timezone_set', 'step_first_project', 'step_first_job_site',
-    'step_first_invite', 'step_trades_configured', 'step_users_assigned',
-    'step_time_tracking_enabled', 'step_time_tracking_configured',
-    'step_ppe_reviewed', 'step_first_safety_form', 'step_hazard_library', 'step_first_drawing',
-    'step_labor_rates', 'step_invoice_permissions',
-  ];
-
-  const completedSteps = stepKeys.filter(key => progress[key] === true).length;
-  const totalSteps = stepKeys.length;
+  // Calculate stats — uses canonical registry so checklist UI and progress bar always agree
+  const completedSteps = SETUP_STEP_KEYS.filter(key => progress[key] === true).length;
+  const totalSteps = SETUP_STEP_KEYS.length;
   const percentComplete = Math.round((completedSteps / totalSteps) * 100);
 
   // Update progress mutation
