@@ -59,12 +59,16 @@ export const CreateManpowerRequestModal = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const smartDefaults = useSmartDefaults(form.project_id || undefined);
 
-  // Pre-fill requested_count from history
+  // Pre-fill requested_count from manpower request history (NOT daily log crew count)
+  // Prefer trade-specific count when a trade is selected, otherwise use most recent project-wide value
   useEffect(() => {
-    if (smartDefaults.lastCrewCount && !form.requested_count && !hasUserEditedCount.current) {
-      setForm(prev => ({ ...prev, requested_count: smartDefaults.lastCrewCount!.toString() }));
+    if (hasUserEditedCount.current || form.requested_count) return;
+    const tradeSpecific = form.trade_id ? smartDefaults.manpowerByTrade.get(form.trade_id) : undefined;
+    const prefillValue = tradeSpecific ?? smartDefaults.lastManpowerCount;
+    if (prefillValue != null) {
+      setForm(prev => ({ ...prev, requested_count: prefillValue.toString() }));
     }
-  }, [smartDefaults.lastCrewCount]);
+  }, [smartDefaults.manpowerByTrade, smartDefaults.lastManpowerCount, form.trade_id]);
 
   useEffect(() => {
     if (open) {

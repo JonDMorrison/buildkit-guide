@@ -7,6 +7,10 @@ export interface SmartDefaults {
   recentLocations: string[];
   lastCrewCount: number | null;
   lastWeather: string | null;
+  /** Most recent manpower_requests rows for this project (trade_id -> requested_count) */
+  manpowerByTrade: Map<string, number>;
+  /** Most recent requested_count from any manpower request in this project */
+  lastManpowerCount: number | null;
   loading: boolean;
 }
 
@@ -94,8 +98,9 @@ export function useSmartDefaults(projectId: string | undefined): SmartDefaults {
 
   const result = useMemo<SmartDefaults>(() => {
     const loading = tasksLoading || defLoading || mpLoading || logsLoading;
+    const emptyMap = new Map<string, number>();
     if (!enabled || !tradesLookup) {
-      return { topTrades: [], recentLocations: [], lastCrewCount: null, lastWeather: null, loading };
+      return { topTrades: [], recentLocations: [], lastCrewCount: null, lastWeather: null, manpowerByTrade: emptyMap, lastManpowerCount: null, loading };
     }
 
     const now = Date.now();
@@ -149,7 +154,19 @@ export function useSmartDefaults(projectId: string | undefined): SmartDefaults {
     const lastCrewCount = mostRecentLog?.crew_count ?? null;
     const lastWeather = mostRecentLog?.weather ?? null;
 
-    return { topTrades, recentLocations, lastCrewCount, lastWeather, loading };
+    // --- Manpower history (most recent requested_count per trade) ---
+    const manpowerByTrade = new Map<string, number>();
+    const sortedManpower = [...(manpowerData || [])]; // already sorted by created_at desc
+    for (const m of sortedManpower) {
+      if (m.trade_id && m.requested_count != null && !manpowerByTrade.has(m.trade_id)) {
+        manpowerByTrade.set(m.trade_id, m.requested_count);
+      }
+    }
+    const lastManpowerCount = sortedManpower.length > 0 && sortedManpower[0].requested_count != null
+      ? sortedManpower[0].requested_count
+      : null;
+
+    return { topTrades, recentLocations, lastCrewCount, lastWeather, manpowerByTrade, lastManpowerCount, loading };
   }, [enabled, tasksData, deficienciesData, manpowerData, dailyLogsData, tradesLookup, tasksLoading, defLoading, mpLoading, logsLoading]);
 
   return result;
