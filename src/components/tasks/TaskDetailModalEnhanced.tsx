@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useQueryClient } from '@tanstack/react-query';
+import { useSmartDefaults } from '@/hooks/useSmartDefaults';
 import { useAuthRole } from '@/hooks/useAuthRole';
 import {
   Dialog,
@@ -67,6 +69,7 @@ export const TaskDetailModalEnhanced = ({
 }: TaskDetailModalEnhancedProps) => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [task, setTask] = useState<any>(null);
   const [blockers, setBlockers] = useState<any[]>([]);
   const [dependencies, setDependencies] = useState<any[]>([]);
@@ -75,10 +78,12 @@ export const TaskDetailModalEnhanced = ({
   const [trades, setTrades] = useState<any[]>([]);
   const [manpowerRequests, setManpowerRequests] = useState<any[]>([]);
   const [assignedWorkers, setAssignedWorkers] = useState<any[]>([]);
+  const [projectMembersMap, setProjectMembersMap] = useState<Map<string, { full_name: string | null; email: string }>>(new Map());
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [editForm, setEditForm] = useState<any>({});
   const [saving, setSaving] = useState(false);
+  const [assigningWorkerId, setAssigningWorkerId] = useState<string | null>(null);
   const [manpowerModalOpen, setManpowerModalOpen] = useState(false);
   const [assignWorkerModalOpen, setAssignWorkerModalOpen] = useState(false);
   const [escalationEmailOpen, setEscalationEmailOpen] = useState(false);
@@ -97,6 +102,50 @@ export const TaskDetailModalEnhanced = ({
   const canEditTrade = task?.project_id && can('assign_tasks', task.project_id);
   const isWorkerRole = task?.project_id && isWorker(task.project_id);
   const isExternalTradeRole = task?.project_id && isExternalTrade(task.project_id);
+
+  const smartDefaults = useSmartDefaults(task?.project_id || undefined);
+
+  // Compute worker suggestion chips
+  const workerChips = useMemo(() => {
+    if (!canEditTrade || smartDefaults.suggestedWorkerIds.length === 0) return [];
+    const assignedUserIds = new Set(assignedWorkers.map((a: any) => a.user_id));
+    return smartDefaults.suggestedWorkerIds
+      .filter((uid) => !assignedUserIds.has(uid) && projectMembersMap.has(uid))
+      .map((uid) => {
+        const member = projectMembersMap.get(uid)!;
+        return { id: uid, name: member.full_name || member.email };
+      })
+      .slice(0, 5);
+  }, [canEditTrade, smartDefaults.suggestedWorkerIds, assignedWorkers, projectMembersMap]);
+
+  const handleQuickAssign = useCallback(async (userId: string) => {
+    if (!taskId || assigningWorkerId) return;
+    // Guard against duplicate
+    if (assignedWorkers.some((a: any) => a.user_id === userId)) {
+      toast({ title: 'Already assigned', description: 'This worker is already on this task.' });
+      return;
+    }
+    setAssigningWorkerId(userId);
+    try {
+      const { error } = await supabase
+        .from('task_assignments')
+        .insert({ task_id: taskId, user_id: userId });
+      if (error) throw error;
+      // Refetch assigned workers
+      const { data } = await supabase
+        .from('task_assignments')
+        .select('id, user_id, assigned_at, profile:profiles!task_assignments_user_id_fkey(id, full_name, email, avatar_url)')
+        .eq('task_id', taskId);
+      setAssignedWorkers(data || []);
+      queryClient.invalidateQueries({ queryKey: ['smart-defaults', task?.project_id] });
+      onTaskUpdated?.();
+      toast({ title: 'Worker assigned', description: 'Worker has been added to this task.' });
+    } catch (error: any) {
+      toast({ title: 'Error assigning worker', description: error.message, variant: 'destructive' });
+    } finally {
+      setAssigningWorkerId(null);
+    }
+  }, [taskId, assigningWorkerId, assignedWorkers, task?.project_id, queryClient, onTaskUpdated, toast]);
 
   useEffect(() => {
     if (!taskId || !open) {
@@ -192,6 +241,18 @@ export const TaskDetailModalEnhanced = ({
           .eq('task_id', taskId);
         setAssignedWorkers(assignmentsData || []);
 
+        // Fetch project members for smart worker chips (lightweight: just user_id + display)
+        if (taskData.project_id) {
+          const { data: membersData } = await supabase
+            .from('project_members')
+            .select('user_id, profile:profiles!project_members_user_id_fkey(full_name, email)')
+            .eq('project_id', taskData.project_id);
+          const map = new Map<string, { full_name: string | null; email: string }>();
+          (membersData || []).forEach((m: any) => {
+            if (m.profile) map.set(m.user_id, { full_name: m.profile.full_name, email: m.profile.email });
+          });
+          setProjectMembersMap(map);
+        }
       } catch (error: any) {
         toast({
           title: 'Error loading task',
@@ -497,6 +558,22 @@ export const TaskDetailModalEnhanced = ({
                 </Button>
               )}
             </div>
+            {/* Smart worker suggestion chips */}
+            {workerChips.length > 0 && (
+              <div className="flex items-center gap-1.5 flex-wrap mb-2">
+                <span className="text-xs text-muted-foreground">Recently assigned:</span>
+                {workerChips.map((w) => (
+                  <Badge
+                    key={w.id}
+                    variant="outline"
+                    className={`cursor-pointer text-xs px-2 py-0.5 hover:bg-accent active:scale-95 transition-all ${assigningWorkerId === w.id ? 'opacity-50 pointer-events-none' : ''}`}
+                    onClick={() => handleQuickAssign(w.id)}
+                  >
+                    {w.name}
+                  </Badge>
+                ))}
+              </div>
+            )}
             {assignedWorkers.length === 0 ? (
               <p className="text-sm text-muted-foreground">No workers assigned to this task</p>
             ) : (

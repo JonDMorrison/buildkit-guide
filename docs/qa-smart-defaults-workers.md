@@ -2,7 +2,7 @@
 
 ## Overview
 
-Worker suggestions surface recently-assigned crew members when creating tasks, using frequency + recency scoring from `task_assignments` data within the current project.
+Worker suggestions surface recently-assigned crew members when creating or editing tasks, using frequency + recency scoring from `task_assignments` data within the current project.
 
 ## Ranking Rules
 
@@ -12,7 +12,7 @@ Worker suggestions surface recently-assigned crew members when creating tasks, u
 - **Max**: 5 worker IDs returned
 - **Display**: Filtered through `projectMembers` — only members of the current project appear
 
-## Test Scenarios
+## Test Scenarios — CreateTaskModal
 
 ### 1. New project with no task history
 - **Expected**: No "Recently assigned" chip section appears
@@ -38,15 +38,46 @@ Worker suggestions surface recently-assigned crew members when creating tasks, u
 ### 6. Invalidation after task creation
 - **Steps**: Create a task with assigned workers → reopen Create Task modal
 - **Expected**: New assignments reflected in suggestions (stale cache invalidated)
-- **Verify**: `queryClient.invalidateQueries({ queryKey: ['smart-defaults'] })` fires on success
+- **Verify**: `queryClient.invalidateQueries({ queryKey: ['smart-defaults', projectId] })` fires on success
 
 ### 7. No project selected
 - **Expected**: No worker chips (hook disabled, returns empty array)
 
+## Test Scenarios — TaskDetailModalEnhanced
+
+### 8. Task with existing assignees
+- **Expected**: "Recently assigned" chips exclude users already assigned to the task
+- **Verify**: Chips only show unassigned project members from suggestedWorkerIds
+
+### 9. Authorized user clicks chip → quick assign
+- **Expected**: Worker is assigned to the task via `task_assignments` insert
+- **Verify**: Assigned workers list updates immediately (refetch)
+- **Verify**: Clicked chip disappears (now assigned)
+- **Verify**: Toast confirms "Worker assigned"
+
+### 10. Unauthorized user sees no chips
+- **Expected**: If user lacks `assign_tasks` permission, chip row is not rendered
+- **Verify**: `canEditTrade` gate prevents rendering
+
+### 11. Project with no assignment history
+- **Expected**: No chip row appears in task detail modal
+
+### 12. Quick assign invalidates smart defaults
+- **Steps**: Quick-assign a worker → close modal → reopen another task detail
+- **Expected**: Smart defaults cache for this project is invalidated
+- **Verify**: `queryClient.invalidateQueries({ queryKey: ['smart-defaults', projectId] })` fires
+
+### 13. Double-click prevention
+- **Expected**: While an assignment is in progress, clicked chip shows disabled state
+- **Verify**: `assigningWorkerId` state prevents concurrent inserts
+
+### 14. Stale duplicate guard
+- **Expected**: If UI is stale and user clicks an already-assigned worker, toast shows "Already assigned"
+
 ## Query Details
 
 - **QueryKey**: `['smart-defaults', projectId, 'assignments']`
-- **Invalidation**: Project-scoped `['smart-defaults', projectId]` on all create modals
+- **Invalidation**: Project-scoped `['smart-defaults', projectId]` on all modals
 - **StaleTime**: 5 minutes
 - **Gating**: `enabled: !!projectId`
 
