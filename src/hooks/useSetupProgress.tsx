@@ -57,63 +57,84 @@ const defaultProgress: SetupProgress = {
   completed_at: null,
 };
 
-/** Run a single detector; returns partial SetupProgress on success, empty on failure */
+/**
+ * Each detector returns which step keys it is responsible for,
+ * so failures can be tracked as "unknown" rather than "incomplete".
+ */
+interface DetectorResult {
+  name: string;
+  result: Partial<SetupProgress>;
+  /** Which step keys this detector covers — used to mark as "unknown" on failure */
+  coveredKeys: (keyof SetupProgress)[];
+  error?: string;
+}
+
 async function runDetector(
   name: string,
+  coveredKeys: (keyof SetupProgress)[],
   fn: () => Promise<Partial<SetupProgress>>
-): Promise<{ name: string; result: Partial<SetupProgress>; error?: string }> {
+): Promise<DetectorResult> {
   try {
     const result = await fn();
-    return { name, result };
+    return { name, result, coveredKeys };
   } catch (e: any) {
-    console.warn(`[setup-detector] ${name} failed:`, e?.message ?? e);
-    return { name, result: {}, error: e?.message ?? 'unknown' };
+    return { name, result: {}, coveredKeys, error: e?.message ?? 'unknown' };
   }
 }
 
-/** All detectors run in parallel via Promise.allSettled-style wrapper */
-async function detectAllSteps(orgId: string): Promise<{ detected: Partial<SetupProgress>; errors: string[] }> {
+export interface DetectionOutput {
+  detected: Partial<SetupProgress>;
+  /** Step keys whose detectors failed — these should not flip complete→incomplete */
+  failedStepKeys: Set<keyof SetupProgress>;
+  errors: string[];
+}
+
+/** All detectors run in parallel; failures are isolated per-detector */
+async function detectAllSteps(orgId: string): Promise<DetectionOutput> {
   const detectors = [
-    runDetector('org-settings', async () => {
-      const { data } = await supabase
-        .from('organization_settings')
-        .select('default_timezone, time_tracking_enabled, invoice_send_roles')
-        .eq('organization_id', orgId)
-        .maybeSingle();
-      const d: Partial<SetupProgress> = {};
-      d.step_org_created = true;
-      if (data?.default_timezone) d.step_timezone_set = true;
-      if (data?.time_tracking_enabled) d.step_time_tracking_enabled = true;
-      if (data?.invoice_send_roles && (data.invoice_send_roles as string[]).length > 0) {
-        d.step_invoice_permissions = true;
-      }
-      return d;
-    }),
-    runDetector('projects-and-related', async () => {
-      const d: Partial<SetupProgress> = {};
-      const { count: projectCount, data: projects } = await supabase
-        .from('projects')
-        .select('id', { count: 'exact' })
-        .eq('organization_id', orgId)
-        .eq('is_deleted', false);
-      if (projectCount && projectCount > 0) d.step_first_project = true;
-      if (projects && projects.length > 0) {
-        const projectIds = projects.map(p => p.id);
-        // Run sub-detectors in parallel
-        const [tradesRes, assignRes, safetyRes, drawingRes] = await Promise.all([
-          supabase.from('trades').select('id', { count: 'exact', head: true }).eq('organization_id', orgId),
-          supabase.from('project_members').select('id', { count: 'exact', head: true }).in('project_id', projectIds),
-          supabase.from('safety_forms').select('id', { count: 'exact', head: true }).in('project_id', projectIds).eq('is_deleted', false).eq('status', 'submitted'),
-          supabase.from('attachments').select('id', { count: 'exact', head: true }).in('project_id', projectIds).not('document_type', 'is', null),
-        ]);
-        if (tradesRes.count && tradesRes.count >= 3) d.step_trades_configured = true;
-        if (assignRes.count && assignRes.count > 0) d.step_users_assigned = true;
-        if (safetyRes.count && safetyRes.count > 0) d.step_first_safety_form = true;
-        if (drawingRes.count && drawingRes.count > 0) d.step_first_drawing = true;
-      }
-      return d;
-    }),
-    runDetector('job-sites', async () => {
+    runDetector('org-settings',
+      ['step_org_created', 'step_timezone_set', 'step_time_tracking_enabled', 'step_invoice_permissions'],
+      async () => {
+        const { data } = await supabase
+          .from('organization_settings')
+          .select('default_timezone, time_tracking_enabled, invoice_send_roles')
+          .eq('organization_id', orgId)
+          .maybeSingle();
+        const d: Partial<SetupProgress> = {};
+        d.step_org_created = true;
+        if (data?.default_timezone) d.step_timezone_set = true;
+        if (data?.time_tracking_enabled) d.step_time_tracking_enabled = true;
+        if (data?.invoice_send_roles && (data.invoice_send_roles as string[]).length > 0) {
+          d.step_invoice_permissions = true;
+        }
+        return d;
+      }),
+    runDetector('projects-and-related',
+      ['step_first_project', 'step_trades_configured', 'step_users_assigned', 'step_first_safety_form', 'step_first_drawing'],
+      async () => {
+        const d: Partial<SetupProgress> = {};
+        const { count: projectCount, data: projects } = await supabase
+          .from('projects')
+          .select('id', { count: 'exact' })
+          .eq('organization_id', orgId)
+          .eq('is_deleted', false);
+        if (projectCount && projectCount > 0) d.step_first_project = true;
+        if (projects && projects.length > 0) {
+          const projectIds = projects.map(p => p.id);
+          const [tradesRes, assignRes, safetyRes, drawingRes] = await Promise.all([
+            supabase.from('trades').select('id', { count: 'exact', head: true }).eq('organization_id', orgId),
+            supabase.from('project_members').select('id', { count: 'exact', head: true }).in('project_id', projectIds),
+            supabase.from('safety_forms').select('id', { count: 'exact', head: true }).in('project_id', projectIds).eq('is_deleted', false).eq('status', 'submitted'),
+            supabase.from('attachments').select('id', { count: 'exact', head: true }).in('project_id', projectIds).not('document_type', 'is', null),
+          ]);
+          if (tradesRes.count && tradesRes.count >= 3) d.step_trades_configured = true;
+          if (assignRes.count && assignRes.count > 0) d.step_users_assigned = true;
+          if (safetyRes.count && safetyRes.count > 0) d.step_first_safety_form = true;
+          if (drawingRes.count && drawingRes.count > 0) d.step_first_drawing = true;
+        }
+        return d;
+      }),
+    runDetector('job-sites', ['step_first_job_site'], async () => {
       const { count } = await supabase
         .from('job_sites')
         .select('id', { count: 'exact', head: true })
@@ -121,7 +142,7 @@ async function detectAllSteps(orgId: string): Promise<{ detected: Partial<SetupP
         .eq('is_active', true);
       return count && count > 0 ? { step_first_job_site: true } : {};
     }),
-    runDetector('members', async () => {
+    runDetector('members', ['step_first_invite'], async () => {
       const { count } = await supabase
         .from('organization_memberships')
         .select('id', { count: 'exact', head: true })
@@ -129,7 +150,7 @@ async function detectAllSteps(orgId: string): Promise<{ detected: Partial<SetupP
         .eq('is_active', true);
       return count && count > 1 ? { step_first_invite: true } : {};
     }),
-    runDetector('labor-rates', async () => {
+    runDetector('labor-rates', ['step_labor_rates'], async () => {
       const { data } = await supabase.rpc('rpc_get_org_costing_setup_status', { p_org_id: orgId });
       if (data && (data as any).missing_labor_rates_count === 0 && !(data as any).has_currency_mismatch) {
         return { step_labor_rates: true } as Partial<SetupProgress>;
@@ -140,12 +161,23 @@ async function detectAllSteps(orgId: string): Promise<{ detected: Partial<SetupP
 
   const results = await Promise.all(detectors);
   const detected: Partial<SetupProgress> = {};
+  const failedStepKeys = new Set<keyof SetupProgress>();
   const errors: string[] = [];
+
   for (const r of results) {
     Object.assign(detected, r.result);
-    if (r.error) errors.push(`${r.name}: ${r.error}`);
+    if (r.error) {
+      errors.push(`${r.name}: ${r.error}`);
+      for (const key of r.coveredKeys) failedStepKeys.add(key);
+    }
   }
-  return { detected, errors };
+
+  // Single aggregated log instead of per-detector spam
+  if (errors.length > 0) {
+    console.warn(`[setup-detectors] ${errors.length} detector(s) failed:`, errors.join('; '));
+  }
+
+  return { detected, errors, failedStepKeys };
 }
 
 export function useSetupProgress() {
@@ -184,31 +216,43 @@ export function useSetupProgress() {
   });
 
   const autoDetectedSteps = detectionResult?.detected ?? {};
+  const failedStepKeys = detectionResult?.failedStepKeys ?? new Set<keyof SetupProgress>();
   const detectorErrors = detectionResult?.errors ?? [];
   const isLoading = isSavedLoading || isDetecting;
 
-  // Merge saved progress with auto-detected steps
+  // Merge saved progress with auto-detected steps.
+  // Key invariant: if a detector failed for a step, we preserve the saved DB value
+  // and never flip it to false. This prevents complete→incomplete regressions.
   const progress = useMemo((): SetupProgress => {
     const base = savedProgress || defaultProgress;
+
+    const mergeStep = (key: keyof SetupProgress): boolean => {
+      const savedVal = base[key];
+      const detectedVal = autoDetectedSteps[key];
+      // If detector failed for this key, trust saved value only (no false override)
+      if (failedStepKeys.has(key)) return !!savedVal;
+      return !!savedVal || !!detectedVal;
+    };
+
     return {
       ...base,
-      step_org_created: base.step_org_created || autoDetectedSteps.step_org_created || false,
-      step_timezone_set: base.step_timezone_set || autoDetectedSteps.step_timezone_set || false,
-      step_first_project: base.step_first_project || autoDetectedSteps.step_first_project || false,
-      step_first_job_site: base.step_first_job_site || autoDetectedSteps.step_first_job_site || false,
-      step_first_invite: base.step_first_invite || autoDetectedSteps.step_first_invite || false,
-      step_trades_configured: base.step_trades_configured || autoDetectedSteps.step_trades_configured || false,
-      step_users_assigned: base.step_users_assigned || autoDetectedSteps.step_users_assigned || false,
-      step_time_tracking_enabled: base.step_time_tracking_enabled || autoDetectedSteps.step_time_tracking_enabled || false,
-      step_time_tracking_configured: base.step_time_tracking_configured || autoDetectedSteps.step_time_tracking_configured || false,
-      step_ppe_reviewed: base.step_ppe_reviewed || autoDetectedSteps.step_ppe_reviewed || false,
-      step_first_safety_form: base.step_first_safety_form || autoDetectedSteps.step_first_safety_form || false,
-      step_hazard_library: base.step_hazard_library || autoDetectedSteps.step_hazard_library || false,
-      step_first_drawing: base.step_first_drawing || autoDetectedSteps.step_first_drawing || false,
-      step_labor_rates: base.step_labor_rates || autoDetectedSteps.step_labor_rates || false,
-      step_invoice_permissions: base.step_invoice_permissions || autoDetectedSteps.step_invoice_permissions || false,
+      step_org_created: mergeStep('step_org_created'),
+      step_timezone_set: mergeStep('step_timezone_set'),
+      step_first_project: mergeStep('step_first_project'),
+      step_first_job_site: mergeStep('step_first_job_site'),
+      step_first_invite: mergeStep('step_first_invite'),
+      step_trades_configured: mergeStep('step_trades_configured'),
+      step_users_assigned: mergeStep('step_users_assigned'),
+      step_time_tracking_enabled: mergeStep('step_time_tracking_enabled'),
+      step_time_tracking_configured: mergeStep('step_time_tracking_configured'),
+      step_ppe_reviewed: mergeStep('step_ppe_reviewed'),
+      step_first_safety_form: mergeStep('step_first_safety_form'),
+      step_hazard_library: mergeStep('step_hazard_library'),
+      step_first_drawing: mergeStep('step_first_drawing'),
+      step_labor_rates: mergeStep('step_labor_rates'),
+      step_invoice_permissions: mergeStep('step_invoice_permissions'),
     };
-  }, [savedProgress, autoDetectedSteps]);
+  }, [savedProgress, autoDetectedSteps, failedStepKeys]);
 
   // Calculate stats — uses canonical registry so checklist UI and progress bar always agree
   const completedSteps = SETUP_STEP_KEYS.filter(key => progress[key] === true).length;
