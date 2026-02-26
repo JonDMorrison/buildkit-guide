@@ -149,8 +149,8 @@ export const TaskDetailModalEnhanced = ({
       setAssignedWorkers(data || []);
       queryClient.invalidateQueries({ queryKey: ['smart-defaults', task?.project_id] });
       onTaskUpdated?.();
-    } catch (error: any) {
-      toast({ title: 'Error assigning worker', description: error.message, variant: 'destructive' });
+    } catch (error: unknown) {
+      toast({ title: "Couldn't assign", description: 'Something went wrong. Try again.', variant: 'destructive' });
     } finally {
       setAssigningWorkerId(null);
     }
