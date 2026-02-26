@@ -21,7 +21,10 @@ export const TaskDescription = ({
 }: TaskDescriptionProps) => {
   const { toast } = useToast();
   const [localDescription, setLocalDescription] = useState(task.description || '');
+  const [inlineEditing, setInlineEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const isEditing = editMode || inlineEditing;
 
   const handleSave = async () => {
     setSaving(true);
@@ -34,6 +37,7 @@ export const TaskDescription = ({
       if (error) throw error;
       
       onUpdate({ description: localDescription.trim() || null });
+      setInlineEditing(false);
       toast({ title: 'Description updated' });
     } catch (err: any) {
       toast({
@@ -46,6 +50,11 @@ export const TaskDescription = ({
     }
   };
 
+  const handleCancel = () => {
+    setLocalDescription(task.description || '');
+    setInlineEditing(false);
+  };
+
   const hasChanged = localDescription !== (task.description || '');
 
   return (
@@ -55,12 +64,12 @@ export const TaskDescription = ({
           <FileText className="h-4 w-4 text-muted-foreground" />
           Description
         </div>
-        {editMode && canEdit && hasChanged && (
+        {isEditing && canEdit && hasChanged && (
           <div className="flex gap-1">
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setLocalDescription(task.description || '')}
+              onClick={handleCancel}
               className="h-7 px-2"
             >
               <X className="h-3.5 w-3.5" />
@@ -76,21 +85,37 @@ export const TaskDescription = ({
             </Button>
           </div>
         )}
+        {inlineEditing && !hasChanged && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleCancel}
+            className="h-7 px-2 text-xs text-muted-foreground"
+          >
+            Cancel
+          </Button>
+        )}
       </div>
 
-      {editMode && canEdit ? (
+      {isEditing && canEdit ? (
         <Textarea
           value={localDescription}
           onChange={(e) => setLocalDescription(e.target.value)}
           placeholder="Add a description..."
           className="min-h-[80px] resize-none"
+          autoFocus={inlineEditing}
         />
       ) : (
-        <div className="rounded-lg bg-muted/50 p-3">
+        <div
+          className={`rounded-lg bg-muted/50 p-3 ${canEdit ? 'cursor-pointer hover:bg-muted/70 transition-colors' : ''}`}
+          onClick={() => { if (canEdit) setInlineEditing(true); }}
+        >
           {task.description ? (
             <p className="text-sm whitespace-pre-wrap">{task.description}</p>
           ) : (
-            <p className="text-sm text-muted-foreground italic">No description provided</p>
+            <p className="text-sm text-muted-foreground italic">
+              {canEdit ? 'Click to add a description...' : 'No description provided'}
+            </p>
           )}
         </div>
       )}
