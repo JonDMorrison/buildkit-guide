@@ -111,6 +111,17 @@ const Tasks = () => {
           fetchTasks();
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'task_assignments',
+        },
+        () => {
+          fetchTasks();
+        }
+      )
       .subscribe();
 
     return () => {
