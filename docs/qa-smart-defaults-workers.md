@@ -68,8 +68,9 @@ Worker suggestions surface recently-assigned crew members when creating or editi
 - **Verify**: `queryClient.invalidateQueries({ queryKey: ['smart-defaults', projectId] })` fires
 
 ### 13. Double-click prevention
-- **Expected**: While an assignment is in progress, clicked chip shows disabled state
-- **Verify**: `assigningWorkerId` state prevents concurrent inserts
+- **Expected**: While an assignment is in progress, the clicked chip shows reduced opacity and all other chips are dimmed and non-interactive
+- **Verify**: `assigningWorkerId` state prevents concurrent inserts; `handleQuickAssign` returns immediately if `assigningWorkerId` is already set
+- **Verify**: Clicking the same chip twice quickly results in only one insert; no scary errors; chip re-enables after completion or failure
 
 ### 14. Stale duplicate guard (Postgres 23505)
 - **Expected**: If UI is stale and user clicks an already-assigned worker, Postgres returns error code `23505` (unique constraint). Handler catches this code specifically, shows calm toast "Already assigned", and refetches assignees to sync UI.

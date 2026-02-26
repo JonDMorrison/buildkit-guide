@@ -575,7 +575,7 @@ export const TaskDetailModalEnhanced = ({
                   <Badge
                     key={w.id}
                     variant="outline"
-                    className={`cursor-pointer text-xs px-2 py-0.5 hover:bg-accent active:scale-95 transition-all ${assigningWorkerId === w.id ? 'opacity-50 pointer-events-none' : ''}`}
+                    className={`cursor-pointer text-xs px-2 py-0.5 hover:bg-accent active:scale-95 transition-all ${assigningWorkerId ? (assigningWorkerId === w.id ? 'opacity-50' : 'opacity-40 pointer-events-none') : ''}`}
                     onClick={() => handleQuickAssign(w.id)}
                   >
                     {w.name}
