@@ -97,7 +97,7 @@ export function GeneratePlaybookDialog({ open, onOpenChange, onCreated, initialJ
       // Auto-expand all phases
       setExpandedPhases(new Set((data as PlaybookSuggestion).phases.map((_: any, i: number) => i)));
     } catch (e: any) {
-      setError(e.message || 'Failed to generate playbook');
+      setError(e.message || 'No similar past projects found for this job type yet. Try another job type or start from an existing playbook.');
     } finally {
       setLoading(false);
     }
@@ -163,8 +163,8 @@ export function GeneratePlaybookDialog({ open, onOpenChange, onCreated, initialJ
       }
 
       toast({
-        title: 'Playbook created',
-        description: `"${suggestion.name}" has been created from historical analysis.`,
+        title: 'Workflow created',
+        description: `"${suggestion.name}" is ready. You can edit it before applying.`,
       });
 
       onOpenChange(false);
@@ -200,10 +200,10 @@ export function GeneratePlaybookDialog({ open, onOpenChange, onCreated, initialJ
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            Generate Playbook from History
+            Create a starter workflow
           </DialogTitle>
           <DialogDescription>
-            AI analyzes your last 20 similar projects to suggest phases, tasks, and hour bands.
+            We'll analyze recent projects in this job type and propose phases, tasks, and hour ranges. You can edit the workflow before applying it.
           </DialogDescription>
         </DialogHeader>
 
@@ -222,11 +222,11 @@ export function GeneratePlaybookDialog({ open, onOpenChange, onCreated, initialJ
                 />
                 <Button onClick={handleGenerate} disabled={!jobType.trim()} className="gap-1.5">
                   <Search className="h-4 w-4" />
-                  Analyze
+                  Find patterns
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                We'll search for projects matching this type and analyze their task patterns.
+                Uses your past projects for this job type to suggest a starting workflow.
               </p>
             </div>
 
@@ -243,7 +243,7 @@ export function GeneratePlaybookDialog({ open, onOpenChange, onCreated, initialJ
         {loading && (
           <div className="flex flex-col items-center justify-center py-12 gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">Analyzing project history...</p>
+            <p className="text-sm text-muted-foreground">Looking through past projects...</p>
             <p className="text-xs text-muted-foreground/60">This may take 10–20 seconds</p>
           </div>
         )}
@@ -362,7 +362,7 @@ export function GeneratePlaybookDialog({ open, onOpenChange, onCreated, initialJ
                 ) : (
                   <>
                     <CheckCircle2 className="h-4 w-4" />
-                    Approve & Create Playbook
+                    Create workflow
                   </>
                 )}
               </Button>

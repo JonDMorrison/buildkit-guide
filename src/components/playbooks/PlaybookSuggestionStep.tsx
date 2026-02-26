@@ -187,7 +187,7 @@ export function PlaybookSuggestionStep({
             className="w-full gap-1.5"
           >
             <Wand2 className="h-4 w-4" />
-            AI Generate from past {jobType} projects
+            Build workflow from past {jobType} jobs
           </Button>
         )}
         <div className="flex gap-3">
@@ -344,7 +344,7 @@ export function PlaybookSuggestionStep({
             className="gap-1.5"
           >
             <Wand2 className="h-3.5 w-3.5" />
-            AI Generate
+            Build from history
           </Button>
         )}
         <Button
