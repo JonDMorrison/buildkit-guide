@@ -6,9 +6,6 @@ import { SETUP_STEPS, SETUP_STEP_KEYS, type ChecklistContext, type SetupStepDefi
 // Re-export types from the canonical registry
 export type { ChecklistContext };
 
-export interface SmartChecklistItem extends SetupStepDefinition {
-  // Inherits all fields from SetupStepDefinition
-}
 
 function detectContextFromRoute(pathname: string): ChecklistContext {
   if (pathname.includes('/time') || pathname.includes('/timesheets')) return 'time-tracking';

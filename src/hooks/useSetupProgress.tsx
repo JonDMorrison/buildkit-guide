@@ -4,18 +4,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from '@/hooks/useOrganization';
 
-export interface SetupStep {
-  key: string;
-  label: string;
-  description: string;
-  phase: number;
-  phaseName: string;
-  timeEstimate: string;
-  isComplete: boolean;
-  action?: () => void;
-  actionLabel?: string;
-  helpText?: string;
-}
 
 export interface SetupProgress {
   step_org_created: boolean;
@@ -82,7 +70,7 @@ async function runDetector(
   }
 }
 
-export interface DetectionOutput {
+interface DetectionOutput {
   detected: Partial<SetupProgress>;
   /** Step keys whose detectors failed — these should not flip complete→incomplete */
   failedStepKeys: Set<keyof SetupProgress>;
