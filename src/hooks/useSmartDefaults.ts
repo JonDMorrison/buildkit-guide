@@ -11,6 +11,8 @@ export interface SmartDefaults {
   manpowerByTrade: Map<string, number>;
   /** Most recent requested_count from any manpower request in this project */
   lastManpowerCount: number | null;
+  /** Top worker user_ids by frequency+recency of task assignments in this project */
+  suggestedWorkerIds: string[];
   loading: boolean;
 }
 
@@ -82,6 +84,31 @@ export function useSmartDefaults(projectId: string | undefined): SmartDefaults {
     staleTime: 5 * 60 * 1000,
   });
 
+  // --- Worker assignments (join through tasks to filter by project) ---
+  const { data: assignmentsData, isLoading: assignLoading } = useQuery({
+    queryKey: ['smart-defaults', 'assignments', projectId],
+    queryFn: async () => {
+      // First get task IDs for this project
+      const { data: taskIds } = await supabase
+        .from('tasks')
+        .select('id')
+        .eq('project_id', projectId!)
+        .eq('is_deleted', false)
+        .limit(200);
+      if (!taskIds || taskIds.length === 0) return [];
+      const ids = taskIds.map((t) => t.id);
+      const { data } = await supabase
+        .from('task_assignments')
+        .select('user_id, assigned_at')
+        .in('task_id', ids)
+        .order('assigned_at', { ascending: false })
+        .limit(100);
+      return data || [];
+    },
+    enabled,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const { data: tradesLookup } = useQuery({
     queryKey: ['smart-defaults', 'trades-lookup'],
     queryFn: async () => {
@@ -97,10 +124,10 @@ export function useSmartDefaults(projectId: string | undefined): SmartDefaults {
   });
 
   const result = useMemo<SmartDefaults>(() => {
-    const loading = tasksLoading || defLoading || mpLoading || logsLoading;
+    const loading = tasksLoading || defLoading || mpLoading || logsLoading || assignLoading;
     const emptyMap = new Map<string, number>();
     if (!enabled || !tradesLookup) {
-      return { topTrades: [], recentLocations: [], lastCrewCount: null, lastWeather: null, manpowerByTrade: emptyMap, lastManpowerCount: null, loading };
+      return { topTrades: [], recentLocations: [], lastCrewCount: null, lastWeather: null, manpowerByTrade: emptyMap, lastManpowerCount: null, suggestedWorkerIds: [], loading };
     }
 
     const now = Date.now();
@@ -166,8 +193,30 @@ export function useSmartDefaults(projectId: string | undefined): SmartDefaults {
       ? sortedManpower[0].requested_count
       : null;
 
-    return { topTrades, recentLocations, lastCrewCount, lastWeather, manpowerByTrade, lastManpowerCount, loading };
-  }, [enabled, tasksData, deficienciesData, manpowerData, dailyLogsData, tradesLookup, tasksLoading, defLoading, mpLoading, logsLoading]);
+    // --- Worker suggestions (frequency + recency, deterministic tie-break) ---
+    const workerScores = new Map<string, { count: number; latestTs: number }>();
+    for (const a of (assignmentsData || [])) {
+      const existing = workerScores.get(a.user_id);
+      const ts = new Date(a.assigned_at).getTime();
+      if (existing) {
+        existing.count += 1;
+        if (ts > existing.latestTs) existing.latestTs = ts;
+      } else {
+        workerScores.set(a.user_id, { count: 1, latestTs: ts });
+      }
+    }
+
+    const suggestedWorkerIds = Array.from(workerScores.entries())
+      .map(([userId, { count, latestTs }]) => {
+        const recencyBonus = (now - latestTs < SEVEN_DAYS_MS) ? 20 : 0;
+        return { userId, score: count * 10 + recencyBonus };
+      })
+      .sort((a, b) => b.score - a.score || a.userId.localeCompare(b.userId))
+      .slice(0, 5)
+      .map((w) => w.userId);
+
+    return { topTrades, recentLocations, lastCrewCount, lastWeather, manpowerByTrade, lastManpowerCount, suggestedWorkerIds, loading };
+  }, [enabled, tasksData, deficienciesData, manpowerData, dailyLogsData, assignmentsData, tradesLookup, tasksLoading, defLoading, mpLoading, logsLoading, assignLoading]);
 
   return result;
 }
