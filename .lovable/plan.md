@@ -1,100 +1,143 @@
 
 
-# UI Polish Plan -- Consistent, Refined Look Across the App
+# Revised Setup Wizard -- Streamlined for Action
 
-## Problem
-The app has two distinct visual tiers:
-1. **Polished pages** (Dashboard, Executive) use `DashboardLayout`, `DashboardHeader`, `DashboardSection`, `DashboardGrid`, and `DashboardCard` -- producing a cohesive, modern feel with consistent spacing, card animations, and section rhythm.
-2. **Everything else** (Time Tracking, Invoicing, Receipts, Safety, Documents, Drawings, Deficiencies, Change Orders, User Management, Hours Tracking, etc.) use raw `<Layout>` with ad-hoc `<h1>`, inconsistent padding, bare `<Card>` components, and no section structure.
+## The Problem Today
 
-This creates a jarring experience when navigating between pages.
+There are three overlapping onboarding surfaces:
 
-## Strategy
-Rather than a ground-up redesign, the plan is **incremental uplift** -- migrating pages to use the shared dashboard primitives, plus a handful of global polish touches.
+1. **WelcomeWizard** (5 steps): Welcome, Role, Org creation, 3-phase OrgOnboardingWizard (financial config, operational diagnostics, AI calibration), Feature tour
+2. **SetupWizardHub** (15 steps, 6 phases): Granular checklist covering everything from timezone to invoice permissions
+3. **OrgOnboardingWizard** (3 phases): Structural config, operational diagnostics, AI calibration
 
----
+This creates friction:
+- Users answer 20+ questions before they ever see the app
+- Many questions (tax model, rate source, invoice approver) aren't relevant until projects exist
+- The AI Brain now handles much of what the diagnostic questions were designed to configure -- it can learn from usage instead of upfront interrogation
+- The 15-step checklist overwhelms new users with items like "Review PPE" and "Set Up Hazard Library" before they even have a project
 
-## Phase 1: Global Polish (affects all pages)
+## The Core Insight
 
-### 1a. Softer card base
-Update `src/components/ui/card.tsx` to add a subtle `shadow-elevation-1` and `transition-shadow` to the base `Card` so all cards across the app get a slight depth lift without hover jank.
+To get a project up and running, you only need **5 things**:
 
-### 1b. TopNav refinement
-- Reduce the oversized logo (`h-24`) to `h-10` / `h-8 on mobile` -- the current size is disproportionate and wastes vertical space.
-- Add a subtle bottom gradient line (1px) instead of the invisible `border-b-0` for better visual separation.
+1. **Organization name** (already collected)
+2. **Timezone** (affects all scheduling and time tracking)
+3. **First project** (name, location, job type)
+4. **First team member** (optional but high-value -- who's working with you?)
+5. **AI preferences** (just the risk mode toggle -- strict/balanced/advisory)
 
-### 1c. Sidebar polish
-- Add a subtle `opacity-60` gradient wash to the sidebar background for more depth.
-- Slightly increase the nav item padding for a less cramped feel.
+Everything else (tax model, labor cost model, trades, safety config, drawings, invoice permissions) can be discovered progressively as users encounter those features, or prompted contextually by the AI Brain when it detects missing configuration.
 
-### 1d. Section title consistency
-The `DashboardSection` title style (`text-[11px] uppercase tracking-widest`) is effective. Add a reusable `PageHeader` component that wraps the common pattern of title + subtitle + actions, so non-dashboard pages get the same visual quality without importing the full dashboard system.
+## Proposed Architecture
 
----
+### Merge into a single 2-stage flow
 
-## Phase 2: Page-Level Migrations (high-traffic pages first)
+**Stage 1: Quick Start Wizard** (replaces WelcomeWizard + OrgOnboardingWizard)
+- 4 screens, under 3 minutes total
+- Runs once on first login
 
-### 2a. Time Tracking (`src/pages/TimeTracking.tsx`)
-- Wrap in `DashboardLayout` instead of raw `<Layout>` with manual padding.
-- Replace the ad-hoc `<h1>` + `<p>` header with `DashboardHeader`.
-- Group the check-in card, recent entries, and requests into `DashboardSection` blocks.
+**Stage 2: Smart Checklist** (replaces SetupWizardHub)
+- Contextual, not exhaustive
+- Only shows relevant next steps based on what features the user is actually using
+- AI Brain can prompt missing config inline (e.g., "You're tracking time but haven't set labor rates -- want to do that now?")
 
-### 2b. Invoicing (`src/pages/Invoicing.tsx`)
-- Swap `<Layout>` for `DashboardLayout`.
-- Swap `SectionHeader` for `DashboardHeader`.
-- Wrap the metrics strip and tabs in `DashboardSection`.
+### Stage 1: Quick Start Wizard Screens
 
-### 2c. Hours Tracking (`src/pages/HoursTracking.tsx`)
-- Same pattern: `DashboardLayout` + `DashboardHeader`.
+**Screen 1 -- Welcome + Role**
+- Combine current steps 1 and 2
+- Show logo, greeting, role selection in one screen
+- Role determines which checklist items appear later
 
-### 2d. Receipts (`src/pages/Receipts.tsx`)
-- Same pattern: `DashboardLayout` + `DashboardHeader`.
+**Screen 2 -- Organization Setup**
+- Company name (existing)
+- Timezone (currently buried in the 15-step checklist as a separate modal)
+- Province/Region (drives safety jurisdiction -- currently a separate setting)
+- Remove: sample project toggle (confusing for real users, useful only for demos)
 
-### 2e. Safety, Documents, Drawings, Deficiencies, Change Orders
-- Same migration: swap to `DashboardLayout` + `DashboardHeader` for the page shell.
+**Screen 3 -- First Project**
+- Embed a simplified version of CreateProjectModal inline
+- Only: Project name, Job site address, Job type
+- Skip: billing address, client, job number, dates, playbook (all deferrable)
+- Auto-create a job site from the address
 
-### 2f. User Management (`src/pages/UserManagement.tsx`)
-- Wrap in `DashboardLayout` + `DashboardHeader`.
+**Screen 4 -- Your AI Assistant**
+- Brief intro to the AI Brain
+- Single choice: How should AI handle risky situations? (Strict / Balanced / Advisory)
+- Remove: the 8 diagnostic questions (AI learns these from actual usage)
+- Remove: individual AI feature toggles (default to sensible values)
 
----
+### Stage 2: Smart Checklist (post-wizard)
 
-## Phase 3: Micro-polish
+Replace the current 15-step, 6-phase checklist with a **context-aware shortlist** that shows 3-5 items at a time based on what the user has done and what they're trying to do.
 
-### 3a. Empty states
-The `EmptyState` component is solid but underused. Audit pages that show plain "No data" text and replace with the proper `EmptyState` component for visual consistency.
+**Always-shown items** (until complete):
+- Invite a team member
+- Assign someone to your project
 
-### 3b. Loading skeletons
-Pages that show a raw `<Loader2>` spinner should use skeleton cards (the `DashboardCard` loading state) for a less jarring loading experience.
+**Shown when user visits Time Tracking:**
+- Enable time tracking
+- Set labor rates
 
-### 3c. Badge consistency
-Standardize status badges across Invoicing, Tasks, and Deficiencies to use the `status-*` color tokens from the design system instead of ad-hoc color classes.
+**Shown when user visits Safety:**
+- Review PPE requirements
+- Configure hazard library
 
----
+**Shown when user visits Invoicing:**
+- Set up invoice permissions
+- Configure tax model
 
-## Files Modified
+**Shown when user visits Financial pages:**
+- Set labor cost rates
+- Configure currency and tax model
+
+This means the checklist is never more than 5 items long, and every item shown is relevant to what the user is currently doing.
+
+### What Happens to Removed Config?
+
+The operational profile questions (Phase 2 of OrgOnboardingWizard) don't disappear -- they move to a **Settings > Organization Profile** page where admins can fill them in anytime. The AI Brain reads from this profile but doesn't require it upfront. Missing values get sensible defaults.
+
+## Technical Changes
+
+### Files to modify:
 
 | File | Change |
 |------|--------|
-| `src/components/ui/card.tsx` | Add subtle shadow + transition to base Card |
-| `src/components/TopNav.tsx` | Reduce logo size, add bottom border gradient |
-| `src/components/sidebar/NavItem.tsx` | Slightly increase padding |
-| `src/components/sidebar/NavSection.tsx` | Minor spacing tweak |
-| `src/pages/TimeTracking.tsx` | Migrate to DashboardLayout + DashboardHeader |
-| `src/pages/Invoicing.tsx` | Migrate to DashboardLayout + DashboardHeader |
-| `src/pages/HoursTracking.tsx` | Migrate to DashboardLayout + DashboardHeader |
-| `src/pages/Receipts.tsx` | Migrate to DashboardLayout + DashboardHeader |
-| `src/pages/Safety.tsx` | Migrate to DashboardLayout + DashboardHeader |
-| `src/pages/Documents.tsx` | Migrate to DashboardLayout + DashboardHeader |
-| `src/pages/Drawings.tsx` | Migrate to DashboardLayout + DashboardHeader |
-| `src/pages/Deficiencies.tsx` | Migrate to DashboardLayout + DashboardHeader |
-| `src/pages/ChangeOrders.tsx` | Migrate to DashboardLayout + DashboardHeader |
-| `src/pages/UserManagement.tsx` | Migrate to DashboardLayout + DashboardHeader |
+| `src/components/onboarding/WelcomeWizard.tsx` | Rewrite to 4-screen Quick Start (Welcome+Role, Org+Timezone, First Project, AI Mode) |
+| `src/components/onboarding/OrgOnboardingWizard.tsx` | Remove -- absorbed into WelcomeWizard screen 4 and Settings page |
+| `src/components/setup/SetupWizardHub.tsx` | Rewrite to context-aware shortlist (3-5 items max) |
+| `src/hooks/useSetupProgress.tsx` | Simplify step tracking -- fewer steps, add `context` field to know which page triggered display |
+| `src/hooks/useOperationalProfile.ts` | Keep as-is -- still the backend store, just not populated upfront |
+| `src/pages/Setup.tsx` | Update to render new streamlined wizard |
 
-## No Backend Changes
-All changes are purely frontend styling and layout wrapper swaps. No database, RPC, or edge function changes.
+### New files:
 
-## Risks
-- **Low risk.** Each page migration is a wrapper swap (Layout to DashboardLayout) and header replacement. Content and logic remain untouched.
-- The `DashboardLayout` adds consistent `py-6 pb-24` padding and `max-w-screen-2xl` constraint, which may slightly change the feel of pages that previously went full-width. This is intentional -- constrained width improves readability.
-- Pages with heavy custom layouts (Invoicing tabs, Task kanban) keep their internal structure; only the outer shell changes.
+| File | Purpose |
+|------|---------|
+| `src/components/setup/SmartChecklist.tsx` | Context-aware checklist that accepts a `context` prop (e.g., "time-tracking", "safety") and shows only relevant items |
+| `src/components/setup/useSmartChecklist.ts` | Hook that computes which items to show based on current route + completion state |
+
+### Database:
+
+No schema changes needed. The existing `setup_checklist_progress` and `organization_operational_profile` tables continue to work. We just write fewer fields during the wizard and populate the rest progressively.
+
+### What gets removed:
+
+- The 3-phase OrgOnboardingWizard (8 diagnostic questions, 6 structural config options, 3 AI toggles) -- reduced to 1 question (AI risk mode)
+- Feature tour screen (low value, users learn by doing)
+- Sample project creation (remove edge function invocation from wizard)
+- 10 of 15 checklist steps from the always-visible list
+
+### What stays:
+
+- Organization + membership creation logic
+- Role selection (drives UI customization)
+- Operational profile storage (populated later, not upfront)
+- All the modal components (CreateProjectModal, InviteUserModal, etc.) -- reused in the smart checklist
+
+## Summary
+
+**Before:** 3 overlapping wizards, 20+ questions before seeing the app, 15-step checklist
+**After:** 1 focused wizard (4 screens, ~3 min), smart checklist that shows 3-5 contextual items
+
+The AI Brain handles the rest through progressive discovery.
 
