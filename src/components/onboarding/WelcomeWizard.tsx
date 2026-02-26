@@ -12,16 +12,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import {
   Rocket,
-  HardHat,
-  Users,
-  ClipboardCheck,
-  Shield,
   ArrowRight,
   ArrowLeft,
   CheckCircle,
   Building2,
   Loader2,
-  PartyPopper,
   Brain,
   MapPin,
   Globe,
@@ -31,35 +26,6 @@ import projectPathLogo from '@/assets/project-path-logo.png';
 interface WelcomeWizardProps {
   onComplete: () => void;
 }
-
-type Role = 'project_manager' | 'foreman' | 'worker' | 'admin';
-
-const roles: { value: Role; label: string; icon: React.ReactNode; description: string }[] = [
-  {
-    value: 'admin',
-    label: 'Owner / Administrator',
-    icon: <Shield className="h-6 w-6" />,
-    description: 'Full access to all features and settings',
-  },
-  {
-    value: 'project_manager',
-    label: 'Project Manager',
-    icon: <ClipboardCheck className="h-6 w-6" />,
-    description: 'Oversee multiple projects and teams',
-  },
-  {
-    value: 'foreman',
-    label: 'Foreman / Superintendent',
-    icon: <HardHat className="h-6 w-6" />,
-    description: 'Lead crews and manage daily operations',
-  },
-  {
-    value: 'worker',
-    label: 'Field Worker / Tradesperson',
-    icon: <Users className="h-6 w-6" />,
-    description: 'Execute tasks and report progress',
-  },
-];
 
 const TIMEZONES = [
   { value: 'America/St_Johns', label: 'Newfoundland (NST)' },
@@ -101,37 +67,45 @@ const JOB_TYPES = [
   'Other',
 ];
 
+/**
+ * Maps old 4-step onboarding_step values to new 3-step values.
+ * Old: 1=Role, 2=Org, 3=Project, 4=AI
+ * New: 1=Org,  2=Project, 3=AI
+ */
+function migrateStepNumber(oldStep: number): number {
+  if (oldStep <= 2) return 1;  // old Role(1) or Org(2) → new Org(1)
+  if (oldStep === 3) return 2; // old Project(3) → new Project(2)
+  return 3;                     // old AI(4) → new AI(3)
+}
+
 export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
   const { user } = useAuth();
   const { organizations } = useOrganization();
   const { state: onboardingState, isLoading: stateLoading, updateState } = useOnboardingState();
   const { toast } = useToast();
 
-  // Step state: 1=Welcome+Role, 2=Org+Timezone, 3=First Project, 4=AI Mode
+  // Step state: 1=Org+Timezone, 2=First Project, 3=AI Mode
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const rehydrated = useRef(false);
 
-  // Step 1
-  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
-
-  // Step 2
+  // Step 1 (Org)
   const [orgName, setOrgName] = useState('');
   const [timezone, setTimezone] = useState('America/Toronto');
   const [province, setProvince] = useState('ON');
   const [orgCreated, setOrgCreated] = useState<{ id: string } | null>(null);
 
-  // Step 3
+  // Step 2 (Project)
   const [projectName, setProjectName] = useState('');
   const [projectAddress, setProjectAddress] = useState('');
   const [projectJobType, setProjectJobType] = useState('');
   const [projectCreatedId, setProjectCreatedId] = useState<string | null>(null);
 
-  // Step 4
+  // Step 3 (AI)
   const [aiRiskMode, setAiRiskMode] = useState('balanced');
 
-  const totalSteps = 4;
+  const totalSteps = 3;
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'there';
 
   // Rehydrate wizard state from DB on mount (once)
@@ -156,14 +130,15 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
       setProjectCreatedId(onboardingState.onboarding_project_id);
     }
 
-    // Determine resume step from saved state
+    // Determine resume step from saved state (with migration from old 4-step numbering)
     const savedStep = onboardingState.onboarding_step;
-    if (savedStep && savedStep >= 1 && savedStep <= 4) {
-      setStep(savedStep);
+    if (savedStep && savedStep >= 1) {
+      const mappedStep = migrateStepNumber(savedStep);
+      setStep(Math.min(mappedStep, totalSteps));
     } else if (onboardingState.onboarding_project_id) {
-      setStep(4);
-    } else if (effectiveOrgId) {
       setStep(3);
+    } else if (effectiveOrgId) {
+      setStep(2);
     }
   }, [stateLoading, onboardingState, organizations]);
 
@@ -190,15 +165,6 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
     }
   };
 
-  const handleStep1Continue = async () => {
-    try {
-      await persistStep({ onboarding_step: 2 });
-      setStep(2);
-    } catch {
-      // Error already toasted by persistStep
-    }
-  };
-
   const handleOrgCreate = async () => {
     if (!orgName.trim()) {
       toast({ title: 'Company name required', variant: 'destructive' });
@@ -213,8 +179,8 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
     try {
       // If org was already created (back-button or rehydrated), skip creation
       if (orgCreated) {
-        await persistStep({ onboarding_step: 3, onboarding_org_id: orgCreated.id });
-        setStep(3);
+        await persistStep({ onboarding_step: 2, onboarding_org_id: orgCreated.id });
+        setStep(2);
         return;
       }
 
@@ -233,13 +199,13 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
       setOrgCreated({ id: newOrgId });
 
       // Persist org ID + advance step atomically
-      await persistStep({ onboarding_step: 3, onboarding_org_id: newOrgId });
+      await persistStep({ onboarding_step: 2, onboarding_org_id: newOrgId });
 
       if (result.already_existed) {
         toast({ title: 'Using your existing organization' });
       }
 
-      setStep(3);
+      setStep(2);
     } catch (error: any) {
       console.error('Error creating org:', error);
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -251,15 +217,15 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
 
   const handleProjectCreate = async () => {
     if (!orgCreated) {
-      setStep(4);
+      setStep(3);
       return;
     }
 
     if (!projectName.trim()) {
       // Allow skipping — persist step advance
       try {
-        await persistStep({ onboarding_step: 4 });
-        setStep(4);
+        await persistStep({ onboarding_step: 3 });
+        setStep(3);
       } catch {
         // Error already toasted
       }
@@ -269,8 +235,8 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
     // If project already created (rehydrated), just advance
     if (projectCreatedId) {
       try {
-        await persistStep({ onboarding_step: 4 });
-        setStep(4);
+        await persistStep({ onboarding_step: 3 });
+        setStep(3);
       } catch {
         // Error already toasted
       }
@@ -318,10 +284,10 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
       setProjectCreatedId(project.id);
 
       // Persist project ID + advance step
-      await persistStep({ onboarding_step: 4, onboarding_project_id: project.id });
+      await persistStep({ onboarding_step: 3, onboarding_project_id: project.id });
 
       toast({ title: 'Project created', description: `${projectName} is ready to go.` });
-      setStep(4);
+      setStep(3);
     } catch (error: any) {
       console.error('Error creating project:', error);
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -348,8 +314,8 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
         });
       }
 
-      // Mark onboarding complete — clear transient fields
-      await persistStep({ has_onboarded: true, onboarding_step: 4 });
+      // Mark onboarding complete
+      await persistStep({ has_onboarded: true, onboarding_step: 3 });
 
       // Update localStorage cache for ProtectedRoute
       if (user) {
@@ -397,71 +363,18 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
           </p>
         </div>
 
-        {/* Step 1: Welcome + Role */}
+        {/* Step 1: Organization + Timezone + Province */}
         {step === 1 && (
           <>
             <CardHeader className="text-center pt-6 pb-4">
               <div className="mx-auto mb-4 relative">
-                <img src={projectPathLogo} alt="Project Path" className="h-32 w-auto mx-auto" />
-                <div className="absolute -right-2 -bottom-2 bg-primary text-primary-foreground rounded-full p-2">
-                  <PartyPopper className="h-5 w-5" />
-                </div>
+                <img src={projectPathLogo} alt="Project Path" className="h-28 w-auto mx-auto" />
               </div>
-              <CardTitle className="text-3xl font-bold">
+              <CardTitle className="text-2xl font-bold">
                 Welcome, {userName}! 🎉
               </CardTitle>
-              <CardDescription className="text-base mt-2">
-                What best describes your role?
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 pb-6">
-              <div className="grid gap-3">
-                {roles.map((role) => (
-                  <button
-                    key={role.value}
-                    onClick={() => setSelectedRole(role.value)}
-                    className={`flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all ${
-                      selectedRole === role.value
-                        ? 'border-primary bg-primary/5 shadow-md'
-                        : 'border-border hover:border-primary/50 hover:bg-muted/50'
-                    }`}
-                  >
-                    <div className={`p-3 rounded-lg ${
-                      selectedRole === role.value ? 'bg-primary text-primary-foreground' : 'bg-muted'
-                    }`}>
-                      {role.icon}
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-semibold">{role.label}</p>
-                      <p className="text-sm text-muted-foreground">{role.description}</p>
-                    </div>
-                    {selectedRole === role.value && (
-                      <CheckCircle className="h-6 w-6 text-primary" />
-                    )}
-                  </button>
-                ))}
-              </div>
-
-              <Button
-                onClick={handleStep1Continue}
-                size="lg"
-                className="w-full h-14 text-lg"
-                disabled={!selectedRole}
-              >
-                Continue
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </CardContent>
-          </>
-        )}
-
-        {/* Step 2: Organization + Timezone + Province */}
-        {step === 2 && (
-          <>
-            <CardHeader className="text-center pt-6 pb-2">
-              <CardTitle className="text-2xl font-bold">Set up your company</CardTitle>
-              <CardDescription>
-                Tell us about your organization
+              <CardDescription className="text-base mt-1">
+                Let's set up your company to get started
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5 pb-6">
@@ -519,31 +432,30 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-2">
-                <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back
-                </Button>
-                <Button onClick={handleOrgCreate} className="flex-1" disabled={isLoading || isSubmitting || !orgName.trim()}>
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    <>
-                      Continue
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </>
-                  )}
-                </Button>
-              </div>
+              <Button
+                onClick={handleOrgCreate}
+                size="lg"
+                className="w-full h-14 text-lg"
+                disabled={isLoading || isSubmitting || !orgName.trim()}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    Continue
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </>
+                )}
+              </Button>
             </CardContent>
           </>
         )}
 
-        {/* Step 3: First Project */}
-        {step === 3 && (
+        {/* Step 2: First Project */}
+        {step === 2 && (
           <>
             <CardHeader className="text-center pt-6 pb-2">
               <CardTitle className="text-2xl font-bold">Create your first project</CardTitle>
@@ -593,7 +505,7 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
               </div>
 
               <div className="flex gap-3 pt-2">
-                <Button variant="outline" onClick={() => setStep(2)} className="flex-1">
+                <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back
                 </Button>
@@ -620,8 +532,8 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
           </>
         )}
 
-        {/* Step 4: AI Assistant */}
-        {step === 4 && (
+        {/* Step 3: AI Assistant */}
+        {step === 3 && (
           <>
             <CardHeader className="text-center pt-6 pb-2">
               <div className="mx-auto mb-3 p-3 rounded-full bg-primary/10">
@@ -687,7 +599,7 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
               </p>
 
               <div className="flex gap-3 pt-2">
-                <Button variant="outline" onClick={() => setStep(3)} className="flex-1">
+                <Button variant="outline" onClick={() => setStep(2)} className="flex-1">
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back
                 </Button>
