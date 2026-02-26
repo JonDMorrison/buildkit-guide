@@ -5,13 +5,14 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { SetupChecklistItem } from './SetupChecklistItem';
-import { useSmartChecklist, ChecklistContext } from './useSmartChecklist';
+import { useSmartChecklist, type ChecklistContext } from './useSmartChecklist';
+import { type SetupStepDefinition } from '@/lib/setupSteps';
 import { CreateJobSiteModal } from './steps/CreateJobSiteModal';
 import { TradesManagementModal } from './steps/TradesManagementModal';
 import { TimeTrackingSettingsModal } from './steps/TimeTrackingSettingsModal';
 import { InviteUserModal } from '@/components/users/InviteUserModal';
 import { useCurrentProject } from '@/hooks/useCurrentProject';
-import { SetupProgress } from '@/hooks/useSetupProgress';
+
 
 interface SmartChecklistProps {
   context?: ChecklistContext;
@@ -47,8 +48,8 @@ export function SmartChecklist({ context, forceShow = false }: SmartChecklistPro
   const percentComplete = Math.round((completedCount / totalCount) * 100);
 
   // Map step keys to actions
-  const getAction = (key: keyof SetupProgress): (() => void) | undefined => {
-    const actionMap: Partial<Record<keyof SetupProgress, () => void>> = {
+  const getAction = (key: SetupStepDefinition['key']): (() => void) | undefined => {
+    const actionMap: Partial<Record<SetupStepDefinition['key'], () => void>> = {
       step_first_invite: () => setShowInviteModal(true),
       step_users_assigned: () => navigate('/users'),
       step_time_tracking_enabled: () => setShowTimeSettingsModal(true),
