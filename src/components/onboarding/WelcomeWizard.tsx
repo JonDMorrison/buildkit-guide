@@ -3,28 +3,28 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  Rocket, 
-  HardHat, 
-  Users, 
-  ClipboardCheck, 
-  Shield, 
-  Zap,
+import {
+  Rocket,
+  HardHat,
+  Users,
+  ClipboardCheck,
+  Shield,
   ArrowRight,
   ArrowLeft,
   CheckCircle,
   Building2,
   Loader2,
   PartyPopper,
-  AlertCircle,
-  RefreshCw
+  Brain,
+  MapPin,
+  Globe,
 } from 'lucide-react';
 import projectPathLogo from '@/assets/project-path-logo.png';
-import OrgOnboardingWizard from './OrgOnboardingWizard';
 
 interface WelcomeWizardProps {
   onComplete: () => void;
@@ -33,254 +33,231 @@ interface WelcomeWizardProps {
 type Role = 'project_manager' | 'foreman' | 'worker' | 'admin';
 
 const roles: { value: Role; label: string; icon: React.ReactNode; description: string }[] = [
-  { 
-    value: 'project_manager', 
-    label: 'Project Manager', 
-    icon: <ClipboardCheck className="h-6 w-6" />,
-    description: 'Oversee multiple projects and teams'
-  },
-  { 
-    value: 'foreman', 
-    label: 'Foreman / Superintendent', 
-    icon: <HardHat className="h-6 w-6" />,
-    description: 'Lead crews and manage daily operations'
-  },
-  { 
-    value: 'worker', 
-    label: 'Field Worker / Tradesperson', 
-    icon: <Users className="h-6 w-6" />,
-    description: 'Execute tasks and report progress'
-  },
-  { 
-    value: 'admin', 
-    label: 'Owner / Administrator', 
+  {
+    value: 'admin',
+    label: 'Owner / Administrator',
     icon: <Shield className="h-6 w-6" />,
-    description: 'Full access to all features and settings'
+    description: 'Full access to all features and settings',
+  },
+  {
+    value: 'project_manager',
+    label: 'Project Manager',
+    icon: <ClipboardCheck className="h-6 w-6" />,
+    description: 'Oversee multiple projects and teams',
+  },
+  {
+    value: 'foreman',
+    label: 'Foreman / Superintendent',
+    icon: <HardHat className="h-6 w-6" />,
+    description: 'Lead crews and manage daily operations',
+  },
+  {
+    value: 'worker',
+    label: 'Field Worker / Tradesperson',
+    icon: <Users className="h-6 w-6" />,
+    description: 'Execute tasks and report progress',
   },
 ];
 
-const features = [
-  {
-    icon: <ClipboardCheck className="h-8 w-8 text-primary" />,
-    title: 'Task Management',
-    description: 'Track tasks, blockers, and progress in real-time',
-  },
-  {
-    icon: <Shield className="h-8 w-8 text-primary" />,
-    title: 'Safety Forms',
-    description: 'Digital safety logs, hazard IDs, and compliance tracking',
-  },
-  {
-    icon: <Users className="h-8 w-8 text-primary" />,
-    title: 'Team Coordination',
-    description: 'Keep every trade aligned and accountable',
-  },
-  {
-    icon: <Zap className="h-8 w-8 text-primary" />,
-    title: 'AI Assistant',
-    description: 'Get instant answers from your project documents',
-  },
+const TIMEZONES = [
+  { value: 'America/St_Johns', label: 'Newfoundland (NST)' },
+  { value: 'America/Halifax', label: 'Atlantic (AST)' },
+  { value: 'America/Toronto', label: 'Eastern (EST)' },
+  { value: 'America/Winnipeg', label: 'Central (CST)' },
+  { value: 'America/Edmonton', label: 'Mountain (MST)' },
+  { value: 'America/Vancouver', label: 'Pacific (PST)' },
+  { value: 'America/New_York', label: 'US Eastern' },
+  { value: 'America/Chicago', label: 'US Central' },
+  { value: 'America/Denver', label: 'US Mountain' },
+  { value: 'America/Los_Angeles', label: 'US Pacific' },
+];
+
+const PROVINCES = [
+  { value: 'AB', label: 'Alberta' },
+  { value: 'BC', label: 'British Columbia' },
+  { value: 'MB', label: 'Manitoba' },
+  { value: 'NB', label: 'New Brunswick' },
+  { value: 'NL', label: 'Newfoundland and Labrador' },
+  { value: 'NS', label: 'Nova Scotia' },
+  { value: 'NT', label: 'Northwest Territories' },
+  { value: 'NU', label: 'Nunavut' },
+  { value: 'ON', label: 'Ontario' },
+  { value: 'PE', label: 'Prince Edward Island' },
+  { value: 'QC', label: 'Quebec' },
+  { value: 'SK', label: 'Saskatchewan' },
+  { value: 'YT', label: 'Yukon' },
+  { value: 'US-OTHER', label: 'United States (Other)' },
+];
+
+const JOB_TYPES = [
+  'Residential New Build',
+  'Commercial Tenant Improvement',
+  'Commercial New Build',
+  'Industrial',
+  'Renovation / Retrofit',
+  'Infrastructure',
+  'Other',
 ];
 
 export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
   const { user } = useAuth();
   const { toast } = useToast();
+
+  // Step state: 1=Welcome+Role, 2=Org+Timezone, 3=First Project, 4=AI Mode
   const [step, setStep] = useState(1);
-  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
-  const [orgName, setOrgName] = useState('');
-  const [createSample, setCreateSample] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-  const [sampleError, setSampleError] = useState<string | null>(null);
-  const [orgCreated, setOrgCreated] = useState<{ id: string; name: string } | null>(null);
-  // New: show diagnostic wizard after org creation for admins
-  const [showDiagnosticWizard, setShowDiagnosticWizard] = useState(false);
 
-  // Steps: 1=Welcome, 2=Role, 3=Org Setup, 4=Diagnostic Engine (admin only), 5=Feature Tour
-  const isAdmin = selectedRole === 'admin' || selectedRole === 'project_manager';
-  const totalSteps = isAdmin ? 5 : 4;
+  // Step 1
+  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
 
-  const handleNext = () => {
-    if (step < totalSteps) {
-      setStep(step + 1);
-    }
-  };
+  // Step 2
+  const [orgName, setOrgName] = useState('');
+  const [timezone, setTimezone] = useState('America/Toronto');
+  const [province, setProvince] = useState('ON');
+  const [orgCreated, setOrgCreated] = useState<{ id: string } | null>(null);
 
-  const handleBack = () => {
-    if (step > 1) {
-      setStep(step - 1);
-    }
-  };
+  // Step 3
+  const [projectName, setProjectName] = useState('');
+  const [projectAddress, setProjectAddress] = useState('');
+  const [projectJobType, setProjectJobType] = useState('');
 
-  const handleRetrySample = async () => {
-    if (!orgCreated) return;
-    
-    setSampleError(null);
-    setIsLoading(true);
-    
-    try {
-      const { data, error } = await supabase.functions.invoke('create-sample-project', {
-        body: { organizationId: orgCreated.id }
-      });
-      
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      
-      toast({
-        title: 'Sample project created',
-        description: 'A sample project has been added to your organization.',
-      });
-      setSampleError(null);
-      onComplete();
-    } catch (error: any) {
-      console.error('Retry sample project error:', error);
-      setSampleError(error.message || 'Failed to create sample project');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Step 4
+  const [aiRiskMode, setAiRiskMode] = useState('balanced');
 
-  const handleSkipSample = () => {
-    setSampleError(null);
-    onComplete();
-  };
+  const totalSteps = 4;
+  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'there';
 
   const handleOrgCreate = async () => {
     if (!orgName.trim()) {
-      // Skip org creation, go to feature tour
-      handleNext();
+      toast({ title: 'Company name required', variant: 'destructive' });
       return;
     }
 
     setIsLoading(true);
-    setSampleError(null);
-    
     try {
       const { data: org, error: orgError } = await supabase
         .from('organizations')
-        .insert({ 
+        .insert({
           name: orgName.trim(),
-          slug: orgName.trim().toLowerCase().replace(/\s+/g, '-')
+          slug: orgName.trim().toLowerCase().replace(/\s+/g, '-'),
         })
         .select()
         .single();
 
       if (orgError) throw orgError;
 
-      if (org) {
-        await supabase
-          .from('organization_memberships')
-          .insert({
-            organization_id: org.id,
-            user_id: user!.id,
-            role: 'admin',
-            is_active: true,
-          });
-
-        setOrgCreated({ id: org.id, name: org.name });
-
-        if (createSample) {
-          try {
-            const { data, error } = await supabase.functions.invoke('create-sample-project', {
-              body: { organizationId: org.id }
-            });
-            if (error) throw error;
-            if (data?.error) throw new Error(data.error);
-          } catch (sampleError: any) {
-            console.error('Sample project creation failed:', sampleError);
-            // Non-blocking — continue to diagnostic wizard
-          }
-        }
-
-        // Move to next step (diagnostic wizard or feature tour)
-        handleNext();
-      }
-    } catch (error: any) {
-      console.error('Error during onboarding:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Something went wrong.',
-        variant: 'destructive',
+      // Create membership
+      await supabase.from('organization_memberships').insert({
+        organization_id: org.id,
+        user_id: user!.id,
+        role: 'admin',
+        is_active: true,
       });
+
+      // Save timezone and province to org settings
+      await supabase.from('organization_settings').upsert({
+        organization_id: org.id,
+        default_timezone: timezone,
+        jurisdiction_code: province,
+      }, { onConflict: 'organization_id' });
+
+      setOrgCreated({ id: org.id });
+      setStep(3);
+    } catch (error: any) {
+      console.error('Error creating org:', error);
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleFinish = () => {
-    onComplete();
+  const handleProjectCreate = async () => {
+    if (!orgCreated) {
+      // Skip project creation if no org (shouldn't happen)
+      setStep(4);
+      return;
+    }
+
+    if (!projectName.trim()) {
+      // Allow skipping project creation
+      setStep(4);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // Create the project
+      const { data: project, error: projectError } = await supabase
+        .from('projects')
+        .insert({
+          name: projectName.trim(),
+          location: projectAddress.trim() || 'TBD',
+          job_type: projectJobType || null,
+          organization_id: orgCreated.id,
+          status: 'active',
+          created_by: user!.id,
+        })
+        .select('id')
+        .single();
+
+      if (projectError) throw projectError;
+
+      // Auto-create a job site from the address if provided
+      if (projectAddress.trim() && project) {
+        await supabase.from('job_sites').insert({
+          name: projectName.trim(),
+          address: projectAddress.trim(),
+          project_id: project.id,
+          organization_id: orgCreated.id,
+          is_active: true,
+        });
+      }
+
+      // Mark setup steps complete
+      await supabase.from('setup_checklist_progress').upsert({
+        organization_id: orgCreated.id,
+        step_org_created: true,
+        step_timezone_set: true,
+        step_first_project: true,
+        step_first_job_site: !!projectAddress.trim(),
+      }, { onConflict: 'organization_id' });
+
+      toast({ title: 'Project created', description: `${projectName} is ready to go.` });
+      setStep(4);
+    } catch (error: any) {
+      console.error('Error creating project:', error);
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'there';
-
-  // Show error state with recovery options
-  if (sampleError) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-lg shadow-2xl border-0 bg-card/95 backdrop-blur">
-          <CardHeader className="text-center pt-8 pb-4">
-            <div className="mx-auto mb-4 p-4 rounded-full bg-destructive/10">
-              <AlertCircle className="h-12 w-12 text-destructive" />
-            </div>
-            <CardTitle className="text-2xl font-bold">
-              Sample Project Failed
-            </CardTitle>
-            <CardDescription className="text-base mt-2">
-              Your organization "{orgCreated?.name}" was created, but we couldn't create the sample project.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 pb-8">
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{sampleError}</AlertDescription>
-            </Alert>
-            
-            <div className="flex flex-col gap-3">
-              <Button 
-                onClick={handleRetrySample} 
-                className="w-full"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Retrying...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Try Again
-                  </>
-                )}
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={handleSkipSample}
-                disabled={isLoading}
-              >
-                Skip Sample Project
-              </Button>
-            </div>
-            
-            <p className="text-xs text-muted-foreground text-center">
-              You can always create projects manually from the dashboard.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Step 4 for admins: Show 3-phase diagnostic wizard
-  if (step === 4 && isAdmin) {
-    return (
-      <OrgOnboardingWizard 
-        onComplete={() => setStep(5)}
-      />
-    );
-  }
-
-  // Adjust step display for non-admin users
-  const featureTourStep = isAdmin ? 5 : 4;
+  const handleFinish = async () => {
+    setIsLoading(true);
+    try {
+      // Save AI risk mode
+      if (orgCreated) {
+        await supabase.rpc('rpc_upsert_operational_profile', {
+          p_organization_id: orgCreated.id,
+          p_data: {
+            ai_risk_mode: aiRiskMode,
+            ai_flag_profit_risk: true,
+            ai_auto_change_orders: false,
+            ai_recommend_pricing: false,
+            wizard_phase_completed: 3,
+            wizard_completed_at: new Date().toISOString(),
+          } as any,
+        });
+      }
+      onComplete();
+    } catch (error: any) {
+      console.error('Error saving AI preferences:', error);
+      // Don't block completion on AI save failure
+      onComplete();
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/50 flex items-center justify-center p-4">
@@ -302,12 +279,12 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
           </p>
         </div>
 
-        {/* Step 1: Welcome */}
+        {/* Step 1: Welcome + Role */}
         {step === 1 && (
           <>
-            <CardHeader className="text-center pt-8 pb-4">
+            <CardHeader className="text-center pt-6 pb-4">
               <div className="mx-auto mb-4 relative">
-                <img src={projectPathLogo} alt="Project Path" className="h-40 w-auto mx-auto" />
+                <img src={projectPathLogo} alt="Project Path" className="h-32 w-auto mx-auto" />
                 <div className="absolute -right-2 -bottom-2 bg-primary text-primary-foreground rounded-full p-2">
                   <PartyPopper className="h-5 w-5" />
                 </div>
@@ -315,34 +292,8 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
               <CardTitle className="text-3xl font-bold">
                 Welcome, {userName}! 🎉
               </CardTitle>
-              <CardDescription className="text-lg mt-2">
-                Let's get you set up in just a few quick steps
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6 pb-8">
-              <div className="bg-muted/50 rounded-xl p-6 text-center">
-                <Rocket className="h-12 w-12 text-primary mx-auto mb-3" />
-                <p className="text-muted-foreground">
-                  Project Path helps you keep every trade accountable and your construction projects on track. 
-                  No more chasing updates or buried spreadsheets.
-                </p>
-              </div>
-              
-              <Button onClick={handleNext} size="lg" className="w-full h-14 text-lg">
-                Let's Get Started
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </CardContent>
-          </>
-        )}
-
-        {/* Step 2: Role Selection */}
-        {step === 2 && (
-          <>
-            <CardHeader className="text-center pt-6 pb-2">
-              <CardTitle className="text-2xl font-bold">What's your role?</CardTitle>
-              <CardDescription>
-                This helps us customize your experience
+              <CardDescription className="text-base mt-2">
+                What best describes your role?
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 pb-6">
@@ -372,81 +323,90 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
                   </button>
                 ))}
               </div>
-              
-              <div className="flex gap-3 pt-4">
-                <Button variant="outline" onClick={handleBack} className="flex-1">
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back
-                </Button>
-                <Button 
-                  onClick={handleNext} 
-                  className="flex-1"
-                  disabled={!selectedRole}
-                >
-                  Continue
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
+
+              <Button
+                onClick={() => setStep(2)}
+                size="lg"
+                className="w-full h-14 text-lg"
+                disabled={!selectedRole}
+              >
+                Continue
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
             </CardContent>
           </>
         )}
 
-        {/* Step 3: Organization Setup */}
-        {step === 3 && (
+        {/* Step 2: Organization + Timezone + Province */}
+        {step === 2 && (
           <>
             <CardHeader className="text-center pt-6 pb-2">
               <CardTitle className="text-2xl font-bold">Set up your company</CardTitle>
               <CardDescription>
-                Create your organization to start adding projects
+                Tell us about your organization
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6 pb-6">
-              <div className="space-y-4">
+            <CardContent className="space-y-5 pb-6">
+              <div className="space-y-2">
+                <Label htmlFor="orgName">Company / Organization Name *</Label>
+                <div className="relative">
+                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input
+                    id="orgName"
+                    value={orgName}
+                    onChange={(e) => setOrgName(e.target.value)}
+                    placeholder="e.g., Horizon Construction"
+                    className="pl-10 h-12"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="orgName">Company / Organization Name</Label>
-                  <div className="relative">
-                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input
-                      id="orgName"
-                      value={orgName}
-                      onChange={(e) => setOrgName(e.target.value)}
-                      placeholder="e.g., Horizon Construction"
-                      className="pl-10 h-12"
-                    />
-                  </div>
+                  <Label className="flex items-center gap-1.5">
+                    <Globe className="h-4 w-4 text-muted-foreground" />
+                    Timezone
+                  </Label>
+                  <Select value={timezone} onValueChange={setTimezone}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TIMEZONES.map((tz) => (
+                        <SelectItem key={tz.value} value={tz.value}>
+                          {tz.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
-                <button
-                  onClick={() => setCreateSample(!createSample)}
-                  className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all ${
-                    createSample
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border hover:border-primary/50'
-                  }`}
-                >
-                  <div className={`p-2 rounded-lg ${createSample ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                    <Rocket className="h-5 w-5" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-semibold">Create a sample project</p>
-                    <p className="text-sm text-muted-foreground">
-                      Explore the app with realistic demo data
-                    </p>
-                  </div>
-                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                    createSample ? 'bg-primary border-primary' : 'border-muted-foreground'
-                  }`}>
-                    {createSample && <CheckCircle className="h-4 w-4 text-primary-foreground" />}
-                  </div>
-                </button>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    Province / Region
+                  </Label>
+                  <Select value={province} onValueChange={setProvince}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PROVINCES.map((p) => (
+                        <SelectItem key={p.value} value={p.value}>
+                          {p.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              
+
               <div className="flex gap-3 pt-2">
-                <Button variant="outline" onClick={handleBack} className="flex-1">
+                <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back
                 </Button>
-                <Button onClick={handleOrgCreate} className="flex-1" disabled={isLoading}>
+                <Button onClick={handleOrgCreate} className="flex-1" disabled={isLoading || !orgName.trim()}>
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -464,40 +424,167 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
           </>
         )}
 
-        {/* Feature Tour (last step) */}
-        {step === featureTourStep && (
+        {/* Step 3: First Project */}
+        {step === 3 && (
           <>
             <CardHeader className="text-center pt-6 pb-2">
-              <CardTitle className="text-2xl font-bold">Here's what you can do</CardTitle>
+              <CardTitle className="text-2xl font-bold">Create your first project</CardTitle>
               <CardDescription>
-                A quick look at your new superpowers
+                Set up a project so you can start managing work right away
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6 pb-6">
-              <div className="grid sm:grid-cols-2 gap-4">
-                {features.map((feature, i) => (
-                  <div
-                    key={i}
-                    className="p-4 rounded-xl bg-muted/50 border border-border hover:border-primary/30 transition-colors"
-                  >
-                    <div className="mb-3">{feature.icon}</div>
-                    <h4 className="font-semibold mb-1">{feature.title}</h4>
-                    <p className="text-sm text-muted-foreground">{feature.description}</p>
-                  </div>
-                ))}
+            <CardContent className="space-y-5 pb-6">
+              <div className="space-y-2">
+                <Label htmlFor="projectName">Project Name</Label>
+                <Input
+                  id="projectName"
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  placeholder="e.g., 123 Main St Renovation"
+                  className="h-12"
+                />
               </div>
-              
+
+              <div className="space-y-2">
+                <Label htmlFor="projectAddress" className="flex items-center gap-1.5">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  Job Site Address
+                </Label>
+                <Input
+                  id="projectAddress"
+                  value={projectAddress}
+                  onChange={(e) => setProjectAddress(e.target.value)}
+                  placeholder="e.g., 123 Main St, Toronto, ON"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Job Type</Label>
+                <Select value={projectJobType} onValueChange={setProjectJobType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a job type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {JOB_TYPES.map((jt) => (
+                      <SelectItem key={jt} value={jt}>
+                        {jt}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="flex gap-3 pt-2">
-                <Button variant="outline" onClick={handleBack} className="flex-1">
+                <Button variant="outline" onClick={() => setStep(2)} className="flex-1">
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back
                 </Button>
-                <Button 
-                  onClick={handleFinish} 
-                  className="flex-1 bg-secondary hover:bg-secondary/90 text-secondary-foreground"
-                >
-                  Go to Dashboard
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                <Button onClick={handleProjectCreate} className="flex-1" disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : projectName.trim() ? (
+                    <>
+                      Create & Continue
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </>
+                  ) : (
+                    <>
+                      Skip for Now
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </>
+        )}
+
+        {/* Step 4: AI Assistant */}
+        {step === 4 && (
+          <>
+            <CardHeader className="text-center pt-6 pb-2">
+              <div className="mx-auto mb-3 p-3 rounded-full bg-primary/10">
+                <Brain className="h-8 w-8 text-primary" />
+              </div>
+              <CardTitle className="text-2xl font-bold">Your AI Assistant</CardTitle>
+              <CardDescription>
+                Project Path's AI Brain monitors your projects, flags risks, and suggests actions. 
+                How should it handle risky situations?
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5 pb-6">
+              <RadioGroup
+                value={aiRiskMode}
+                onValueChange={setAiRiskMode}
+                className="space-y-3"
+              >
+                {[
+                  {
+                    value: 'strict',
+                    label: 'Strict',
+                    desc: 'Block risky actions automatically — best for regulated or high-liability projects',
+                    emoji: '🛑',
+                  },
+                  {
+                    value: 'balanced',
+                    label: 'Balanced',
+                    desc: 'Warn and require confirmation — recommended for most teams',
+                    emoji: '⚖️',
+                  },
+                  {
+                    value: 'advisory',
+                    label: 'Advisory',
+                    desc: 'Suggest improvements but never block — for experienced teams who want full control',
+                    emoji: '💡',
+                  },
+                ].map((opt) => (
+                  <label
+                    key={opt.value}
+                    className={`flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                      aiRiskMode === opt.value
+                        ? 'border-primary bg-primary/5 shadow-md'
+                        : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                    }`}
+                  >
+                    <RadioGroupItem value={opt.value} className="mt-1" />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{opt.emoji}</span>
+                        <span className="font-semibold">{opt.label}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">{opt.desc}</p>
+                    </div>
+                    {aiRiskMode === opt.value && (
+                      <CheckCircle className="h-5 w-5 text-primary mt-1" />
+                    )}
+                  </label>
+                ))}
+              </RadioGroup>
+
+              <p className="text-xs text-muted-foreground text-center">
+                You can change this anytime in Settings. The AI learns from your usage — no further setup needed.
+              </p>
+
+              <div className="flex gap-3 pt-2">
+                <Button variant="outline" onClick={() => setStep(3)} className="flex-1">
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back
+                </Button>
+                <Button onClick={handleFinish} className="flex-1" disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Finishing...
+                    </>
+                  ) : (
+                    <>
+                      <Rocket className="mr-2 h-4 w-4" />
+                      Go to Dashboard
+                    </>
+                  )}
                 </Button>
               </div>
             </CardContent>
