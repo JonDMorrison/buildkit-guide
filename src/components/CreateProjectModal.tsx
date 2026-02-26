@@ -269,17 +269,18 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
       queryClient.invalidateQueries({ queryKey: ['playbooks-list'] });
       queryClient.invalidateQueries({ queryKey: ['playbook-detail'] });
       queryClient.invalidateQueries({ queryKey: ['playbook-performance'] });
+      setDefaultPrompt(null); // Close only on success
     } catch (err: any) {
       const isPermErr = err?.code === '42501' 
         || err?.message?.toLowerCase().includes('forbidden')
         || err?.message?.toLowerCase().includes('permission');
       const msg = isPermErr
-        ? "You don't have permission to set the default playbook."
+        ? "You don't have permission to set the default playbook. Ask an admin to update this in Playbooks."
         : "Couldn't set default. Try again.";
       toast({ title: 'Could not set default', description: msg, variant: 'destructive' });
+      // Dialog stays open on error so user sees it didn't apply
     } finally {
       setSettingDefault(false);
-      setDefaultPrompt(null);
     }
   };
 
