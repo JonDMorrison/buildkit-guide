@@ -34,6 +34,8 @@ interface PlaybookWithPerf extends PlaybookSummary {
   total_hours_low: number;
   total_hours_high: number;
   is_recommended: boolean;
+  is_default_match: boolean;
+  is_type_match: boolean;
 }
 
 export function PlaybookSuggestionStep({
@@ -94,11 +96,11 @@ export function PlaybookSuggestionStep({
             }
           } catch { /* skip */ }
 
-          const typeMatch = jobType && pb.job_type &&
-            pb.job_type.toLowerCase().includes(jobType.toLowerCase());
+          const typeMatch = !!(jobType && pb.job_type &&
+            pb.job_type.toLowerCase().includes(jobType.toLowerCase()));
 
           // Default is org-wide; only treat as recommended if job_type also matches
-          const defaultAndMatches = pb.is_default && !!typeMatch;
+          const defaultAndMatches = pb.is_default && typeMatch;
 
           return {
             ...pb,
@@ -106,12 +108,18 @@ export function PlaybookSuggestionStep({
             projects_using: projectsUsing,
             total_hours_low: totalLow,
             total_hours_high: totalHigh,
-            is_recommended: !!(typeMatch || defaultAndMatches),
+            is_recommended: typeMatch,
+            is_default_match: defaultAndMatches,
+            is_type_match: typeMatch,
           };
         })
       );
 
-      // Deterministic sort: newlyCreated first, then matching-default, then recommended, then name
+      // Deterministic sort:
+      // 1. newlyCreated first
+      // 2. matching-default (is_default + job_type match)
+      // 3. other job_type matches, ordered by lowest variance
+      // 4. non-matching playbooks by name
       withPerf.sort((a, b) => {
         // 1. Newly created always wins
         if (newlyCreatedId) {
@@ -120,14 +128,19 @@ export function PlaybookSuggestionStep({
         }
 
         // 2. Matching default (is_default + job_type match)
-        const aDefault = a.is_default && a.is_recommended ? 1 : 0;
-        const bDefault = b.is_default && b.is_recommended ? 1 : 0;
+        const aDefault = a.is_default_match ? 1 : 0;
+        const bDefault = b.is_default_match ? 1 : 0;
         if (aDefault !== bDefault) return bDefault - aDefault;
 
-        // 3. Recommended (job_type match)
-        if (a.is_recommended !== b.is_recommended) return a.is_recommended ? -1 : 1;
+        // 3. Job-type matches above non-matches
+        if (a.is_type_match !== b.is_type_match) return a.is_type_match ? -1 : 1;
 
-        // 4. Tie-breaker: name ascending
+        // 4. Within same tier: lowest absolute variance first (tightest estimates win)
+        const aVar = Math.abs(a.variance_percent);
+        const bVar = Math.abs(b.variance_percent);
+        if (aVar !== bVar) return aVar - bVar;
+
+        // 5. Deterministic tie-breaker: name ascending
         return a.name.localeCompare(b.name);
       });
 
@@ -276,7 +289,7 @@ export function PlaybookSuggestionStep({
                 )}
               </div>
               <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] shrink-0">
-                {recommended.id === newlyCreatedId ? 'Just created' : 'Best match'}
+                {recommended.id === newlyCreatedId ? 'Just created' : recommended.is_default_match ? 'Default · Best match' : 'Best match'}
               </Badge>
             </div>
 
@@ -396,16 +409,21 @@ function PlaybookOptionCard({
   return (
     <Card className={cn(
       'border-border/50 hover:border-border transition-colors cursor-pointer group',
-      playbook.is_recommended && 'border-primary/20',
+      playbook.is_type_match && 'border-primary/20',
     )}>
       <CardContent className="p-3 flex items-center gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <p className="text-sm font-medium text-foreground truncate">{playbook.name}</p>
             <Badge variant="outline" className="text-[9px] font-mono shrink-0">v{playbook.version}</Badge>
-            {playbook.is_recommended && (
+            {playbook.is_default_match && (
               <Badge className="bg-primary/10 text-primary border-primary/20 text-[9px] shrink-0">
-                Recommended
+                Default
+              </Badge>
+            )}
+            {playbook.is_type_match && !playbook.is_default_match && (
+              <Badge variant="outline" className="text-[9px] shrink-0">
+                Matches job type
               </Badge>
             )}
           </div>

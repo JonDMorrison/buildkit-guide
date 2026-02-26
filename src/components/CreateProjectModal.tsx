@@ -433,18 +433,26 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
       </DialogContent>
     </Dialog>
 
-    <AlertDialog open={!!defaultPrompt} onOpenChange={(open) => { if (!open) setDefaultPrompt(null); }}>
+    <AlertDialog open={!!defaultPrompt} onOpenChange={(open) => { if (!open && !settingDefault) setDefaultPrompt(null); }}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Set as default playbook?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Make &ldquo;{defaultPrompt?.name}&rdquo; your organization&rsquo;s default playbook for new projects? You can change this anytime in Playbooks.
+          <AlertDialogTitle>Make this your default workflow?</AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-3">
+              <p>
+                Set <span className="font-medium text-foreground">&ldquo;{defaultPrompt?.name}&rdquo;</span> as your organization&rsquo;s default playbook for new projects.
+                You can change this anytime in Playbooks.
+              </p>
+              <p className="text-xs text-muted-foreground/70">
+                Tip: Defaults are organization-wide. If you run different job types, you can switch defaults anytime.
+              </p>
+            </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={settingDefault}>Not now</AlertDialogCancel>
           <AlertDialogAction onClick={handleSetDefault} disabled={settingDefault}>
-            {settingDefault ? 'Saving…' : 'Yes, set as default'}
+            {settingDefault ? 'Saving…' : 'Set as default'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
