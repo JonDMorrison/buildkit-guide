@@ -262,7 +262,7 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
         p_phases: null,
       });
       if (error) throw error;
-      toast({ title: 'Default playbook updated', description: `"${defaultPrompt.name}" is now the default for your organization.` });
+      toast({ title: 'Default playbook updated', description: `"${defaultPrompt.name}" is now your organization's default playbook.` });
       queryClient.invalidateQueries({ queryKey: ['playbooks-list'] });
     } catch (err: any) {
       toast({ title: 'Could not set default', description: err.message, variant: 'destructive' });
@@ -427,7 +427,7 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
         <AlertDialogHeader>
           <AlertDialogTitle>Set as default playbook?</AlertDialogTitle>
           <AlertDialogDescription>
-            Set "{defaultPrompt?.name}" as the default playbook for future{defaultPrompt?.jobType ? ` ${defaultPrompt.jobType}` : ''} projects?
+            Make &ldquo;{defaultPrompt?.name}&rdquo; your organization&rsquo;s default playbook for new projects? You can change this anytime in Playbooks.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

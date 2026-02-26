@@ -97,25 +97,39 @@ export function PlaybookSuggestionStep({
           const typeMatch = jobType && pb.job_type &&
             pb.job_type.toLowerCase().includes(jobType.toLowerCase());
 
+          // Default is org-wide; only treat as recommended if job_type also matches
+          const defaultAndMatches = pb.is_default && !!typeMatch;
+
           return {
             ...pb,
             variance_percent: variance,
             projects_using: projectsUsing,
             total_hours_low: totalLow,
             total_hours_high: totalHigh,
-            is_recommended: !!(typeMatch || pb.is_default),
+            is_recommended: !!(typeMatch || defaultAndMatches),
           };
         })
       );
 
       // Sort: newly created first, then recommended, then by usage
+      // Deterministic sort: matching-default first, then newlyCreated, then recommended, then by name
       withPerf.sort((a, b) => {
+        // 1. Matching default (is_default + job_type match) first
+        const aDefault = a.is_default && a.is_recommended ? 1 : 0;
+        const bDefault = b.is_default && b.is_recommended ? 1 : 0;
+        if (aDefault !== bDefault) return bDefault - aDefault;
+
+        // 2. Newly created
         if (newlyCreatedId) {
           if (a.id === newlyCreatedId) return -1;
           if (b.id === newlyCreatedId) return 1;
         }
+
+        // 3. Recommended (job_type match)
         if (a.is_recommended !== b.is_recommended) return a.is_recommended ? -1 : 1;
-        return b.projects_using - a.projects_using;
+
+        // 4. Tie-breaker: name ascending
+        return a.name.localeCompare(b.name);
       });
 
       setPlaybooks(withPerf);
