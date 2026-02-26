@@ -7720,6 +7720,10 @@ export type Database = {
         Args: { p_org_id: string; p_user_id: string }
         Returns: boolean
       }
+      has_org_role: {
+        Args: { _org_id: string; _roles: string[] }
+        Returns: boolean
+      }
       has_project_access: {
         Args: { p_org_roles?: string[]; p_project_id: string }
         Returns: boolean

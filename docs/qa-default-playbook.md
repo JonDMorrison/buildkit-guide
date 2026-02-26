@@ -1,56 +1,99 @@
-# QA: Default Playbook Prompt — PR1 + PR2
+# QA: Default Playbook — Full Audit
 
-## Scenarios
+## Sorting Order (Item 1)
 
-### 1. Set default → dialog copy is truthful
-- Create project with job_type "Electrical"
-- Select a playbook and click Apply
-- Dialog appears: **"Set as default playbook?"**
-- Body says: `Make "X" your organization's default playbook for new projects? You can change this anytime in Playbooks.`
-- ✅ No job_type-specific claim (default is org-wide)
+### Newly created always #1
+- Generate a playbook via "Build from history"
+- ✅ It appears as the top recommendation with "Just created" badge
+- ✅ Even if a matching-default exists, newly created is #1
 
-### 2. Default not recommended when job_type mismatches
+### Full sort order
+1. `newlyCreatedId` (if present) — always first
+2. Matching default (`is_default` + job_type matches) — next
+3. Other job_type matches — then
+4. Name ascending tie-breaker — deterministic
+
+## Default Mismatch Job Type (Item 2)
+
+### Default with mismatched job_type is NOT recommended
 - Set playbook A (job_type: "Electrical") as default
 - Create project with job_type "Plumbing"
-- Playbook A should **NOT** appear as "Recommended" or "Best match"
-- Only playbooks matching job_type "Plumbing" should be recommended
-- ✅ Default is org-wide but recommendation is job_type-scoped
+- ✅ Playbook A does NOT appear as "Recommended" or "Best match"
+- ✅ No "Default" badge in suggestion view (only "Best match" or "Just created" badges exist)
+- ✅ `is_recommended` only true when `typeMatch` is true (org-wide default alone is insufficient)
 
-### 3. Default IS recommended when job_type matches
-- Set playbook A (job_type: "Electrical") as default
-- Create project with job_type "Electrical"
-- Playbook A appears first as "Best match" / "Recommended"
-- ✅ Correct behavior
+## Permission Guard (Items 3 + 4)
 
-### 4. Sorting is deterministic
-- Sort order: matching-default → newly created → job_type match → alphabetical by name
-- No randomness or projects_using-based tie-breaking
-- ✅ Stable across refreshes
+### UI guard matches server vocabulary
+- DB stores roles as: `admin`, `pm`, `foreman`, `hr`, `internal_worker`
+- UI checks: `orgRole === 'admin' || orgRole === 'pm'`
+- RPC checks: `has_org_role(v_org_id, ARRAY['admin','project_manager'])`
+- `has_org_role` function normalizes `'pm'` ↔ `'project_manager'` equivalence
+- ✅ UI guard and server guard are aligned
 
-### 5. Error handling
-- If rpc_update_playbook fails, error toast shown, project creation unaffected
-- ✅ Non-blocking
+### Non-privileged user (foreman/worker)
+- Create project and apply playbook
+- ✅ "Set as default?" prompt does NOT appear
+- ✅ Project creation succeeds normally
 
-### 6. Permission guard — non-privileged user (PR2)
-- Log in as **foreman** or **internal_worker**
-- Create project and apply a playbook
-- ✅ "Set as default?" prompt does **NOT** appear
-- Project is still created successfully
-
-### 7. Permission guard — privileged user (PR2)
-- Log in as **admin** or **pm**
-- Create project and apply a non-default playbook
+### Privileged user (admin/pm)
+- Create project and apply non-default playbook
 - ✅ "Set as default?" prompt appears
-- Click "Yes, set as default" → success toast
+- ✅ Click "Yes, set as default" → success toast
 
-### 8. RPC rejection handling (PR2)
-- If RPC returns 42501 (e.g., role changed mid-session)
-- ✅ Toast: "You don't have permission to set the default playbook."
-- Project creation is unaffected
+### Error code robustness (Item 4)
+- Error handling checks:
+  - `err.code === '42501'` → permission toast
+  - `err.message` includes "forbidden" → permission toast
+  - `err.message` includes "permission" → permission toast
+  - Otherwise → generic "Couldn't set default" toast
+- ✅ Covers Supabase error surface variants
 
-### 9. Cache invalidation correctness (PR2)
-- After setting default, `playbooks-list`, `playbook-detail`, and `playbook-performance` queries are all invalidated
-- ✅ Default badge appears immediately in playbook list
+## Cache Invalidation (Item 5)
 
-## Future (PR3)
-- If per-job_type defaults are added to schema, update dialog copy and recommendation logic
+### Verified query keys match actual hook definitions
+- `usePlaybookList`: `['playbooks-list', orgId]` → invalidated with `['playbooks-list']` (prefix match ✅)
+- `usePlaybookDetail`: `['playbook-detail', playbookId]` → invalidated with `['playbook-detail']` ✅
+- `usePlaybookPerformance`: `['playbook-performance', playbookId]` → invalidated with `['playbook-performance']` ✅
+- Note: `invalidateQueries({ queryKey: ['playbooks-list'] })` uses prefix matching by default in TanStack Query v5
+
+## Non-Blocking Prompt (Item 6)
+
+### Prompt only opens once
+- `defaultPrompt` is set once after project creation succeeds (line ~204)
+- Modal closes via `onOpenChange(false)` at line ~228 before prompt appears
+- `defaultPrompt` is reset to `null` in the `finally` block of `handleSetDefault`
+- Dismissing via "Not now" sets `defaultPrompt` to `null` via `onOpenChange`
+- ✅ No re-render or query invalidation can re-trigger the prompt
+- ✅ `defaultPrompt` is not persisted — it resets when modal closes
+
+## Build From History (Item 7)
+
+### Button disabled without job_type
+- Empty state button: "Build workflow from past {jobType} jobs" — only shown when `jobType` is truthy (line ~183 condition)
+- Action bar button: "Build from history" — only shown when `jobType` is truthy (line ~337 condition)
+- Dialog "Find patterns" button: `disabled={!jobType.trim()}`
+- ✅ Edge function never invoked with blank job_type
+
+## Trust Disclosure (Item 8)
+
+### Dialog subtitle provides clear disclosure
+- "We'll analyze recent projects in this job type and propose phases, tasks, and hour ranges."
+- "You can edit the workflow before applying it."
+- ✅ No "AI" in labels, but mechanism is disclosed in plain English
+
+## 404 No Similar Projects (Item 9)
+
+### Dialog allows recovery
+- Error fallback: "No similar past projects found for this job type yet. Try another job type or start from an existing playbook."
+- ✅ User can change jobType and retry ("Find patterns" button remains active)
+- ✅ User can close dialog and pick an existing playbook
+- ✅ Dialog doesn't crash or become stuck
+
+## Backend: has_org_role Function (Critical Fix)
+
+### Function was missing from database
+- All playbook RPCs referenced `has_org_role()` which did not exist
+- Created as SECURITY DEFINER function with `pm` ↔ `project_manager` normalization
+- ✅ `rpc_update_playbook` now works for admin and pm roles
+- ✅ Access properly denied for foreman/worker/hr roles

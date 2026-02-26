@@ -111,19 +111,18 @@ export function PlaybookSuggestionStep({
         })
       );
 
-      // Sort: newly created first, then recommended, then by usage
-      // Deterministic sort: matching-default first, then newlyCreated, then recommended, then by name
+      // Deterministic sort: newlyCreated first, then matching-default, then recommended, then name
       withPerf.sort((a, b) => {
-        // 1. Matching default (is_default + job_type match) first
-        const aDefault = a.is_default && a.is_recommended ? 1 : 0;
-        const bDefault = b.is_default && b.is_recommended ? 1 : 0;
-        if (aDefault !== bDefault) return bDefault - aDefault;
-
-        // 2. Newly created
+        // 1. Newly created always wins
         if (newlyCreatedId) {
           if (a.id === newlyCreatedId) return -1;
           if (b.id === newlyCreatedId) return 1;
         }
+
+        // 2. Matching default (is_default + job_type match)
+        const aDefault = a.is_default && a.is_recommended ? 1 : 0;
+        const bDefault = b.is_default && b.is_recommended ? 1 : 0;
+        if (aDefault !== bDefault) return bDefault - aDefault;
 
         // 3. Recommended (job_type match)
         if (a.is_recommended !== b.is_recommended) return a.is_recommended ? -1 : 1;
