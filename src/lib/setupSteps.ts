@@ -109,20 +109,5 @@ export const SETUP_STEPS: readonly SetupStepDefinition[] = [
   },
 ] as const;
 
-/**
- * Step keys that are only used internally (completed during onboarding wizard).
- * These are tracked in setup_checklist_progress but NOT shown in the checklist UI
- * and NOT counted toward the progress percentage shown to users.
- */
-export const ONBOARDING_ONLY_STEP_KEYS: readonly (keyof SetupProgress)[] = [
-  'step_org_created',
-  'step_timezone_set',
-  'step_first_project',
-  'step_first_job_site',
-  'step_time_tracking_configured',
-  'step_first_safety_form',
-  'step_first_drawing',
-] as const;
-
 /** All checklist step keys (for progress calculation) */
 export const SETUP_STEP_KEYS: readonly (keyof SetupProgress)[] = SETUP_STEPS.map(s => s.key);

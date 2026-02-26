@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { SetupChecklistItem } from './SetupChecklistItem';
 import { useSmartChecklist, type ChecklistContext } from './useSmartChecklist';
-import { SETUP_STEPS, type SetupStepDefinition } from '@/lib/setupSteps';
+import { type SetupStepDefinition } from '@/lib/setupSteps';
 import { AcknowledgeStepDialog } from './AcknowledgeStepDialog';
 import { TradesManagementModal } from './steps/TradesManagementModal';
 import { TimeTrackingSettingsModal } from './steps/TimeTrackingSettingsModal';
