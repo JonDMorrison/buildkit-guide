@@ -71,8 +71,9 @@ Worker suggestions surface recently-assigned crew members when creating or editi
 - **Expected**: While an assignment is in progress, clicked chip shows disabled state
 - **Verify**: `assigningWorkerId` state prevents concurrent inserts
 
-### 14. Stale duplicate guard
-- **Expected**: If UI is stale and user clicks an already-assigned worker, toast shows "Already assigned"
+### 14. Stale duplicate guard (Postgres 23505)
+- **Expected**: If UI is stale and user clicks an already-assigned worker, Postgres returns error code `23505` (unique constraint). Handler catches this code specifically, shows calm toast "Already assigned", and refetches assignees to sync UI.
+- **Verify**: No raw SQL or error message is shown to the user. Other errors show generic "Couldn't assign. Try again." toast.
 
 ## Query Details
 
