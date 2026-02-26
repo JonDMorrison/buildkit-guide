@@ -161,7 +161,7 @@ export const CreateDeficiencyModal = ({
         due_date: "",
       });
       setPhotos([]);
-      queryClient.invalidateQueries({ queryKey: ['smart-defaults'] });
+      queryClient.invalidateQueries({ queryKey: ['smart-defaults', formData.project_id] });
       onCreate();
       onClose();
     } catch (error: any) {

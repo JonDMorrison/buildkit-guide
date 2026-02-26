@@ -45,7 +45,11 @@ Worker suggestions surface recently-assigned crew members when creating tasks, u
 
 ## Query Details
 
-- **QueryKey**: `['smart-defaults', 'assignments', projectId]`
-- **Invalidation**: Broad prefix `['smart-defaults']` on all create modals
+- **QueryKey**: `['smart-defaults', projectId, 'assignments']`
+- **Invalidation**: Project-scoped `['smart-defaults', projectId]` on all create modals
 - **StaleTime**: 5 minutes
 - **Gating**: `enabled: !!projectId`
+
+## Performance Note
+
+Creating a task in Project A invalidates only `['smart-defaults', projectA_id]`. Smart defaults for Project B remain cached and are not refetched.

@@ -190,7 +190,7 @@ export const DailyLogForm = ({
       }
 
       reset();
-      queryClient.invalidateQueries({ queryKey: ['smart-defaults'] });
+      queryClient.invalidateQueries({ queryKey: ['smart-defaults', projectId] });
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
