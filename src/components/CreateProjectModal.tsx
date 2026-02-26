@@ -125,19 +125,20 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
 
       let orgId = activeOrganizationId;
 
-      // If user has no organization, create one for them
+      // If user has no organization, create one via atomic RPC
       if (!orgId && user?.id) {
         const orgName = user.email?.split('@')[0]
           ? `${user.email.split('@')[0]}'s Organization`
           : 'My Organization';
 
-        const newOrgId = crypto.randomUUID();
-        const { error: orgError } = await supabase
-          .from('organizations')
-          .insert({ id: newOrgId, name: orgName });
+        const { data: rpcResult, error: orgError } = await supabase.rpc('rpc_onboarding_ensure_org', {
+          p_name: orgName,
+          p_slug_base: orgName,
+          p_user_id: user.id,
+        });
 
         if (orgError) throw new Error(`Failed to create organization: ${orgError.message}`);
-        orgId = newOrgId;
+        orgId = (rpcResult as any)?.org_id ?? null;
       }
 
       if (!orgId) {
