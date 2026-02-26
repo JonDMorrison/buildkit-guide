@@ -27,6 +27,7 @@ import { EconomicPulseStrip } from "@/components/dashboard/EconomicPulseStrip";
 import { QuickAddModal } from "@/components/dashboard/QuickAddModal";
 import { format, isBefore, addDays, startOfDay, subDays } from "date-fns";
 import { WorkerDashboard } from "@/components/dashboard/worker/WorkerDashboard";
+import { SmartChecklist } from "@/components/setup/SmartChecklist";
 
 // Shared dashboard system
 import { DashboardLayout } from "@/components/dashboard/shared/DashboardLayout";
@@ -380,6 +381,8 @@ function DashboardContent() {
   return (
     <DashboardLayout>
       <HealthContextBanner />
+      {/* Setup checklist — visible until completed or dismissed */}
+      <SmartChecklist />
       {/* Header */}
       <DashboardHeader
         title={isForeman() ? "Site Operations" : "Today on Site"}
