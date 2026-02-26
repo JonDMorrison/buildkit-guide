@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useMemo, useCallback } from 'react';
 import { SETUP_STEP_KEYS } from '@/lib/setupSteps';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -57,13 +57,103 @@ const defaultProgress: SetupProgress = {
   completed_at: null,
 };
 
+/** Run a single detector; returns partial SetupProgress on success, empty on failure */
+async function runDetector(
+  name: string,
+  fn: () => Promise<Partial<SetupProgress>>
+): Promise<{ name: string; result: Partial<SetupProgress>; error?: string }> {
+  try {
+    const result = await fn();
+    return { name, result };
+  } catch (e: any) {
+    console.warn(`[setup-detector] ${name} failed:`, e?.message ?? e);
+    return { name, result: {}, error: e?.message ?? 'unknown' };
+  }
+}
+
+/** All detectors run in parallel via Promise.allSettled-style wrapper */
+async function detectAllSteps(orgId: string): Promise<{ detected: Partial<SetupProgress>; errors: string[] }> {
+  const detectors = [
+    runDetector('org-settings', async () => {
+      const { data } = await supabase
+        .from('organization_settings')
+        .select('default_timezone, time_tracking_enabled, invoice_send_roles')
+        .eq('organization_id', orgId)
+        .maybeSingle();
+      const d: Partial<SetupProgress> = {};
+      d.step_org_created = true;
+      if (data?.default_timezone) d.step_timezone_set = true;
+      if (data?.time_tracking_enabled) d.step_time_tracking_enabled = true;
+      if (data?.invoice_send_roles && (data.invoice_send_roles as string[]).length > 0) {
+        d.step_invoice_permissions = true;
+      }
+      return d;
+    }),
+    runDetector('projects-and-related', async () => {
+      const d: Partial<SetupProgress> = {};
+      const { count: projectCount, data: projects } = await supabase
+        .from('projects')
+        .select('id', { count: 'exact' })
+        .eq('organization_id', orgId)
+        .eq('is_deleted', false);
+      if (projectCount && projectCount > 0) d.step_first_project = true;
+      if (projects && projects.length > 0) {
+        const projectIds = projects.map(p => p.id);
+        // Run sub-detectors in parallel
+        const [tradesRes, assignRes, safetyRes, drawingRes] = await Promise.all([
+          supabase.from('trades').select('id', { count: 'exact', head: true }).eq('organization_id', orgId),
+          supabase.from('project_members').select('id', { count: 'exact', head: true }).in('project_id', projectIds),
+          supabase.from('safety_forms').select('id', { count: 'exact', head: true }).in('project_id', projectIds).eq('is_deleted', false).eq('status', 'submitted'),
+          supabase.from('attachments').select('id', { count: 'exact', head: true }).in('project_id', projectIds).not('document_type', 'is', null),
+        ]);
+        if (tradesRes.count && tradesRes.count >= 3) d.step_trades_configured = true;
+        if (assignRes.count && assignRes.count > 0) d.step_users_assigned = true;
+        if (safetyRes.count && safetyRes.count > 0) d.step_first_safety_form = true;
+        if (drawingRes.count && drawingRes.count > 0) d.step_first_drawing = true;
+      }
+      return d;
+    }),
+    runDetector('job-sites', async () => {
+      const { count } = await supabase
+        .from('job_sites')
+        .select('id', { count: 'exact', head: true })
+        .eq('organization_id', orgId)
+        .eq('is_active', true);
+      return count && count > 0 ? { step_first_job_site: true } : {};
+    }),
+    runDetector('members', async () => {
+      const { count } = await supabase
+        .from('organization_memberships')
+        .select('id', { count: 'exact', head: true })
+        .eq('organization_id', orgId)
+        .eq('is_active', true);
+      return count && count > 1 ? { step_first_invite: true } : {};
+    }),
+    runDetector('labor-rates', async () => {
+      const { data } = await supabase.rpc('rpc_get_org_costing_setup_status', { p_org_id: orgId });
+      if (data && (data as any).missing_labor_rates_count === 0 && !(data as any).has_currency_mismatch) {
+        return { step_labor_rates: true } as Partial<SetupProgress>;
+      }
+      return {};
+    }),
+  ];
+
+  const results = await Promise.all(detectors);
+  const detected: Partial<SetupProgress> = {};
+  const errors: string[] = [];
+  for (const r of results) {
+    Object.assign(detected, r.result);
+    if (r.error) errors.push(`${r.name}: ${r.error}`);
+  }
+  return { detected, errors };
+}
+
 export function useSetupProgress() {
   const { activeOrganizationId } = useOrganization();
   const queryClient = useQueryClient();
-  const [autoDetectedSteps, setAutoDetectedSteps] = useState<Partial<SetupProgress>>({});
 
   // Fetch saved progress from database
-  const { data: savedProgress, isLoading } = useQuery({
+  const { data: savedProgress, isLoading: isSavedLoading } = useQuery({
     queryKey: ['setup-progress', activeOrganizationId],
     queryFn: async () => {
       if (!activeOrganizationId) return null;
@@ -84,145 +174,18 @@ export function useSetupProgress() {
     enabled: !!activeOrganizationId,
   });
 
-  // Auto-detect completed steps based on existing data
-  useEffect(() => {
-    if (!activeOrganizationId) return;
+  // Auto-detect completed steps — cached via react-query, parallel execution
+  const { data: detectionResult, isLoading: isDetecting } = useQuery({
+    queryKey: ['setup-detectors', activeOrganizationId],
+    queryFn: () => detectAllSteps(activeOrganizationId!),
+    enabled: !!activeOrganizationId,
+    staleTime: 60_000, // cache for 60s — avoid re-running on every mount
+    refetchOnWindowFocus: false,
+  });
 
-    const detectSteps = async () => {
-      const detected: Partial<SetupProgress> = {};
-
-      // Check if org exists (always true if we have activeOrganizationId)
-      detected.step_org_created = true;
-
-      // Check timezone
-      const { data: orgSettings } = await supabase
-        .from('organization_settings')
-        .select('default_timezone, time_tracking_enabled')
-        .eq('organization_id', activeOrganizationId)
-        .maybeSingle();
-      
-      if (orgSettings?.default_timezone) {
-        detected.step_timezone_set = true;
-      }
-      if (orgSettings?.time_tracking_enabled) {
-        detected.step_time_tracking_enabled = true;
-      }
-
-      // Check projects
-      const { count: projectCount } = await supabase
-        .from('projects')
-        .select('id', { count: 'exact', head: true })
-        .eq('organization_id', activeOrganizationId)
-        .eq('is_deleted', false);
-      
-      if (projectCount && projectCount > 0) {
-        detected.step_first_project = true;
-      }
-
-      // Check job sites
-      const { count: jobSiteCount } = await supabase
-        .from('job_sites')
-        .select('id', { count: 'exact', head: true })
-        .eq('organization_id', activeOrganizationId)
-        .eq('is_active', true);
-      
-      if (jobSiteCount && jobSiteCount > 0) {
-        detected.step_first_job_site = true;
-      }
-
-      // Check team members (more than 1 means someone was invited)
-      const { count: memberCount } = await supabase
-        .from('organization_memberships')
-        .select('id', { count: 'exact', head: true })
-        .eq('organization_id', activeOrganizationId)
-        .eq('is_active', true);
-      
-      if (memberCount && memberCount > 1) {
-        detected.step_first_invite = true;
-      }
-
-      // Check labor rates via RPC
-      try {
-        const { data: costingStatus } = await supabase.rpc('rpc_get_org_costing_setup_status', {
-          p_org_id: activeOrganizationId,
-        });
-        if (costingStatus && (costingStatus as any).missing_labor_rates_count === 0 && !(costingStatus as any).has_currency_mismatch) {
-          detected.step_labor_rates = true;
-        }
-      } catch {
-        // ignore — step stays incomplete
-      }
-
-      // Check invoice permissions — if org_settings row exists with explicit send roles, consider it configured
-      const { data: invoiceSettings } = await supabase
-        .from('organization_settings')
-        .select('invoice_send_roles')
-        .eq('organization_id', activeOrganizationId)
-        .maybeSingle();
-      
-      if (invoiceSettings?.invoice_send_roles && (invoiceSettings.invoice_send_roles as string[]).length > 0) {
-        detected.step_invoice_permissions = true;
-      }
-
-      // Check trades - get projects first, then check trades
-      const { data: projects } = await supabase
-        .from('projects')
-        .select('id')
-        .eq('organization_id', activeOrganizationId)
-        .eq('is_deleted', false);
-      
-      if (projects && projects.length > 0) {
-        // Check trades (now organization-based)
-        const { count: tradeCount } = await supabase
-          .from('trades')
-          .select('id', { count: 'exact', head: true })
-          .eq('organization_id', activeOrganizationId);
-        
-        if (tradeCount && tradeCount >= 3) {
-          detected.step_trades_configured = true;
-        }
-
-        const projectIds = projects.map(p => p.id);
-
-        // Check project members
-        const { count: assignmentCount } = await supabase
-          .from('project_members')
-          .select('id', { count: 'exact', head: true })
-          .in('project_id', projectIds);
-        
-        if (assignmentCount && assignmentCount > 0) {
-          detected.step_users_assigned = true;
-        }
-
-        // Check safety forms
-        const { count: safetyCount } = await supabase
-          .from('safety_forms')
-          .select('id', { count: 'exact', head: true })
-          .in('project_id', projectIds)
-          .eq('is_deleted', false)
-          .eq('status', 'submitted');
-        
-        if (safetyCount && safetyCount > 0) {
-          detected.step_first_safety_form = true;
-        }
-
-        // Check drawings
-        const { count: drawingCount } = await supabase
-          .from('attachments')
-          .select('id', { count: 'exact', head: true })
-          .in('project_id', projectIds)
-          .not('document_type', 'is', null);
-        
-        if (drawingCount && drawingCount > 0) {
-          detected.step_first_drawing = true;
-        }
-      }
-
-      setAutoDetectedSteps(detected);
-    };
-
-    detectSteps();
-  }, [activeOrganizationId]);
+  const autoDetectedSteps = detectionResult?.detected ?? {};
+  const detectorErrors = detectionResult?.errors ?? [];
+  const isLoading = isSavedLoading || isDetecting;
 
   // Merge saved progress with auto-detected steps
   const progress = useMemo((): SetupProgress => {
@@ -281,6 +244,7 @@ export function useSetupProgress() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['setup-progress', activeOrganizationId] });
+      queryClient.invalidateQueries({ queryKey: ['setup-detectors', activeOrganizationId] });
     },
   });
 
@@ -352,6 +316,10 @@ export function useSetupProgress() {
     return null;
   }, [progress, phases]);
 
+  const retryDetectors = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['setup-detectors', activeOrganizationId] });
+  }, [queryClient, activeOrganizationId]);
+
   return {
     progress,
     isLoading,
@@ -368,5 +336,7 @@ export function useSetupProgress() {
     resetProgress,
     markAllComplete,
     isUpdating: updateMutation.isPending,
+    detectorErrors,
+    retryDetectors,
   };
 }
