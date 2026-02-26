@@ -19,7 +19,7 @@ function detectContextFromRoute(pathname: string): ChecklistContext {
 }
 
 export function useSmartChecklist(contextOverride?: ChecklistContext) {
-  const { progress, isLoading, markStepComplete, dismissWizard, isDismissed, isComplete, isUpdating } = useSetupProgress();
+  const { progress, isLoading, markStepComplete, dismissWizard, isDismissed, isComplete, isUpdating, detectorErrors, retryDetectors } = useSetupProgress();
   const location = useLocation();
 
   const currentContext = contextOverride || detectContextFromRoute(location.pathname);
@@ -27,24 +27,14 @@ export function useSmartChecklist(contextOverride?: ChecklistContext) {
   const visibleItems = useMemo(() => {
     if (isLoading) return [];
 
-    // Filter items: show dashboard items always + context-specific items
     const relevant = SETUP_STEPS.filter((item) => {
-      // Skip already-complete items
       if (progress[item.key] === true) return false;
-
-      // Dashboard items always show
       if (item.visibleIn.includes('dashboard')) return true;
-
-      // Context-specific items show when on that page
       if (item.visibleIn.includes(currentContext)) return true;
-
-      // In "all" mode (e.g., the /setup page), show everything
       if (currentContext === 'all') return true;
-
       return false;
     });
 
-    // Cap at 5 items
     return relevant.slice(0, 5);
   }, [progress, isLoading, currentContext]);
 
@@ -64,5 +54,7 @@ export function useSmartChecklist(contextOverride?: ChecklistContext) {
     dismissWizard,
     isUpdating,
     progress,
+    detectorErrors,
+    retryDetectors,
   };
 }

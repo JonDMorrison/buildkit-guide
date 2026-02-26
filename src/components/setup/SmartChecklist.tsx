@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Rocket, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Rocket, X, ChevronDown, ChevronUp, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -44,6 +44,8 @@ export function SmartChecklist({ context, forceShow = false }: SmartChecklistPro
     dismissWizard,
     isUpdating,
     progress,
+    detectorErrors,
+    retryDetectors,
   } = useSmartChecklist(context);
 
   const [isExpanded, setIsExpanded] = useState(true);
@@ -129,6 +131,15 @@ export function SmartChecklist({ context, forceShow = false }: SmartChecklistPro
 
         {isExpanded && (
           <CardContent className="pt-2 pb-4">
+            {detectorErrors.length > 0 && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded px-3 py-2 mb-2">
+                <AlertTriangle className="w-3.5 h-3.5 text-yellow-500 shrink-0" />
+                <span>Some checks couldn't load</span>
+                <Button variant="ghost" size="sm" className="h-6 px-2 ml-auto text-xs" onClick={retryDetectors}>
+                  <RefreshCw className="w-3 h-3 mr-1" /> Retry
+                </Button>
+              </div>
+            )}
             <div className="space-y-1">
               {items.map((item) => (
                 <SetupChecklistItem
