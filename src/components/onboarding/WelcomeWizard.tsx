@@ -57,30 +57,13 @@ const PROVINCES = [
   { value: 'US-OTHER', label: 'United States (Other)' },
 ];
 
-/** Derive timezone default from browser, falling back to Toronto if not in our list */
+/** Derive timezone default from browser; leave empty string if unrecognized so user must choose */
 function detectTimezoneDefault(): string {
   try {
     const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     if (TIMEZONES.some(tz => tz.value === browserTz)) return browserTz;
   } catch { /* ignore */ }
-  return 'America/Toronto';
-}
-
-/** Map browser timezone to a reasonable province/region default */
-function detectProvinceDefault(tz: string): string {
-  const tzToProvince: Record<string, string> = {
-    'America/St_Johns': 'NL',
-    'America/Halifax': 'NS',
-    'America/Toronto': 'ON',
-    'America/Winnipeg': 'MB',
-    'America/Edmonton': 'AB',
-    'America/Vancouver': 'BC',
-    'America/New_York': 'US-OTHER',
-    'America/Chicago': 'US-OTHER',
-    'America/Denver': 'US-OTHER',
-    'America/Los_Angeles': 'US-OTHER',
-  };
-  return tzToProvince[tz] || '';
+  return ''; // No assumption — user must select
 }
 
 const JOB_TYPES = [
@@ -120,7 +103,7 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
   const [orgName, setOrgName] = useState('');
   const detectedTz = detectTimezoneDefault();
   const [timezone, setTimezone] = useState(detectedTz);
-  const [province, setProvince] = useState(() => detectProvinceDefault(detectedTz));
+  const [province, setProvince] = useState('');
   const [orgCreated, setOrgCreated] = useState<{ id: string } | null>(null);
 
   // Step 2 (Project)
@@ -433,9 +416,9 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
                     <Globe className="h-4 w-4 text-muted-foreground" />
                     Timezone
                   </Label>
-                  <Select value={timezone} onValueChange={(tz) => { setTimezone(tz); setProvince(detectProvinceDefault(tz)); }}>
+                  <Select value={timezone} onValueChange={setTimezone}>
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Select timezone" />
                     </SelectTrigger>
                     <SelectContent>
                       {TIMEZONES.map((tz) => (
@@ -471,7 +454,7 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
                 onClick={handleOrgCreate}
                 size="lg"
                 className="w-full h-14 text-lg"
-                disabled={isLoading || isSubmitting || !orgName.trim()}
+                disabled={isLoading || isSubmitting || !orgName.trim() || !timezone || !province}
               >
                 {isLoading ? (
                   <>
