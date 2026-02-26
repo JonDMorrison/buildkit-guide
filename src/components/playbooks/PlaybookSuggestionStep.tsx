@@ -162,7 +162,10 @@ export function PlaybookSuggestionStep({
     // fetchPlaybooks will re-run due to newlyCreatedId change
   };
 
-  const recommended = playbooks.find(p => p.id === newlyCreatedId) || playbooks.find(p => p.is_recommended);
+  // Auto-preselect priority: newlyCreated > matching-default > first type-match
+  const recommended = playbooks.find(p => p.id === newlyCreatedId)
+    || playbooks.find(p => p.is_default_match)
+    || playbooks.find(p => p.is_type_match);
   const others = playbooks.filter(p => p !== recommended);
 
   if (loading) {
