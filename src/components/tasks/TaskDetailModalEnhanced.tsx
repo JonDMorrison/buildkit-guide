@@ -570,7 +570,7 @@ export const TaskDetailModalEnhanced = ({
             {/* Smart worker suggestion chips */}
             {workerChips.length > 0 && (
               <div className="flex items-center gap-1.5 flex-wrap mb-2">
-                <span className="text-xs text-muted-foreground">Recently assigned:</span>
+                <span className="text-xs text-muted-foreground">Recently used on this project:</span>
                 {workerChips.map((w) => (
                   <Badge
                     key={w.id}

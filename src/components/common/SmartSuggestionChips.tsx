@@ -9,7 +9,7 @@ interface SmartSuggestionChipsProps {
 }
 
 export const SmartSuggestionChips = ({
-  label = 'Recently used',
+  label = 'Recently used on this project',
   items,
   onSelect,
   className,
@@ -48,7 +48,7 @@ export const LocationSuggestionChips = ({
 
   return (
     <div className={cn('flex items-center gap-1.5 flex-wrap', className)}>
-      <span className="text-xs text-muted-foreground">Recent:</span>
+      <span className="text-xs text-muted-foreground">Recently used on this project:</span>
       {locations.map((loc) => (
         <Badge
           key={loc}
