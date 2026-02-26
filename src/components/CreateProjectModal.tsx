@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useOrganization } from '@/hooks/useOrganization';
+import { useOrganizationRole } from '@/hooks/useOrganizationRole';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -58,6 +59,7 @@ type Step = 'details' | 'playbook';
 export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProjectModalProps) => {
   const { user } = useAuth();
   const { activeOrganizationId } = useOrganization();
+  const { role: orgRole } = useOrganizationRole();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
@@ -199,8 +201,9 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
             title: 'Project created with playbook',
             description: `${validatedData.name} has been created and playbook applied.`,
           });
-          // Offer to set as default if not already
-          if (playbookInfo && !playbookInfo.isDefault) {
+          // Only offer default prompt to admin/pm roles
+          const canSetDefault = orgRole === 'admin' || orgRole === 'pm';
+          if (playbookInfo && !playbookInfo.isDefault && canSetDefault) {
             setDefaultPrompt(playbookInfo);
           }
         } catch (pbError: any) {
@@ -264,8 +267,13 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
       if (error) throw error;
       toast({ title: 'Default playbook updated', description: `"${defaultPrompt.name}" is now your organization's default playbook.` });
       queryClient.invalidateQueries({ queryKey: ['playbooks-list'] });
+      queryClient.invalidateQueries({ queryKey: ['playbook-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['playbook-performance'] });
     } catch (err: any) {
-      toast({ title: 'Could not set default', description: err.message, variant: 'destructive' });
+      const msg = err?.code === '42501' || err?.message?.toLowerCase().includes('forbidden')
+        ? "You don't have permission to set the default playbook."
+        : "Couldn't set default. Try again.";
+      toast({ title: 'Could not set default', description: msg, variant: 'destructive' });
     } finally {
       setSettingDefault(false);
       setDefaultPrompt(null);
