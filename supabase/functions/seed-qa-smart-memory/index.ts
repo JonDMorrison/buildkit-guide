@@ -113,7 +113,7 @@ serve(async (req: Request) => {
       } else {
         const { data: newTrade, error: tradeErr } = await admin
           .from("trades")
-          .insert({ name, organization_id: organizationId, is_active: true })
+          .insert({ name, organization_id: organizationId, is_active: true, company_name: name })
           .select("id")
           .single();
         if (tradeErr) throw new Error(`Trade insert: ${tradeErr.message}`);
