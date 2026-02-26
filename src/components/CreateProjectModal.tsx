@@ -12,6 +12,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from './ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from './ui/alert-dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
@@ -21,7 +31,7 @@ import { Label } from './ui/label';
 import { FormField } from './FormField';
 import { DatePicker } from './ui/date-picker';
 import { Loader2, ArrowRight } from 'lucide-react';
-import { PlaybookSuggestionStep } from './playbooks/PlaybookSuggestionStep';
+import { PlaybookSuggestionStep, type AppliedPlaybookInfo } from './playbooks/PlaybookSuggestionStep';
 
 const projectSchema = z.object({
   name: z.string().trim().min(3, 'Project name must be at least 3 characters'),
@@ -54,6 +64,8 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
   const [includeArchived, setIncludeArchived] = useState(false);
   const [allClients, setAllClients] = useState<{ id: string; name: string; is_active: boolean }[]>([]);
   const [step, setStep] = useState<Step>('details');
+  const [defaultPrompt, setDefaultPrompt] = useState<AppliedPlaybookInfo | null>(null);
+  const [settingDefault, setSettingDefault] = useState(false);
   const [form, setForm] = useState<ProjectForm>({
     name: '',
     jobNumber: '',
@@ -118,7 +130,7 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
     }
   };
 
-  const createProject = async (playbookId?: string) => {
+  const createProject = async (playbookId?: string, playbookInfo?: AppliedPlaybookInfo) => {
     setLoading(true);
     try {
       const validatedData = projectSchema.parse(form);
@@ -187,6 +199,10 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
             title: 'Project created with playbook',
             description: `${validatedData.name} has been created and playbook applied.`,
           });
+          // Offer to set as default if not already
+          if (playbookInfo && !playbookInfo.isDefault) {
+            setDefaultPrompt(playbookInfo);
+          }
         } catch (pbError: any) {
           console.error('Playbook application failed:', pbError);
           toast({
@@ -233,8 +249,32 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
       setLoading(false);
     }
   };
+  const handleSetDefault = async () => {
+    if (!defaultPrompt) return;
+    setSettingDefault(true);
+    try {
+      const { error } = await supabase.rpc('rpc_update_playbook' as any, {
+        p_playbook_id: defaultPrompt.id,
+        p_name: null,
+        p_job_type: null,
+        p_description: null,
+        p_is_default: true,
+        p_phases: null,
+      });
+      if (error) throw error;
+      toast({ title: 'Default playbook updated', description: `"${defaultPrompt.name}" is now the default for your organization.` });
+      queryClient.invalidateQueries({ queryKey: ['playbooks-list'] });
+    } catch (err: any) {
+      toast({ title: 'Could not set default', description: err.message, variant: 'destructive' });
+    } finally {
+      setSettingDefault(false);
+      setDefaultPrompt(null);
+    }
+  };
 
   return (
+    <>
+
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
@@ -372,7 +412,7 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
             ) : (
               <PlaybookSuggestionStep
                 jobType={form.jobType}
-                onApply={(playbookId) => createProject(playbookId)}
+                onApply={(playbookId, info) => createProject(playbookId, info)}
                 onSkip={() => createProject()}
                 onBack={() => setStep('details')}
               />
@@ -381,5 +421,23 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
         )}
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={!!defaultPrompt} onOpenChange={(open) => { if (!open) setDefaultPrompt(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Set as default playbook?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Set "{defaultPrompt?.name}" as the default playbook for future{defaultPrompt?.jobType ? ` ${defaultPrompt.jobType}` : ''} projects?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={settingDefault}>Not now</AlertDialogCancel>
+          <AlertDialogAction onClick={handleSetDefault} disabled={settingDefault}>
+            {settingDefault ? 'Saving…' : 'Yes, set as default'}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 };

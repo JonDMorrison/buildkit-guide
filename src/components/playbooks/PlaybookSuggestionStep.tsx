@@ -13,9 +13,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from '@/hooks/useOrganization';
 import type { PlaybookSummary } from '@/hooks/usePlaybooks';
 
+export interface AppliedPlaybookInfo {
+  id: string;
+  name: string;
+  isDefault: boolean;
+  jobType: string;
+}
+
 interface PlaybookSuggestionStepProps {
   jobType?: string;
-  onApply: (playbookId: string) => void;
+  onApply: (playbookId: string, info: AppliedPlaybookInfo) => void;
   onSkip: () => void;
   onBack: () => void;
 }
@@ -181,7 +188,7 @@ export function PlaybookSuggestionStep({
               <PlaybookOptionCard
                 key={pb.id}
                 playbook={pb}
-                onApply={() => onApply(pb.id)}
+                onApply={(info) => onApply(info.id, info)}
               />
             ))}
           </div>
@@ -262,7 +269,7 @@ export function PlaybookSuggestionStep({
               {recommended.phase_count} phases · {recommended.task_count} tasks
             </div>
 
-            <Button onClick={() => onApply(recommended.id)} className="w-full gap-1.5">
+            <Button onClick={() => onApply(recommended.id, { id: recommended.id, name: recommended.name, isDefault: recommended.is_default, jobType: recommended.job_type })} className="w-full gap-1.5">
               <BookOpen className="h-4 w-4" />
               Apply Recommended
             </Button>
@@ -326,7 +333,7 @@ function PlaybookOptionCard({
   playbook, onApply,
 }: {
   playbook: PlaybookWithPerf;
-  onApply: () => void;
+  onApply: (info: AppliedPlaybookInfo) => void;
 }) {
   return (
     <Card className={cn(
@@ -354,7 +361,7 @@ function PlaybookOptionCard({
           size="sm"
           variant="outline"
           className="h-8 text-xs shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={(e) => { e.stopPropagation(); onApply(); }}
+          onClick={(e) => { e.stopPropagation(); onApply({ id: playbook.id, name: playbook.name, isDefault: playbook.is_default, jobType: playbook.job_type }); }}
         >
           Apply
         </Button>
