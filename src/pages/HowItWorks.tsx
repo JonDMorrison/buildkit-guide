@@ -35,7 +35,7 @@ export default function HowItWorks() {
     {
       icon: CheckSquare,
        title: "Start With a Proven Playbook",
-       description: "Instead of rebuilding tasks every time, start with a playbook your team already knows. Phases, trades, and milestones are ready. Your foreman adjusts what's needed.",
+       description: "Create projects instantly from a workflow. No rebuilding scopes every job. Phases, trades, and milestones are ready — your foreman adjusts what's needed.",
        bullets: [
          "Repeatable templates by project type",
          "Pre-built phases and trade assignments",
@@ -47,7 +47,7 @@ export default function HowItWorks() {
     },
     {
       icon: AlertTriangle,
-       title: "Blockers Surface Instantly",
+       title: "Tasks Appear Automatically",
        description: "When something is in the way, your team flags it in seconds. PMs see it immediately — not at the next meeting. Problems get solved before they cost money.",
        bullets: [
          "One-tap blocker reporting from the field",
@@ -60,8 +60,8 @@ export default function HowItWorks() {
     },
     {
       icon: Calendar,
-       title: "See What's Coming Before It's a Problem",
-       description: "A clean two-week timeline shows what's on track, what's at risk, and what needs your attention today. No spreadsheets. No guesswork.",
+       title: "Daily Work Moves Faster",
+       description: "Tasks, deficiencies, and manpower requests reuse known information. A clean two-week timeline shows what's on track and what needs attention today.",
        bullets: [
          "Visual timeline of the next two weeks",
          "Spot trade conflicts early",
@@ -99,8 +99,8 @@ export default function HowItWorks() {
     },
     {
       icon: Sparkles,
-       title: "The System Gets Smarter Every Day",
-       description: "Every task, assignment, and form your team completes makes the system more useful. It suggests what's worked before, flags what looks wrong, and summarizes what happened — so you spend less time on admin.",
+       title: "Finish Strong",
+       description: "Your best project becomes the template for the next one. Every task, assignment, and form your team completes makes the system more useful — so you spend less time on admin.",
        bullets: [
          "Summarizes daily logs and safety reports",
          "Suggests crew, trades, and hazards from history",

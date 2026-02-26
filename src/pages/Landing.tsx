@@ -63,10 +63,10 @@ export default function Landing() {
           <div className="grid lg:grid-cols-2 gap-8 md:gap-12 items-center">
             <div className="text-center lg:text-left">
                <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 md:mb-6 leading-[1.15]">
-                Run Projects the Way Your Company Actually Works
+                Build Every Project Like Your Best One
                </h1>
                <p className="text-lg sm:text-xl md:text-2xl text-gray-200 mb-4 md:mb-6 leading-relaxed">
-                 Start with proven workflows, learn from every job, and make daily work faster for your whole team.
+                 Start with a proven workflow, run the job faster, and automatically reuse what works across every project.
                </p>
               <p className="text-sm sm:text-base text-white/70 mb-6 md:mb-8">
                 No credit card required • Free 14-day trial • Setup in minutes
@@ -443,16 +443,16 @@ export default function Landing() {
           <div className="grid sm:grid-cols-3 gap-6 md:gap-8">
             {[{
               step: "1",
-              title: "Sign Up Free",
-              description: "Create your account in 2 minutes. No credit card required."
-             }, {
-               step: "2",
-               title: "Pick a Playbook",
-               description: "Start your first project with a proven workflow or build your own."
-             }, {
-               step: "3",
-               title: "Let the System Learn",
-               description: "Every job makes the next one faster. The system remembers what works."
+               title: "Sign Up",
+               description: "Create your account in 2 minutes. No credit card required."
+              }, {
+                step: "2",
+                title: "Start With a Proven Playbook",
+                description: "Choose a workflow or generate one from past projects."
+              }, {
+                step: "3",
+                title: "Your Next Project Gets Faster",
+                description: "Trades, workers, and locations auto-suggest based on real history."
             }].map((item, index) => (
               <div key={index} className="text-center">
                 <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-primary text-primary-foreground text-xl md:text-2xl font-bold flex items-center justify-center mx-auto mb-3 md:mb-4 shadow-lg">
