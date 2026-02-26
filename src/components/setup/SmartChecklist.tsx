@@ -62,31 +62,22 @@ export function SmartChecklist({ context, forceShow = false }: SmartChecklistPro
       celebrationShown.current = true;
       setShowCelebration(true);
       const timer = setTimeout(() => {
-        navigate('/dashboard', { replace: true });
-      }, 3500);
+        setShowCelebration(false);
+      }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [isComplete, isLoading, navigate]);
+  }, [isComplete, isLoading]);
 
-  // Show celebration screen
+  // Show brief celebration banner, dismissible on click
   if (showCelebration) {
     return (
-      <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
-        <CardContent className="py-6 flex items-center gap-4 animate-fade-in">
-          <div className="p-2 rounded-lg bg-primary/10">
-            <Check className="w-5 h-5 text-primary" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium">Setup complete — heading to your dashboard…</p>
-          </div>
-          <Progress value={100} className="h-1.5 w-24" />
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate('/dashboard', { replace: true })}
-          >
-            Go now
-          </Button>
+      <Card
+        className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent cursor-pointer"
+        onClick={() => setShowCelebration(false)}
+      >
+        <CardContent className="py-4 flex items-center gap-3 animate-fade-in">
+          <Check className="w-4 h-4 text-primary shrink-0" />
+          <p className="text-sm text-muted-foreground">Setup complete ✓</p>
         </CardContent>
       </Card>
     );
