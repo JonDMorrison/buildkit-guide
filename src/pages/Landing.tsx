@@ -62,12 +62,12 @@ export default function Landing() {
         <div className="container mx-auto max-w-6xl">
           <div className="grid lg:grid-cols-2 gap-8 md:gap-12 items-center">
             <div className="text-center lg:text-left">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 md:mb-6 leading-[1.15]">
-                Take Every Project From Chaos to Clarity
-              </h1>
-              <p className="text-lg sm:text-xl md:text-2xl text-gray-200 mb-4 md:mb-6 leading-relaxed">
-                Coordinate tasks, track costs, and run diagnostics across every trade and project — from one app.
-              </p>
+               <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 md:mb-6 leading-[1.15]">
+                Run Projects the Way Your Company Actually Works
+               </h1>
+               <p className="text-lg sm:text-xl md:text-2xl text-gray-200 mb-4 md:mb-6 leading-relaxed">
+                 Start with proven workflows, learn from every job, and make daily work faster for your whole team.
+               </p>
               <p className="text-sm sm:text-base text-white/70 mb-6 md:mb-8">
                 No credit card required • Free 14-day trial • Setup in minutes
               </p>
@@ -108,18 +108,18 @@ export default function Landing() {
         <div className="container mx-auto max-w-6xl">
           <div className="grid lg:grid-cols-2 gap-10 md:gap-16 items-center">
             <div className="order-2 lg:order-1">
-              <p className="text-primary font-semibold mb-3 uppercase tracking-wide text-sm">The Problem</p>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-6 leading-tight">
-                Projects Fall Behind When Trades Don't Stay Aligned
-              </h2>
-              <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
-                Your PM spends 40% of their day chasing updates. Gantt charts get buried. Blocked tasks go unreported until they become expensive problems.
-              </p>
-              <div className="space-y-3">
-                {[
-                  "Scattered tools create scattered information",
-                  "Safety forms live in filing cabinets",
-                  "Little delays compound into big problems"
+               <p className="text-primary font-semibold mb-3 uppercase tracking-wide text-sm">The Problem</p>
+               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-6 leading-tight">
+                 You Rebuild the Same Project From Scratch Every Time
+               </h2>
+               <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
+                 Most project software only tracks work. It doesn't remember how your company runs jobs or help you repeat what works. Every new project starts from zero.
+               </p>
+               <div className="space-y-3">
+                 {[
+                   "Every project starts with a blank slate",
+                   "Good processes live in people's heads, not your system",
+                   "Your team re-enters the same information every day"
                 ].map((item, index) => (
                   <div key={index} className="flex items-center gap-3">
                     <div className="w-6 h-6 rounded-full bg-destructive/10 flex items-center justify-center flex-shrink-0">
@@ -147,18 +147,18 @@ export default function Landing() {
         <div className="container mx-auto max-w-6xl">
           <div className="grid lg:grid-cols-2 gap-10 md:gap-16 items-center">
             <div>
-              <p className="text-primary font-semibold mb-3 uppercase tracking-wide text-sm">Task Management</p>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-6 leading-tight">
-                Every Trade Knows Exactly What They Owe
-              </h2>
-              <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
-                No more chasing updates or wondering who's on what. Every task has an owner, a deadline, and clear visibility. When something's blocked, you know instantly—not when it's too late.
-              </p>
+               <p className="text-primary font-semibold mb-3 uppercase tracking-wide text-sm">Playbooks</p>
+               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-6 leading-tight">
+                 Start Every Project With a Proven Workflow
+               </h2>
+               <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
+                 Instead of rebuilding tasks and phases every time, start with a playbook your team already knows. Your foreman can adjust anything, but the structure is already there.
+               </p>
               <div className="space-y-4">
                 {[
-                  { icon: ClipboardList, text: "Tasks assigned with clear ownership" },
-                  { icon: AlertTriangle, text: "Instant blocker reporting" },
-                  { icon: Calendar, text: "2-week lookahead for planning" }
+                   { icon: ClipboardList, text: "Repeatable task templates by trade" },
+                   { icon: AlertTriangle, text: "Pre-built phases, milestones, and checklists" },
+                   { icon: Calendar, text: "Adjust anything — the structure does the heavy lifting" }
                 ].map((item, index) => {
                   const Icon = item.icon;
                   return (
@@ -197,18 +197,18 @@ export default function Landing() {
               />
             </div>
             <div className="order-1 lg:order-2">
-              <p className="text-primary font-semibold mb-3 uppercase tracking-wide text-sm">Safety Done Right</p>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-6 leading-tight">
-                Complete Safety Logs in Under 3 Minutes
-              </h2>
-              <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
-                AI suggests today's hazards based on weather and scheduled tasks. Workers acknowledge with digital signatures. Everything is audit-ready from the moment it's submitted.
-              </p>
+               <p className="text-primary font-semibold mb-3 uppercase tracking-wide text-sm">Smart Memory</p>
+               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-6 leading-tight">
+                 The System Learns How Your Company Works
+               </h2>
+               <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
+                 Every time your team assigns a worker, logs a safety form, or completes a task, the system remembers. Next time, it suggests the right crew, pre-fills forms, and flags what's missing.
+               </p>
               <div className="space-y-4">
                 {[
-                  { icon: HardHat, text: "Daily safety logs with AI suggestions" },
-                  { icon: FileCheck, text: "Digital signatures and timestamps" },
-                  { icon: Shield, text: "Tamper-evident records" }
+                   { icon: HardHat, text: "Suggests crew members you've used before" },
+                   { icon: FileCheck, text: "Pre-fills forms from past entries" },
+                   { icon: Shield, text: "Flags risks based on real project history" }
                 ].map((item, index) => {
                   const Icon = item.icon;
                   return (
@@ -231,18 +231,18 @@ export default function Landing() {
         <div className="container mx-auto max-w-6xl">
           <div className="grid lg:grid-cols-2 gap-10 md:gap-16 items-center">
             <div>
-              <p className="text-primary font-semibold mb-3 uppercase tracking-wide text-sm">Time Tracking</p>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-6 leading-tight">
-                Accurate Timesheets Without the Arguments
-              </h2>
-              <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
-                Your crew checks in with one tap. GPS verification proves job site presence. No more buddy punching, no more disputes. Export payroll-ready reports in seconds.
-              </p>
+               <p className="text-primary font-semibold mb-3 uppercase tracking-wide text-sm">Fast Field Tools</p>
+               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-6 leading-tight">
+                 Daily Work Gets Done With Fewer Clicks
+               </h2>
+               <p className="text-lg text-muted-foreground mb-6 leading-relaxed">
+                 Time entries, safety logs, manpower requests, and daily reports — all designed for the field. One tap to check in. Voice input for notes. Forms that pre-fill so your crew spends less time typing.
+               </p>
               <div className="space-y-4">
                 {[
-                  { icon: Clock, text: "One-tap check-in from any phone" },
-                  { icon: MapPin, text: "GPS verification eliminates disputes" },
-                  { icon: FileCheck, text: "Works with any payroll system" }
+                   { icon: Clock, text: "One-tap time tracking with GPS" },
+                   { icon: MapPin, text: "Voice-to-text for notes and observations" },
+                   { icon: FileCheck, text: "Forms and logs pre-fill automatically" }
                 ].map((item, index) => {
                   const Icon = item.icon;
                   return (
@@ -404,12 +404,12 @@ export default function Landing() {
       <section className="py-16 md:py-20 px-4 bg-muted/30">
         <div className="container mx-auto max-w-5xl">
           <div className="text-center mb-10 md:mb-12">
-            <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4 leading-tight">
-              Built for the Site, Not the Office
-            </h3>
-            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-              Designed for gloved hands, bright sunlight, and spotty cell signal.
-            </p>
+             <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4 leading-tight">
+               Built for the Job Site, Not a Desktop
+             </h3>
+             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
+               Designed for work gloves, bright sunlight, and spotty cell signal.
+             </p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-5">
             {[
@@ -437,22 +437,22 @@ export default function Landing() {
       {/* The Plan - 3 Steps */}
       <section id="plan" className="py-16 md:py-20 px-4 bg-background">
         <div className="container mx-auto max-w-4xl">
-          <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-8 md:mb-12 text-center leading-tight">
-            Get Your Jobs Under Control
-          </h3>
+           <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-8 md:mb-12 text-center leading-tight">
+             Start Running Projects Consistently
+           </h3>
           <div className="grid sm:grid-cols-3 gap-6 md:gap-8">
             {[{
               step: "1",
               title: "Sign Up Free",
               description: "Create your account in 2 minutes. No credit card required."
-            }, {
-              step: "2",
-              title: "Add Your Project",
-              description: "Set up your first project and invite your team."
-            }, {
-              step: "3",
-              title: "Keep Jobs Moving",
-              description: "Start tracking tasks, logging safety, and saving time."
+             }, {
+               step: "2",
+               title: "Pick a Playbook",
+               description: "Start your first project with a proven workflow or build your own."
+             }, {
+               step: "3",
+               title: "Let the System Learn",
+               description: "Every job makes the next one faster. The system remembers what works."
             }].map((item, index) => (
               <div key={index} className="text-center">
                 <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-primary text-primary-foreground text-xl md:text-2xl font-bold flex items-center justify-center mx-auto mb-3 md:mb-4 shadow-lg">
@@ -469,12 +469,12 @@ export default function Landing() {
       {/* Value CTA */}
       <section className="py-16 md:py-20 px-4 bg-muted/30">
         <div className="container mx-auto max-w-3xl text-center">
-          <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4 md:mb-6 leading-tight">
-            Every Day of Delay Costs Money
-          </h3>
-          <p className="text-base md:text-lg text-muted-foreground mb-8 md:mb-10 leading-relaxed max-w-2xl mx-auto">
-            Eliminate downtime. Prevent schedule slippage. Keep the GC happy. Protect your margins.
-          </p>
+           <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4 md:mb-6 leading-tight">
+             Most Software Tracks Work. This System Helps You Repeat It.
+           </h3>
+           <p className="text-base md:text-lg text-muted-foreground mb-8 md:mb-10 leading-relaxed max-w-2xl mx-auto">
+             Turn your best projects into playbooks. Use real data to make every project faster, more consistent, and more profitable.
+           </p>
           <div className="flex flex-col gap-3 justify-center w-full max-w-md mx-auto">
             <Button size="lg" onClick={handleGetStarted} className="w-full h-14 md:h-16 text-base md:text-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-xl">
               Start Your Free Trial
@@ -493,20 +493,20 @@ export default function Landing() {
           <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/90 to-background/80" />
         </div>
         <div className="container mx-auto max-w-4xl relative z-10">
-          <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-6 md:mb-10 text-center leading-tight">
-            A Job Site With Zero Guesswork
-          </h3>
-          <div className="grid sm:grid-cols-2 gap-3 md:gap-4 mb-6 md:mb-8">
-            {["Trades show up ready", "Blockers handled fast", "Safety always documented", "Shorter meetings", "Clear next steps", "On-time completion"].map((item, index) => (
+           <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-6 md:mb-10 text-center leading-tight">
+             What Changes When Your System Learns
+           </h3>
+           <div className="grid sm:grid-cols-2 gap-3 md:gap-4 mb-6 md:mb-8">
+             {["New projects start with structure, not from scratch", "Crew suggestions based on real history", "Forms and logs pre-fill automatically", "Consistent results across every PM", "Faster onboarding for new hires", "Every job makes the next one easier"].map((item, index) => (
               <div key={index} className="flex items-start gap-3 p-4 md:p-5 bg-card/90 backdrop-blur-md rounded-lg shadow-sm">
                 <CheckCircle className="h-6 w-6 md:h-7 md:w-7 text-primary flex-shrink-0 mt-0.5" strokeWidth={2.5} />
                 <p className="text-base md:text-lg text-foreground font-semibold">{item}</p>
               </div>
             ))}
           </div>
-          <p className="text-base md:text-lg text-muted-foreground text-center max-w-2xl mx-auto leading-relaxed font-medium">
-            Build a job you can be proud of. A GC who wants to work with you again.
-          </p>
+           <p className="text-base md:text-lg text-muted-foreground text-center max-w-2xl mx-auto leading-relaxed font-medium">
+             Your best project shouldn't be a one-time thing. Make it the standard.
+           </p>
         </div>
       </section>
 
@@ -544,12 +544,12 @@ export default function Landing() {
       {/* Final CTA Section */}
       <section className="py-20 md:py-28 px-4 bg-primary">
         <div className="container mx-auto max-w-3xl text-center">
-          <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary-foreground mb-4 leading-tight">
-            Stop Chasing Updates. Start Building.
-          </h3>
-          <p className="text-lg md:text-xl text-primary-foreground/90 mb-8 max-w-xl mx-auto">
-            Join contractors who finish on time and protect their margins.
-          </p>
+           <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary-foreground mb-4 leading-tight">
+             Stop Rebuilding. Start Repeating What Works.
+           </h3>
+           <p className="text-lg md:text-xl text-primary-foreground/90 mb-8 max-w-xl mx-auto">
+             Join contractors who run every project with the same consistency as their best one.
+           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
             <Button 
               size="lg" 

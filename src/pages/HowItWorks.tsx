@@ -34,79 +34,79 @@ export default function HowItWorks() {
   const features = [
     {
       icon: CheckSquare,
-      title: "Tasks That Actually Drive the Job Forward",
-      description: "Create tasks, assign them to trades, and set dates that everyone understands. Every task is clear, simple, and easy to update in the field.",
-      bullets: [
-        "Assign work to the right trade",
-        "Set start and end dates",
-        "Track progress at a glance",
-        "Keep everyone aligned on what needs to happen next"
-      ],
+       title: "Start With a Proven Playbook",
+       description: "Instead of rebuilding tasks every time, start with a playbook your team already knows. Phases, trades, and milestones are ready. Your foreman adjusts what's needed.",
+       bullets: [
+         "Repeatable templates by project type",
+         "Pre-built phases and trade assignments",
+         "Adjust anything — the structure does the heavy lifting",
+         "New hires follow the same system on day one"
+       ],
       color: "text-accent",
       screenshot: screenshotTasks
     },
     {
       icon: AlertTriangle,
-      title: "Instant Blocker Reporting",
-      description: "When a task is blocked, you see it right away. No waiting until the next meeting. No surprises. Just fast information so you can keep the project moving.",
-      bullets: [
-        "Mark a task as blocked in seconds",
-        "Add reason and photos",
-        "Notify PMs instantly",
-        "Keep the schedule protected"
-      ],
+       title: "Blockers Surface Instantly",
+       description: "When something is in the way, your team flags it in seconds. PMs see it immediately — not at the next meeting. Problems get solved before they cost money.",
+       bullets: [
+         "One-tap blocker reporting from the field",
+         "Attach photos and reasons",
+         "PMs get notified instantly",
+         "The schedule stays protected"
+       ],
       color: "text-red-500",
       screenshot: screenshotBlockers
     },
     {
       icon: Calendar,
-      title: "A Lookahead Your Crew Will Actually Use",
-      description: "A simple two week timeline shows what is coming up, what is at risk, and what needs attention today. No spreadsheets and no clutter.",
-      bullets: [
-        "See the next two weeks in a clean timeline",
-        "Spot conflicts early",
-        "Watch critical tasks more closely",
-        "Keep trades focused on what matters"
-      ],
+       title: "See What's Coming Before It's a Problem",
+       description: "A clean two-week timeline shows what's on track, what's at risk, and what needs your attention today. No spreadsheets. No guesswork.",
+       bullets: [
+         "Visual timeline of the next two weeks",
+         "Spot trade conflicts early",
+         "Flag critical-path tasks automatically",
+         "Keep coordination meetings short and focused"
+       ],
       color: "text-blue-500",
       screenshot: screenshotLookahead
     },
     {
       icon: Shield,
-      title: "Safety Without the Paper Pile",
-      description: "Daily logs, hazard IDs, toolbox talks, and incident reports all live in one place. Crews submit forms fast and everything is stored automatically.",
-      bullets: [
-        "Standardized forms",
-        "Photo and signature support",
-        "Simple submission workflow",
-        "Organized and audit ready"
-      ],
+       title: "Safety Forms That Pre-Fill Themselves",
+       description: "The system remembers past entries and suggests today's hazards based on weather and tasks. Your crew completes a safety log in under 3 minutes.",
+       bullets: [
+         "Forms pre-fill from past submissions",
+         "Photo and digital signature support",
+         "Hazard suggestions based on real conditions",
+         "Audit-ready from the moment it's submitted"
+       ],
       color: "text-green-500",
       screenshot: screenshotSafety
     },
     {
       icon: Users,
-      title: "Manpower Planning That Prevents Bottlenecks",
-      description: "Plan your crews, approve requests, and see staffing needs before they become delays. You stay ahead of shortages and avoid last minute scrambles.",
-      bullets: [
-        "Foremen request manpower",
-        "PMs approve with one tap",
-        "See crew needs on a calendar",
-        "Prevent schedule slip"
-      ],
+       title: "Crew Suggestions Based on Real History",
+       description: "The system suggests workers you've used before on similar tasks. Foremen request crew, PMs approve with one tap, and staffing gaps show up before they cause delays.",
+       bullets: [
+         "Suggested crew members from past projects",
+         "One-tap approval for PMs",
+         "Staffing calendar shows gaps early",
+         "Fewer last-minute scrambles"
+       ],
       color: "text-purple-500",
       screenshot: screenshotManpower
     },
     {
       icon: Sparkles,
-      title: "AI That Works Behind the Scenes",
-      description: "AI handles the work that slows you down. It reads your documents, summarizes your logs, highlights risks, and answers project questions without pulling you from the field.",
-      bullets: [
-        "Summarize daily logs",
-        "Read PDFs and drawings",
-        "Identify blockers and risks",
-        "Answer questions instantly"
-      ],
+       title: "The System Gets Smarter Every Day",
+       description: "Every task, assignment, and form your team completes makes the system more useful. It suggests what's worked before, flags what looks wrong, and summarizes what happened — so you spend less time on admin.",
+       bullets: [
+         "Summarizes daily logs and safety reports",
+         "Suggests crew, trades, and hazards from history",
+         "Flags risks based on real project patterns",
+         "Answers project questions in plain English"
+       ],
       color: "text-accent",
       screenshot: screenshotAI
     }
@@ -119,12 +119,12 @@ export default function HowItWorks() {
       {/* Page Header */}
       <section className="pt-28 md:pt-32 pb-12 md:pb-16 px-4 bg-muted/30">
         <div className="container mx-auto max-w-4xl text-center">
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-4 md:mb-6 leading-tight">
-            How The App Keeps Your Job Site Moving
-          </h2>
-          <p className="text-lg sm:text-xl md:text-2xl text-muted-foreground mb-6 md:mb-8 max-w-2xl mx-auto leading-relaxed">
-            A simple system that keeps tasks clear, blockers visible, and every trade accountable.
-          </p>
+           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-4 md:mb-6 leading-tight">
+             Playbooks, Smart Memory, and Faster Fieldwork
+           </h2>
+           <p className="text-lg sm:text-xl md:text-2xl text-muted-foreground mb-6 md:mb-8 max-w-2xl mx-auto leading-relaxed">
+             See how each layer works together so your team runs every project consistently.
+           </p>
           <Button 
             size="lg" 
             onClick={handleBookDemo}
@@ -186,9 +186,9 @@ export default function HowItWorks() {
       {/* Final CTA */}
       <section className="py-16 md:py-24 px-4 bg-muted/50">
         <div className="container mx-auto max-w-4xl text-center">
-          <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-6 md:mb-8 leading-tight">
-            Ready To Keep Your Projects On Track
-          </h3>
+           <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-6 md:mb-8 leading-tight">
+             Your Best Project Shouldn't Be a One-Time Thing
+           </h3>
           <div className="flex flex-col gap-3 justify-center w-full max-w-md mx-auto">
             <Button 
               size="lg" 
