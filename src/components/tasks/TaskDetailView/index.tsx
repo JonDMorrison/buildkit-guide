@@ -331,6 +331,18 @@ export const TaskDetailView = ({
           <TaskMetadata
             task={task}
             trade={task.trades}
+            trades={trades}
+            canEditDates={!!canEditDates}
+            canEditTrade={!!canEditTrade}
+            canEditHours={!!canEdit}
+            onUpdate={(updates) => {
+              setTask({ ...task, ...updates });
+              if (updates.assigned_trade_id !== undefined) {
+                // Refetch to get updated trade relation
+                fetchTaskDetails();
+              }
+              onTaskUpdated?.();
+            }}
           />
 
           {/* Description */}
