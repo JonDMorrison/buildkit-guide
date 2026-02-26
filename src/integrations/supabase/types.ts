@@ -3392,7 +3392,7 @@ export type Database = {
           is_sandbox: boolean
           name: string
           sandbox_label: string | null
-          slug: string | null
+          slug: string
         }
         Insert: {
           base_currency?: string
@@ -3402,7 +3402,7 @@ export type Database = {
           is_sandbox?: boolean
           name: string
           sandbox_label?: string | null
-          slug?: string | null
+          slug: string
         }
         Update: {
           base_currency?: string
@@ -3412,7 +3412,7 @@ export type Database = {
           is_sandbox?: boolean
           name?: string
           sandbox_label?: string | null
-          slug?: string | null
+          slug?: string
         }
         Relationships: []
       }
@@ -8316,6 +8316,16 @@ export type Database = {
             }
             Returns: undefined
           }
+      rpc_onboarding_ensure_org: {
+        Args: {
+          p_jurisdiction_code?: string
+          p_name: string
+          p_slug_base: string
+          p_timezone?: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       rpc_os_scale_probe: { Args: { p_org_id: string }; Returns: Json }
       rpc_os_system_state: { Args: { p_org_id: string }; Returns: Json }
       rpc_recalculate_change_order_totals: {

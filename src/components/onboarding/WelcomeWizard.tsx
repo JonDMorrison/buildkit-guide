@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
+import { useOrganization } from '@/hooks/useOrganization';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -101,11 +102,13 @@ const JOB_TYPES = [
 
 export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
   const { user } = useAuth();
+  const { organizations } = useOrganization();
   const { toast } = useToast();
 
   // Step state: 1=Welcome+Role, 2=Org+Timezone, 3=First Project, 4=AI Mode
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Step 1
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
@@ -127,47 +130,55 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
   const totalSteps = 4;
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'there';
 
+  // Existing-org guard: if user already has an org, skip step 2
+  useEffect(() => {
+    if (organizations.length > 0 && !orgCreated) {
+      setOrgCreated({ id: organizations[0].id });
+    }
+  }, [organizations, orgCreated]);
+
   const handleOrgCreate = async () => {
     if (!orgName.trim()) {
       toast({ title: 'Company name required', variant: 'destructive' });
       return;
     }
 
+    // Prevent double-submit
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     setIsLoading(true);
+
     try {
-      const { data: org, error: orgError } = await supabase
-        .from('organizations')
-        .insert({
-          name: orgName.trim(),
-          slug: orgName.trim().toLowerCase().replace(/\s+/g, '-'),
-        })
-        .select()
-        .single();
+      // If org was already created (back-button scenario), skip to next step
+      if (orgCreated) {
+        setStep(3);
+        return;
+      }
 
-      if (orgError) throw orgError;
-
-      // Create membership
-      await supabase.from('organization_memberships').insert({
-        organization_id: org.id,
-        user_id: user!.id,
-        role: 'admin',
-        is_active: true,
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('rpc_onboarding_ensure_org', {
+        p_name: orgName.trim(),
+        p_slug_base: orgName.trim(),
+        p_user_id: user!.id,
+        p_timezone: timezone,
+        p_jurisdiction_code: province,
       });
 
-      // Save timezone and province to org settings
-      await supabase.from('organization_settings').upsert({
-        organization_id: org.id,
-        default_timezone: timezone,
-        jurisdiction_code: province,
-      }, { onConflict: 'organization_id' });
+      if (rpcError) throw rpcError;
 
-      setOrgCreated({ id: org.id });
+      const result = rpcResult as any;
+      setOrgCreated({ id: result.org_id });
+
+      if (result.already_existed) {
+        toast({ title: 'Using your existing organization' });
+      }
+
       setStep(3);
     } catch (error: any) {
       console.error('Error creating org:', error);
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } finally {
       setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -406,7 +417,7 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back
                 </Button>
-                <Button onClick={handleOrgCreate} className="flex-1" disabled={isLoading || !orgName.trim()}>
+                <Button onClick={handleOrgCreate} className="flex-1" disabled={isLoading || isSubmitting || !orgName.trim()}>
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
