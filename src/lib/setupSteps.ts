@@ -68,21 +68,23 @@ export const SETUP_STEPS: readonly SetupStepDefinition[] = [
     helpText: 'Each field worker needs a cost rate for accurate job costing.',
     visibleIn: ['time-tracking', 'financial'],
   },
-  // Safety
+  // Safety — acknowledgement steps (no auto-detector; user confirms review)
   {
     key: 'step_ppe_reviewed',
     label: 'Review PPE Requirements',
-    description: 'Ensure PPE checklists are configured for each trade',
+    description: "Confirm you've reviewed PPE checklists for each trade",
     timeEstimate: '~5 min',
-    actionLabel: 'Mark Complete',
+    actionLabel: "I've Reviewed This",
+    helpText: 'Review your PPE requirements outside the app, then confirm here.',
     visibleIn: ['safety'],
   },
   {
     key: 'step_hazard_library',
     label: 'Configure Hazard Library',
-    description: 'Set up common hazards for quick selection in safety forms',
+    description: "Confirm you've set up common hazards for safety forms",
     timeEstimate: '~5 min',
-    actionLabel: 'Mark Complete',
+    actionLabel: "I've Configured This",
+    helpText: 'Configure hazards in your safety workflow, then confirm here.',
     visibleIn: ['safety'],
   },
   // Invoicing

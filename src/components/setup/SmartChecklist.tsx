@@ -6,18 +6,29 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { SetupChecklistItem } from './SetupChecklistItem';
 import { useSmartChecklist, type ChecklistContext } from './useSmartChecklist';
-import { type SetupStepDefinition } from '@/lib/setupSteps';
-import { CreateJobSiteModal } from './steps/CreateJobSiteModal';
+import { SETUP_STEPS, type SetupStepDefinition } from '@/lib/setupSteps';
+import { AcknowledgeStepDialog } from './AcknowledgeStepDialog';
 import { TradesManagementModal } from './steps/TradesManagementModal';
 import { TimeTrackingSettingsModal } from './steps/TimeTrackingSettingsModal';
 import { InviteUserModal } from '@/components/users/InviteUserModal';
 import { useCurrentProject } from '@/hooks/useCurrentProject';
 
-
 interface SmartChecklistProps {
   context?: ChecklistContext;
   forceShow?: boolean;
 }
+
+/** Steps that require an acknowledgement dialog instead of instant action */
+const ACK_STEPS: Record<string, { label: string; description: string }> = {
+  step_ppe_reviewed: {
+    label: 'Review PPE Requirements',
+    description: 'Have you reviewed and configured the PPE checklists for each trade working on your projects?',
+  },
+  step_hazard_library: {
+    label: 'Configure Hazard Library',
+    description: 'Have you set up common hazards in your safety workflow so they can be quickly selected in safety forms?',
+  },
+};
 
 export function SmartChecklist({ context, forceShow = false }: SmartChecklistProps) {
   const navigate = useNavigate();
@@ -39,6 +50,7 @@ export function SmartChecklist({ context, forceShow = false }: SmartChecklistPro
   const [showTradesModal, setShowTradesModal] = useState(false);
   const [showTimeSettingsModal, setShowTimeSettingsModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [ackStep, setAckStep] = useState<string | null>(null);
 
   // Don't show if dismissed, complete, loading, or no items
   if (isLoading || (!forceShow && (isDismissed || isComplete)) || items.length === 0) {
@@ -54,13 +66,22 @@ export function SmartChecklist({ context, forceShow = false }: SmartChecklistPro
       step_users_assigned: () => navigate('/users'),
       step_time_tracking_enabled: () => setShowTimeSettingsModal(true),
       step_labor_rates: () => navigate('/settings/labor-rates'),
-      step_ppe_reviewed: () => markStepComplete('step_ppe_reviewed'),
-      step_hazard_library: () => markStepComplete('step_hazard_library'),
+      step_ppe_reviewed: () => setAckStep('step_ppe_reviewed'),
+      step_hazard_library: () => setAckStep('step_hazard_library'),
       step_invoice_permissions: () => navigate('/invoicing'),
       step_trades_configured: () => setShowTradesModal(true),
     };
     return actionMap[key];
   };
+
+  const handleAckConfirm = () => {
+    if (ackStep) {
+      markStepComplete(ackStep as keyof typeof progress);
+      setAckStep(null);
+    }
+  };
+
+  const activeAck = ackStep ? ACK_STEPS[ackStep] : null;
 
   return (
     <>
@@ -125,6 +146,17 @@ export function SmartChecklist({ context, forceShow = false }: SmartChecklistPro
           </CardContent>
         )}
       </Card>
+
+      {/* Acknowledgement dialog for steps without auto-detection */}
+      {activeAck && (
+        <AcknowledgeStepDialog
+          open={!!ackStep}
+          onOpenChange={(open) => { if (!open) setAckStep(null); }}
+          stepLabel={activeAck.label}
+          description={activeAck.description}
+          onConfirm={handleAckConfirm}
+        />
+      )}
 
       {/* Modals */}
       <TradesManagementModal
