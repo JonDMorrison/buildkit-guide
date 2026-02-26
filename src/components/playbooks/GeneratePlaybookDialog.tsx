@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -56,17 +56,28 @@ interface GeneratePlaybookDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated: (playbookId: string) => void;
+  /** Pre-fill the job type input when opened from project creation */
+  initialJobType?: string;
 }
 
-export function GeneratePlaybookDialog({ open, onOpenChange, onCreated }: GeneratePlaybookDialogProps) {
+export function GeneratePlaybookDialog({ open, onOpenChange, onCreated, initialJobType }: GeneratePlaybookDialogProps) {
   const { activeOrganizationId } = useOrganization();
   const { toast } = useToast();
-  const [jobType, setJobType] = useState('');
+  const [jobType, setJobType] = useState(initialJobType || '');
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [suggestion, setSuggestion] = useState<PlaybookSuggestion | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expandedPhases, setExpandedPhases] = useState<Set<number>>(new Set());
+
+  // Sync initialJobType when dialog opens
+  useEffect(() => {
+    if (open && initialJobType) {
+      setJobType(initialJobType);
+      setSuggestion(null);
+      setError(null);
+    }
+  }, [open, initialJobType]);
 
   const handleGenerate = async () => {
     if (!jobType.trim()) return;

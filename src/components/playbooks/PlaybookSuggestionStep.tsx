@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -6,12 +6,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   BookOpen, Sparkles, TrendingUp, TrendingDown, Minus,
-  Clock, Users, ChevronRight, Layers, ArrowLeft,
+  Clock, Users, ChevronRight, Layers, ArrowLeft, Wand2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from '@/hooks/useOrganization';
 import type { PlaybookSummary } from '@/hooks/usePlaybooks';
+import { GeneratePlaybookDialog } from './GeneratePlaybookDialog';
 
 export interface AppliedPlaybookInfo {
   id: string;
@@ -42,93 +43,100 @@ export function PlaybookSuggestionStep({
   const [playbooks, setPlaybooks] = useState<PlaybookWithPerf[]>([]);
   const [loading, setLoading] = useState(true);
   const [browsing, setBrowsing] = useState(false);
+  const [generateOpen, setGenerateOpen] = useState(false);
+  const [newlyCreatedId, setNewlyCreatedId] = useState<string | null>(null);
+
+  const fetchPlaybooks = useCallback(async () => {
+    if (!activeOrganizationId) return;
+    setLoading(true);
+    try {
+      const { data: pbList } = await supabase.rpc(
+        'rpc_list_playbooks_by_org' as any,
+        { p_organization_id: activeOrganizationId }
+      );
+
+      const list = (Array.isArray(pbList) ? pbList : []) as PlaybookSummary[];
+      const active = list.filter(p => !p.is_archived);
+
+      const withPerf: PlaybookWithPerf[] = await Promise.all(
+        active.map(async (pb) => {
+          let variance = 0;
+          let projectsUsing = 0;
+          let totalLow = 0;
+          let totalHigh = 0;
+
+          try {
+            const { data: perf } = await supabase.rpc(
+              'rpc_get_playbook_performance' as any,
+              { p_playbook_id: pb.id }
+            );
+            if (perf) {
+              variance = perf.variance_percent ?? 0;
+              projectsUsing = perf.projects_using ?? 0;
+            }
+          } catch { /* skip perf errors */ }
+
+          try {
+            const { data: phases } = await supabase
+              .from('playbook_phases')
+              .select('id')
+              .eq('playbook_id', pb.id);
+            const phaseIds = (phases ?? []).map(p => p.id);
+            if (phaseIds.length > 0) {
+              const { data: tasks } = await supabase
+                .from('playbook_tasks')
+                .select('expected_hours_low, expected_hours_high')
+                .in('playbook_phase_id', phaseIds);
+              (tasks ?? []).forEach(t => {
+                totalLow += Number(t.expected_hours_low) || 0;
+                totalHigh += Number(t.expected_hours_high) || 0;
+              });
+            }
+          } catch { /* skip */ }
+
+          const typeMatch = jobType && pb.job_type &&
+            pb.job_type.toLowerCase().includes(jobType.toLowerCase());
+
+          return {
+            ...pb,
+            variance_percent: variance,
+            projects_using: projectsUsing,
+            total_hours_low: totalLow,
+            total_hours_high: totalHigh,
+            is_recommended: !!(typeMatch || pb.is_default),
+          };
+        })
+      );
+
+      // Sort: newly created first, then recommended, then by usage
+      withPerf.sort((a, b) => {
+        if (newlyCreatedId) {
+          if (a.id === newlyCreatedId) return -1;
+          if (b.id === newlyCreatedId) return 1;
+        }
+        if (a.is_recommended !== b.is_recommended) return a.is_recommended ? -1 : 1;
+        return b.projects_using - a.projects_using;
+      });
+
+      setPlaybooks(withPerf);
+    } catch {
+      setPlaybooks([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [activeOrganizationId, jobType, newlyCreatedId]);
 
   useEffect(() => {
-    if (!activeOrganizationId) return;
+    fetchPlaybooks();
+  }, [fetchPlaybooks]);
 
-    const fetch = async () => {
-      setLoading(true);
-      try {
-        // Fetch all playbooks for the org
-        const { data: pbList } = await supabase.rpc(
-          'rpc_list_playbooks_by_org' as any,
-          { p_organization_id: activeOrganizationId }
-        );
+  const handleGenerated = (playbookId: string) => {
+    setNewlyCreatedId(playbookId);
+    setGenerateOpen(false);
+    // fetchPlaybooks will re-run due to newlyCreatedId change
+  };
 
-        const list = (Array.isArray(pbList) ? pbList : []) as PlaybookSummary[];
-        const active = list.filter(p => !p.is_archived);
-
-        // Fetch performance data for each playbook
-        const withPerf: PlaybookWithPerf[] = await Promise.all(
-          active.map(async (pb) => {
-            let variance = 0;
-            let projectsUsing = 0;
-            let totalLow = 0;
-            let totalHigh = 0;
-
-            try {
-              const { data: perf } = await supabase.rpc(
-                'rpc_get_playbook_performance' as any,
-                { p_playbook_id: pb.id }
-              );
-              if (perf) {
-                variance = perf.variance_percent ?? 0;
-                projectsUsing = perf.projects_using ?? 0;
-              }
-            } catch { /* skip perf errors */ }
-
-            // Get hour bands from tasks
-            try {
-              const { data: phases } = await supabase
-                .from('playbook_phases')
-                .select('id')
-                .eq('playbook_id', pb.id);
-              const phaseIds = (phases ?? []).map(p => p.id);
-              if (phaseIds.length > 0) {
-                const { data: tasks } = await supabase
-                  .from('playbook_tasks')
-                  .select('expected_hours_low, expected_hours_high')
-                  .in('playbook_phase_id', phaseIds);
-                (tasks ?? []).forEach(t => {
-                  totalLow += Number(t.expected_hours_low) || 0;
-                  totalHigh += Number(t.expected_hours_high) || 0;
-                });
-              }
-            } catch { /* skip */ }
-
-            // Match recommendation: exact job_type match, or is_default
-            const typeMatch = jobType && pb.job_type &&
-              pb.job_type.toLowerCase().includes(jobType.toLowerCase());
-
-            return {
-              ...pb,
-              variance_percent: variance,
-              projects_using: projectsUsing,
-              total_hours_low: totalLow,
-              total_hours_high: totalHigh,
-              is_recommended: !!(typeMatch || pb.is_default),
-            };
-          })
-        );
-
-        // Sort: recommended first, then by usage
-        withPerf.sort((a, b) => {
-          if (a.is_recommended !== b.is_recommended) return a.is_recommended ? -1 : 1;
-          return b.projects_using - a.projects_using;
-        });
-
-        setPlaybooks(withPerf);
-      } catch {
-        setPlaybooks([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetch();
-  }, [activeOrganizationId, jobType]);
-
-  const recommended = playbooks.find(p => p.is_recommended);
+  const recommended = playbooks.find(p => p.id === newlyCreatedId) || playbooks.find(p => p.is_recommended);
   const others = playbooks.filter(p => p !== recommended);
 
   if (loading) {
@@ -147,14 +155,27 @@ export function PlaybookSuggestionStep({
   // No playbooks at all
   if (playbooks.length === 0) {
     return (
+      <>
       <div className="space-y-4 py-2">
         <div className="text-center py-6">
           <BookOpen className="h-8 w-8 mx-auto mb-3 text-muted-foreground/30" />
           <p className="text-sm font-medium text-muted-foreground">No playbooks available</p>
           <p className="text-xs text-muted-foreground/60 mt-1">
-            Create playbooks in the Playbook Console to auto-populate project tasks.
+            {jobType
+              ? `No playbooks match "${jobType}". Generate one from your project history.`
+              : 'Create playbooks in the Playbook Console to auto-populate project tasks.'}
           </p>
         </div>
+        {jobType && (
+          <Button
+            variant="outline"
+            onClick={() => setGenerateOpen(true)}
+            className="w-full gap-1.5"
+          >
+            <Wand2 className="h-4 w-4" />
+            AI Generate from past {jobType} projects
+          </Button>
+        )}
         <div className="flex gap-3">
           <Button variant="outline" onClick={onBack} className="gap-1.5">
             <ArrowLeft className="h-4 w-4" />
@@ -165,6 +186,13 @@ export function PlaybookSuggestionStep({
           </Button>
         </div>
       </div>
+      <GeneratePlaybookDialog
+        open={generateOpen}
+        onOpenChange={setGenerateOpen}
+        onCreated={handleGenerated}
+        initialJobType={jobType}
+      />
+      </>
     );
   }
 
@@ -235,7 +263,7 @@ export function PlaybookSuggestionStep({
                 )}
               </div>
               <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] shrink-0">
-                Best match
+                {recommended.id === newlyCreatedId ? 'Just created' : 'Best match'}
               </Badge>
             </div>
 
@@ -278,7 +306,7 @@ export function PlaybookSuggestionStep({
       )}
 
       {/* Action buttons */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button variant="outline" onClick={onBack} size="sm" className="gap-1.5">
           <ArrowLeft className="h-3.5 w-3.5" />
           Back
@@ -288,22 +316,39 @@ export function PlaybookSuggestionStep({
             variant="outline"
             onClick={() => setBrowsing(true)}
             size="sm"
-            className="flex-1 gap-1.5"
+            className="gap-1.5"
           >
             <Layers className="h-3.5 w-3.5" />
             Browse All ({playbooks.length})
-            <ChevronRight className="h-3.5 w-3.5 ml-auto" />
+          </Button>
+        )}
+        {jobType && (
+          <Button
+            variant="outline"
+            onClick={() => setGenerateOpen(true)}
+            size="sm"
+            className="gap-1.5"
+          >
+            <Wand2 className="h-3.5 w-3.5" />
+            AI Generate
           </Button>
         )}
         <Button
           variant="ghost"
           onClick={onSkip}
           size="sm"
-          className="text-muted-foreground"
+          className="text-muted-foreground ml-auto"
         >
           Start from blank
         </Button>
       </div>
+
+      <GeneratePlaybookDialog
+        open={generateOpen}
+        onOpenChange={setGenerateOpen}
+        onCreated={handleGenerated}
+        initialJobType={jobType}
+      />
     </div>
   );
 }
