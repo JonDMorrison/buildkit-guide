@@ -217,10 +217,10 @@ export default function Features() {
       >
         <div className="container mx-auto max-w-4xl text-center">
            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
-             Playbooks, Smart Memory, and Fast Field Tools
+             Playbooks, Smart Memory, and Faster Fieldwork
            </h1>
            <p className="text-lg sm:text-xl md:text-2xl text-gray-200 leading-relaxed max-w-3xl mx-auto">
-             Your best project becomes the template. The system learns from real work. Daily tasks get done with fewer clicks.
+             Start projects with a workflow, run daily work faster, and automatically reuse what works.
            </p>
         </div>
       </section>
