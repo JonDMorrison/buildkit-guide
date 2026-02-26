@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Rocket, X, ChevronDown, ChevronUp, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Rocket, X, ChevronDown, ChevronUp, AlertTriangle, RefreshCw, PartyPopper, Check } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -53,6 +53,56 @@ export function SmartChecklist({ context, forceShow = false }: SmartChecklistPro
   const [showTimeSettingsModal, setShowTimeSettingsModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [ackStep, setAckStep] = useState<string | null>(null);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const celebrationShown = useRef(false);
+
+  // Show celebration when setup becomes complete
+  useEffect(() => {
+    if (isComplete && !isLoading && !celebrationShown.current) {
+      celebrationShown.current = true;
+      setShowCelebration(true);
+      const timer = setTimeout(() => {
+        navigate('/dashboard', { replace: true });
+      }, 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [isComplete, isLoading, navigate]);
+
+  // Show celebration screen
+  if (showCelebration) {
+    return (
+      <Card className="border-primary/30 bg-gradient-to-br from-primary/10 via-background to-primary/5 overflow-hidden">
+        <CardContent className="py-12 flex flex-col items-center justify-center text-center gap-4 animate-in fade-in zoom-in-95 duration-500">
+          <div className="relative">
+            <div className="p-4 rounded-full bg-primary/10 animate-bounce">
+              <PartyPopper className="w-10 h-10 text-primary" />
+            </div>
+            <div className="absolute -top-1 -right-1 p-1 rounded-full bg-primary/20">
+              <Check className="w-4 h-4 text-primary" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold tracking-tight">You're all set! 🎉</h2>
+            <p className="text-muted-foreground max-w-md">
+              Your workspace is fully configured. Taking you to your dashboard now...
+            </p>
+          </div>
+          <div className="flex items-center gap-2 mt-2">
+            <Progress value={100} className="h-1.5 w-48" />
+            <span className="text-xs text-muted-foreground font-medium">100%</span>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-2"
+            onClick={() => navigate('/dashboard', { replace: true })}
+          >
+            Go to Dashboard now
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   // Don't show if dismissed, complete, loading, or no items
   if (isLoading || (!forceShow && (isDismissed || isComplete)) || items.length === 0) {
