@@ -201,7 +201,7 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
             title: 'Project created with playbook',
             description: `${validatedData.name} has been created and playbook applied.`,
           });
-          // Only offer default prompt to admin/pm roles
+          // Only offer default prompt to admin/pm roles (DB stores 'pm'; has_org_role normalizes to 'project_manager')
           const canSetDefault = orgRole === 'admin' || orgRole === 'pm';
           if (playbookInfo && !playbookInfo.isDefault && canSetDefault) {
             setDefaultPrompt(playbookInfo);
@@ -270,7 +270,10 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
       queryClient.invalidateQueries({ queryKey: ['playbook-detail'] });
       queryClient.invalidateQueries({ queryKey: ['playbook-performance'] });
     } catch (err: any) {
-      const msg = err?.code === '42501' || err?.message?.toLowerCase().includes('forbidden')
+      const isPermErr = err?.code === '42501' 
+        || err?.message?.toLowerCase().includes('forbidden')
+        || err?.message?.toLowerCase().includes('permission');
+      const msg = isPermErr
         ? "You don't have permission to set the default playbook."
         : "Couldn't set default. Try again.";
       toast({ title: 'Could not set default', description: msg, variant: 'destructive' });
