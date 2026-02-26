@@ -1,143 +1,115 @@
 
 
-# Revised Setup Wizard -- Streamlined for Action
+# Smart Memory -- Auto-Suggest Trades and Repeat Choices
 
-## The Problem Today
+## Overview
 
-There are three overlapping onboarding surfaces:
+Add a `useSmartDefaults` hook and a `SmartSuggestionChips` component that surface recently-used trades, locations, crew count, and weather across form modals. Zero schema changes. Follows the existing `SmartJobSiteSuggestion` pattern.
 
-1. **WelcomeWizard** (5 steps): Welcome, Role, Org creation, 3-phase OrgOnboardingWizard (financial config, operational diagnostics, AI calibration), Feature tour
-2. **SetupWizardHub** (15 steps, 6 phases): Granular checklist covering everything from timezone to invoice permissions
-3. **OrgOnboardingWizard** (3 phases): Structural config, operational diagnostics, AI calibration
+## New Files
 
-This creates friction:
-- Users answer 20+ questions before they ever see the app
-- Many questions (tax model, rate source, invoice approver) aren't relevant until projects exist
-- The AI Brain now handles much of what the diagnostic questions were designed to configure -- it can learn from usage instead of upfront interrogation
-- The 15-step checklist overwhelms new users with items like "Review PPE" and "Set Up Hazard Library" before they even have a project
+### 1. `src/hooks/useSmartDefaults.ts`
 
-## The Core Insight
+A hook that accepts `projectId` and runs 4 parallel queries via `useQuery`:
 
-To get a project up and running, you only need **5 things**:
+| Query | Table | Columns Selected | Limit |
+|---|---|---|---|
+| Tasks | `tasks` | `assigned_trade_id, location, created_at` | 50 |
+| Deficiencies | `deficiencies` | `assigned_trade_id, location, created_at` | 20 |
+| Manpower | `manpower_requests` | `trade_id, requested_count, created_at` | 10 |
+| Daily logs | `daily_logs` | `crew_count, weather, created_at` | 5 |
 
-1. **Organization name** (already collected)
-2. **Timezone** (affects all scheduling and time tracking)
-3. **First project** (name, location, job type)
-4. **First team member** (optional but high-value -- who's working with you?)
-5. **AI preferences** (just the risk mode toggle -- strict/balanced/advisory)
+All filtered by `project_id` and ordered by `created_at desc`.
 
-Everything else (tax model, labor cost model, trades, safety config, drawings, invoice permissions) can be discovered progressively as users encounter those features, or prompted contextually by the AI Brain when it detects missing configuration.
+**Aggregation logic:**
 
-## Proposed Architecture
+- **Trades**: Combine all trade IDs from all 3 sources, count frequency, apply recency bonus (`score = count * 10 + (used in last 7 days ? 20 : 0)`). Resolve trade names by cross-referencing the `trades` table (fetched once). Return top 3 sorted by score desc, then `name ASC` for ties.
+- **Locations**: Merge from tasks + deficiencies, normalize (trim, lowercase for dedup), filter junk (`"tbd"`, `"-"`, `"n/a"`, empty). Return most-recent-first, max 3 unique.
+- **Crew count**: `crew_count` from most recent daily log (not "yesterday" -- handles skipped days).
+- **Weather**: `weather` from most recent daily log.
 
-### Merge into a single 2-stage flow
+**Returns:**
+```typescript
+interface SmartDefaults {
+  topTrades: Array<{ id: string; name: string; count: number }>;
+  recentLocations: string[];
+  lastCrewCount: number | null;
+  lastWeather: string | null;
+  loading: boolean;
+}
+```
 
-**Stage 1: Quick Start Wizard** (replaces WelcomeWizard + OrgOnboardingWizard)
-- 4 screens, under 3 minutes total
-- Runs once on first login
+**Cache:** `queryKey: ['smart-defaults', projectId]`, `staleTime: 5 * 60 * 1000`.
 
-**Stage 2: Smart Checklist** (replaces SetupWizardHub)
-- Contextual, not exhaustive
-- Only shows relevant next steps based on what features the user is actually using
-- AI Brain can prompt missing config inline (e.g., "You're tracking time but haven't set labor rates -- want to do that now?")
+### 2. `src/components/common/SmartSuggestionChips.tsx`
 
-### Stage 1: Quick Start Wizard Screens
+A generic chip row component:
 
-**Screen 1 -- Welcome + Role**
-- Combine current steps 1 and 2
-- Show logo, greeting, role selection in one screen
-- Role determines which checklist items appear later
+```
+Recently used:  [ Electrician ]  [ Plumbing ]  [ HVAC ]
+```
 
-**Screen 2 -- Organization Setup**
-- Company name (existing)
-- Timezone (currently buried in the 15-step checklist as a separate modal)
-- Province/Region (drives safety jurisdiction -- currently a separate setting)
-- Remove: sample project toggle (confusing for real users, useful only for demos)
+**Props:**
+```typescript
+interface SmartSuggestionChipsProps {
+  label?: string;           // default "Recently used"
+  items: Array<{ id: string; name: string }>;
+  onSelect: (id: string) => void;
+}
+```
 
-**Screen 3 -- First Project**
-- Embed a simplified version of CreateProjectModal inline
-- Only: Project name, Job site address, Job type
-- Skip: billing address, client, job number, dates, playbook (all deferrable)
-- Auto-create a job site from the address
+- Uses existing `Badge variant="outline"` with `cursor-pointer` and subtle hover.
+- Renders nothing if `items` is empty.
+- Max items controlled by the caller (hook already caps at 3).
 
-**Screen 4 -- Your AI Assistant**
-- Brief intro to the AI Brain
-- Single choice: How should AI handle risky situations? (Strict / Balanced / Advisory)
-- Remove: the 8 diagnostic questions (AI learns these from actual usage)
-- Remove: individual AI feature toggles (default to sensible values)
+## Modified Files
 
-### Stage 2: Smart Checklist (post-wizard)
+### 3. `CreateTaskModal.tsx`
+- Import `useSmartDefaults`, `SmartSuggestionChips`.
+- Call `useSmartDefaults(form.projectId)`.
+- Render `SmartSuggestionChips` with `topTrades` above the "Assigned Trade" `Select` (line ~339). Clicking a chip sets `form.tradeId`.
+- After successful submit (line ~272), add `queryClient.invalidateQueries({ queryKey: ['smart-defaults'] })`. Import `useQueryClient`.
 
-Replace the current 15-step, 6-phase checklist with a **context-aware shortlist** that shows 3-5 items at a time based on what the user has done and what they're trying to do.
+### 4. `CreateDeficiencyModal.tsx`
+- Same pattern: `useSmartDefaults(formData.project_id)`.
+- Trade chips above the trade `Select` (line ~226).
+- Location chips rendered as small clickable text suggestions below the location `Input` (line ~248). Clicking sets `formData.location`.
+- Invalidate `smart-defaults` on successful submit.
 
-**Always-shown items** (until complete):
-- Invite a team member
-- Assign someone to your project
+### 5. `CreateManpowerRequestModal.tsx`
+- `useSmartDefaults(form.project_id)`.
+- Trade chips above trade `Select` (line ~190).
+- If `lastCrewCount` exists and `form.requested_count` is empty, pre-fill it on first load (via a `useEffect` that checks a `hasUserEdited` ref).
+- Invalidate on submit.
 
-**Shown when user visits Time Tracking:**
-- Enable time tracking
-- Set labor rates
+### 6. `DailyLogForm.tsx`
+- `useSmartDefaults(projectId)`.
+- On modal open, if no `existingLog` and form fields are empty: pre-fill `crew_count` from `lastCrewCount`, `weather` from `lastWeather`.
+- Uses a `useEffect` gated on `open && !existingLog` to set values once.
+- Invalidate on submit.
 
-**Shown when user visits Safety:**
-- Review PPE requirements
-- Configure hazard library
+### 7. `DailySafetyWizard.tsx` (WizardStepOne)
+- `useSmartDefaults(projectId)` called in the wizard.
+- Pass `topTrades` names to WizardStepOne as a `suggestedTrades` prop.
+- In WizardStepOne, if `selectedTrades` is empty on mount and `suggestedTrades` has items, pre-select them.
+- This is a fallback -- the existing auto-fill from check-ins takes priority.
 
-**Shown when user visits Invoicing:**
-- Set up invoice permissions
-- Configure tax model
+## What Does NOT Change
 
-**Shown when user visits Financial pages:**
-- Set labor cost rates
-- Configure currency and tax model
+- No new database tables, RPCs, or edge functions.
+- No schema migrations.
+- No changes to existing form validation or submission logic.
+- All pre-fills are overridable by the user.
+- Forms with no project history behave exactly as before (no chips, no pre-fills).
 
-This means the checklist is never more than 5 items long, and every item shown is relevant to what the user is currently doing.
+## QA Checklist
 
-### What Happens to Removed Config?
-
-The operational profile questions (Phase 2 of OrgOnboardingWizard) don't disappear -- they move to a **Settings > Organization Profile** page where admins can fill them in anytime. The AI Brain reads from this profile but doesn't require it upfront. Missing values get sensible defaults.
-
-## Technical Changes
-
-### Files to modify:
-
-| File | Change |
-|------|--------|
-| `src/components/onboarding/WelcomeWizard.tsx` | Rewrite to 4-screen Quick Start (Welcome+Role, Org+Timezone, First Project, AI Mode) |
-| `src/components/onboarding/OrgOnboardingWizard.tsx` | Remove -- absorbed into WelcomeWizard screen 4 and Settings page |
-| `src/components/setup/SetupWizardHub.tsx` | Rewrite to context-aware shortlist (3-5 items max) |
-| `src/hooks/useSetupProgress.tsx` | Simplify step tracking -- fewer steps, add `context` field to know which page triggered display |
-| `src/hooks/useOperationalProfile.ts` | Keep as-is -- still the backend store, just not populated upfront |
-| `src/pages/Setup.tsx` | Update to render new streamlined wizard |
-
-### New files:
-
-| File | Purpose |
-|------|---------|
-| `src/components/setup/SmartChecklist.tsx` | Context-aware checklist that accepts a `context` prop (e.g., "time-tracking", "safety") and shows only relevant items |
-| `src/components/setup/useSmartChecklist.ts` | Hook that computes which items to show based on current route + completion state |
-
-### Database:
-
-No schema changes needed. The existing `setup_checklist_progress` and `organization_operational_profile` tables continue to work. We just write fewer fields during the wizard and populate the rest progressively.
-
-### What gets removed:
-
-- The 3-phase OrgOnboardingWizard (8 diagnostic questions, 6 structural config options, 3 AI toggles) -- reduced to 1 question (AI risk mode)
-- Feature tour screen (low value, users learn by doing)
-- Sample project creation (remove edge function invocation from wizard)
-- 10 of 15 checklist steps from the always-visible list
-
-### What stays:
-
-- Organization + membership creation logic
-- Role selection (drives UI customization)
-- Operational profile storage (populated later, not upfront)
-- All the modal components (CreateProjectModal, InviteUserModal, etc.) -- reused in the smart checklist
-
-## Summary
-
-**Before:** 3 overlapping wizards, 20+ questions before seeing the app, 15-step checklist
-**After:** 1 focused wizard (4 screens, ~3 min), smart checklist that shows 3-5 contextual items
-
-The AI Brain handles the rest through progressive discovery.
+- New project with no history: no chips, no pre-fills, forms unchanged
+- Project with 10+ tasks: top 3 trades appear as chips, click fills dropdown
+- Location suggestions appear below location input (task + deficiency modals)
+- DailyLogForm pre-fills crew count and weather from most recent log
+- Manpower modal pre-fills requested count from history
+- User can override any pre-filled value
+- After creating a new task, reopening the modal shows updated suggestions
+- Safety wizard pre-selects frequent trades when no check-in data exists
 
