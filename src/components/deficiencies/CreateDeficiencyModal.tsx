@@ -10,6 +10,9 @@ import { PhotoUpload } from "./PhotoUpload";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { usePhotoUpload } from "@/hooks/usePhotoUpload";
+import { useQueryClient } from "@tanstack/react-query";
+import { useSmartDefaults } from "@/hooks/useSmartDefaults";
+import { SmartSuggestionChips, LocationSuggestionChips } from "@/components/common/SmartSuggestionChips";
 import { Loader2 } from "lucide-react";
 
 interface CreateDeficiencyModalProps {
@@ -39,7 +42,9 @@ export const CreateDeficiencyModal = ({
     due_date: "",
   });
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { uploadMultiple, createAttachmentRecord } = usePhotoUpload();
+  const smartDefaults = useSmartDefaults(formData.project_id || undefined);
 
   // Update project_id when projectId prop changes
   useEffect(() => {
@@ -156,6 +161,7 @@ export const CreateDeficiencyModal = ({
         due_date: "",
       });
       setPhotos([]);
+      queryClient.invalidateQueries({ queryKey: ['smart-defaults'] });
       onCreate();
       onClose();
     } catch (error: any) {
@@ -224,6 +230,11 @@ export const CreateDeficiencyModal = ({
 
             <div className="space-y-2">
               <Label className="text-base font-semibold">Assigned Trade</Label>
+              <SmartSuggestionChips
+                items={smartDefaults.topTrades}
+                onSelect={(id) => setFormData({ ...formData, assigned_trade_id: id })}
+                className="mb-1.5"
+              />
               <Select
                 value={formData.assigned_trade_id}
                 onValueChange={(value) => setFormData({ ...formData, assigned_trade_id: value })}
@@ -250,6 +261,11 @@ export const CreateDeficiencyModal = ({
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                 placeholder="e.g., 3rd Floor East Wing"
                 className="h-12"
+              />
+              <LocationSuggestionChips
+                locations={smartDefaults.recentLocations}
+                onSelect={(loc) => setFormData({ ...formData, location: loc })}
+                className="mt-1"
               />
             </div>
 
