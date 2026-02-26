@@ -130,8 +130,18 @@ export const TaskDetailModalEnhanced = ({
       const { error } = await supabase
         .from('task_assignments')
         .insert({ task_id: taskId, user_id: userId });
-      if (error) throw error;
-      // Refetch assigned workers
+      if (error) {
+        // Handle unique constraint violation (duplicate assignment from stale UI / race)
+        if (error.code === '23505') {
+          toast({ title: 'Already assigned', description: 'This worker is already on this task.' });
+          // Still refetch to sync UI
+        } else {
+          throw error;
+        }
+      } else {
+        toast({ title: 'Worker assigned', description: 'Worker has been added to this task.' });
+      }
+      // Refetch assigned workers to sync UI in all cases
       const { data } = await supabase
         .from('task_assignments')
         .select('id, user_id, assigned_at, profile:profiles!task_assignments_user_id_fkey(id, full_name, email, avatar_url)')
@@ -139,7 +149,6 @@ export const TaskDetailModalEnhanced = ({
       setAssignedWorkers(data || []);
       queryClient.invalidateQueries({ queryKey: ['smart-defaults', task?.project_id] });
       onTaskUpdated?.();
-      toast({ title: 'Worker assigned', description: 'Worker has been added to this task.' });
     } catch (error: any) {
       toast({ title: 'Error assigning worker', description: error.message, variant: 'destructive' });
     } finally {
