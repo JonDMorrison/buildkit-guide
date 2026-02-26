@@ -427,7 +427,7 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
                   .filter(Boolean) as Array<{ id: string; name: string }>;
                 return (
                   <SmartSuggestionChips
-                    label="Recently assigned"
+                    label="Recently used on this project"
                     items={workerChips}
                     onSelect={(uid) => {
                       if (!selectedWorkers.includes(uid)) {
