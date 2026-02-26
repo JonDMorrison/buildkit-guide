@@ -40,9 +40,9 @@ export default function Features() {
 
   const coreFeatures: FeatureCardProps[] = [
     {
-      icon: Home,
-      title: "Dashboard",
-      tagline: "Your job site at a glance. Start every day informed.",
+       icon: Home,
+       title: "Dashboard",
+       tagline: "See what needs attention today — without asking anyone.",
       benefits: [
         "See today's weather, crew count, and active blockers",
         "Quick access to everything that needs your attention",
@@ -52,8 +52,8 @@ export default function Features() {
     },
     {
       icon: CheckSquare,
-      title: "Task Management",
-      tagline: "Know exactly what every trade owes — and when.",
+       title: "Task Management",
+       tagline: "Start with a playbook, assign to trades, and track progress — not paperwork.",
       highlight: true,
       benefits: [
         "Assign tasks to trades with clear due dates",
@@ -65,8 +65,8 @@ export default function Features() {
     },
     {
       icon: Clock,
-      title: "Time Tracking",
-      tagline: "Accurate hours. No guesswork. No paperwork.",
+       title: "Time Tracking",
+       tagline: "One tap to check in. No guesswork. No arguments.",
       benefits: [
         "One-tap check-in and check-out from the field",
         "GPS verification for job site presence",
@@ -77,8 +77,8 @@ export default function Features() {
     },
     {
       icon: Calendar,
-      title: "2-Week Lookahead",
-      tagline: "See what's coming before it catches you off guard.",
+       title: "2-Week Lookahead",
+       tagline: "Spot conflicts early so they don't become delays.",
       highlight: true,
       benefits: [
         "Visual timeline of the next two weeks",
@@ -90,8 +90,8 @@ export default function Features() {
     },
     {
       icon: Users,
-      title: "Manpower Planning",
-      tagline: "Request crews. Prevent shortages. Stay ahead.",
+       title: "Manpower Planning",
+       tagline: "The system suggests crew based on past projects. You approve with one tap.",
       benefits: [
         "Submit manpower requests with trade and date",
         "Track approval status in real-time",
@@ -102,8 +102,8 @@ export default function Features() {
     },
     {
       icon: AlertCircle,
-      title: "Deficiency Tracking",
-      tagline: "Catch issues early. Close them fast. Stay compliant.",
+       title: "Deficiency Tracking",
+       tagline: "Log issues with photos. Assign to trades. Track to close-out.",
       highlight: true,
       benefits: [
         "Log deficiencies with photos and location",
@@ -115,8 +115,8 @@ export default function Features() {
     },
     {
       icon: Shield,
-      title: "Safety Documentation",
-      tagline: "Daily logs, toolbox talks, and incidents — done right.",
+       title: "Safety Documentation",
+       tagline: "Forms pre-fill from past entries. Complete a safety log in under 3 minutes.",
       benefits: [
         "Complete daily safety logs in under 5 minutes",
         "AI suggests hazards based on weather and tasks",
@@ -127,8 +127,8 @@ export default function Features() {
     },
     {
       icon: Receipt,
-      title: "Receipt Capture",
-      tagline: "Snap it. Submit it. Track it. Done.",
+       title: "Receipt Capture",
+       tagline: "Photograph a receipt and the system reads it for you.",
       benefits: [
         "Photograph receipts instantly from the field",
         "AI extracts vendor, amount, and category",
@@ -141,9 +141,9 @@ export default function Features() {
 
   const additionalFeatures = [
     {
-      icon: Brain,
-      title: "AI Assistant",
-      description: "Ask questions about your project, get hazard suggestions, and draft emails — all powered by AI that understands construction."
+       icon: Brain,
+       title: "AI Assistant",
+       description: "Ask plain-English questions about your project. Get hazard suggestions, summaries, and draft emails based on real project data."
     },
     {
       icon: FileText,
@@ -216,12 +216,12 @@ export default function Features() {
         }}
       >
         <div className="container mx-auto max-w-4xl text-center">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
-            Everything You Need to Keep Jobs Moving
-          </h1>
-          <p className="text-lg sm:text-xl md:text-2xl text-gray-200 leading-relaxed max-w-3xl mx-auto">
-            Built for the field. Designed for real work. Every feature helps you finish on time and protect your margins.
-          </p>
+           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
+             Playbooks, Smart Memory, and Fast Field Tools
+           </h1>
+           <p className="text-lg sm:text-xl md:text-2xl text-gray-200 leading-relaxed max-w-3xl mx-auto">
+             Your best project becomes the template. The system learns from real work. Daily tasks get done with fewer clicks.
+           </p>
         </div>
       </section>
 
@@ -229,12 +229,12 @@ export default function Features() {
       <section className="py-16 md:py-20 px-4 bg-background">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-12">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Core Features
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              The tools your team uses every day to stay coordinated, accountable, and compliant.
-            </p>
+             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4">
+               The Tools Your Team Uses Every Day
+             </h2>
+             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+               Each one is built to reduce clicks, eliminate re-work, and keep every trade on the same page.
+             </p>
           </div>
           <div className="grid md:grid-cols-2 gap-6">
             {coreFeatures.map((feature, index) => (
@@ -248,12 +248,12 @@ export default function Features() {
       <section className="py-16 md:py-20 px-4 bg-muted/30">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-12">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Built-In Capabilities
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Every feature works together. No integrations required. No extra tools to manage.
-            </p>
+             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4">
+               Everything Works Together
+             </h2>
+             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+               No integrations to set up. No extra tools to manage. One system that learns as you use it.
+             </p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {additionalFeatures.map((feature, index) => {
@@ -280,12 +280,12 @@ export default function Features() {
       <section className="py-16 md:py-20 px-4 bg-background">
         <div className="container mx-auto max-w-4xl">
           <div className="text-center mb-10">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Designed for the Job Site
-            </h2>
-            <p className="text-lg text-muted-foreground">
-              Every screen is built for gloves, bright sun, and fast decisions.
-            </p>
+             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-4">
+               Built for Work Gloves, Not a Corner Office
+             </h2>
+             <p className="text-lg text-muted-foreground">
+               Every screen works outdoors, with one hand, on any phone.
+             </p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
@@ -306,12 +306,12 @@ export default function Features() {
       {/* CTA Section */}
       <section className="py-16 md:py-20 px-4 bg-[#1C3B23]">
         <div className="container mx-auto max-w-3xl text-center">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-4">
-            Ready to Keep Your Jobs Moving?
-          </h2>
-          <p className="text-lg text-white/80 mb-8 leading-relaxed">
-            Join contractors who finish on time and protect their margins.
-          </p>
+           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-4">
+             Stop Rebuilding. Start Repeating What Works.
+           </h2>
+           <p className="text-lg text-white/80 mb-8 leading-relaxed">
+             Your best project becomes the starting point for every project after it.
+           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button 
               size="lg" 
