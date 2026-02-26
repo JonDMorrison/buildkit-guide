@@ -107,10 +107,10 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    // Get project info
+    // Get project info (comprehensive)
     const { data: project } = await serviceClient
       .from('projects')
-      .select('name, job_number, status')
+      .select('name, job_number, status, job_type, start_date, end_date, address, city, province, postal_code, budget, contract_value, organization_id, client_id, clients(name, contact_name, email, phone)')
       .eq('id', project_id)
       .single();
 
@@ -137,6 +137,13 @@ serve(async (req) => {
     let receipts: any[] = [];
     let gcImports: any[] = [];
     let dailyLogs: any[] = [];
+    let estimates: any[] = [];
+    let changeOrders: any[] = [];
+    let timeEntries: any[] = [];
+    let projectMembers: any[] = [];
+    let trades: any[] = [];
+    let comments: any[] = [];
+    let attachments: any[] = [];
 
     // Base task query for project
     let taskQuery = serviceClient
@@ -247,6 +254,75 @@ serve(async (req) => {
         .order('created_at', { ascending: false })
         .limit(5);
       gcImports = gcData || [];
+
+      // Estimates
+      const { data: estData } = await serviceClient
+        .from('estimates')
+        .select('id, estimate_number, status, contract_value, planned_total_cost, planned_profit, planned_margin_percent, planned_labor_hours, currency, client_id, clients(name)')
+        .eq('project_id', project_id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      estimates = estData || [];
+
+      // Change Orders
+      const { data: coData } = await serviceClient
+        .from('change_orders')
+        .select('id, title, reason, amount, status, currency, created_at')
+        .eq('project_id', project_id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      changeOrders = coData || [];
+
+      // Time Entries (last 14 days)
+      const fourteenDaysAgo = new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000);
+      const { data: teData } = await serviceClient
+        .from('time_entries')
+        .select('id, hours, work_date, status, profiles(full_name), tasks(title)')
+        .eq('project_id', project_id)
+        .gte('work_date', fourteenDaysAgo.toISOString().split('T')[0])
+        .order('work_date', { ascending: false })
+        .limit(100);
+      timeEntries = teData || [];
+
+      // Project Members
+      const { data: pmData } = await serviceClient
+        .from('project_members')
+        .select('id, role, user_id, trade_id, profiles(full_name, email), trades(name)')
+        .eq('project_id', project_id);
+      projectMembers = pmData || [];
+
+      // Trades for this project's org
+      const { data: trData } = await serviceClient
+        .from('trades')
+        .select('id, name, company_name, trade_type, is_active')
+        .eq('organization_id', project?.organization_id)
+        .eq('is_active', true);
+      trades = trData || [];
+
+      // Recent Comments (last 14 days)
+      const defIds = (deficiencies || []).map((d: any) => d.id);
+      if (taskIds.length > 0 || defIds.length > 0) {
+        const orParts: string[] = [];
+        if (taskIds.length > 0) orParts.push(`task_id.in.(${taskIds.join(',')})`);
+        if (defIds.length > 0) orParts.push(`deficiency_id.in.(${defIds.join(',')})`);
+        const { data: cmtData } = await serviceClient
+          .from('comments')
+          .select('id, content, created_at, task_id, deficiency_id, profiles(full_name)')
+          .or(orParts.join(','))
+          .gte('created_at', fourteenDaysAgo.toISOString())
+          .order('created_at', { ascending: false })
+          .limit(30);
+        comments = cmtData || [];
+      }
+
+      // Attachments/Documents
+      const { data: attData } = await serviceClient
+        .from('attachments')
+        .select('id, file_name, document_type, description, created_at, task_id, deficiency_id')
+        .eq('project_id', project_id)
+        .order('created_at', { ascending: false })
+        .limit(30);
+      attachments = attData || [];
     }
 
     // Receipts (visible to most roles)
@@ -393,6 +469,97 @@ serve(async (req) => {
       contextString += '\n';
     }
 
+    // Project details
+    if (project) {
+      contextString += `## Project Details:\n`;
+      contextString += `- Status: ${project.status}\n`;
+      if (project.job_type) contextString += `- Job Type: ${project.job_type}\n`;
+      if (project.start_date) contextString += `- Start Date: ${project.start_date}\n`;
+      if (project.end_date) contextString += `- End Date: ${project.end_date}\n`;
+      if (project.address) contextString += `- Address: ${project.address}, ${project.city || ''} ${project.province || ''}\n`;
+      if (project.budget) contextString += `- Budget: $${Number(project.budget).toLocaleString()}\n`;
+      if (project.contract_value) contextString += `- Contract Value: $${Number(project.contract_value).toLocaleString()}\n`;
+      if (project.clients?.name) contextString += `- Client: ${project.clients.name} (Contact: ${project.clients.contact_name || 'N/A'})\n`;
+      contextString += '\n';
+    }
+
+    // Estimates / Financials
+    if (estimates.length > 0) {
+      contextString += `## Estimates:\n`;
+      estimates.forEach(est => {
+        contextString += `- ${est.estimate_number} [${est.status}]: Contract $${Number(est.contract_value).toLocaleString()}, Cost $${Number(est.planned_total_cost).toLocaleString()}, Margin ${est.planned_margin_percent}%, Labor ${est.planned_labor_hours}h\n`;
+      });
+      contextString += '\n';
+    }
+
+    // Change Orders
+    if (changeOrders.length > 0) {
+      const approvedCOs = changeOrders.filter(co => co.status === 'approved');
+      const pendingCOs = changeOrders.filter(co => co.status === 'pending' || co.status === 'draft');
+      const totalApproved = approvedCOs.reduce((s, co) => s + Number(co.amount || 0), 0);
+      contextString += `## Change Orders (${changeOrders.length} total):\n`;
+      contextString += `- Approved: ${approvedCOs.length} ($${totalApproved.toLocaleString()})\n`;
+      contextString += `- Pending/Draft: ${pendingCOs.length}\n`;
+      changeOrders.slice(0, 10).forEach(co => {
+        contextString += `  - [${co.status}] "${co.title}" $${Number(co.amount).toLocaleString()} - ${co.reason || 'No reason'}\n`;
+      });
+      contextString += '\n';
+    }
+
+    // Time Entries
+    if (timeEntries.length > 0) {
+      const totalHours = timeEntries.reduce((s, te) => s + Number(te.hours || 0), 0);
+      const uniqueWorkers = new Set(timeEntries.map(te => te.profiles?.full_name).filter(Boolean));
+      contextString += `## Time Entries (last 14 days):\n`;
+      contextString += `- Total Hours: ${totalHours.toFixed(1)}h\n`;
+      contextString += `- Workers: ${uniqueWorkers.size}\n`;
+      // Group by date
+      const byDate: Record<string, number> = {};
+      timeEntries.forEach(te => {
+        byDate[te.work_date] = (byDate[te.work_date] || 0) + Number(te.hours || 0);
+      });
+      Object.entries(byDate).slice(0, 7).forEach(([date, hrs]) => {
+        contextString += `  - ${date}: ${(hrs as number).toFixed(1)}h\n`;
+      });
+      contextString += '\n';
+    }
+
+    // Project Team
+    if (projectMembers.length > 0) {
+      contextString += `## Project Team (${projectMembers.length} members):\n`;
+      projectMembers.forEach(pm => {
+        contextString += `- ${pm.profiles?.full_name || 'Unknown'} (${pm.role}${pm.trades?.name ? ', ' + pm.trades.name : ''})\n`;
+      });
+      contextString += '\n';
+    }
+
+    // Trades
+    if (trades.length > 0) {
+      contextString += `## Active Trades (${trades.length}):\n`;
+      trades.forEach(tr => {
+        contextString += `- ${tr.name} (${tr.company_name || 'N/A'}, ${tr.trade_type})\n`;
+      });
+      contextString += '\n';
+    }
+
+    // Recent Comments
+    if (comments.length > 0) {
+      contextString += `## Recent Comments (last 14 days):\n`;
+      comments.slice(0, 15).forEach(cmt => {
+        contextString += `- ${cmt.profiles?.full_name || 'Unknown'}: "${cmt.content.substring(0, 100)}"\n`;
+      });
+      contextString += '\n';
+    }
+
+    // Attachments/Documents
+    if (attachments.length > 0) {
+      contextString += `## Recent Documents/Attachments (${attachments.length}):\n`;
+      attachments.slice(0, 15).forEach(att => {
+        contextString += `- ${att.file_name}${att.document_type ? ' (' + att.document_type + ')' : ''}${att.description ? ': ' + att.description.substring(0, 80) : ''}\n`;
+      });
+      contextString += '\n';
+    }
+
     // Build the AI prompt
     let userPrompt = '';
     
@@ -425,7 +592,7 @@ Keep it concise and actionable for a field team.`;
       ? '\n\nThe user is a Foreman. Focus on crew tasks, blockers affecting their trades, safety, and daily planning.'
       : '\n\nThe user is a Project Manager or Admin. Provide full project visibility including risks, coordination needs, and GC items.';
 
-    const systemPrompt = `You are an AI assistant for a construction project coordination app called Project Path. You help field teams, foremen, and project managers stay on top of tasks, blockers, safety, manpower, receipts, and deficiencies.
+    const systemPrompt = `You are an AI assistant for a construction project coordination app called Project Path. You have comprehensive knowledge of the project including tasks, blockers, safety forms, deficiencies, manpower requests, receipts, estimates/financials, change orders, time entries, team members, trades, comments, documents, and daily logs.
 
 Rules:
 - Answer based ONLY on the provided project data
@@ -435,6 +602,7 @@ Rules:
 - Never make up project data
 - Format responses in plain text with clear structure
 - When suggesting actions, be specific about what to do
+- You can answer questions about financials, team composition, labor hours, change orders, and any other aspect of the project
 
 For your response, structure it as JSON with this format:
 {
