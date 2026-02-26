@@ -415,6 +415,29 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
                 <UserPlus className="h-4 w-4 text-muted-foreground" />
                 <h3 className="text-sm font-semibold">Assign Workers (Optional)</h3>
               </div>
+              {/* Smart worker suggestions */}
+              {(() => {
+                const workerChips = smartDefaults.suggestedWorkerIds
+                  .filter((uid) => !selectedWorkers.includes(uid))
+                  .map((uid) => {
+                    const member = projectMembers.find((m) => m.user_id === uid);
+                    if (!member) return null;
+                    return { id: uid, name: member.profiles.full_name || member.profiles.email };
+                  })
+                  .filter(Boolean) as Array<{ id: string; name: string }>;
+                return (
+                  <SmartSuggestionChips
+                    label="Recently assigned"
+                    items={workerChips}
+                    onSelect={(uid) => {
+                      if (!selectedWorkers.includes(uid)) {
+                        setSelectedWorkers((prev) => [...prev, uid]);
+                      }
+                    }}
+                    className="mb-1"
+                  />
+                );
+              })()}
               <p className="text-xs text-muted-foreground">
                 Select team members to work on this task.
               </p>
