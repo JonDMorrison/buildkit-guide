@@ -57,6 +57,32 @@ const PROVINCES = [
   { value: 'US-OTHER', label: 'United States (Other)' },
 ];
 
+/** Derive timezone default from browser, falling back to Toronto if not in our list */
+function detectTimezoneDefault(): string {
+  try {
+    const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (TIMEZONES.some(tz => tz.value === browserTz)) return browserTz;
+  } catch { /* ignore */ }
+  return 'America/Toronto';
+}
+
+/** Map browser timezone to a reasonable province/region default */
+function detectProvinceDefault(tz: string): string {
+  const tzToProvince: Record<string, string> = {
+    'America/St_Johns': 'NL',
+    'America/Halifax': 'NS',
+    'America/Toronto': 'ON',
+    'America/Winnipeg': 'MB',
+    'America/Edmonton': 'AB',
+    'America/Vancouver': 'BC',
+    'America/New_York': 'US-OTHER',
+    'America/Chicago': 'US-OTHER',
+    'America/Denver': 'US-OTHER',
+    'America/Los_Angeles': 'US-OTHER',
+  };
+  return tzToProvince[tz] || '';
+}
+
 const JOB_TYPES = [
   'Residential New Build',
   'Commercial Tenant Improvement',
@@ -92,8 +118,9 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
 
   // Step 1 (Org)
   const [orgName, setOrgName] = useState('');
-  const [timezone, setTimezone] = useState('America/Toronto');
-  const [province, setProvince] = useState('ON');
+  const detectedTz = detectTimezoneDefault();
+  const [timezone, setTimezone] = useState(detectedTz);
+  const [province, setProvince] = useState(() => detectProvinceDefault(detectedTz));
   const [orgCreated, setOrgCreated] = useState<{ id: string } | null>(null);
 
   // Step 2 (Project)
@@ -216,6 +243,7 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
   };
 
   const handleProjectCreate = async () => {
+    if (isSubmitting) return;
     if (!orgCreated) {
       setStep(3);
       return;
@@ -250,7 +278,7 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
         .from('projects')
         .insert({
           name: projectName.trim(),
-          location: projectAddress.trim() || 'TBD',
+          location: projectAddress.trim() || null,
           job_type: projectJobType || null,
           organization_id: orgCreated.id,
           status: 'active',
@@ -263,13 +291,17 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
 
       // Auto-create a job site from the address if provided
       if (projectAddress.trim() && project) {
-        await supabase.from('job_sites').insert({
+        const { error: jobSiteError } = await supabase.from('job_sites').insert({
           name: projectName.trim(),
           address: projectAddress.trim(),
           project_id: project.id,
           organization_id: orgCreated.id,
           is_active: true,
         });
+        if (jobSiteError) {
+          console.warn('Job site creation failed:', jobSiteError.message);
+          toast({ title: 'Note', description: 'Project created but job site could not be saved. You can add it later.', variant: 'default' });
+        }
       }
 
       // Mark setup steps complete
@@ -297,11 +329,13 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
   };
 
   const handleFinish = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     setIsLoading(true);
     try {
-      // Save AI risk mode
+      // Save AI risk mode — block completion on failure
       if (orgCreated) {
-        await supabase.rpc('rpc_upsert_operational_profile', {
+        const { error: rpcError } = await supabase.rpc('rpc_upsert_operational_profile', {
           p_organization_id: orgCreated.id,
           p_data: {
             ai_risk_mode: aiRiskMode,
@@ -312,6 +346,7 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
             wizard_completed_at: new Date().toISOString(),
           } as any,
         });
+        if (rpcError) throw rpcError;
       }
 
       // Mark onboarding complete
@@ -326,11 +361,11 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
 
       onComplete();
     } catch (error: any) {
-      console.error('Error saving AI preferences:', error);
-      // Don't block completion on AI save failure
-      onComplete();
+      console.error('Error finishing onboarding:', error);
+      toast({ title: 'Save failed', description: 'Could not save preferences. Please try again.', variant: 'destructive' });
     } finally {
       setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -398,7 +433,7 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
                     <Globe className="h-4 w-4 text-muted-foreground" />
                     Timezone
                   </Label>
-                  <Select value={timezone} onValueChange={setTimezone}>
+                  <Select value={timezone} onValueChange={(tz) => { setTimezone(tz); setProvince(detectProvinceDefault(tz)); }}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -419,7 +454,7 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
                   </Label>
                   <Select value={province} onValueChange={setProvince}>
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Select province / region" />
                     </SelectTrigger>
                     <SelectContent>
                       {PROVINCES.map((p) => (
@@ -509,7 +544,7 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back
                 </Button>
-                <Button onClick={handleProjectCreate} className="flex-1" disabled={isLoading}>
+                <Button onClick={handleProjectCreate} className="flex-1" disabled={isLoading || isSubmitting}>
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -603,7 +638,7 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back
                 </Button>
-                <Button onClick={handleFinish} className="flex-1" disabled={isLoading}>
+                <Button onClick={handleFinish} className="flex-1" disabled={isLoading || isSubmitting}>
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
