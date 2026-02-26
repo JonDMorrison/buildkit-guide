@@ -41,15 +41,16 @@
 - Any prefilled value can be changed by the user
 - After editing, the prefill should not re-apply
 
-### 9. Cache invalidation
+### 9. Cache invalidation (project-scoped)
 - Create a new task/deficiency/manpower request/daily log
 - Reopen the same or different modal
 - **Expected:** Suggestions reflect the newly created record
+- **Performance:** Creating a task in Project A should NOT refetch smart defaults for Project B. Invalidation targets `['smart-defaults', projectId]` only.
 
 ### 10. Safety wizard trade fallback
 - On a project with no check-in data for today
 - Open DailySafetyWizard
 - **Expected:** Top trades from smart defaults are pre-selected as fallback
 
-### 11. Worker suggestions (future)
-- Not yet implemented; no worker chips should appear
+### 11. Worker suggestions
+- See `docs/qa-smart-defaults-workers.md` for detailed scenarios

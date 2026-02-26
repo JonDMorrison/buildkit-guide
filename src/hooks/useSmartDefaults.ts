@@ -23,7 +23,7 @@ export function useSmartDefaults(projectId: string | undefined): SmartDefaults {
   const enabled = !!projectId;
 
   const { data: tasksData, isLoading: tasksLoading } = useQuery({
-    queryKey: ['smart-defaults', 'tasks', projectId],
+    queryKey: ['smart-defaults', projectId, 'tasks'],
     queryFn: async () => {
       const { data } = await supabase
         .from('tasks')
@@ -39,7 +39,7 @@ export function useSmartDefaults(projectId: string | undefined): SmartDefaults {
   });
 
   const { data: deficienciesData, isLoading: defLoading } = useQuery({
-    queryKey: ['smart-defaults', 'deficiencies', projectId],
+    queryKey: ['smart-defaults', projectId, 'deficiencies'],
     queryFn: async () => {
       const { data } = await supabase
         .from('deficiencies')
@@ -55,7 +55,7 @@ export function useSmartDefaults(projectId: string | undefined): SmartDefaults {
   });
 
   const { data: manpowerData, isLoading: mpLoading } = useQuery({
-    queryKey: ['smart-defaults', 'manpower', projectId],
+    queryKey: ['smart-defaults', projectId, 'manpower'],
     queryFn: async () => {
       const { data } = await supabase
         .from('manpower_requests')
@@ -70,7 +70,7 @@ export function useSmartDefaults(projectId: string | undefined): SmartDefaults {
   });
 
   const { data: dailyLogsData, isLoading: logsLoading } = useQuery({
-    queryKey: ['smart-defaults', 'daily-logs', projectId],
+    queryKey: ['smart-defaults', projectId, 'daily-logs'],
     queryFn: async () => {
       const { data } = await supabase
         .from('daily_logs')
@@ -86,7 +86,7 @@ export function useSmartDefaults(projectId: string | undefined): SmartDefaults {
 
   // --- Worker assignments (join through tasks to filter by project) ---
   const { data: assignmentsData, isLoading: assignLoading } = useQuery({
-    queryKey: ['smart-defaults', 'assignments', projectId],
+    queryKey: ['smart-defaults', projectId, 'assignments'],
     queryFn: async () => {
       // First get task IDs for this project
       const { data: taskIds } = await supabase

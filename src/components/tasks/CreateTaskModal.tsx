@@ -274,7 +274,7 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
       setSelectedDependencies([]);
       setSelectedWorkers([]);
 
-      queryClient.invalidateQueries({ queryKey: ['smart-defaults'] });
+      queryClient.invalidateQueries({ queryKey: ['smart-defaults', form.projectId] });
       onOpenChange(false);
       onSuccess();
     } catch (error) {

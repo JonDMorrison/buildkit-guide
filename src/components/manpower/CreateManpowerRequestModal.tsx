@@ -178,7 +178,7 @@ export const CreateManpowerRequestModal = ({
         duration_days: '',
         reason: '',
       });
-      queryClient.invalidateQueries({ queryKey: ['smart-defaults'] });
+      queryClient.invalidateQueries({ queryKey: ['smart-defaults', form.project_id] });
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
