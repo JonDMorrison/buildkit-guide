@@ -203,7 +203,7 @@ export function GeneratePlaybookDialog({ open, onOpenChange, onCreated, initialJ
             Create a starter workflow
           </DialogTitle>
           <DialogDescription>
-            We'll analyze recent projects in this job type and propose phases, tasks, and hour ranges. You can edit the workflow before applying it.
+            We'll analyze recent {jobType ? <span className="font-medium text-foreground">{jobType}</span> : null} projects to propose phases, tasks, and hour ranges. You can edit everything before applying.
           </DialogDescription>
         </DialogHeader>
 
@@ -226,7 +226,7 @@ export function GeneratePlaybookDialog({ open, onOpenChange, onCreated, initialJ
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Uses your past projects for this job type to suggest a starting workflow.
+                Powered by analysis of your project history.
               </p>
             </div>
 
@@ -243,7 +243,7 @@ export function GeneratePlaybookDialog({ open, onOpenChange, onCreated, initialJ
         {loading && (
           <div className="flex flex-col items-center justify-center py-12 gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">Looking through past projects...</p>
+            <p className="text-sm font-medium text-foreground">Analyzing past jobs…</p>
             <p className="text-xs text-muted-foreground/60">This may take 10–20 seconds</p>
           </div>
         )}

@@ -185,30 +185,34 @@ export function PlaybookSuggestionStep({
       <div className="space-y-4 py-2">
         <div className="text-center py-6">
           <BookOpen className="h-8 w-8 mx-auto mb-3 text-muted-foreground/30" />
-          <p className="text-sm font-medium text-muted-foreground">No playbooks available</p>
-          <p className="text-xs text-muted-foreground/60 mt-1">
+          <p className="text-sm font-medium text-foreground">Start fast with a workflow</p>
+          <p className="text-xs text-muted-foreground/60 mt-1 max-w-[280px] mx-auto">
             {jobType
-              ? `No playbooks match "${jobType}". Generate one from your project history.`
+              ? `Choose an existing playbook or build a starter workflow from past ${jobType} projects.`
               : 'Create playbooks in the Playbook Console to auto-populate project tasks.'}
           </p>
         </div>
         {jobType && (
-          <Button
-            variant="outline"
-            onClick={() => setGenerateOpen(true)}
-            className="w-full gap-1.5"
-          >
-            <Wand2 className="h-4 w-4" />
-            Build workflow from past {jobType} jobs
-          </Button>
+          <div className="space-y-1.5">
+            <Button
+              onClick={() => setGenerateOpen(true)}
+              className="w-full gap-1.5"
+            >
+              <Wand2 className="h-4 w-4" />
+              Build from past jobs
+            </Button>
+            <p className="text-[10px] text-muted-foreground/60 text-center">
+              Uses your recent projects to suggest phases, tasks, and hour ranges.
+            </p>
+          </div>
         )}
         <div className="flex gap-3">
           <Button variant="outline" onClick={onBack} className="gap-1.5">
             <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
-          <Button onClick={onSkip} className="flex-1">
-            Continue without playbook
+          <Button variant="ghost" onClick={onSkip} className="flex-1 text-muted-foreground">
+            Skip for now
           </Button>
         </div>
       </div>
@@ -356,7 +360,7 @@ export function PlaybookSuggestionStep({
             className="gap-1.5"
           >
             <Wand2 className="h-3.5 w-3.5" />
-            Build from history
+            Build from past jobs
           </Button>
         )}
         <Button
