@@ -3644,6 +3644,9 @@ export type Database = {
           full_name: string | null
           has_onboarded: boolean
           id: string
+          onboarding_org_id: string | null
+          onboarding_project_id: string | null
+          onboarding_step: number | null
           phone: string | null
           updated_at: string
         }
@@ -3654,6 +3657,9 @@ export type Database = {
           full_name?: string | null
           has_onboarded?: boolean
           id: string
+          onboarding_org_id?: string | null
+          onboarding_project_id?: string | null
+          onboarding_step?: number | null
           phone?: string | null
           updated_at?: string
         }
@@ -3664,6 +3670,9 @@ export type Database = {
           full_name?: string | null
           has_onboarded?: boolean
           id?: string
+          onboarding_org_id?: string | null
+          onboarding_project_id?: string | null
+          onboarding_step?: number | null
           phone?: string | null
           updated_at?: string
         }

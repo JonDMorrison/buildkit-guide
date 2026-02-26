@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
 import { useOrganization } from '@/hooks/useOrganization';
+import { useOnboardingState } from '@/hooks/useOnboardingState';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -103,12 +104,14 @@ const JOB_TYPES = [
 export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
   const { user } = useAuth();
   const { organizations } = useOrganization();
+  const { state: onboardingState, isLoading: stateLoading, updateState } = useOnboardingState();
   const { toast } = useToast();
 
   // Step state: 1=Welcome+Role, 2=Org+Timezone, 3=First Project, 4=AI Mode
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const rehydrated = useRef(false);
 
   // Step 1
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
@@ -123,6 +126,7 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
   const [projectName, setProjectName] = useState('');
   const [projectAddress, setProjectAddress] = useState('');
   const [projectJobType, setProjectJobType] = useState('');
+  const [projectCreatedId, setProjectCreatedId] = useState<string | null>(null);
 
   // Step 4
   const [aiRiskMode, setAiRiskMode] = useState('balanced');
@@ -130,12 +134,70 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
   const totalSteps = 4;
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'there';
 
-  // Existing-org guard: if user already has an org, skip step 2
+  // Rehydrate wizard state from DB on mount (once)
+  useEffect(() => {
+    if (rehydrated.current || stateLoading || !onboardingState) return;
+    rehydrated.current = true;
+
+    // If already onboarded, parent handles redirect — nothing to do
+    if (onboardingState.has_onboarded) return;
+
+    // Rehydrate org from DB state or existing membership
+    const savedOrgId = onboardingState.onboarding_org_id;
+    const existingOrgId = organizations.length > 0 ? organizations[0].id : null;
+    const effectiveOrgId = savedOrgId || existingOrgId;
+
+    if (effectiveOrgId) {
+      setOrgCreated({ id: effectiveOrgId });
+    }
+
+    // Rehydrate project
+    if (onboardingState.onboarding_project_id) {
+      setProjectCreatedId(onboardingState.onboarding_project_id);
+    }
+
+    // Determine resume step from saved state
+    const savedStep = onboardingState.onboarding_step;
+    if (savedStep && savedStep >= 1 && savedStep <= 4) {
+      setStep(savedStep);
+    } else if (onboardingState.onboarding_project_id) {
+      setStep(4);
+    } else if (effectiveOrgId) {
+      setStep(3);
+    }
+  }, [stateLoading, onboardingState, organizations]);
+
+  // Existing-org guard: if user already has an org membership but orgCreated not set
   useEffect(() => {
     if (organizations.length > 0 && !orgCreated) {
       setOrgCreated({ id: organizations[0].id });
     }
   }, [organizations, orgCreated]);
+
+  // Persist step helper — does NOT advance UI, just saves to DB
+  const persistStep = async (updates: {
+    onboarding_step?: number;
+    onboarding_org_id?: string;
+    onboarding_project_id?: string;
+    has_onboarded?: boolean;
+  }) => {
+    try {
+      await updateState(updates);
+    } catch (err: any) {
+      console.error('Failed to persist onboarding state:', err);
+      toast({ title: 'Save error', description: 'Could not save progress. Please try again.', variant: 'destructive' });
+      throw err; // Re-throw so caller knows it failed
+    }
+  };
+
+  const handleStep1Continue = async () => {
+    try {
+      await persistStep({ onboarding_step: 2 });
+      setStep(2);
+    } catch {
+      // Error already toasted by persistStep
+    }
+  };
 
   const handleOrgCreate = async () => {
     if (!orgName.trim()) {
@@ -149,8 +211,9 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
     setIsLoading(true);
 
     try {
-      // If org was already created (back-button scenario), skip to next step
+      // If org was already created (back-button or rehydrated), skip creation
       if (orgCreated) {
+        await persistStep({ onboarding_step: 3, onboarding_org_id: orgCreated.id });
         setStep(3);
         return;
       }
@@ -166,7 +229,11 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
       if (rpcError) throw rpcError;
 
       const result = rpcResult as any;
-      setOrgCreated({ id: result.org_id });
+      const newOrgId = result.org_id;
+      setOrgCreated({ id: newOrgId });
+
+      // Persist org ID + advance step atomically
+      await persistStep({ onboarding_step: 3, onboarding_org_id: newOrgId });
 
       if (result.already_existed) {
         toast({ title: 'Using your existing organization' });
@@ -184,14 +251,29 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
 
   const handleProjectCreate = async () => {
     if (!orgCreated) {
-      // Skip project creation if no org (shouldn't happen)
       setStep(4);
       return;
     }
 
     if (!projectName.trim()) {
-      // Allow skipping project creation
-      setStep(4);
+      // Allow skipping — persist step advance
+      try {
+        await persistStep({ onboarding_step: 4 });
+        setStep(4);
+      } catch {
+        // Error already toasted
+      }
+      return;
+    }
+
+    // If project already created (rehydrated), just advance
+    if (projectCreatedId) {
+      try {
+        await persistStep({ onboarding_step: 4 });
+        setStep(4);
+      } catch {
+        // Error already toasted
+      }
       return;
     }
 
@@ -233,6 +315,11 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
         step_first_job_site: !!projectAddress.trim(),
       }, { onConflict: 'organization_id' });
 
+      setProjectCreatedId(project.id);
+
+      // Persist project ID + advance step
+      await persistStep({ onboarding_step: 4, onboarding_project_id: project.id });
+
       toast({ title: 'Project created', description: `${projectName} is ready to go.` });
       setStep(4);
     } catch (error: any) {
@@ -260,6 +347,17 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
           } as any,
         });
       }
+
+      // Mark onboarding complete — clear transient fields
+      await persistStep({ has_onboarded: true, onboarding_step: 4 });
+
+      // Update localStorage cache for ProtectedRoute
+      if (user) {
+        try {
+          localStorage.setItem(`pp_onboarded_${user.id}`, 'true');
+        } catch { /* ignore */ }
+      }
+
       onComplete();
     } catch (error: any) {
       console.error('Error saving AI preferences:', error);
@@ -269,6 +367,15 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
       setIsLoading(false);
     }
   };
+
+  // Show loading while rehydrating
+  if (stateLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/50 flex items-center justify-center p-4">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/50 flex items-center justify-center p-4">
@@ -336,7 +443,7 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
               </div>
 
               <Button
-                onClick={() => setStep(2)}
+                onClick={handleStep1Continue}
                 size="lg"
                 className="w-full h-14 text-lg"
                 disabled={!selectedRole}
