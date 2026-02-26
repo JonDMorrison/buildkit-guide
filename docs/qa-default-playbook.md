@@ -1,4 +1,4 @@
-# QA: Default Playbook Prompt — PR1
+# QA: Default Playbook Prompt — PR1 + PR2
 
 ## Scenarios
 
@@ -31,5 +31,26 @@
 - If rpc_update_playbook fails, error toast shown, project creation unaffected
 - ✅ Non-blocking
 
-## Future (PR2)
+### 6. Permission guard — non-privileged user (PR2)
+- Log in as **foreman** or **internal_worker**
+- Create project and apply a playbook
+- ✅ "Set as default?" prompt does **NOT** appear
+- Project is still created successfully
+
+### 7. Permission guard — privileged user (PR2)
+- Log in as **admin** or **pm**
+- Create project and apply a non-default playbook
+- ✅ "Set as default?" prompt appears
+- Click "Yes, set as default" → success toast
+
+### 8. RPC rejection handling (PR2)
+- If RPC returns 42501 (e.g., role changed mid-session)
+- ✅ Toast: "You don't have permission to set the default playbook."
+- Project creation is unaffected
+
+### 9. Cache invalidation correctness (PR2)
+- After setting default, `playbooks-list`, `playbook-detail`, and `playbook-performance` queries are all invalidated
+- ✅ Default badge appears immediately in playbook list
+
+## Future (PR3)
 - If per-job_type defaults are added to schema, update dialog copy and recommendation logic
