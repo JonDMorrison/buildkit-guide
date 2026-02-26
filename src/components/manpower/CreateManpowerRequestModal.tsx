@@ -1,7 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
+import { useSmartDefaults } from '@/hooks/useSmartDefaults';
+import { SmartSuggestionChips } from '@/components/common/SmartSuggestionChips';
 import {
   Dialog,
   DialogContent,
@@ -38,10 +41,12 @@ export const CreateManpowerRequestModal = ({
 }: CreateManpowerRequestModalProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [projects, setProjects] = useState<any[]>([]);
   const [trades, setTrades] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
+  const hasUserEditedCount = useRef(false);
   const [form, setForm] = useState({
     project_id: defaultProjectId || '',
     trade_id: '',
@@ -52,11 +57,20 @@ export const CreateManpowerRequestModal = ({
     reason: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const smartDefaults = useSmartDefaults(form.project_id || undefined);
+
+  // Pre-fill requested_count from history
+  useEffect(() => {
+    if (smartDefaults.lastCrewCount && !form.requested_count && !hasUserEditedCount.current) {
+      setForm(prev => ({ ...prev, requested_count: smartDefaults.lastCrewCount!.toString() }));
+    }
+  }, [smartDefaults.lastCrewCount]);
 
   useEffect(() => {
     if (open) {
       fetchProjects();
       fetchTrades();
+      hasUserEditedCount.current = false;
       if (defaultProjectId) {
         setForm(prev => ({ ...prev, project_id: defaultProjectId }));
       }
@@ -160,6 +174,7 @@ export const CreateManpowerRequestModal = ({
         duration_days: '',
         reason: '',
       });
+      queryClient.invalidateQueries({ queryKey: ['smart-defaults'] });
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
@@ -211,6 +226,11 @@ export const CreateManpowerRequestModal = ({
 
           <div>
             <Label htmlFor="trade_id">Trade *</Label>
+            <SmartSuggestionChips
+              items={smartDefaults.topTrades}
+              onSelect={(id) => setForm({ ...form, trade_id: id })}
+              className="mb-1.5"
+            />
             <Select
               value={form.trade_id}
               onValueChange={(v) => setForm({ ...form, trade_id: v })}
@@ -260,7 +280,7 @@ export const CreateManpowerRequestModal = ({
               type="number"
               min="1"
               value={form.requested_count}
-              onChange={(e) => setForm({ ...form, requested_count: e.target.value })}
+              onChange={(e) => { hasUserEditedCount.current = true; setForm({ ...form, requested_count: e.target.value }); }}
               placeholder="6"
               className={errors.requested_count ? 'border-destructive' : ''}
             />

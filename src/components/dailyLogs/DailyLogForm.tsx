@@ -9,6 +9,8 @@ import { FormField } from "@/components/FormField";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
+import { useSmartDefaults } from "@/hooks/useSmartDefaults";
 import { Loader2, Sparkles } from "lucide-react";
 
 interface DailyLogFormProps {
@@ -38,8 +40,29 @@ export const DailyLogForm = ({
   existingLog,
 }: DailyLogFormProps) => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [submitting, setSubmitting] = useState(false);
   const [autoFilling, setAutoFilling] = useState(false);
+  const smartDefaults = useSmartDefaults(projectId || undefined);
+
+  // Pre-fill crew count and weather from most recent log
+  useEffect(() => {
+    if (open && !existingLog && smartDefaults.lastCrewCount !== null) {
+      const currentCrewCount = watch('crew_count');
+      if (currentCrewCount === null || currentCrewCount === undefined) {
+        setValue('crew_count', smartDefaults.lastCrewCount);
+      }
+    }
+  }, [open, existingLog, smartDefaults.lastCrewCount]);
+
+  useEffect(() => {
+    if (open && !existingLog && smartDefaults.lastWeather) {
+      const currentWeather = watch('weather');
+      if (!currentWeather) {
+        setValue('weather', smartDefaults.lastWeather);
+      }
+    }
+  }, [open, existingLog, smartDefaults.lastWeather]);
 
   const {
     register,
@@ -167,6 +190,7 @@ export const DailyLogForm = ({
       }
 
       reset();
+      queryClient.invalidateQueries({ queryKey: ['smart-defaults'] });
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {

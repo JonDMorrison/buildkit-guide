@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
+import { useSmartDefaults } from '@/hooks/useSmartDefaults';
+import { SmartSuggestionChips } from '@/components/common/SmartSuggestionChips';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -78,6 +81,7 @@ const getInitials = (name: string | null, email: string) => {
 export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskModalProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState<any[]>([]);
   const [trades, setTrades] = useState<any[]>([]);
@@ -98,6 +102,7 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
     manpowerEndDate: '',
   });
   const [errors, setErrors] = useState<Partial<Record<keyof TaskForm, string>>>({});
+  const smartDefaults = useSmartDefaults(form.projectId || undefined);
 
   useEffect(() => {
     if (open) {
@@ -269,6 +274,7 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
       setSelectedDependencies([]);
       setSelectedWorkers([]);
 
+      queryClient.invalidateQueries({ queryKey: ['smart-defaults'] });
       onOpenChange(false);
       onSuccess();
     } catch (error) {
@@ -337,6 +343,11 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
           </FormField>
 
           <FormField label="Assigned Trade" error={errors.tradeId}>
+            <SmartSuggestionChips
+              items={smartDefaults.topTrades}
+              onSelect={(id) => setForm({ ...form, tradeId: id })}
+              className="mb-1.5"
+            />
             <Select value={form.tradeId || ""} onValueChange={(v) => setForm({ ...form, tradeId: v === "__none__" ? "" : v })}>
               <SelectTrigger className="min-h-[52px] bg-card border-border">
                 <SelectValue placeholder="Select trade (optional)" />

@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSafetyLogAutoFill, type HazardSuggestion } from "@/hooks/useSafetyLogAutoFill";
 import { useSafetyFormSubmit } from "@/hooks/useSafetyFormSubmit";
 import { useToast } from "@/hooks/use-toast";
+import { useSmartDefaults } from "@/hooks/useSmartDefaults";
 import { WizardStepOne } from "./WizardStepOne";
 import { WizardStepTwo } from "./WizardStepTwo";
 import { WizardStepThree } from "./WizardStepThree";
@@ -37,6 +38,7 @@ export const DailySafetyWizard = ({
   const [projectId, setProjectId] = useState(initialProjectId || "");
   const { submitting, submitForm } = useSafetyFormSubmit();
   const { toast } = useToast();
+  const smartDefaults = useSmartDefaults(projectId || undefined);
 
   // Step 1 state
   const [weather, setWeather] = useState("");
@@ -104,6 +106,13 @@ export const DailySafetyWizard = ({
       setSelectedTrades(tradesOnSite);
     }
   }, [tradesOnSite]);
+
+  // Fallback: if no check-in trades detected, use smart defaults
+  useEffect(() => {
+    if (tradesOnSite.length === 0 && selectedTrades.length === 0 && smartDefaults.topTrades.length > 0) {
+      setSelectedTrades(smartDefaults.topTrades.map(t => t.name));
+    }
+  }, [tradesOnSite, smartDefaults.topTrades]);
 
   // Auto-select mandatory PPE items based on trades on site
   useEffect(() => {
