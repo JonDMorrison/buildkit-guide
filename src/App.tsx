@@ -84,6 +84,7 @@ const TenantIsolationSmoke = lazy(() => import("./pages/TenantIsolationSmoke"));
 const AdminUISmokeRunner = lazy(() => import("./pages/AdminUISmokeRunner"));
 const HealthCheck = lazy(() => import("./pages/HealthCheck"));
 const QASmartMemory = lazy(() => import("./pages/QASmartMemory"));
+const Export = lazy(() => import("./pages/Export"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -694,6 +695,16 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <ExecutiveReport />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/export"
+                  element={
+                    <ProtectedRoute>
+                      <AdminRoute>
+                        <Export />
+                      </AdminRoute>
                     </ProtectedRoute>
                   }
                 />
