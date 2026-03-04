@@ -279,19 +279,31 @@ export async function runSmokeTest(options: RunnerOptions): Promise<RouteResult[
 export function formatReport(results: RouteResult[], testRole?: RoleName): string {
   const lines: string[] = [];
   const date = new Date().toISOString();
-
   const blockers = results.filter(r => r.severity === 'BLOCKER').length;
   const majors = results.filter(r => r.severity === 'MAJOR').length;
   const minors = results.filter(r => r.severity === 'MINOR').length;
 
-  lines.push('UI SMOKE REPORT');
-  lines.push(`Date: ${date.slice(0, 10)}`);
-  if (testRole) lines.push(`Test Profile: ${testRole}`);
+  const passRate = results.length > 0 ? (results.filter(r => r.status === 'pass').length / results.length * 100).toFixed(1) : '0';
+
+  lines.push('BUILD-KIT UI SMOKE REPORT');
+  lines.push(`Date: ${date}`);
+  if (testRole) lines.push(`Test Profile: ${testRole.toUpperCase()}`);
+  
+  // Try to capture context if in browser
+  if (typeof window !== 'undefined') {
+    lines.push(`Environment: ${window.location.origin}`);
+    lines.push(`User Agent: ${navigator.userAgent}`);
+    // Organization context if available in localStorage/session (common pattern)
+    const orgId = localStorage.getItem('activeOrganizationId');
+    if (orgId) lines.push(`Org ID: ${orgId}`);
+  }
+
   lines.push('');
+  lines.push(`Summary: ${passRate}% Pass Rate`);
   lines.push(`Routes tested: ${results.length}`);
-  lines.push(`Blockers: ${blockers}`);
-  lines.push(`Major: ${majors}`);
-  lines.push(`Minor: ${minors}`);
+  lines.push(`Blockers: ${blockers} (CRITICAL)`);
+  lines.push(`Major: ${majors} (Needs attention)`);
+  lines.push(`Minor: ${minors} (Visual/Non-blocking)`);
   lines.push('');
   lines.push('='.repeat(60));
 

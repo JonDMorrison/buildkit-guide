@@ -453,6 +453,7 @@ const DataHealth = () => {
                       <TableHead>Worker</TableHead>
                       <TableHead className="text-right">Projects</TableHead>
                       <TableHead className="text-right">Hours (30d)</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -462,6 +463,15 @@ const DataHealth = () => {
                         <TableCell className="text-right">{r.affected_projects}</TableCell>
                         <TableCell className="text-right">
                           {r.hours_last_30d > 0 ? formatNumber(r.hours_last_30d) : "—"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => navigate(`/users`)}
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -490,6 +500,7 @@ const DataHealth = () => {
                       <TableHead>Project</TableHead>
                       <TableHead className="text-right">Entries</TableHead>
                       <TableHead className="text-right">Unique Workers</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -498,6 +509,15 @@ const DataHealth = () => {
                         <TableCell className="font-medium">{r.project_name}</TableCell>
                         <TableCell className="text-right">{formatNumber(r.entry_count)}</TableCell>
                         <TableCell className="text-right">{r.sample_user_ids.length}</TableCell>
+                        <TableCell className="text-right">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => navigate(`/users?projectId=${r.project_id}`)}
+                          >
+                            Add Members
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -520,6 +540,7 @@ const DataHealth = () => {
                       <TableHead>Project</TableHead>
                       <TableHead className="text-right">Receipts</TableHead>
                       <TableHead className="text-right">Total Amount</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -528,6 +549,15 @@ const DataHealth = () => {
                         <TableCell className="font-medium">{r.project_name}</TableCell>
                         <TableCell className="text-right">{r.receipt_count}</TableCell>
                         <TableCell className="text-right">{formatCurrency(r.total_amount)}</TableCell>
+                        <TableCell className="text-right">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => navigate(`/projects/${r.project_id}/receipts`)}
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -600,6 +630,7 @@ const DataHealth = () => {
                       <TableHead>Project</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead className="text-right">Overlaps</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -609,6 +640,15 @@ const DataHealth = () => {
                         <TableCell>{r.project_name}</TableCell>
                         <TableCell className="font-mono text-sm">{r.overlap_date}</TableCell>
                         <TableCell className="text-right">{r.entry_count}</TableCell>
+                        <TableCell className="text-right">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => navigate(`/daily-logs?date=${r.overlap_date}`)}
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

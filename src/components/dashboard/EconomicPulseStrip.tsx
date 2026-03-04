@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Activity, Clock, TrendingDown, TrendingUp, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Props {
   projectId: string | null;
@@ -32,7 +33,17 @@ export function EconomicPulseStrip({ projectId }: Props) {
     staleTime: 5 * 60 * 1000,
   });
 
-  if (isLoading || !data || data.length === 0 || !data[0]?.snapshot_date) return null;
+  if (isLoading) {
+    return (
+      <Card className="border-primary/10">
+        <CardContent className="py-3 px-4">
+          <Skeleton className="h-5 w-full max-w-[500px]" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!data || data.length === 0 || !data[0]?.snapshot_date) return null;
 
   const latest = data[0];
   const previous = data.length > 1 ? data[1] : null;

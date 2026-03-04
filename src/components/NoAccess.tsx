@@ -12,8 +12,8 @@ interface NoAccessProps {
 export const NoAccess = ({
   title = "Limited Access",
   message = "Your role doesn't allow you to view this page.",
-  returnPath = "/tasks",
-  returnLabel = "Back to My Tasks",
+  returnPath = "/dashboard",
+  returnLabel = "Back to Dashboard",
 }: NoAccessProps) => {
   const navigate = useNavigate();
 

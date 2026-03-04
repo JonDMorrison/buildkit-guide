@@ -22,12 +22,6 @@ interface ProbeDefinition {
  * - Selectors must match real DOM elements
  */
 const PROBE_REGISTRY: ProbeDefinition[] = [
-  // Executive Dashboard — toggle Simple/Detailed view
-  {
-    route: '/executive',
-    name: 'executive-view-toggle',
-    selector: '[data-testid="view-toggle"], button:has(svg.lucide-list), button:has(svg.lucide-layout-grid)',
-  },
   // Dashboard — ops tab switching (Site Status / Project Health / Planning)
   {
     route: '/dashboard',
@@ -38,6 +32,24 @@ const PROBE_REGISTRY: ProbeDefinition[] = [
     route: '/dashboard',
     name: 'dashboard-ops-tab-2',
     selector: '[role="tablist"] [role="tab"]:nth-child(3)',
+  },
+  // Dashboard — View Full Report button
+  {
+    route: '/dashboard',
+    name: 'dashboard-full-report',
+    selector: 'a[href="/executive-report"], button:contains("Full Report")',
+  },
+  // Executive Dashboard — toggle Simple/Detailed view
+  {
+    route: '/executive',
+    name: 'executive-view-toggle',
+    selector: '[data-testid="view-toggle"], button:has(svg.lucide-list), button:has(svg.lucide-layout-grid)',
+  },
+  // Executive — Copy Summary button
+  {
+    route: '/executive',
+    name: 'executive-copy-summary',
+    selector: 'button:contains("Copy Summary"), button:contains("Copied")',
   },
   // Insights — expand/collapse section
   {
@@ -56,6 +68,19 @@ const PROBE_REGISTRY: ProbeDefinition[] = [
     route: '/projects',
     name: 'project-drilldown',
     selector: '[data-project-id], a[href*="/projects/"]',
+  },
+  // Safety — New Inspection button (check existence)
+  {
+    route: '/safety',
+    name: 'safety-new-button',
+    selector: 'button:contains("New Inspection"), button:has(svg.lucide-plus)',
+  },
+  // Intelligence — Ask AI input
+  {
+    route: '/intelligence',
+    name: 'ai-input-focus',
+    selector: 'textarea[placeholder*="Ask AI"], input[placeholder*="Ask AI"]',
+    action: 'click',
   },
 ];
 

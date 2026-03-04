@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useProjectRole } from "@/hooks/useProjectRole";
@@ -42,6 +43,7 @@ interface Project {
 }
 
 const UserManagement = () => {
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { toast } = useToast();
   const { isGlobalAdmin, loading: roleLoading } = useProjectRole();
@@ -98,7 +100,12 @@ const UserManagement = () => {
 
       setProjects(data);
       if (data && data.length > 0) {
-        setSelectedProject(data[0].id);
+        const paramProjectId = searchParams.get('projectId');
+        if (paramProjectId && data.some(p => p.id === paramProjectId)) {
+          setSelectedProject(paramProjectId);
+        } else {
+          setSelectedProject(data[0].id);
+        }
       }
     } catch (error: any) {
       toast({

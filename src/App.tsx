@@ -1,4 +1,5 @@
 import { Suspense, lazy } from "react";
+import { safeLazy } from "@/lib/safeLazy";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,80 +13,82 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { PublicRoute } from "@/components/PublicRoute";
 import { TimeTrackingGate } from "@/components/TimeTrackingGate";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { RoleGate } from "@/components/RoleGate";
+import { TenantIsolationGuardian } from "@/components/TenantIsolationGuardian";
 import { AdminRoute } from "@/components/AdminRoute";
-import { AdminOrPMRoute } from "@/components/AdminOrPMRoute";
+import { DashboardSkeleton, ExecutiveSkeleton, ListPageSkeleton } from "@/components/dashboard/shared/PageSkeletons";
 
-// Lazy load all pages for code splitting
-const Landing = lazy(() => import("./pages/Landing"));
-const HowItWorks = lazy(() => import("./pages/HowItWorks"));
-const Features = lazy(() => import("./pages/Features"));
-const SafetySecurity = lazy(() => import("./pages/SafetySecurity"));
-const ResponsibleAI = lazy(() => import("./pages/ResponsibleAI"));
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Index = lazy(() => import("./pages/Index"));
-const ProjectOverview = lazy(() => import("./pages/ProjectOverview"));
-const Tasks = lazy(() => import("./pages/Tasks"));
-const Lookahead = lazy(() => import("./pages/Lookahead"));
-const Manpower = lazy(() => import("./pages/Manpower"));
-const Deficiencies = lazy(() => import("./pages/Deficiencies"));
-const Safety = lazy(() => import("./pages/Safety"));
-const AI = lazy(() => import("./pages/AI"));
-const Auth = lazy(() => import("./pages/Auth"));
-const AcceptInvite = lazy(() => import("./pages/AcceptInvite"));
-const Welcome = lazy(() => import("./pages/Welcome"));
-const Notifications = lazy(() => import("./pages/Notifications"));
-const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
-const LaborRates = lazy(() => import("./pages/LaborRates"));
-const Documents = lazy(() => import("./pages/Documents"));
-const UserManagement = lazy(() => import("./pages/UserManagement"));
-const AuditLog = lazy(() => import("./pages/AuditLog"));
-const DailyLogs = lazy(() => import("./pages/DailyLogs"));
-const Receipts = lazy(() => import("./pages/Receipts"));
-const ProjectReceipts = lazy(() => import("./pages/ProjectReceipts"));
-const AccountingReceipts = lazy(() => import("./pages/AccountingReceipts"));
-const DeficiencyImport = lazy(() => import("./pages/DeficiencyImport"));
-const TimeTracking = lazy(() => import("./pages/TimeTracking"));
-const TimeTrackingNotEnabled = lazy(() => import("./pages/TimeTrackingNotEnabled"));
-const TimeRequestsReview = lazy(() => import("./pages/TimeRequestsReview"));
-const TimesheetPeriods = lazy(() => import("./pages/TimesheetPeriods"));
-const TimeDiagnostics = lazy(() => import("./pages/TimeDiagnostics"));
-const Drawings = lazy(() => import("./pages/Drawings"));
-const HoursTracking = lazy(() => import("./pages/HoursTracking"));
-const Setup = lazy(() => import("./pages/Setup"));
-const JobCostReport = lazy(() => import("./pages/JobCostReport"));
-const Invoicing = lazy(() => import("./pages/Invoicing"));
-const Estimates = lazy(() => import("./pages/Estimates"));
-const EstimateDetail = lazy(() => import("./pages/EstimateDetail"));
-const Quotes = lazy(() => import("./pages/Quotes"));
-const Proposals = lazy(() => import("./pages/Proposals"));
-const Insights = lazy(() => import("./pages/Insights"));
-const ProjectEstimateAccuracy = lazy(() => import("./pages/ProjectEstimateAccuracy"));
-const DataHealth = lazy(() => import("./pages/DataHealth"));
-const Snapshots = lazy(() => import("./pages/Snapshots"));
-const DocsViewer = lazy(() => import("./pages/DocsViewer"));
-const SystemAudit = lazy(() => import("./pages/SystemAudit"));
-const SecurityIsolationReport = lazy(() => import("./pages/SecurityIsolationReport"));
-const Workflow = lazy(() => import("./pages/Workflow"));
-const PromptsAudit = lazy(() => import("./pages/PromptsAudit"));
-const InsightsAudit = lazy(() => import("./pages/InsightsAudit"));
-const ConversionTestHarness = lazy(() => import("./pages/ConversionTestHarness"));
-const AIBrainDiagnostics = lazy(() => import("./pages/AIBrainDiagnostics"));
-const DashboardDiagnostics = lazy(() => import("./pages/DashboardDiagnostics"));
-const ExecutiveDashboard = lazy(() => import("./pages/ExecutiveDashboard"));
-const ExecutiveReport = lazy(() => import("./pages/ExecutiveReport"));
-const OrgSettings = lazy(() => import("./pages/OrgSettings"));
-const Intelligence = lazy(() => import("./pages/Intelligence"));
-const ChangeOrders = lazy(() => import("./pages/ChangeOrders"));
-const ChangeOrderDetail = lazy(() => import("./pages/ChangeOrderDetail"));
-const Release = lazy(() => import("./pages/Release"));
-const Playbooks = lazy(() => import("./pages/Playbooks"));
-const AdminReleaseChecklist = lazy(() => import("./pages/AdminReleaseChecklist"));
-const TenantIsolationSmoke = lazy(() => import("./pages/TenantIsolationSmoke"));
-const AdminUISmokeRunner = lazy(() => import("./pages/AdminUISmokeRunner"));
-const HealthCheck = lazy(() => import("./pages/HealthCheck"));
-const QASmartMemory = lazy(() => import("./pages/QASmartMemory"));
-const Export = lazy(() => import("./pages/Export"));
-const NotFound = lazy(() => import("./pages/NotFound"));
+// Lazy load all pages for code splitting with retry logic
+const Landing = safeLazy(() => import("./pages/Landing"));
+const HowItWorks = safeLazy(() => import("./pages/HowItWorks"));
+const Features = safeLazy(() => import("./pages/Features"));
+const SafetySecurity = safeLazy(() => import("./pages/SafetySecurity"));
+const ResponsibleAI = safeLazy(() => import("./pages/ResponsibleAI"));
+const Dashboard = safeLazy(() => import("./pages/Dashboard"));
+const Index = safeLazy(() => import("./pages/Index"));
+const ProjectOverview = safeLazy(() => import("./pages/ProjectOverview"));
+const Tasks = safeLazy(() => import("./pages/Tasks"));
+const Lookahead = safeLazy(() => import("./pages/Lookahead"));
+const Manpower = safeLazy(() => import("./pages/Manpower"));
+const Deficiencies = safeLazy(() => import("./pages/Deficiencies"));
+const Safety = safeLazy(() => import("./pages/Safety"));
+const AI = safeLazy(() => import("./pages/AI"));
+const Auth = safeLazy(() => import("./pages/Auth"));
+const AcceptInvite = safeLazy(() => import("./pages/AcceptInvite"));
+const Welcome = safeLazy(() => import("./pages/Welcome"));
+const Notifications = safeLazy(() => import("./pages/Notifications"));
+const NotificationSettings = safeLazy(() => import("./pages/NotificationSettings"));
+const LaborRates = safeLazy(() => import("./pages/LaborRates"));
+const Documents = safeLazy(() => import("./pages/Documents"));
+const UserManagement = safeLazy(() => import("./pages/UserManagement"));
+const AuditLog = safeLazy(() => import("./pages/AuditLog"));
+const DailyLogs = safeLazy(() => import("./pages/DailyLogs"));
+const Receipts = safeLazy(() => import("./pages/Receipts"));
+const ProjectReceipts = safeLazy(() => import("./pages/ProjectReceipts"));
+const AccountingReceipts = safeLazy(() => import("./pages/AccountingReceipts"));
+const DeficiencyImport = safeLazy(() => import("./pages/DeficiencyImport"));
+const TimeTracking = safeLazy(() => import("./pages/TimeTracking"));
+const TimeTrackingNotEnabled = safeLazy(() => import("./pages/TimeTrackingNotEnabled"));
+const TimeRequestsReview = safeLazy(() => import("./pages/TimeRequestsReview"));
+const TimesheetPeriods = safeLazy(() => import("./pages/TimesheetPeriods"));
+const TimeDiagnostics = safeLazy(() => import("./pages/TimeDiagnostics"));
+const Drawings = safeLazy(() => import("./pages/Drawings"));
+const HoursTracking = safeLazy(() => import("./pages/HoursTracking"));
+const Setup = safeLazy(() => import("./pages/Setup"));
+const JobCostReport = safeLazy(() => import("./pages/JobCostReport"));
+const Invoicing = safeLazy(() => import("./pages/Invoicing"));
+const Estimates = safeLazy(() => import("./pages/Estimates"));
+const EstimateDetail = safeLazy(() => import("./pages/EstimateDetail"));
+const Quotes = safeLazy(() => import("./pages/Quotes"));
+const Proposals = safeLazy(() => import("./pages/Proposals"));
+const Insights = safeLazy(() => import("./pages/Insights"));
+const ProjectEstimateAccuracy = safeLazy(() => import("./pages/ProjectEstimateAccuracy"));
+const DataHealth = safeLazy(() => import("./pages/DataHealth"));
+const Snapshots = safeLazy(() => import("./pages/Snapshots"));
+const DocsViewer = safeLazy(() => import("./pages/DocsViewer"));
+const SystemAudit = safeLazy(() => import("./pages/SystemAudit"));
+const SecurityIsolationReport = safeLazy(() => import("./pages/SecurityIsolationReport"));
+const Workflow = safeLazy(() => import("./pages/Workflow"));
+const PromptsAudit = safeLazy(() => import("./pages/PromptsAudit"));
+const InsightsAudit = safeLazy(() => import("./pages/InsightsAudit"));
+const ConversionTestHarness = safeLazy(() => import("./pages/ConversionTestHarness"));
+const AIBrainDiagnostics = safeLazy(() => import("./pages/AIBrainDiagnostics"));
+const DashboardDiagnostics = safeLazy(() => import("./pages/DashboardDiagnostics"));
+const ExecutiveDashboard = safeLazy(() => import("./pages/ExecutiveDashboard"));
+const ExecutiveReport = safeLazy(() => import("./pages/ExecutiveReport"));
+const OrgSettings = safeLazy(() => import("./pages/OrgSettings"));
+const Intelligence = safeLazy(() => import("./pages/Intelligence"));
+const ChangeOrders = safeLazy(() => import("./pages/ChangeOrders"));
+const ChangeOrderDetail = safeLazy(() => import("./pages/ChangeOrderDetail"));
+const Release = safeLazy(() => import("./pages/Release"));
+const Playbooks = safeLazy(() => import("./pages/Playbooks"));
+const AdminReleaseChecklist = safeLazy(() => import("./pages/AdminReleaseChecklist"));
+const TenantIsolationSmoke = safeLazy(() => import("./pages/TenantIsolationSmoke"));
+const AdminUISmokeRunner = safeLazy(() => import("./pages/AdminUISmokeRunner"));
+const HealthCheck = safeLazy(() => import("./pages/HealthCheck"));
+const QASmartMemory = safeLazy(() => import("./pages/QASmartMemory"));
+const Export = safeLazy(() => import("./pages/Export"));
+const NotFound = safeLazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -124,6 +127,7 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
             <OrganizationProvider>
+              <TenantIsolationGuardian />
               <OrganizationSelectionModal />
               <Suspense fallback={<PageLoader />}>
                 <Routes>
@@ -189,7 +193,9 @@ const App = () => (
                   path="/dashboard"
                   element={
                     <ProtectedRoute>
-                      <Dashboard />
+                      <RoleGate skeleton={<DashboardSkeleton />}>
+                        <Dashboard />
+                      </RoleGate>
                     </ProtectedRoute>
                   }
                 />
@@ -317,9 +323,9 @@ const App = () => (
                   path="/users"
                   element={
                     <ProtectedRoute>
-                      <AdminOrPMRoute>
+                      <RoleGate allowedRoles={["admin", "pm"]}>
                         <UserManagement />
-                      </AdminOrPMRoute>
+                      </RoleGate>
                     </ProtectedRoute>
                   }
                 />
@@ -393,9 +399,9 @@ const App = () => (
                   path="/admin/time-diagnostics"
                   element={
                     <ProtectedRoute>
-                      <AdminRoute>
+                      <RoleGate allowedRoles={["admin"]}>
                         <TimeDiagnostics />
-                      </AdminRoute>
+                      </RoleGate>
                     </ProtectedRoute>
                   }
                 />
@@ -500,9 +506,9 @@ const App = () => (
                   path="/insights/project"
                   element={
                     <ProtectedRoute>
-                      <AdminOrPMRoute>
+                      <RoleGate allowedRoles={["admin", "pm"]}>
                         <ProjectEstimateAccuracy />
-                      </AdminOrPMRoute>
+                      </RoleGate>
                     </ProtectedRoute>
                   }
                 />
@@ -518,9 +524,9 @@ const App = () => (
                   path="/data-health"
                   element={
                     <ProtectedRoute>
-                      <AdminOrPMRoute>
+                      <RoleGate allowedRoles={["admin", "pm"]}>
                         <DataHealth />
-                      </AdminOrPMRoute>
+                      </RoleGate>
                     </ProtectedRoute>
                   }
                 />
@@ -536,9 +542,9 @@ const App = () => (
                   path="/insights/security"
                   element={
                     <ProtectedRoute>
-                      <AdminRoute>
+                      <RoleGate allowedRoles={["admin"]}>
                         <SecurityIsolationReport />
-                      </AdminRoute>
+                      </RoleGate>
                     </ProtectedRoute>
                   }
                 />
@@ -578,9 +584,9 @@ const App = () => (
                   path="/insights/ai-brain"
                   element={
                     <ProtectedRoute>
-                      <AdminRoute>
+                      <RoleGate allowedRoles={["admin"]}>
                         <AIBrainDiagnostics />
-                      </AdminRoute>
+                      </RoleGate>
                     </ProtectedRoute>
                   }
                 />
@@ -588,9 +594,9 @@ const App = () => (
                   path="/release"
                   element={
                     <ProtectedRoute>
-                      <AdminOrPMRoute>
+                      <RoleGate allowedRoles={["admin", "pm"]}>
                         <Release />
-                      </AdminOrPMRoute>
+                      </RoleGate>
                     </ProtectedRoute>
                   }
                 />
@@ -599,9 +605,9 @@ const App = () => (
                   path="/playbooks"
                   element={
                     <ProtectedRoute>
-                      <AdminRoute>
+                      <RoleGate allowedRoles={["admin"]}>
                         <Playbooks />
-                      </AdminRoute>
+                      </RoleGate>
                     </ProtectedRoute>
                   }
                 />
@@ -609,9 +615,9 @@ const App = () => (
                   path="/admin/release-checklist"
                   element={
                     <ProtectedRoute>
-                      <AdminRoute>
+                      <RoleGate allowedRoles={["admin"]}>
                         <AdminReleaseChecklist />
-                      </AdminRoute>
+                      </RoleGate>
                     </ProtectedRoute>
                   }
                 />
@@ -620,9 +626,9 @@ const App = () => (
                   path="/dashboard-diagnostics"
                   element={
                     <ProtectedRoute>
-                      <AdminRoute>
+                      <RoleGate allowedRoles={["admin"]}>
                         <DashboardDiagnostics />
-                      </AdminRoute>
+                      </RoleGate>
                     </ProtectedRoute>
                   }
                 />
@@ -631,9 +637,9 @@ const App = () => (
                   path="/admin/tenant-isolation"
                   element={
                     <ProtectedRoute>
-                      <AdminRoute>
+                      <RoleGate allowedRoles={["admin"]}>
                         <TenantIsolationSmoke />
-                      </AdminRoute>
+                      </RoleGate>
                     </ProtectedRoute>
                   }
                 />
@@ -642,9 +648,9 @@ const App = () => (
                   path="/admin/ui-smoke"
                   element={
                     <ProtectedRoute>
-                      <AdminRoute>
+                      <RoleGate allowedRoles={["admin"]}>
                         <AdminUISmokeRunner />
-                      </AdminRoute>
+                      </RoleGate>
                     </ProtectedRoute>
                   }
                 />
@@ -664,9 +670,9 @@ const App = () => (
                   path="/system-audit"
                   element={
                     <ProtectedRoute>
-                      <AdminRoute>
+                      <RoleGate allowedRoles={["admin"]}>
                         <SystemAudit />
-                      </AdminRoute>
+                      </RoleGate>
                     </ProtectedRoute>
                   }
                 />
@@ -674,9 +680,9 @@ const App = () => (
                   path="/executive"
                   element={
                     <ProtectedRoute>
-                      <AdminOrPMRoute>
+                      <RoleGate requirement="canViewExecutive" skeleton={<ExecutiveSkeleton />}>
                         <ExecutiveDashboard />
-                      </AdminOrPMRoute>
+                      </RoleGate>
                     </ProtectedRoute>
                   }
                 />
@@ -684,9 +690,9 @@ const App = () => (
                   path="/health"
                   element={
                     <ProtectedRoute>
-                      <AdminOrPMRoute>
+                      <RoleGate allowedRoles={["admin", "pm"]}>
                         <HealthCheck />
-                      </AdminOrPMRoute>
+                      </RoleGate>
                     </ProtectedRoute>
                   }
                 />

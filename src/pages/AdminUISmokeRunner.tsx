@@ -179,6 +179,26 @@ function SmokeRunnerContent() {
                   <Copy className="h-4 w-4 mr-1" />
                   Copy
                 </Button>
+                <Button variant="outline" onClick={() => {
+                  const debugInfo = {
+                    date: new Date().toISOString(),
+                    role: testProfile,
+                    results: results.length,
+                    summary: {
+                      pass: results.filter(r => r.status === 'pass').length,
+                      fail: results.filter(r => r.status === 'fail').length,
+                      redirect: results.filter(r => r.status === 'redirect').length,
+                    },
+                    userAgent: navigator.userAgent,
+                    url: window.location.href,
+                    orgId: localStorage.getItem('activeOrganizationId'),
+                  };
+                  navigator.clipboard.writeText(JSON.stringify(debugInfo, null, 2));
+                  toast.success('Debug info copied to clipboard');
+                }} size="sm">
+                  <ShieldAlert className="h-4 w-4 mr-1" />
+                  Copy Debug Info
+                </Button>
                 <Button variant="outline" onClick={handleExport} size="sm">
                   <Download className="h-4 w-4 mr-1" />
                   Export

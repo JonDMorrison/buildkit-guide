@@ -10,6 +10,7 @@ import { useAuthRole } from "@/hooks/useAuthRole";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
 import { useDashboardLayout } from "@/hooks/useDashboardLayout";
 import { Button } from "@/components/ui/button";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { NewUserWelcome } from "@/components/dashboard/NewUserWelcome";
 import {
   DailySnapshotStrip,
@@ -62,41 +63,15 @@ import { HealthContextBanner } from "@/components/HealthContextBanner";
 /* ------------------------------------------------------------------ */
 
 export default function Dashboard() {
-  const { loading: routeAccessLoading, isAdmin, isPM, isForeman } = useRouteAccess();
-  const { homeRoute, loading: homeRouteLoading } = useDefaultHomeRoute();
-  const navigate = useNavigate();
-
-  const loading = routeAccessLoading || homeRouteLoading;
-
-  // While roles are resolving, show skeleton frame — no content mounts, no queries fire
-  if (loading) {
-    return (
-      <DashboardLayout>
-        {/* Reserve space for Mission Control + Focus + KPI strip to prevent layout shift */}
-        <div className="space-y-6">
-          <div className="rounded-xl border border-border bg-muted/20 h-24 animate-pulse" />
-          <div className="grid grid-cols-2 gap-4">
-            <div className="rounded-xl border border-border bg-muted/20 h-48 animate-pulse" />
-            <div className="rounded-xl border border-border bg-muted/20 h-48 animate-pulse" />
-          </div>
-          <div className="grid grid-cols-5 gap-3">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="rounded-xl border border-border bg-muted/20 h-24 animate-pulse" />
-            ))}
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
+  const { isAdmin, isPM, isForeman } = useRouteAccess();
+  const { homeRoute } = useDefaultHomeRoute();
 
   // Worker-tier users should not be on /dashboard — redirect to their home route
   const canViewDashboard = isAdmin || isPM || isForeman;
   if (!canViewDashboard) {
-    // If their home is /dashboard we'd loop, so fall through; otherwise redirect
     if (homeRoute !== '/dashboard') {
       return <DashboardRedirect to={homeRoute} />;
     }
-    // Fallback: show worker dashboard if they somehow belong here
     return <WorkerDashboard />;
   }
 
@@ -162,15 +137,16 @@ function DashboardContent() {
   // ── All existing queries (preserved) ──────────────────────────────────
 
   const { data: userProjects } = useQuery({
-    queryKey: ["user-projects", user?.id],
+    queryKey: ["user-projects", user?.id, activeOrganizationId],
     queryFn: async () => {
-      if (!user?.id) return [];
+      if (!user?.id || !activeOrganizationId) return [];
       const { data, error } = await supabase
         .from("project_members")
-        .select(`project_id, projects (id, name, location, status)`)
+        .select(`project_id, projects (id, name, location, status, organization_id)`)
         .eq("user_id", user.id);
       if (error) throw error;
-      const projects = data?.map((pm: any) => pm.projects).filter(Boolean) || [];
+      const projects = data?.map((pm: any) => pm.projects)
+        .filter((p: any) => p && p.organization_id === activeOrganizationId) || [];
       const projectsWithProgress = await Promise.all(
         projects.map(async (project: any) => {
           const { data: tasks } = await supabase
@@ -186,7 +162,7 @@ function DashboardContent() {
       );
       return projectsWithProgress;
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id && !!activeOrganizationId,
     staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });
@@ -197,8 +173,8 @@ function DashboardContent() {
     }
   }, [currentProjectId, userProjects, setCurrentProject]);
 
-  const { data: tasks = [] } = useQuery({
-    queryKey: ["dashboard-tasks", user?.id, currentProjectId],
+  const { data: tasks = [], isLoading: tasksLoading } = useQuery({
+    queryKey: ["dashboard-tasks", user?.id, activeOrganizationId, currentProjectId],
     queryFn: async () => {
       if (!user || !currentProjectId) return [];
       const { data, error } = await supabase
@@ -214,8 +190,8 @@ function DashboardContent() {
     gcTime: 30 * 60 * 1000,
   });
 
-  const { data: blockers = [] } = useQuery({
-    queryKey: ["dashboard-blockers", currentProjectId],
+  const { data: blockers = [], isLoading: blockersLoading } = useQuery({
+    queryKey: ["dashboard-blockers", activeOrganizationId, currentProjectId],
     queryFn: async () => {
       if (!currentProjectId) return [];
       const { data, error } = await supabase
@@ -232,7 +208,7 @@ function DashboardContent() {
 
   // Safety forms — deferred, not needed for top fold
   const { data: safetyForms = [] } = useQuery({
-    queryKey: ["dashboard-safety", currentProjectId],
+    queryKey: ["dashboard-safety", activeOrganizationId, currentProjectId],
     queryFn: async () => {
       if (!currentProjectId) return [];
       const { data, error } = await supabase
@@ -249,8 +225,8 @@ function DashboardContent() {
     gcTime: 30 * 60 * 1000,
   });
 
-  const { data: recentLog } = useQuery({
-    queryKey: ["dashboard-daily-log-recent", currentProjectId],
+  const { data: recentLog, isLoading: logLoading } = useQuery({
+    queryKey: ["dashboard-daily-log-recent", activeOrganizationId, currentProjectId],
     queryFn: async () => {
       if (!currentProjectId) return null;
       const { data, error } = await supabase
@@ -271,7 +247,7 @@ function DashboardContent() {
   const logIsStale = recentLog && recentLog.log_date !== format(today, "yyyy-MM-dd");
 
   const { data: activeTradesData = [] } = useQuery({
-    queryKey: ["dashboard-active-trades-detail", currentProjectId],
+    queryKey: ["dashboard-active-trades-detail", activeOrganizationId, currentProjectId],
     queryFn: async () => {
       if (!currentProjectId) return [];
       const { data, error } = await supabase
@@ -307,7 +283,7 @@ function DashboardContent() {
   // Team members — only needed when crew modal opens, defer initial load
   const [crewModalOpened, setCrewModalOpened] = useState(false);
   const { data: teamMembers = [] } = useQuery({
-    queryKey: ["dashboard-team-members", currentProjectId],
+    queryKey: ["dashboard-team-members", activeOrganizationId, currentProjectId],
     queryFn: async () => {
       if (!currentProjectId) return [];
       const { data, error } = await supabase
@@ -353,21 +329,6 @@ function DashboardContent() {
 
   // ── Guards ────────────────────────────────────────────────────────────
 
-  if ((layoutLoading && !layouts) || roleLoading) {
-    return (
-      <DashboardLayout>
-        {/* Reserve consistent frame while queries load */}
-        <div className="space-y-6">
-          <div className="rounded-xl border border-border bg-muted/20 h-24 animate-pulse" />
-          <div className="grid grid-cols-2 gap-4">
-            <div className="rounded-xl border border-border bg-muted/20 h-48 animate-pulse" />
-            <div className="rounded-xl border border-border bg-muted/20 h-48 animate-pulse" />
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
   if (!userProjects || userProjects.length === 0) {
     return (
       <DashboardLayout>
@@ -404,39 +365,43 @@ function DashboardContent() {
       />
 
       {/* ── 1. Your Priorities (merged Focus + At a Glance) ────────── */}
-      <DashboardSection
-        title="Your Priorities"
-        helpText="Shows your top tasks by priority and due date, any active blockers, and today's key metrics like crew count and open tasks. Start here each morning."
-      >
-        <DashboardGrid columns={2}>
-          <MyDayTaskList tasks={priorityTasks} />
-          <BlockersCard blockers={unresolvedBlockers} />
-        </DashboardGrid>
-        <DashboardGrid columns={5} className="grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
-          <TodayTasksCard todayCount={tasksFinishingToday} totalOpen={openTasks} />
-          <BlockedTasksCard blockedCount={blockedTasks} />
-          <CrewAssignedCard crewCount={todayLog?.crew_count || 0} activeTrades={activeTrades} />
-          <ActiveProjectsCard projects={userProjects || []} />
-          {(isPM() || isAdmin) && <OpenChangeOrdersCard projectId={currentProjectId} />}
-        </DashboardGrid>
-      </DashboardSection>
+      <ErrorBoundary>
+        <DashboardSection
+          title="Your Priorities"
+          helpText="Shows your top tasks by priority and due date, any active blockers, and today's key metrics like crew count and open tasks. Start here each morning."
+        >
+          <DashboardGrid columns={2}>
+            <MyDayTaskList tasks={priorityTasks} loading={tasksLoading} />
+            <BlockersCard blockers={unresolvedBlockers} loading={blockersLoading} />
+          </DashboardGrid>
+          <DashboardGrid columns={5} className="grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+            <TodayTasksCard todayCount={tasksFinishingToday} totalOpen={openTasks} loading={tasksLoading} />
+            <BlockedTasksCard blockedCount={blockedTasks} loading={tasksLoading} />
+            <CrewAssignedCard crewCount={todayLog?.crew_count || 0} activeTrades={activeTrades} loading={logLoading} />
+            <ActiveProjectsCard projects={userProjects || []} loading={layoutLoading} />
+            {(isPM() || isAdmin) && <OpenChangeOrdersCard projectId={currentProjectId} />}
+          </DashboardGrid>
+        </DashboardSection>
+      </ErrorBoundary>
 
       {/* ── 2. Attention Needed (PM/Admin only — merged Mission Control + Attention Inbox) ── */}
       {(isPM() || isAdmin) && (
-        <DashboardSection
-          title="Attention Needed"
-          helpText="Projects ranked by urgency — margin drops, missing data, or overdue items. Review these first to catch problems before they escalate."
-        >
-          {changeFeed?.attention_ranked_projects?.length > 0 && (
-            <AttentionInbox
-              attentionProjects={changeFeed.attention_ranked_projects}
-              topChanges={changeFeed.top_changes ?? []}
-              compact
-              loading={feedLoading}
-            />
-          )}
-          <DashboardMissionControl />
-        </DashboardSection>
+        <ErrorBoundary>
+          <DashboardSection
+            title="Attention Needed"
+            helpText="Projects ranked by urgency — margin drops, missing data, or overdue items. Review these first to catch problems before they escalate."
+          >
+            {changeFeed?.attention_ranked_projects?.length > 0 && (
+              <AttentionInbox
+                attentionProjects={changeFeed.attention_ranked_projects}
+                topChanges={changeFeed.top_changes ?? []}
+                compact
+                loading={feedLoading}
+              />
+            )}
+            <DashboardMissionControl />
+          </DashboardSection>
+        </ErrorBoundary>
       )}
 
       {/* ── 3. Site Operations (tabs for PM/Admin, flat for Foreman) ── */}

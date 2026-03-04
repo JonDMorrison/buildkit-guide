@@ -12,6 +12,7 @@ import { TaskCalendarView } from "@/components/tasks/TaskCalendarView";
 import { TaskDetailView } from "@/components/tasks/TaskDetailView";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
 import { VoiceToTaskModal } from "@/components/tasks/VoiceToTaskModal";
+import { HealthContextBanner } from "@/components/HealthContextBanner";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthRole } from "@/hooks/useAuthRole";
@@ -201,6 +202,7 @@ const Tasks = () => {
   return (
     <Layout>
       <div className="container max-w-6xl mx-auto px-4 py-6">
+        <HealthContextBanner />
         <SectionHeader
           title={showLimitedView ? "My Tasks" : "Tasks"}
           count={filteredTasks.length}

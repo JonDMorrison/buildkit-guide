@@ -5,6 +5,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { AlertTriangle, Info } from "lucide-react";
 import { SectionHelp } from "@/components/dashboard/shared/SectionHelp";
 import { cn } from "@/lib/utils";
+import { ConfidenceRibbon, type ConfidenceRibbonProps } from "@/components/ConfidenceRibbon";
 
 /* ------------------------------------------------------------------ */
 /* Types                                                               */
@@ -29,6 +30,8 @@ export interface DashboardCardProps {
   emptyMessage?: string;
   className?: string;
   contentClassName?: string;
+  /** Optional confidence ribbon for 'As of' timestamps and quality metrics */
+  confidenceRibbon?: ConfidenceRibbonProps;
   /** @deprecated Use `actions` instead */
   headerAction?: ReactNode;
   /** @deprecated Use `description` instead */
@@ -143,6 +146,7 @@ export function DashboardCard({
   emptyMessage = "No data available",
   className,
   contentClassName,
+  confidenceRibbon,
 }: DashboardCardProps) {
   const resolvedDescription = description || subtitle;
   const resolvedActions = actions || headerAction;
@@ -224,6 +228,9 @@ export function DashboardCard({
       <CardContent className={cn("px-5 pb-5 space-y-2", contentClassName)}>
         {value !== undefined && value !== null && (
           <div className="text-2xl font-bold text-foreground leading-none">{value}</div>
+        )}
+        {confidenceRibbon && (
+          <ConfidenceRibbon {...confidenceRibbon} compact className="mb-2" />
         )}
         {empty ? (
           <p className="text-sm text-muted-foreground py-6 text-center">{emptyMessage}</p>

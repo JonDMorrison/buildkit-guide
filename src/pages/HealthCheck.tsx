@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Loader2, Download, Copy, CheckCircle2, AlertTriangle, XCircle, ChevronDown, ShieldCheck, Activity, RefreshCw } from 'lucide-react';
+import { Loader2, Download, Copy, CheckCircle2, AlertTriangle, XCircle, ChevronDown, ShieldCheck, Activity, RefreshCw, ShieldAlert } from 'lucide-react';
 import { startConsoleCapture } from '@/lib/consoleCapture';
 import { buildHealthCheckReport, type HealthCheckResult, type CheckStatus } from '@/lib/healthCheckReport';
 import { downloadText } from '@/lib/downloadText';
@@ -359,6 +359,27 @@ function HealthCheckContent() {
               <>
                 <Button variant="outline" size="sm" onClick={handleCopy}>
                   <Copy className="h-4 w-4 mr-1" />Copy
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => {
+                  const debugInfo = {
+                    date: new Date().toISOString(),
+                    orgId: activeOrganizationId,
+                    orgName: activeOrganization?.name,
+                    results: checks.length,
+                    summary: {
+                      pass: checks.filter(r => r.status === 'pass').length,
+                      warn: checks.filter(r => r.status === 'warn').length,
+                      fail: checks.filter(r => r.status === 'fail').length,
+                    },
+                    coverage: coveragePercent,
+                    issues: issuesCount,
+                    userAgent: navigator.userAgent,
+                    url: window.location.href,
+                  };
+                  navigator.clipboard.writeText(JSON.stringify(debugInfo, null, 2));
+                  toast.success('Debug info copied to clipboard');
+                }}>
+                  <ShieldAlert className="h-4 w-4 mr-1" />Copy Debug Info
                 </Button>
                 <Button variant="outline" size="sm" onClick={handleExport}>
                   <Download className="h-4 w-4 mr-1" />Export

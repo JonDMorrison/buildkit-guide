@@ -24,6 +24,7 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 import { useExecutiveChangeFeed, type ChangeFeedData } from '@/hooks/rpc/useExecutiveChangeFeed';
 import { PortfolioHealthCard, type PortfolioHealthData } from '@/components/executive/PortfolioHealthCard';
@@ -176,7 +177,7 @@ export default function ExecutiveDashboard() {
   const decisionBodyRef = useRef<string>('');
 
   // Shared change feed hook
-  const { data: feedData } = useExecutiveChangeFeed();
+  const { data: feedData, isLoading: feedLoading } = useExecutiveChangeFeed();
 
   // Cross-page warming
   useEffect(() => {
@@ -262,18 +263,6 @@ export default function ExecutiveDashboard() {
     volatility_index: data.volatility_index,
   } : null;
 
-  if (roleLoading) {
-    return (
-      <DashboardLayout>
-        <div className="space-y-6">
-          <div className="rounded-xl border border-border bg-muted/20 h-36 animate-pulse" />
-          <div className="rounded-xl border border-border bg-muted/20 h-64 animate-pulse" />
-          <div className="rounded-xl border border-border bg-muted/20 h-48 animate-pulse" />
-        </div>
-      </DashboardLayout>
-    );
-  }
-
   if (!isAdmin && !isPM()) {
     return (
       <DashboardLayout>
@@ -305,102 +294,101 @@ export default function ExecutiveDashboard() {
         )}
 
         {/* ── 1. Weekly Brief Hero ────────────────────────────── */}
-        <WeeklyBriefHero
-          feedData={feedData}
-          data={data}
-          onCopy={copySummary}
-          copied={copied}
-          onCopyBrief={handleCopyBrief}
-          onDownloadBrief={handleDownloadBrief}
-        />
+        <ErrorBoundary>
+          <WeeklyBriefHero
+            feedData={feedData}
+            data={data}
+            onCopy={copySummary}
+            copied={copied}
+            onCopyBrief={handleCopyBrief}
+            onDownloadBrief={handleDownloadBrief}
+          />
+        </ErrorBoundary>
 
         {/* ── 2. Attention Inbox ──────────────────────────────── */}
-        {(feedData || loading) && (
-          <DashboardSection title="Attention">
-            <AttentionInbox
-              attentionProjects={feedData?.attention_ranked_projects ?? []}
-              topChanges={feedData?.top_changes ?? []}
-              loading={loading && !feedData}
-            />
-
-            {/* Change Log collapsed inside */}
-            {feedData && feedData.top_changes.length > 0 && (
-              <Collapsible open={changeLogOpen} onOpenChange={setChangeLogOpen}>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground hover:text-foreground mt-3">
-                    <span className="text-xs font-medium">Full Change Log ({feedData.top_changes.length} changes)</span>
-                    <ChevronDown className={`h-4 w-4 transition-transform ${changeLogOpen ? 'rotate-180' : ''}`} />
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <DashboardCard title="Change Log" variant="table" traceSource="rpc_executive_change_feed → top_changes">
-                    <div className="overflow-x-auto rounded-lg border border-border">
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="bg-muted text-muted-foreground">
-                            <th className="text-left px-3 py-2 font-medium">Project</th>
-                            <th className="text-left px-3 py-2 font-medium">Status</th>
-                            <th className="text-right px-3 py-2 font-medium">Risk Δ</th>
-                            <th className="text-right px-3 py-2 font-medium">Margin Δ</th>
-                            <th className="text-right px-3 py-2 font-medium">Burn Δ</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {feedData.top_changes.map(c => (
-                            <tr key={c.project_id} className="border-t border-border hover:bg-muted/30 transition-colors">
-                              <td className="px-3 py-2">
-                                <Link to={`/projects/${c.project_id}`} className="text-primary hover:underline inline-flex items-center gap-1">
-                                  {c.project_name} <ExternalLink className="h-2.5 w-2.5" />
-                                </Link>
-                              </td>
-                              <td className="px-3 py-2 text-foreground">{c.classification.replace(/_/g, ' ')}</td>
-                              <td className="px-3 py-2 text-right font-mono">{c.risk_change > 0 ? '+' : ''}{c.risk_change.toFixed(1)}</td>
-                              <td className="px-3 py-2 text-right font-mono">{c.margin_change > 0 ? '+' : ''}{c.margin_change.toFixed(1)}%</td>
-                              <td className="px-3 py-2 text-right font-mono">{c.burn_change > 0 ? '+' : ''}{c.burn_change.toFixed(2)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </DashboardCard>
-                </CollapsibleContent>
-              </Collapsible>
-            )}
-          </DashboardSection>
-        )}
-
-        {/* ── 3. Portfolio Health ──────────────────────────────── */}
-        {(data || loading) && (
-          <DashboardSection title="Portfolio Health" lazy skeletonHeight="h-48">
-            <PortfolioHealthCard data={portfolioData} loading={loading} />
-            <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
-              <Link to="/data-health" className="hover:text-foreground transition-colors underline underline-offset-2">Data Health</Link>
-              <Link to="/executive-report" className="hover:text-foreground transition-colors underline underline-offset-2">Full Report</Link>
-            </div>
-          </DashboardSection>
-        )}
-
-        {/* ── 4. Decision Notes (collapsed by default) ─────────── */}
-        {(feedData || data) && (
-          <Collapsible open={notesOpen} onOpenChange={setNotesOpen}>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground hover:text-foreground">
-                <span className="text-sm font-medium">Decision Notes</span>
-                <ChevronDown className={`h-4 w-4 transition-transform ${notesOpen ? 'rotate-180' : ''}`} />
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-2">
-              <DecisionNotesPanel
-                asOf={feedData?.latest_snapshot_date ?? null}
-                topAttentionNames={(feedData?.attention_ranked_projects ?? []).slice(0, 3).map((p: any) => p.project_name)}
-                orgId={activeOrganizationId!}
-                isAdmin={isAdmin}
-                onBodyChange={(b: string) => { decisionBodyRef.current = b; }}
-                currentAttentionNames={(feedData?.attention_ranked_projects ?? []).map((p: any) => p.project_name)}
-                currentAsOf={feedData?.latest_snapshot_date}
+        {(feedData || feedLoading) && (
+          <ErrorBoundary>
+            <DashboardSection title="Attention">
+              <AttentionInbox
+                attentionProjects={feedData?.attention_ranked_projects ?? []}
+                topChanges={feedData?.top_changes ?? []}
+                loading={feedLoading && !feedData}
               />
-            </CollapsibleContent>
-          </Collapsible>
+
+              {/* Change Log collapsed inside */}
+              {feedData && feedData.top_changes.length > 0 && (
+                <Collapsible open={changeLogOpen} onOpenChange={setChangeLogOpen}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground hover:text-foreground mt-3">
+                      <span className="text-xs font-medium">Full Change Log ({feedData.top_changes.length} changes)</span>
+                      <ChevronDown className={`h-4 w-4 transition-transform ${changeLogOpen ? 'rotate-180' : ''}`} />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <DashboardCard title="Change Log" variant="table" traceSource="rpc_executive_change_feed → top_changes">
+                      <div className="overflow-x-auto rounded-lg border border-border">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="bg-muted text-muted-foreground">
+                              <th className="text-left px-3 py-2 font-medium">Project</th>
+                              <th className="text-left px-3 py-2 font-medium">Status</th>
+                              <th className="text-right px-3 py-2 font-medium">Risk Δ</th>
+                              <th className="text-right px-3 py-2 font-medium">Margin Δ</th>
+                              <th className="text-right px-3 py-2 font-medium">Burn Δ</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {feedData.top_changes.map(c => (
+                              <tr key={c.project_id} className="border-t border-border hover:bg-muted/30 transition-colors">
+                                <td className="px-3 py-2">
+                                  <Link to={`/projects/${c.project_id}`} className="text-primary hover:underline inline-flex items-center gap-1">
+                                    {c.project_name} <ExternalLink className="h-2.5 w-2.5" />
+                                  </Link>
+                                </td>
+                                <td className="px-3 py-2 text-foreground">{c.classification.replace(/_/g, ' ')}</td>
+                                <td className="px-3 py-2 text-right font-mono">{c.risk_change > 0 ? '+' : ''}{c.risk_change.toFixed(1)}</td>
+                                <td className="px-3 py-2 text-right font-mono">{c.margin_change > 0 ? '+' : ''}{c.margin_change.toFixed(1)}%</td>
+                                <td className="px-3 py-2 text-right font-mono">{c.burn_change > 0 ? '+' : ''}{c.burn_change.toFixed(2)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </DashboardCard>
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+            </DashboardSection>
+          </ErrorBoundary>
+        )}
+
+        {/* ── 3. Portfolio Health & Decision Notes ────────────────── */}
+        {(data || portfolioData || feedData) && (
+          <ErrorBoundary>
+            <DashboardSection title="Portfolio Health & Decision Notes">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <PortfolioHealthCard 
+                  data={portfolioData} 
+                  loading={loading && !data} 
+                />
+                
+                <DecisionNotesPanel
+                  asOf={feedData?.latest_snapshot_date ?? null}
+                  topAttentionNames={(feedData?.attention_ranked_projects ?? []).slice(0, 3).map((p: any) => p.project_name)}
+                  orgId={activeOrganizationId!}
+                  isAdmin={isAdmin}
+                  onBodyChange={(b: string) => { decisionBodyRef.current = b; }}
+                  currentAttentionNames={(feedData?.attention_ranked_projects ?? []).map((p: any) => p.project_name)}
+                  currentAsOf={feedData?.latest_snapshot_date}
+                />
+              </div>
+              
+              <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
+                <Link to="/data-health" className="hover:text-foreground transition-colors underline underline-offset-2">Data Health</Link>
+                <Link to="/executive-report" className="hover:text-foreground transition-colors underline underline-offset-2">Full Report</Link>
+              </div>
+            </DashboardSection>
+          </ErrorBoundary>
         )}
       </DashboardLayout>
     </TooltipProvider>
