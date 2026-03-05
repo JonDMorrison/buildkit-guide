@@ -101,7 +101,7 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
         .select('id, name, is_active')
         .eq('organization_id', activeOrganizationId)
         .order('name')
-        .then(({ data }) => setAllClients((data as any[]) || []));
+        .then(({ data }) => setAllClients(data || []));
     }
   }, [open, activeOrganizationId]);
 
@@ -152,7 +152,9 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
         });
 
         if (orgError) throw new Error(`Failed to create organization: ${orgError.message}`);
-        orgId = (rpcResult as any)?.org_id ?? null;
+        
+        type OrgRpcResult = { org_id: string } | null;
+        orgId = (rpcResult as OrgRpcResult)?.org_id ?? null;
       }
 
       if (!orgId) {
@@ -191,7 +193,7 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
       // Apply playbook if selected
       if (playbookId && data && user?.id) {
         try {
-          await supabase.rpc('rpc_apply_playbook_to_project' as any, {
+          await supabase.rpc('rpc_apply_playbook_to_project', {
             p_playbook_id: playbookId,
             p_project_id: data.id,
             p_user_id: user.id,
@@ -206,11 +208,12 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
           if (playbookInfo && !playbookInfo.isDefault && canSetDefault) {
             setDefaultPrompt(playbookInfo);
           }
-        } catch (pbError: any) {
+        } catch (pbError: unknown) {
           console.error('Playbook application failed:', pbError);
+          const pbMsg = pbError instanceof Error ? pbError.message : 'Unknown error';
           toast({
             title: 'Project created',
-            description: `${validatedData.name} created, but playbook could not be applied: ${pbError.message}`,
+            description: `${validatedData.name} created, but playbook could not be applied: ${pbMsg}`,
             variant: 'destructive',
           });
         }
@@ -256,7 +259,7 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
     if (!defaultPrompt) return;
     setSettingDefault(true);
     try {
-      const { error } = await supabase.rpc('rpc_update_playbook' as any, {
+      const { error } = await supabase.rpc('rpc_update_playbook', {
         p_playbook_id: defaultPrompt.id,
         p_name: null,
         p_job_type: null,
@@ -265,15 +268,21 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
         p_phases: null,
       });
       if (error) throw error;
-      toast({ title: 'Default playbook updated', description: `"${defaultPrompt.name}" is now your organization's default playbook.` });
+      
+      toast({ 
+        title: 'Default playbook updated', 
+        description: `"${defaultPrompt.name}" is now your organization's default playbook.` 
+      });
+      
       queryClient.invalidateQueries({ queryKey: ['playbooks-list'] });
       queryClient.invalidateQueries({ queryKey: ['playbook-detail'] });
       queryClient.invalidateQueries({ queryKey: ['playbook-performance'] });
       setDefaultPrompt(null); // Close only on success
-    } catch (err: any) {
-      const isPermErr = err?.code === '42501' 
-        || err?.message?.toLowerCase().includes('forbidden')
-        || err?.message?.toLowerCase().includes('permission');
+    } catch (err: unknown) {
+      const error = err as { code?: string; message?: string };
+      const isPermErr = error?.code === '42501' 
+        || error?.message?.toLowerCase().includes('forbidden')
+        || error?.message?.toLowerCase().includes('permission');
       const msg = isPermErr
         ? "You don't have permission to set the default playbook. Ask an admin to update this in Playbooks."
         : "Couldn't set default. Try again.";

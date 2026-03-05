@@ -51,6 +51,9 @@ interface Project {
   status: string;
   client_id?: string | null;
   organization_id?: string;
+  pm_contact_name?: string | null;
+  pm_email?: string | null;
+  pm_phone?: string | null;
 }
 
 interface EditProjectModalProps {
@@ -103,10 +106,10 @@ export const EditProjectModal = ({ open, onOpenChange, project, onSuccess }: Edi
         startDate: project.start_date || '',
         endDate: project.end_date || '',
         status: project.status || 'planning',
-        clientId: (project as any).client_id || '',
-        pmContactName: (project as any).pm_contact_name || '',
-        pmEmail: (project as any).pm_email || '',
-        pmPhone: (project as any).pm_phone || '',
+        clientId: project.client_id || '',
+        pmContactName: project.pm_contact_name || '',
+        pmEmail: project.pm_email || '',
+        pmPhone: project.pm_phone || '',
       });
     }
   }, [project]);
@@ -118,7 +121,7 @@ export const EditProjectModal = ({ open, onOpenChange, project, onSuccess }: Edi
         .select('id, name, parent_client_id, billing_address, is_active')
         .eq('organization_id', activeOrganizationId)
         .order('name')
-        .then(({ data }) => setAllClients((data as any[]) || []));
+        .then(({ data }) => setAllClients(data || []));
     }
   }, [open, activeOrganizationId]);
 
@@ -163,7 +166,7 @@ export const EditProjectModal = ({ open, onOpenChange, project, onSuccess }: Edi
           pm_contact_name: validatedData.pmContactName || null,
           pm_email: validatedData.pmEmail || null,
           pm_phone: validatedData.pmPhone || null,
-        } as any)
+        })
         .eq('id', project.id);
 
       if (error) throw error;
