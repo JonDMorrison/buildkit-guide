@@ -1,9 +1,8 @@
-import { useState, useCallback } from 'react';
 import { DashboardCard } from '@/components/dashboard/shared/DashboardCard';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/integrations/supabase/client';
 import { useSnapshotCoverageReport } from '@/hooks/rpc/useSnapshotCoverageReport';
+import { useOrgSnapshotCapture } from '@/hooks/rpc/useOrgSnapshotCapture';
 import { Camera, Loader2, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
 
 // ── Component ──────────────────────────────────────────────────────────────
@@ -15,28 +14,10 @@ interface Props {
 export function SnapshotStatusCard({ orgId }: Props) {
   const { data, isLoading: loading, error: queryError, refetch } = useSnapshotCoverageReport(orgId);
   const error = queryError ? String(queryError) : null;
-  const [capturing, setCapturing] = useState(false);
-
-  const captureSnapshots = useCallback(async () => {
-    setCapturing(true);
-    try {
-      const dbRpc = supabase.rpc as unknown as (
-        fn: string,
-        args: Record<string, unknown>
-      ) => Promise<{ data: unknown; error: { message: string } | null }>;
-
-      const { error: capErr } = await dbRpc(
-        'rpc_capture_org_economic_snapshots',
-        { p_org_id: orgId, p_force: true },
-      );
-      if (capErr) throw new Error(capErr.message);
-      await refetch();
-    } catch (e: unknown) {
-      if (e instanceof Error) console.error('Capture error:', e.message);
-    } finally {
-      setCapturing(false);
-    }
-  }, [orgId, refetch]);
+  
+  const { capture: captureSnapshots, isCapturing: capturing } = useOrgSnapshotCapture(orgId, async () => {
+    await refetch();
+  });
 
   const projects = data?.projects ?? [];
   const uncovered = projects.filter(p => p.snapshot_count < 2);
