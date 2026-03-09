@@ -111,10 +111,11 @@ export const ReportIssueModal = ({ open, onOpenChange }: ReportIssueModalProps) 
       setCategory('bug');
       setPriority('normal');
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : 'An unknown error occurred';
       toast({
         title: 'Error submitting issue',
-        description: error.message,
+        description: errorMsg,
         variant: 'destructive',
       });
     } finally {

@@ -28,6 +28,20 @@ interface MemberRate {
   dirty: boolean;
 }
 
+interface RawMembership {
+  id: string;
+  user_id: string;
+  role: string;
+  is_active: boolean;
+  hourly_cost_rate: number | null;
+  hourly_bill_rate: number | null;
+  rates_currency: string;
+  profiles: {
+    full_name: string | null;
+    email: string | null;
+  } | null;
+}
+
 export default function LaborRates() {
   const { activeOrganizationId, activeOrganization } = useOrganization();
   const { role: orgRole, isLoading: roleLoading } = useOrganizationRole();
@@ -56,7 +70,7 @@ export default function LaborRates() {
         return;
       }
       setMembers(
-        (data || []).map((m: any) => ({
+        (data as unknown as RawMembership[] || []).map((m) => ({
           membership_id: m.id,
           user_id: m.user_id,
           full_name: m.profiles?.full_name || m.profiles?.email || "Unknown",
@@ -118,7 +132,7 @@ export default function LaborRates() {
         .update({
           hourly_cost_rate: m.hourly_cost_rate,
           hourly_bill_rate: m.hourly_bill_rate,
-        } as any)
+        })
         .eq("id", m.membership_id);
       if (error) errorCount++;
     }
@@ -136,7 +150,7 @@ export default function LaborRates() {
     setSaving(true);
     const { error } = await supabase
       .from("organization_memberships")
-      .update({ rates_currency: baseCurrency } as any)
+      .update({ rates_currency: baseCurrency })
       .eq("organization_id", activeOrganizationId)
       .eq("is_active", true)
       .neq("rates_currency", baseCurrency);

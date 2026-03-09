@@ -37,12 +37,12 @@ export const EconomicDriftWidget = memo(function EconomicDriftWidget({ projectId
   const { data: snapshots, isLoading } = useQuery({
     queryKey: ["margin-snapshot-history", projectId, 30],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).rpc("rpc_get_margin_snapshot_history", {
+      const { data, error } = await supabase.rpc("rpc_get_margin_snapshot_history" as any, {
         p_project_id: projectId!,
         p_days: 30,
       });
       if (error) throw new Error(error.message);
-      return (data ?? []) as Snapshot[];
+      return (data as unknown as Snapshot[]) ?? [];
     },
     enabled: !!projectId,
     staleTime: 5 * 60 * 1000,

@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useMemo, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -63,35 +64,47 @@ export const OrganizationProvider = ({ children }: { children: ReactNode }) => {
 
         if (error) throw error;
 
-        const orgs = memberships
+        type MembershipResponse = {
+          organization_id: string;
+          role: string;
+          is_active: boolean;
+          organizations: Organization | null;
+        };
+
+        const typedMemberships = (memberships as unknown) as MembershipResponse[];
+
+        const orgs = typedMemberships
           ?.filter(m => m.organizations)
-          .map(m => ({
-            id: (m.organizations as any).id,
-            name: (m.organizations as any).name,
-            slug: (m.organizations as any).slug,
-            is_sandbox: (m.organizations as any).is_sandbox ?? false,
-            sandbox_label: (m.organizations as any).sandbox_label ?? null,
-            base_currency: (m.organizations as any).base_currency ?? 'CAD',
-          })) || [];
+          .map(m => {
+            const org = m.organizations!;
+            return {
+              id: org.id,
+              name: org.name,
+              slug: org.slug,
+              is_sandbox: org.is_sandbox ?? false,
+              sandbox_label: org.sandbox_label ?? null,
+              base_currency: org.base_currency ?? 'CAD',
+            };
+          }) || [];
 
         setOrganizations(orgs);
 
         // Auto-select organization
         if (orgs.length === 1) {
           setActiveOrganizationIdState(orgs[0].id);
-          const membership = memberships?.find(m => (m.organizations as any)?.id === orgs[0].id);
+          const membership = typedMemberships?.find(m => m.organizations?.id === orgs[0].id);
           setOrgRole(membership?.role || null);
         } else if (orgs.length > 1) {
           // Check for stored preference
           const stored = localStorage.getItem('activeOrganizationId');
           if (stored && orgs.some(o => o.id === stored)) {
             setActiveOrganizationIdState(stored);
-            const membership = memberships?.find(m => (m.organizations as any)?.id === stored);
+            const membership = typedMemberships?.find(m => m.organizations?.id === stored);
             setOrgRole(membership?.role || null);
           } else {
             // Default to first org
             setActiveOrganizationIdState(orgs[0].id);
-            const membership = memberships?.find(m => (m.organizations as any)?.id === orgs[0].id);
+            const membership = typedMemberships?.find(m => m.organizations?.id === orgs[0].id);
             setOrgRole(membership?.role || null);
           }
         } else {
@@ -110,9 +123,13 @@ export const OrganizationProvider = ({ children }: { children: ReactNode }) => {
     fetchOrganizations();
   }, [user]);
 
+  const queryClient = useQueryClient();
   const setActiveOrganizationId = useCallback((id: string) => {
     setActiveOrganizationIdState(id);
     localStorage.setItem('activeOrganizationId', id);
+    
+    // Clear all queries on org switch to prevent data leakage
+    queryClient.clear();
     
     // Update role for new org
     const fetchRole = async () => {
@@ -127,7 +144,7 @@ export const OrganizationProvider = ({ children }: { children: ReactNode }) => {
       setOrgRole(data?.role || null);
     };
     fetchRole();
-  }, [user]);
+  }, [user, queryClient]);
 
   // Memoize derived values
   const activeOrganization = useMemo(

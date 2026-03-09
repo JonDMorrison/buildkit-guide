@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useOrganization } from '@/hooks/useOrganization';
+import { Json } from '@/integrations/supabase/types';
 
 export interface PlaybookSummary {
   id: string;
@@ -81,11 +82,11 @@ export function usePlaybookList() {
     queryKey: ['playbooks-list', orgId],
     queryFn: async () => {
       const { data, error } = await supabase.rpc(
-        'rpc_list_playbooks_by_org' as any,
+        'rpc_list_playbooks_by_org',
         { p_organization_id: orgId! }
       );
       if (error) throw error;
-      return (Array.isArray(data) ? data : []) as PlaybookSummary[];
+      return (Array.isArray(data) ? data : []) as unknown as PlaybookSummary[];
     },
     enabled: !!orgId,
   });
@@ -118,10 +119,10 @@ export function usePlaybookDetail(playbookId?: string | null) {
         .order('sequence_order');
 
       const detail: PlaybookDetail = {
-        playbook: data as any,
+        playbook: data as unknown as PlaybookDetail['playbook'],
         phases: (phases ?? []).map(p => ({
-          phase: p as any,
-          tasks: (tasks ?? []).filter((t: any) => t.playbook_phase_id === p.id) as PlaybookPhaseTask[],
+          phase: p as unknown as PlaybookPhase['phase'],
+          tasks: (tasks ?? []).filter((t) => (t as any).playbook_phase_id === p.id) as PlaybookPhaseTask[],
         })),
       };
       return detail;
@@ -134,12 +135,13 @@ export function usePlaybookPerformance(playbookId?: string | null) {
   return useQuery({
     queryKey: ['playbook-performance', playbookId],
     queryFn: async () => {
+      if (!playbookId) return null;
       const { data, error } = await supabase.rpc(
-        'rpc_get_playbook_performance' as any,
+        'rpc_get_playbook_performance',
         { p_playbook_id: playbookId! }
       );
       if (error) throw error;
-      return data as PlaybookPerformance;
+      return data as unknown as PlaybookPerformance;
     },
     enabled: !!playbookId,
     staleTime: 5 * 60 * 1000,
@@ -157,8 +159,8 @@ export function usePlaybookMutations() {
   };
 
   const createPlaybook = useMutation({
-    mutationFn: async (args: { name: string; job_type?: string; description?: string; phases?: any[] }) => {
-      const { data, error } = await supabase.rpc('rpc_create_playbook' as any, {
+    mutationFn: async (args: { name: string; job_type?: string; description?: string; phases?: Json[] }) => {
+      const { data, error } = await supabase.rpc('rpc_create_playbook', {
         p_organization_id: activeOrganization!.id,
         p_name: args.name,
         p_job_type: args.job_type ?? '',
@@ -166,15 +168,15 @@ export function usePlaybookMutations() {
         p_phases: args.phases ?? [],
       });
       if (error) throw error;
-      return data;
+      return data as { playbook: { id: string } };
     },
     onSuccess: () => { invalidate(); toast({ title: 'Playbook created' }); },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
   const updatePlaybook = useMutation({
-    mutationFn: async (args: { playbook_id: string; name?: string; job_type?: string; description?: string; is_default?: boolean; phases?: any[] }) => {
-      const { data, error } = await supabase.rpc('rpc_update_playbook' as any, {
+    mutationFn: async (args: { playbook_id: string; name?: string; job_type?: string; description?: string; is_default?: boolean; phases?: Json[] }) => {
+      const { data, error } = await supabase.rpc('rpc_update_playbook', {
         p_playbook_id: args.playbook_id,
         p_name: args.name ?? null,
         p_job_type: args.job_type ?? null,
@@ -186,12 +188,12 @@ export function usePlaybookMutations() {
       return data;
     },
     onSuccess: () => { invalidate(); toast({ title: 'Playbook updated (new version)' }); },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
   const duplicatePlaybook = useMutation({
     mutationFn: async (args: { playbook_id: string; new_name?: string }) => {
-      const { data, error } = await supabase.rpc('rpc_duplicate_playbook' as any, {
+      const { data, error } = await supabase.rpc('rpc_duplicate_playbook', {
         p_playbook_id: args.playbook_id,
         p_new_name: args.new_name ?? null,
       });
@@ -199,19 +201,19 @@ export function usePlaybookMutations() {
       return data;
     },
     onSuccess: () => { invalidate(); toast({ title: 'Playbook duplicated' }); },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
   const archivePlaybook = useMutation({
     mutationFn: async (playbookId: string) => {
-      const { data, error } = await supabase.rpc('rpc_archive_playbook' as any, {
+      const { data, error } = await supabase.rpc('rpc_archive_playbook', {
         p_playbook_id: playbookId,
       });
       if (error) throw error;
       return data;
     },
     onSuccess: () => { invalidate(); toast({ title: 'Playbook archived' }); },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
   return { createPlaybook, updatePlaybook, duplicatePlaybook, archivePlaybook };

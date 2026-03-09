@@ -90,7 +90,7 @@ const Invoicing = () => {
   const { logActivity } = useInvoiceActivity();
   const { toast } = useToast();
 
-  const prefillData = location.state as { prefillLineItems?: any[]; prefillProjectId?: string } | null;
+  const prefillData = location.state as { prefillLineItems?: InvoiceLineItem[]; prefillProjectId?: string } | null;
 
   const [projects, setProjects] = useState<{ id: string; name: string; client_id?: string | null; location?: string | null }[]>([]);
   const [showClientModal, setShowClientModal] = useState(false);
@@ -172,7 +172,7 @@ const Invoicing = () => {
         .eq("is_deleted", false)
         .eq("organization_id", activeOrganizationId)
         .order("name");
-      setProjects((data as any[]) || []);
+      setProjects((data as { id: string; name: string; client_id?: string | null; location?: string | null }[]) || []);
     };
     const fetchSendSettings = async () => {
       const { data } = await supabase
@@ -181,12 +181,11 @@ const Invoicing = () => {
         .eq("organization_id", activeOrganizationId)
         .single();
       if (data) {
-        const d = data as any;
         setInvoiceSendSettings({
-          invoice_send_roles: d.invoice_send_roles || ["admin"],
-          invoice_send_requires_approval: d.invoice_send_requires_approval ?? true,
-          invoice_send_approver_roles: d.invoice_send_approver_roles || ["admin"],
-          invoice_send_blocked_message: d.invoice_send_blocked_message || "Invoice requires approval before sending.",
+          invoice_send_roles: (data.invoice_send_roles as string[]) || ["admin"],
+          invoice_send_requires_approval: data.invoice_send_requires_approval ?? true,
+          invoice_send_approver_roles: (data.invoice_send_approver_roles as string[]) || ["admin"],
+          invoice_send_blocked_message: data.invoice_send_blocked_message || "Invoice requires approval before sending.",
         });
       }
       setSendSettingsLoaded(true);
@@ -197,7 +196,6 @@ const Invoicing = () => {
 
   useEffect(() => {
     if (settings) {
-      const s = settings as any;
       const form = {
         company_name: settings.company_name || "",
         company_address: settings.company_address || "",
@@ -208,14 +206,14 @@ const Invoicing = () => {
         notes_template: settings.notes_template || "",
         logo_url: settings.logo_url || null,
         payment_instructions: settings.payment_instructions || "",
-        currency: s.currency || "CAD",
-        from_email: s.from_email || "",
-        tax2_rate: String(s.tax2_rate || 0),
-        tax2_label: s.tax2_label || "",
-        default_retainage_percent: String(s.default_retainage_percent || 0),
-        require_approval: !!s.require_approval,
-        reminder_enabled: !!s.reminder_enabled,
-        reminder_days: (s.reminder_days || [7, 14, 30]).join(","),
+        currency: settings.currency || "CAD",
+        from_email: settings.from_email || "",
+        tax2_rate: String(settings.tax2_rate || 0),
+        tax2_label: settings.tax2_label || "",
+        default_retainage_percent: String(settings.default_retainage_percent || 0),
+        require_approval: !!settings.require_approval,
+        reminder_enabled: !!settings.reminder_enabled,
+        reminder_days: (settings.reminder_days || [7, 14, 30]).join(","),
       };
       setSettingsForm(form);
       settingsSnapshot.current = JSON.stringify(form);
@@ -224,7 +222,7 @@ const Invoicing = () => {
 
   const settingsDirty = JSON.stringify(settingsForm) !== settingsSnapshot.current;
   const currencySymbol = "$";
-
+  
   const filteredInvoices = useMemo(() => {
     return invoices.filter((inv) => {
       const displayStatus = getDisplayStatus(inv);
@@ -246,7 +244,7 @@ const Invoicing = () => {
   }, [invoices, statusFilter, approvalFilter, searchQuery]);
 
   const handleStatusChange = async (invoice: Invoice, newStatus: string) => {
-    const updates: Partial<Invoice> = { status: newStatus as any };
+    const updates: Partial<Invoice> = { status: newStatus as InvoiceStatus };
     if (newStatus === "sent") updates.sent_at = new Date().toISOString();
     if (newStatus === "paid") updates.paid_at = new Date().toISOString();
     await updateInvoice(invoice.id, updates);
@@ -274,7 +272,7 @@ const Invoicing = () => {
       require_approval: settingsForm.require_approval,
       reminder_enabled: settingsForm.reminder_enabled,
       reminder_days: reminderDays,
-    } as any);
+    });
     settingsSnapshot.current = JSON.stringify(settingsForm);
     toast({ title: "Settings saved" });
   };
@@ -288,7 +286,7 @@ const Invoicing = () => {
         invoice_send_requires_approval: invoiceSendSettings.invoice_send_requires_approval,
         invoice_send_approver_roles: invoiceSendSettings.invoice_send_approver_roles,
         invoice_send_blocked_message: invoiceSendSettings.invoice_send_blocked_message,
-      } as any)
+      })
       .eq("organization_id", activeOrganizationId);
     if (error) {
       toast({ title: "Failed to save permissions", description: error.message, variant: "destructive" });
@@ -362,7 +360,7 @@ const Invoicing = () => {
       items.map((li) => ({ description: li.description, quantity: li.quantity, unit_price: li.unit_price, category: li.category }))
     );
     if (cloned) {
-      await logActivity((cloned as any).id, "cloned", `Cloned from ${invoice.invoice_number}`);
+      await logActivity(cloned.id, "cloned", `Cloned from ${invoice.invoice_number}`);
       toast({ title: "Invoice cloned as new draft" });
     }
   };
@@ -399,7 +397,7 @@ const Invoicing = () => {
 
   // Approval workflow
   const handleSubmitForApproval = async (invoiceId: string) => {
-    await updateInvoice(invoiceId, { approval_status: "pending" } as any);
+    await updateInvoice(invoiceId, { approval_status: "pending" });
     await logActivity(invoiceId, "submitted_for_approval", "Submitted for approval");
     toast({ title: "Invoice submitted for approval" });
   };
@@ -408,7 +406,7 @@ const Invoicing = () => {
     await updateInvoice(invoiceId, {
       approval_status: "approved",
       approved_at: new Date().toISOString(),
-    } as any);
+    });
     await logActivity(invoiceId, "approved", "Invoice approved");
     toast({ title: "Invoice approved" });
   };
@@ -417,7 +415,7 @@ const Invoicing = () => {
     await updateInvoice(invoiceId, {
       approval_status: "rejected",
       rejection_reason: reason,
-    } as any);
+    });
     await logActivity(invoiceId, "rejected", `Rejected: ${reason}`);
     toast({ title: "Invoice rejected" });
   };
@@ -507,7 +505,7 @@ const Invoicing = () => {
         tax_amount: 0,
         total: Number(invoice.retainage_amount),
         notes: `Holdback release for ${invoice.invoice_number}`,
-        invoice_type: "retainage_release" as any,
+        invoice_type: "retainage_release",
       },
       retainageItems
     );
@@ -515,7 +513,7 @@ const Invoicing = () => {
       await updateInvoice(invoice.id, {
         retainage_released: true,
         retainage_released_at: new Date().toISOString(),
-      } as any);
+      });
       await logActivity(invoice.id, "retainage_released", `Holdback of ${currencySymbol}${Number(invoice.retainage_amount).toFixed(2)} released`);
       toast({ title: "Holdback released as new invoice" });
     }
@@ -691,8 +689,8 @@ const Invoicing = () => {
                           const sc = statusConfig[displayStatus] || statusConfig.draft;
                           const balance = Number(inv.total) - Number(inv.amount_paid || 0);
                           const isCreditNote = !!inv.credit_note_for;
-                          const invType = (inv as any).invoice_type || "standard";
-                          const approvalStatus = ((inv as any).approval_status || "none") as ApprovalStatus;
+                          const invType = inv.invoice_type || "standard";
+                          const approvalStatus = (inv.approval_status || "none") as ApprovalStatus;
                           return (
                             <TableRow key={inv.id} className="cursor-pointer" onClick={() => openDetail(inv)}>
                               <TableCell onClick={(e) => e.stopPropagation()}>
@@ -748,7 +746,7 @@ const Invoicing = () => {
                                     <Button variant="ghost" size="sm" onClick={() => setConfirmAction({ type: "credit_note", invoice: inv })} title="Credit note"><CreditCard className="h-3.5 w-3.5" /></Button>
                                   )}
                                   {/* Retainage release */}
-                                  {Number((inv as any).retainage_amount) > 0 && !(inv as any).retainage_released && displayStatus === "paid" && (
+                                  {Number(inv.retainage_amount) > 0 && !inv.retainage_released && displayStatus === "paid" && (
                                     <Button variant="ghost" size="sm" onClick={() => handleReleaseRetainage(inv)} title="Release holdback"><CheckSquare className="h-3.5 w-3.5" /></Button>
                                   )}
                                   {inv.status === "draft" && (

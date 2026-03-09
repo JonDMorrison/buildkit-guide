@@ -26,7 +26,7 @@ export function AIMarginSignalCard({ projectId }: Props) {
   const { data, isLoading } = useQuery({
     queryKey: ['ai-margin-signal', projectId],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).rpc(
+      const { data, error } = await supabase.rpc(
         'rpc_get_margin_snapshot_history',
         { p_project_id: projectId, p_days: 30 },
       );
@@ -44,15 +44,16 @@ export function AIMarginSignalCard({ projectId }: Props) {
     if (!orgId) return;
     setGenerating(true);
     try {
-      const { error } = await (supabase as any).rpc(
+      const { error } = await supabase.rpc(
         'rpc_capture_org_economic_snapshots',
         { p_org_id: orgId, p_force: true },
       );
       if (error) throw error;
       toast.success('Analysis data generated. It may take a moment to process.');
       queryClient.invalidateQueries({ queryKey: ['ai-margin-signal', projectId] });
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to generate analysis data');
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to generate analysis data';
+      toast.error(errorMsg);
     } finally {
       setGenerating(false);
     }

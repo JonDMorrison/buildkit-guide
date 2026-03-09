@@ -114,13 +114,13 @@ function PlaybooksContent() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         onCreate={data => {
-          createPlaybook.mutate(data, {
-            onSuccess: (result: any) => {
-              setCreateOpen(false);
-              const newId = result?.playbook?.id;
-              if (newId) setSelectedId(newId);
-            },
-          });
+      createPlaybook.mutate(data as any, { // CreatePlaybookDialog data might need a specific type
+        onSuccess: (result) => {
+          setCreateOpen(false);
+          const newId = result?.playbook?.id;
+          if (newId) setSelectedId(newId);
+        },
+      });
         }}
         isCreating={createPlaybook.isPending}
       />

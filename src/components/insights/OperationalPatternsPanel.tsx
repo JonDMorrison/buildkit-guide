@@ -70,7 +70,12 @@ export const OperationalPatternsPanel = ({ organizationId }: Props) => {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const { data: result } = await (supabase as any).rpc(
+      const dbRpc = supabase.rpc as unknown as (
+        fn: string,
+        args: Record<string, unknown>
+      ) => Promise<{ data: unknown; error: { message: string } | null }>;
+
+      const { data: result } = await dbRpc(
         "get_operational_patterns",
         { p_organization_id: organizationId }
       );

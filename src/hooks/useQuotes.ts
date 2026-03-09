@@ -36,7 +36,7 @@ export const useQuotes = () => {
     if (error) {
       toast({ title: 'Error loading quotes', description: error.message, variant: 'destructive' });
     }
-    const mapped = ((data as any[]) || []).map((q: any) => ({
+    const mapped = ((data as unknown as (Quote & { projects: any; clients: any })[]) || []).map((q) => ({
       ...q,
       project: q.projects || null,
       client: q.clients || null,
@@ -69,10 +69,12 @@ export const useQuotes = () => {
     const pst = Number(quote.pst) || 0;
     const total = Math.round((subtotal + gst + pst) * 100) / 100;
 
+    const { project, client, ...cleanQuote } = quote;
+
     const { data, error } = await supabase
       .from('quotes')
       .insert({
-        ...quote,
+        ...cleanQuote,
         organization_id: activeOrganizationId,
         created_by: user.id,
         quote_number: qteNum || 'QTE-0001',
@@ -92,18 +94,18 @@ export const useQuotes = () => {
     if (computed.length > 0 && data) {
       const rows = computed.map(li => ({
         ...li,
-        quote_id: (data as any).id,
+        quote_id: data.id,
         organization_id: activeOrganizationId,
       }));
-      const { error: liError } = await supabase.from('quote_line_items').insert(rows as any);
+      const { error: liError } = await supabase.from('quote_line_items').insert(rows as any[]);
       if (liError) {
         console.warn('Failed to insert line items', liError.message);
       }
     }
 
     if (data) {
-      await logQuoteEvent((data as any).id, 'created', {
-        quote_number: (data as any).quote_number,
+      await logQuoteEvent(data.id, 'created', {
+        quote_number: data.quote_number,
         line_item_count: computed.length,
         total,
       });
@@ -114,9 +116,10 @@ export const useQuotes = () => {
   };
 
   const updateQuote = async (id: string, updates: Partial<Quote>) => {
+    const { project, client, ...cleanUpdates } = updates;
     const { error } = await supabase
       .from('quotes')
-      .update(updates as any)
+      .update(cleanUpdates as any)
       .eq('id', id);
     if (error) {
       toast({ title: 'Error updating quote', description: error.message, variant: 'destructive' });
@@ -133,7 +136,7 @@ export const useQuotes = () => {
   const approveQuote = async (id: string) => {
     const { error } = await supabase
       .from('quotes')
-      .update({ status: 'approved', approved_at: new Date().toISOString() } as any)
+      .update({ status: 'approved', approved_at: new Date().toISOString() })
       .eq('id', id);
     if (error) {
       toast({ title: 'Error approving quote', description: error.message, variant: 'destructive' });
@@ -148,7 +151,7 @@ export const useQuotes = () => {
   const markSent = async (id: string) => {
     const { error } = await supabase
       .from('quotes')
-      .update({ status: 'sent' } as any)
+      .update({ status: 'sent' })
       .eq('id', id);
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -162,7 +165,7 @@ export const useQuotes = () => {
   const rejectQuote = async (id: string, reason?: string) => {
     const { error } = await supabase
       .from('quotes')
-      .update({ status: 'rejected' } as any)
+      .update({ status: 'rejected' })
       .eq('id', id);
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -176,7 +179,7 @@ export const useQuotes = () => {
   const archiveQuote = async (id: string) => {
     const { error } = await supabase
       .from('quotes')
-      .update({ status: 'archived' } as any)
+      .update({ status: 'archived' })
       .eq('id', id);
     if (error) {
       toast({ title: 'Error archiving quote', description: error.message, variant: 'destructive' });
@@ -207,7 +210,7 @@ export const useQuotes = () => {
       .select('*')
       .eq('quote_id', quoteId)
       .order('sort_order');
-    return (data as any[]) || [];
+    return (data as QuoteLineItem[]) || [];
   };
 
   const addLineItem = async (quoteId: string, lineItem: Partial<QuoteLineItem>) => {
@@ -233,11 +236,13 @@ export const useQuotes = () => {
       toast({ title: 'Error adding line item', description: error.message, variant: 'destructive' });
       return null;
     }
-    await logQuoteEvent(quoteId, 'line_item_added', {
-      line_item_id: (data as any)?.id,
-      product: lineItem.product_or_service,
-      amount,
-    });
+    if (data) {
+      await logQuoteEvent(quoteId, 'line_item_added', {
+        line_item_id: data.id,
+        product: lineItem.product_or_service,
+        amount,
+      });
+    }
     return data;
   };
 

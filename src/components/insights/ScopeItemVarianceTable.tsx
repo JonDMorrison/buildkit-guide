@@ -84,7 +84,10 @@ export function ScopeItemVarianceTable({ projectId, canEdit = false }: ScopeItem
             .eq('project_id', projectId)
             .not('scope_item_id', 'is', null),
           // RPC: server-side aggregation — no client-side IN() needed
-          supabase.rpc('project_task_actual_hours' as any, { p_project_id: projectId }),
+          (supabase.rpc as unknown as (
+            fn: string,
+            args: Record<string, unknown>
+          ) => Promise<{ data: unknown; error: unknown }>)('project_task_actual_hours', { p_project_id: projectId }),
           // Total project hours (all closed entries)
           supabase
             .from('time_entries')
@@ -209,11 +212,16 @@ export function ScopeItemVarianceTable({ projectId, canEdit = false }: ScopeItem
   const handleAssignTask = async (entryId: string, taskId: string) => {
     setAssigningId(entryId);
     try {
-      const { data, error } = await supabase.rpc('assign_time_entry_task' as any, {
+      const dbRpc = supabase.rpc as unknown as (
+        fn: string,
+        args: Record<string, unknown>
+      ) => Promise<{ data: unknown; error: { message: string } | null }>;
+
+      const { error } = await dbRpc('assign_time_entry_task', {
         p_time_entry_id: entryId,
         p_task_id: taskId,
       });
-      if (error) throw error;
+      if (error) throw new Error(error.message);
 
       // Update local state
       const entry = unassignedEntries.find(e => e.id === entryId);
@@ -230,9 +238,9 @@ export function ScopeItemVarianceTable({ projectId, canEdit = false }: ScopeItem
         };
       });
       toast({ title: 'Task assigned', description: 'Time entry linked to task.' });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Assign task error:', err);
-      toast({ title: 'Failed to assign', description: err.message || 'An error occurred', variant: 'destructive' });
+      toast({ title: 'Failed to assign', description: err instanceof Error ? err.message : 'An error occurred', variant: 'destructive' });
     } finally {
       setAssigningId(null);
     }

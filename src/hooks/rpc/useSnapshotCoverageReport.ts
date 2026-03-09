@@ -30,8 +30,8 @@ export function useSnapshotCoverageReport(orgIdOverride?: string) {
   return useQuery({
     queryKey: ["rpc-snapshot-coverage", orgId],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).rpc(
-        "rpc_snapshot_coverage_report",
+      const { data, error } = await supabase.rpc(
+        "rpc_snapshot_coverage_report" as any,
         { p_org_id: orgId! },
       );
       if (error) throw error;

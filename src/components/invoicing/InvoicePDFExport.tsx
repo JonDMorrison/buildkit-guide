@@ -15,7 +15,7 @@ export const generateInvoicePDF = async (
   const m = 14;
   let y = 20;
   const cs = "$";
-  const currencyCode = (settings as any)?.currency || "CAD";
+  const currencyCode = (settings as InvoiceSettings & { currency?: string })?.currency || "CAD";
 
   // Logo rendering (1F fix)
   if (settings?.logo_url) {

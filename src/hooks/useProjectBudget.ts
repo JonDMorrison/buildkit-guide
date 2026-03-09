@@ -127,8 +127,9 @@ export function useProjectBudget(projectId: string) {
         const row = Array.isArray(varianceRes.data) ? varianceRes.data[0] : varianceRes.data;
         if (row) setVariance(row as unknown as VarianceSummary);
       }
-    } catch (err: any) {
-      toast({ title: 'Error loading budget data', description: err.message, variant: 'destructive' });
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'An unknown error occurred';
+      toast({ title: 'Error loading budget data', description: errorMsg, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -155,8 +156,9 @@ export function useProjectBudget(projectId: string) {
       setBudget(data as unknown as ProjectBudget);
       setHasBudget(true);
       toast({ title: 'Budget created' });
-    } catch (err: any) {
-      toast({ title: 'Error creating budget', description: err.message, variant: 'destructive' });
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'An unknown error occurred';
+      toast({ title: 'Error creating budget', description: errorMsg, variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -168,13 +170,14 @@ export function useProjectBudget(projectId: string) {
     try {
       const { error } = await supabase
         .from('project_budgets')
-        .update(updates as any)
+        .update(updates)
         .eq('id', budget.id);
       if (error) throw error;
       setBudget({ ...budget, ...updates });
       toast({ title: 'Budget updated' });
-    } catch (err: any) {
-      toast({ title: 'Error updating budget', description: err.message, variant: 'destructive' });
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'An unknown error occurred';
+      toast({ title: 'Error updating budget', description: errorMsg, variant: 'destructive' });
     } finally {
       setSaving(false);
     }

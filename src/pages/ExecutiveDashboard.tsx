@@ -24,8 +24,7 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ErrorBoundary } from '@/components/ErrorBoundary';
-
+import { SectionErrorBoundary } from '@/components/SectionErrorBoundary';
 import { useExecutiveChangeFeed, type ChangeFeedData } from '@/hooks/rpc/useExecutiveChangeFeed';
 import { PortfolioHealthCard, type PortfolioHealthData } from '@/components/executive/PortfolioHealthCard';
 import { AttentionInbox } from '@/components/executive/AttentionInbox';
@@ -294,7 +293,7 @@ export default function ExecutiveDashboard() {
         )}
 
         {/* ── 1. Weekly Brief Hero ────────────────────────────── */}
-        <ErrorBoundary>
+        <SectionErrorBoundary title="Weekly Brief">
           <WeeklyBriefHero
             feedData={feedData}
             data={data}
@@ -303,11 +302,11 @@ export default function ExecutiveDashboard() {
             onCopyBrief={handleCopyBrief}
             onDownloadBrief={handleDownloadBrief}
           />
-        </ErrorBoundary>
+        </SectionErrorBoundary>
 
         {/* ── 2. Attention Inbox ──────────────────────────────── */}
         {(feedData || feedLoading) && (
-          <ErrorBoundary>
+          <SectionErrorBoundary title="Attention items">
             <DashboardSection title="Attention">
               <AttentionInbox
                 attentionProjects={feedData?.attention_ranked_projects ?? []}
@@ -359,12 +358,12 @@ export default function ExecutiveDashboard() {
                 </Collapsible>
               )}
             </DashboardSection>
-          </ErrorBoundary>
+          </SectionErrorBoundary>
         )}
 
         {/* ── 3. Portfolio Health & Decision Notes ────────────────── */}
         {(data || portfolioData || feedData) && (
-          <ErrorBoundary>
+          <SectionErrorBoundary title="Portfolio health">
             <DashboardSection title="Portfolio Health & Decision Notes">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <PortfolioHealthCard 
@@ -388,7 +387,7 @@ export default function ExecutiveDashboard() {
                 <Link to="/executive-report" className="hover:text-foreground transition-colors underline underline-offset-2">Full Report</Link>
               </div>
             </DashboardSection>
-          </ErrorBoundary>
+          </SectionErrorBoundary>
         )}
       </DashboardLayout>
     </TooltipProvider>

@@ -126,8 +126,8 @@ export const ReceiptsList = ({
                     {categoryLabel}
                   </Badge>
                 </div>
-                {(receipt as any).notified_accounting_at && (
-                  <Badge variant="default" className="text-xs bg-emerald-600 hover:bg-emerald-700 shrink-0 flex items-center gap-1">
+                {receipt.notified_accounting_at && (
+                  <Badge variant="default" className="text-xs bg-emerald-600 hover:bg-emerald-700 shrink-0 flex items-center gap-1 mt-1">
                     <CheckCircle2 className="h-3 w-3" />
                     Sent to Accounting
                   </Badge>

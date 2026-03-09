@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, NavigateFunction } from "react-router-dom";
 import { DashboardCard } from "@/components/dashboard/shared/DashboardCard";
 import { Badge } from "@/components/ui/badge";
 import { ChevronRight, TrendingDown } from "lucide-react";
@@ -97,7 +97,7 @@ function AlertGroup({
 }: {
   title: string;
   items: Array<{ id: string; name: string; value: number; pct: number }>;
-  navigate: any;
+  navigate: NavigateFunction;
   formatter: (v: number) => string;
   isPercent?: boolean;
 }) {

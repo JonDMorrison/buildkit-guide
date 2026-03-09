@@ -166,24 +166,28 @@ export const DocumentUpload = ({ projectId, onUploadComplete }: DocumentUploadPr
       if (onUploadComplete) {
         onUploadComplete();
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error uploading document:", error);
       
-      // Parse error message from edge function response
-      let errorMessage = error.message || "Failed to upload document. Please try again.";
+      let errorMessage = "Failed to upload document. Please try again.";
       
-      // Try to extract error from function response
-      if (error.context?.body) {
-        try {
-          const body = JSON.parse(error.context.body);
-          if (body.error) {
-            errorMessage = body.error;
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        
+        // Try to extract error from function response if it's a supabase functions error
+        const err = error as any;
+        if (err.context?.body) {
+          try {
+            const body = JSON.parse(err.context.body);
+            if (body.error) {
+              errorMessage = body.error;
+            }
+          } catch {
+            // Use original error message
           }
-        } catch {
-          // Use original error message
         }
       }
-      
+
       setUploadError(errorMessage);
       toast({
         title: "Upload failed",

@@ -92,7 +92,14 @@ const UserManagement = () => {
 
         if (error) throw error;
 
-        data = (managedProjects || []).map((pm: any) => ({
+        type ManagedProjectResult = {
+          projects: {
+            id: string;
+            name: string;
+          };
+        };
+
+        data = ((managedProjects as unknown) as ManagedProjectResult[] || []).map((pm) => ({
           id: pm.projects.id,
           name: pm.projects.name,
         }));
@@ -107,10 +114,11 @@ const UserManagement = () => {
           setSelectedProject(data[0].id);
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : 'An unknown error occurred';
       toast({
         title: 'Error loading projects',
-        description: error.message,
+        description: errorMsg,
         variant: 'destructive',
       });
     } finally {
@@ -139,11 +147,12 @@ const UserManagement = () => {
 
       if (error) throw error;
 
-      setMembers(data as unknown as ProjectMember[] || []);
-    } catch (error: any) {
+      setMembers((data as unknown) as ProjectMember[] || []);
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : 'An unknown error occurred';
       toast({
         title: 'Error loading members',
-        description: error.message,
+        description: errorMsg,
         variant: 'destructive',
       });
     }
@@ -166,10 +175,11 @@ const UserManagement = () => {
       });
 
       fetchMembers();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : 'An unknown error occurred';
       toast({
         title: 'Error removing member',
-        description: error.message,
+        description: errorMsg,
         variant: 'destructive',
       });
     }

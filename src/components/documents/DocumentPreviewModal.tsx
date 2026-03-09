@@ -10,8 +10,23 @@ import { Button } from "@/components/ui/button";
 import { Download, ExternalLink, FileText, User, Calendar, HardDrive } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
+interface Document {
+  id: string;
+  file_url: string;
+  file_name: string;
+  file_type: string;
+  file_size: number | null;
+  document_type: string;
+  created_at: string;
+  description?: string | null;
+  profiles?: {
+    full_name: string | null;
+    email: string;
+  } | null;
+}
+
 interface DocumentPreviewModalProps {
-  document: any;
+  document: Document;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }

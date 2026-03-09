@@ -61,7 +61,7 @@ export const ActiveTradesModal = ({
                   className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-accent/10 transition-colors text-left"
                 >
                   <div className="flex items-center gap-2 min-w-0">
-                    <TradeBadge trade={trade.trade_type as any} />
+                    <TradeBadge trade={trade.trade_type} />
                     <span className="text-sm font-medium truncate">
                       {trade.name}
                     </span>

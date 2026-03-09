@@ -18,9 +18,23 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useState } from "react";
 
+interface Document {
+  id: string;
+  file_url: string;
+  file_name: string;
+  file_type: string;
+  file_size: number | null;
+  document_type: string;
+  created_at: string;
+  profiles?: {
+    full_name: string | null;
+    email: string;
+  } | null;
+}
+
 interface DocumentListProps {
-  documents: any[];
-  onPreview: (doc: any) => void;
+  documents: Document[];
+  onPreview: (doc: Document) => void;
   onDelete?: () => void;
 }
 
@@ -51,12 +65,12 @@ export const DocumentList = ({ documents, onPreview, onDelete }: DocumentListPro
   const { currentProjectId } = useCurrentProject();
   const { can } = useAuthRole(currentProjectId || undefined);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [documentToDelete, setDocumentToDelete] = useState<any>(null);
+  const [documentToDelete, setDocumentToDelete] = useState<Document | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const canDelete = currentProjectId && can('delete_documents', currentProjectId);
 
-  const handleDeleteClick = (doc: any) => {
+  const handleDeleteClick = (doc: Document) => {
     setDocumentToDelete(doc);
     setDeleteDialogOpen(true);
   };
@@ -86,10 +100,11 @@ export const DocumentList = ({ documents, onPreview, onDelete }: DocumentListPro
       });
 
       onDelete?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "An error occurred while deleting the document";
       toast({
         title: 'Error deleting document',
-        description: error.message,
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {

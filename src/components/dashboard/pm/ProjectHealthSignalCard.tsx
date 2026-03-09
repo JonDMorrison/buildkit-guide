@@ -36,6 +36,20 @@ function DeltaIndicator({ current, previous, suffix = "", invert = false }: { cu
   );
 }
 
+interface MarginControlData {
+  economic_position: string | null;
+  risk_score: number | null;
+  projected_margin_at_completion_percent: number | null;
+  labor_burn_ratio: number | null;
+  contract_value: number | null;
+  executive_summary: string | null;
+}
+
+interface MarginSnapshotEntry {
+  risk_score: number | null;
+  projected_margin_ratio: number | null;
+}
+
 export function ProjectHealthSignalCard({ projectId }: Props) {
   const { data: marginControl, isLoading: mcLoading } = useQuery({
     queryKey: ["pm-margin-control", projectId],
@@ -45,7 +59,7 @@ export function ProjectHealthSignalCard({ projectId }: Props) {
         { p_project_id: projectId }
       );
       if (error) throw error;
-      return data as any;
+      return data as MarginControlData | null;
     },
     enabled: !!projectId,
     staleTime: 10 * 60 * 1000,
@@ -60,7 +74,7 @@ export function ProjectHealthSignalCard({ projectId }: Props) {
         { p_project_id: projectId, p_window_days: 7 }
       );
       if (error) throw error;
-      return (data as any[]) ?? [];
+      return (data as unknown as MarginSnapshotEntry[]) ?? [];
     },
     enabled: !!projectId,
     staleTime: 10 * 60 * 1000,

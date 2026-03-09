@@ -1,9 +1,9 @@
 import { useEffect } from "react";
 import { format } from "date-fns";
-import { Clock, FileText, Send, DollarSign, Ban, CheckCircle2, XCircle, Copy, CreditCard, ShieldCheck, AlertTriangle } from "lucide-react";
+import { Clock, FileText, Send, DollarSign, Ban, CheckCircle2, XCircle, Copy, CreditCard, ShieldCheck, AlertTriangle, LucideIcon } from "lucide-react";
 import { useInvoiceActivity } from "@/hooks/useInvoiceActivity";
 
-const actionIcons: Record<string, any> = {
+const actionIcons: Record<string, LucideIcon> = {
   created: FileText,
   sent: Send,
   payment_recorded: DollarSign,

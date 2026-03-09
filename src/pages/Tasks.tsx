@@ -21,13 +21,42 @@ import { Plus, LayoutList, LayoutGrid, Calendar as CalendarIcon, CheckSquare, Mi
 
 type ViewMode = 'list' | 'kanban' | 'calendar';
 
+interface Task {
+  id: string;
+  project_id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  priority: string;
+  due_date: string | null;
+  sort_order: number;
+  trades: {
+    name: string;
+    trade_type: string | null;
+    company_name: string | null;
+  } | null;
+  projects: {
+    name: string;
+  } | null;
+  task_assignments: Array<{
+    id: string;
+    user_id: string;
+    profiles: {
+      id: string;
+      full_name: string | null;
+      avatar_url: string | null;
+      email: string;
+    } | null;
+  }>;
+}
+
 const Tasks = () => {
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const { currentProjectId } = useCurrentProject();
   const { can, isWorker, loading: roleLoading } = useAuthRole(currentProjectId || undefined);
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [filteredTasks, setFilteredTasks] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [filteredTasks, setFilteredTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -56,12 +85,13 @@ const Tasks = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setTasks(data || []);
-      setFilteredTasks(data || []);
-    } catch (error: any) {
+      setTasks((data as unknown) as Task[] || []);
+      setFilteredTasks((data as unknown) as Task[] || []);
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : 'An unknown error occurred';
       toast({
         title: 'Error loading tasks',
-        description: error.message,
+        description: errorMsg,
         variant: 'destructive',
       });
     } finally {

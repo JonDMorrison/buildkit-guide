@@ -132,7 +132,7 @@ export const SafetyFormModal = ({
 }: SafetyFormModalProps) => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [projects, setProjects] = useState<any[]>([]);
+  const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [signature, setSignature] = useState<string | null>(null);
   const [photos, setPhotos] = useState<File[]>([]);
@@ -345,7 +345,7 @@ export const SafetyFormModal = ({
       const result = await submitForm({
         form: {
           projectId,
-          formType: formType as any,
+          formType: formType as "daily_safety_log" | "toolbox_meeting" | "hazard_id" | "incident_report" | "visitor_log",
           title: template.title,
           inspectionDate: formData.date || new Date().toISOString().split("T")[0],
           status: 'draft',
@@ -357,11 +357,11 @@ export const SafetyFormModal = ({
       if (!result) {
         setSaving(false);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error saving draft:", error);
       toast({
         title: "Error",
-        description: "Failed to save draft",
+        description: error instanceof Error ? error.message : "Failed to save draft",
         variant: "destructive",
       });
     } finally {
@@ -417,7 +417,7 @@ export const SafetyFormModal = ({
       const result = await submitForm({
         form: {
           projectId,
-          formType: formType as any,
+          formType: formType as "daily_safety_log" | "toolbox_meeting" | "hazard_id" | "incident_report" | "visitor_log",
           title: template.title,
           inspectionDate: formData.date || new Date().toISOString().split("T")[0],
         },
@@ -469,11 +469,11 @@ export const SafetyFormModal = ({
       setSelectedHazards([]);
       onCreate();
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating form:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to create form",
+        description: error instanceof Error ? error.message : "Failed to create form",
         variant: "destructive",
       });
     } finally {

@@ -7,19 +7,31 @@ import { SeverityBadge } from "@/components/SeverityBadge";
 import { normalizeSeverity } from "@/lib/severity";
 import { ShieldAlert, CheckCircle2, ChevronRight } from "lucide-react";
 
+interface IntegrityIssue {
+  severity: string;
+  issue_key?: string;
+  label?: string;
+  project_id?: string;
+  project_name?: string;
+  affected_count?: number;
+}
+
 export function DataIntegrityBannerCard() {
   const navigate = useNavigate();
 
   const { data, isLoading, error } = useDataQualityAudit();
 
-  const issues = Array.isArray(data) ? data : data?.issues || [];
+  const auditData = data as unknown as { issues?: unknown[] } | unknown[];
+  const issues = (
+    Array.isArray(auditData) ? auditData : (auditData?.issues || [])
+  ) as IntegrityIssue[];
   const issueCount = issues.length;
   const hasIssues = issueCount > 0;
 
   // Group by severity
-  const critical = issues.filter((i: any) => i.severity === "high" || i.severity === "critical");
-  const warnings = issues.filter((i: any) => i.severity === "medium" || i.severity === "warning");
-  const info = issues.filter((i: any) => !["high", "critical", "medium", "warning"].includes(i.severity));
+  const critical = issues.filter((i: IntegrityIssue) => i.severity === "high" || i.severity === "critical");
+  const warnings = issues.filter((i: IntegrityIssue) => i.severity === "medium" || i.severity === "warning");
+  const info = issues.filter((i: IntegrityIssue) => !["high", "critical", "medium", "warning"].includes(i.severity));
 
   return (
     <DashboardCard
@@ -48,7 +60,7 @@ export function DataIntegrityBannerCard() {
           {critical.length > 0 && (
             <div className="space-y-1">
               <p className="text-[10px] uppercase tracking-wider text-destructive font-semibold">Critical</p>
-              {critical.slice(0, 3).map((issue: any, i: number) => (
+              {critical.slice(0, 3).map((issue: IntegrityIssue, i: number) => (
                 <IssueRow key={i} issue={issue} severity="critical" onNavigate={navigate} />
               ))}
               {critical.length > 3 && <MoreLabel count={critical.length - 3} />}
@@ -57,7 +69,7 @@ export function DataIntegrityBannerCard() {
           {warnings.length > 0 && (
             <div className="space-y-1">
               <p className="text-[10px] uppercase tracking-wider text-accent-foreground font-semibold">Warnings</p>
-              {warnings.slice(0, 3).map((issue: any, i: number) => (
+              {warnings.slice(0, 3).map((issue: IntegrityIssue, i: number) => (
                 <IssueRow key={i} issue={issue} severity="warning" onNavigate={navigate} />
               ))}
               {warnings.length > 3 && <MoreLabel count={warnings.length - 3} />}
@@ -66,7 +78,7 @@ export function DataIntegrityBannerCard() {
           {info.length > 0 && (
             <div className="space-y-1">
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Info</p>
-              {info.slice(0, 2).map((issue: any, i: number) => (
+              {info.slice(0, 2).map((issue: IntegrityIssue, i: number) => (
                 <IssueRow key={i} issue={issue} severity="info" onNavigate={navigate} />
               ))}
               {info.length > 2 && <MoreLabel count={info.length - 2} />}
@@ -78,7 +90,7 @@ export function DataIntegrityBannerCard() {
   );
 }
 
-function IssueRow({ issue, severity, onNavigate }: { issue: any; severity: string; onNavigate: any }) {
+function IssueRow({ issue, severity, onNavigate }: { issue: IntegrityIssue; severity: string; onNavigate: (path: string) => void }) {
   const label = issue.issue_key?.replace(/_/g, " ") || issue.label || "Unknown issue";
 
   return (

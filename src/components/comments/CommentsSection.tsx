@@ -26,6 +26,15 @@ interface Comment {
   };
 }
 
+interface ProjectMember {
+  user_id: string;
+  profiles: {
+    id: string;
+    full_name: string | null;
+    email: string;
+  } | null;
+}
+
 export const CommentsSection = ({ taskId, deficiencyId, projectId }: CommentsSectionProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -33,7 +42,7 @@ export const CommentsSection = ({ taskId, deficiencyId, projectId }: CommentsSec
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [projectMembers, setProjectMembers] = useState<any[]>([]);
+  const [projectMembers, setProjectMembers] = useState<ProjectMember[]>([]);
 
   useEffect(() => {
     fetchComments();
@@ -77,8 +86,8 @@ export const CommentsSection = ({ taskId, deficiencyId, projectId }: CommentsSec
       const { data, error } = await query;
 
       if (error) throw error;
-      setComments(data || []);
-    } catch (error: any) {
+      setComments((data as unknown as Comment[]) || []);
+    } catch (error) {
       console.error("Error fetching comments:", error);
     } finally {
       setLoading(false);
@@ -93,8 +102,8 @@ export const CommentsSection = ({ taskId, deficiencyId, projectId }: CommentsSec
         .eq("project_id", projectId);
 
       if (error) throw error;
-      setProjectMembers(data || []);
-    } catch (error: any) {
+      setProjectMembers((data as unknown as ProjectMember[]) || []);
+    } catch (error) {
       console.error("Error fetching project members:", error);
     }
   };
@@ -126,10 +135,11 @@ export const CommentsSection = ({ taskId, deficiencyId, projectId }: CommentsSec
         title: "Comment added",
         description: "Your comment has been posted successfully.",
       });
-    } catch (error: any) {
+    } catch (error) {
+      const err = error as Error;
       toast({
         title: "Error posting comment",
-        description: error.message,
+        description: err.message,
         variant: "destructive",
       });
     } finally {
@@ -150,10 +160,11 @@ export const CommentsSection = ({ taskId, deficiencyId, projectId }: CommentsSec
         title: "Comment deleted",
         description: "Your comment has been removed.",
       });
-    } catch (error: any) {
+    } catch (error) {
+      const err = error as Error;
       toast({
         title: "Error deleting comment",
-        description: error.message,
+        description: err.message,
         variant: "destructive",
       });
     }

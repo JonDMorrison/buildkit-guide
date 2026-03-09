@@ -41,9 +41,14 @@ export const EstimateVarianceView = ({ projectId, onClose }: Props) => {
 
   useEffect(() => {
     const load = async () => {
+      const dbRpc = supabase.rpc as unknown as (
+        fn: string,
+        args: Record<string, unknown>
+      ) => Promise<{ data: unknown; error: unknown }>;
+      
       const [varianceResult, baselineResult] = await Promise.all([
         fetchVariance(projectId),
-        (supabase as any).rpc('get_playbook_baseline', { p_project_id: projectId }),
+        dbRpc('get_playbook_baseline', { p_project_id: projectId }),
       ]);
       setData(varianceResult);
       if (baselineResult?.data) {
@@ -52,7 +57,7 @@ export const EstimateVarianceView = ({ projectId, onClose }: Props) => {
       setLoading(false);
     };
     load();
-  }, [projectId]);
+  }, [projectId, fetchVariance]);
 
   const cur = data?.currency || "CAD";
   const fmt = (v: number) =>

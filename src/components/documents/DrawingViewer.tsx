@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { formatDistanceToNow } from "date-fns";
 import {
   Dialog,
@@ -98,6 +98,36 @@ export const DrawingViewer = ({
   const isImage = drawing?.file_type?.startsWith('image/') ?? false;
   const isPDF = drawing?.file_type === 'application/pdf';
 
+  const fetchSignedUrl = useCallback(async () => {
+    setUrlLoading(true);
+    setImageError(false);
+    try {
+      const url = await getSignedUrl(drawing.file_url, 'project-documents');
+      setSignedUrl(url);
+    } catch (error) {
+      console.error('Error fetching signed URL:', error);
+      setSignedUrl(null);
+    }
+    setUrlLoading(false);
+  }, [drawing.file_url]);
+
+  const fetchRevisionHistory = useCallback(async () => {
+    // Find all versions of this drawing by sheet number
+    if (!drawing.sheet_number) {
+      setRevisionHistory([drawing as unknown as DrawingRevision]);
+      return;
+    }
+
+    const { data } = await supabase
+      .from('attachments')
+      .select('*, profiles(full_name)')
+      .eq('project_id', drawing.project_id)
+      .eq('sheet_number', drawing.sheet_number)
+      .order('revision_date', { ascending: false });
+
+    setRevisionHistory((data as unknown as DrawingRevision[]) || [drawing as unknown as DrawingRevision]);
+  }, [drawing, drawing.project_id, drawing.sheet_number]);
+
   useEffect(() => {
     if (open && drawing?.id) {
       // Reset view state when opening new drawing
@@ -110,37 +140,9 @@ export const DrawingViewer = ({
       fetchRevisionHistory();
       fetchSignedUrl();
     }
-  }, [drawing?.id, open]);
+  }, [drawing?.id, open, fetchRevisionHistory, fetchSignedUrl]);
 
-  const fetchSignedUrl = async () => {
-    setUrlLoading(true);
-    setImageError(false);
-    try {
-      const url = await getSignedUrl(drawing.file_url, 'project-documents');
-      setSignedUrl(url);
-    } catch (error) {
-      console.error('Error fetching signed URL:', error);
-      setSignedUrl(null);
-    }
-    setUrlLoading(false);
-  };
 
-  const fetchRevisionHistory = async () => {
-    // Find all versions of this drawing by sheet number
-    if (!drawing.sheet_number) {
-      setRevisionHistory([drawing]);
-      return;
-    }
-
-    const { data } = await supabase
-      .from('attachments')
-      .select('*, profiles(full_name)')
-      .eq('project_id', drawing.project_id)
-      .eq('sheet_number', drawing.sheet_number)
-      .order('revision_date', { ascending: false });
-
-    setRevisionHistory(data || [drawing]);
-  };
 
   const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.25, 4));
   const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.25, 0.25));

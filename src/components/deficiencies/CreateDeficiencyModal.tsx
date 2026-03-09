@@ -22,6 +22,17 @@ interface CreateDeficiencyModalProps {
   projectId?: string;
 }
 
+interface ProjectOption {
+  id: string;
+  name: string;
+}
+
+interface TradeOption {
+  id: string;
+  company_name: string;
+  trade_type: string | null;
+}
+
 export const CreateDeficiencyModal = ({
   isOpen,
   onClose,
@@ -29,8 +40,8 @@ export const CreateDeficiencyModal = ({
   projectId,
 }: CreateDeficiencyModalProps) => {
   const [loading, setLoading] = useState(false);
-  const [projects, setProjects] = useState<any[]>([]);
-  const [trades, setTrades] = useState<any[]>([]);
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
+  const [trades, setTrades] = useState<TradeOption[]>([]);
   const [photos, setPhotos] = useState<File[]>([]);
   const [formData, setFormData] = useState({
     title: "",
@@ -164,11 +175,12 @@ export const CreateDeficiencyModal = ({
       queryClient.invalidateQueries({ queryKey: ['smart-defaults', formData.project_id] });
       onCreate();
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating deficiency:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to create deficiency";
       toast({
         title: "Error",
-        description: error.message || "Failed to create deficiency",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

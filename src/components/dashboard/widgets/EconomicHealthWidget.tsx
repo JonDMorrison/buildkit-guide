@@ -8,6 +8,14 @@ interface EconomicHealthWidgetProps {
   projectId: string | null;
 }
 
+interface MarginControlData {
+  economic_position?: string;
+  projected_margin_at_completion_percent?: number;
+  labor_burn_ratio?: number;
+  risk_score?: number;
+  contract_value?: number;
+}
+
 function useMarginControl(projectId: string | null) {
   return useQuery({
     queryKey: ["dashboard-margin-control", projectId],
@@ -17,7 +25,7 @@ function useMarginControl(projectId: string | null) {
         { p_project_id: projectId }
       );
       if (error) throw error;
-      return data as any;
+      return data as MarginControlData | null;
     },
     enabled: !!projectId,
     staleTime: 5 * 60 * 1000,

@@ -22,6 +22,30 @@ import {
   ChevronRight,
 } from "lucide-react";
 
+interface WorkerBlocker {
+  id: string;
+  is_resolved: boolean;
+  reason: string;
+}
+
+interface WorkerTask {
+  id: string;
+  title: string;
+  status: string;
+  due_date: string | null;
+  assigned_trade?: { name: string } | null;
+  blockers?: WorkerBlocker[] | null;
+}
+
+interface WorkerProject {
+  id: string;
+  name: string;
+  location: string | null;
+  status: string;
+  role: string;
+  trade_name: string | null;
+}
+
 export function WorkerDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -32,7 +56,7 @@ export function WorkerDashboard() {
   const { data: myTasks = [], isLoading: tasksLoading } = useQuery({
     queryKey: ["worker-my-tasks", user?.id, currentProjectId],
     queryFn: async () => {
-      if (!user?.id || !currentProjectId) return [];
+      if (!user?.id || !currentProjectId) return [] as WorkerTask[];
       const { data, error } = await supabase
         .from("tasks")
         .select(`*, assigned_trade:trades(name), task_assignments!inner(user_id), blockers(id, is_resolved, reason)`)
@@ -40,7 +64,7 @@ export function WorkerDashboard() {
         .eq("is_deleted", false)
         .eq("task_assignments.user_id", user.id);
       if (error) throw error;
-      return data || [];
+      return (data as unknown as WorkerTask[]) || [];
     },
     enabled: !!user?.id && !!currentProjectId,
     staleTime: 5 * 60 * 1000,
@@ -51,17 +75,35 @@ export function WorkerDashboard() {
   const { data: userProjects = [], isLoading: projectsLoading } = useQuery({
     queryKey: ["worker-projects", user?.id],
     queryFn: async () => {
-      if (!user?.id) return [];
+      if (!user?.id) return [] as WorkerProject[];
       const { data, error } = await supabase
         .from("project_members")
         .select(`project_id, role, trade:trades(name), projects(id, name, location, status)`)
         .eq("user_id", user.id);
       if (error) throw error;
-      return (data || []).map((pm: any) => ({
-        ...pm.projects,
-        role: pm.role,
-        trade_name: pm.trade?.name || null,
-      })).filter(Boolean);
+
+      interface ProjectMemberRow {
+        project_id: string;
+        role: string;
+        trade?: { name: string } | null;
+        projects: {
+          id: string;
+          name: string;
+          location: string | null;
+          status: string;
+        } | null;
+      }
+
+      return ((data as unknown as ProjectMemberRow[]) || [])
+        .map((pm) => {
+          if (!pm.projects) return null;
+          return {
+            ...pm.projects,
+            role: pm.role,
+            trade_name: pm.trade?.name || null,
+          } as WorkerProject;
+        })
+        .filter((p): p is WorkerProject => p !== null);
     },
     enabled: !!user?.id,
     staleTime: 10 * 60 * 1000,
@@ -88,7 +130,7 @@ export function WorkerDashboard() {
   const activeBlockers = useMemo(() => {
     const all: Array<{ id: string; reason: string; taskTitle: string; type: string }> = [];
     myTasks.forEach(t => {
-      (t.blockers || []).forEach((b: any) => {
+      (t.blockers || []).forEach((b) => {
         if (!b.is_resolved) {
           const reason = (b.reason || "").toLowerCase();
           let type = "other";

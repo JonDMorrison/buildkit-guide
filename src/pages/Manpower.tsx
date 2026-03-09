@@ -14,8 +14,25 @@ import { useCurrentProject } from "@/hooks/useCurrentProject";
 import { ChevronLeft, ChevronRight, Users, CheckCircle, XCircle } from "lucide-react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isSameDay, parseISO } from "date-fns";
 
+interface ManpowerRequest {
+  id: string;
+  status: string;
+  required_date: string;
+  duration_days: number | null;
+  requested_count: number;
+  reason: string;
+  project_id: string;
+  trade_id: string;
+  task_id: string | null;
+  created_by: string;
+  trades: { name: string; company_name: string | null; trade_type: string | null } | null;
+  projects: { name: string } | null;
+  created_by_profile: { full_name: string | null } | null;
+  tasks: { title: string } | null;
+}
+
 export default function Manpower() {
-  const [requests, setRequests] = useState<any[]>([]);
+  const [requests, setRequests] = useState<ManpowerRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [viewMode, setViewMode] = useState<'14day' | 'monthly'>('14day');
@@ -54,8 +71,8 @@ export default function Manpower() {
         .order("required_date", { ascending: true });
 
       if (error) throw error;
-      setRequests(data || []);
-    } catch (error: any) {
+      setRequests((data as unknown as ManpowerRequest[]) || []);
+    } catch (error) {
       console.error("Error fetching manpower requests:", error);
       toast({
         title: "Error",
@@ -79,7 +96,7 @@ export default function Manpower() {
           status: approved ? "approved" : "rejected",
           approved_by: user?.id,
           approved_at: new Date().toISOString(),
-        })
+        } as any) // Status is dynamic string here
         .eq("id", requestId);
 
       if (error) throw error;
@@ -90,7 +107,7 @@ export default function Manpower() {
       });
 
       fetchRequests();
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error updating request:", error);
       toast({
         title: "Error",

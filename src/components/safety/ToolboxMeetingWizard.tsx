@@ -101,13 +101,17 @@ export const ToolboxMeetingWizard = ({ isOpen, onClose, onSuccess }: ToolboxMeet
       if (error) throw error;
 
       const members: Attendee[] = (data || [])
-        .filter((m: any) => m.profiles)
-        .map((m: any) => ({
-          id: m.profiles.id,
-          full_name: m.profiles.full_name || m.profiles.email,
-          email: m.profiles.email,
-          signed: false,
-        }));
+        .map((m) => {
+          const profile = m.profiles as unknown as { id: string; full_name: string | null; email: string };
+          if (!profile) return null;
+          return {
+            id: profile.id,
+            full_name: profile.full_name || profile.email,
+            email: profile.email,
+            signed: false,
+          };
+        })
+        .filter((m): m is Attendee => m !== null);
 
       setProjectMembers(members);
     } catch (error) {

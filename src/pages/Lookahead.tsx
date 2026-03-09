@@ -20,25 +20,40 @@ import { useAuthRole } from "@/hooks/useAuthRole";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
 import { Calendar as CalendarIcon, Sparkles, ChevronLeft, ChevronRight, TrendingUp } from "lucide-react";
 
+interface TaskWithJoins {
+  id: string;
+  title: string;
+  start_date: string | null;
+  end_date: string | null;
+  due_date: string | null;
+  project_id: string;
+  trade_id: string | null;
+  status: string;
+  is_deleted: boolean;
+  trades: { name: string; trade_type: string | null; company_name: string | null } | null;
+  projects: { name: string } | null;
+  _blockerCount?: number;
+}
+
 const Lookahead = () => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { currentProjectId } = useCurrentProject();
   const { can, loading: roleLoading } = useAuthRole(currentProjectId || undefined);
-  const [tasks, setTasks] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<TaskWithJoins[]>([]);
   const [loading, setLoading] = useState(true);
   
   const [startDate, setStartDate] = useState(new Date());
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(false);
-  const [summary, setSummary] = useState<any>(null);
+  const [summary, setSummary] = useState<string | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
-  const [projects, setProjects] = useState<any[]>([]);
+  const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(currentProjectId);
   const [forecastModalOpen, setForecastModalOpen] = useState(false);
   const [forecastLoading, setForecastLoading] = useState(false);
-  const [forecastData, setForecastData] = useState<any>(null);
+  const [forecastData, setForecastData] = useState<any>(null); // Edge function response can stay any or define a complex interface
   const [delayedTaskIds, setDelayedTaskIds] = useState<string[]>([]);
 
   // Sync selectedProjectId with currentProjectId from URL
@@ -143,14 +158,15 @@ const Lookahead = () => {
         }));
 
 
-        setTasks(tasksWithBlockers);
+        setTasks(tasksWithBlockers as unknown as TaskWithJoins[]);
       } else {
         setTasks([]);
       }
-    } catch (error: any) {
+    } catch (error) {
+      const err = error as Error;
       toast({
         title: 'Error loading tasks',
-        description: error.message,
+        description: err.message,
         variant: 'destructive',
       });
     } finally {
@@ -189,15 +205,16 @@ const Lookahead = () => {
       } else {
         setSummary(data.summary);
       }
-    } catch (error: any) {
+    } catch (error) {
+      const err = error as Error;
       toast({
         title: 'Error generating summary',
-        description: error.message,
+        description: err.message,
         variant: 'destructive',
       });
       setSummaryOpen(false);
     } finally {
-      setSummaryLoading(false);
+      setLoading(false);
     }
   };
 
@@ -228,14 +245,15 @@ const Lookahead = () => {
         setForecastData(data.forecast);
         // Extract delayed task IDs for warning indicators
         if (data.forecast?.delayed_tasks) {
-          const ids = data.forecast.delayed_tasks.map((t: any) => t.task_id);
+          const ids = (data.forecast.delayed_tasks as Array<{ task_id: string }>).map((t) => t.task_id);
           setDelayedTaskIds(ids);
         }
       }
-    } catch (error: any) {
+    } catch (error) {
+      const err = error as Error;
       toast({
         title: 'Error forecasting delays',
-        description: error.message,
+        description: err.message,
         variant: 'destructive',
       });
       setForecastModalOpen(false);

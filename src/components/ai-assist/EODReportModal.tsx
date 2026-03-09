@@ -43,11 +43,12 @@ export const EODReportModal = ({
         subject: data.subject || 'Daily Field Report',
         body: data.body || 'Report generation failed.',
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error generating EOD report:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Please try again';
       toast({
         title: 'Error generating report',
-        description: error.message || 'Please try again',
+        description: errorMsg,
         variant: 'destructive',
       });
     } finally {

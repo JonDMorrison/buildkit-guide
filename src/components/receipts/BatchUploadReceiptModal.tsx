@@ -181,12 +181,12 @@ export const BatchUploadReceiptModal = ({
           filePath,
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Process file error:', error);
       updateFileStatus(receiptFile.id, {
         status: 'error',
         progress: 0,
-        error: error.message || 'Upload failed',
+        error: error instanceof Error ? error.message : 'Upload failed',
       });
     }
   };

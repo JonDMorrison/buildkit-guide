@@ -21,13 +21,13 @@ export function EconomicPulseStrip({ projectId }: Props) {
   const { data, isLoading } = useQuery({
     queryKey: ["economic-pulse", projectId],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).rpc("rpc_get_margin_snapshot_history", {
+      const { data, error } = await supabase.rpc("rpc_get_margin_snapshot_history", {
         p_project_id: projectId!,
         p_days: 14,
       });
       if (error) throw error;
       const result = Array.isArray(data) ? data : [];
-      return result as SnapshotEntry[];
+      return result as unknown as SnapshotEntry[];
     },
     enabled: !!projectId,
     staleTime: 5 * 60 * 1000,

@@ -14,7 +14,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   invoice: Invoice | null;
-  onSubmit: (invoiceId: string, payment: Partial<InvoicePayment>) => Promise<any>;
+  onSubmit: (invoiceId: string, payment: Partial<InvoicePayment>) => Promise<void>;
   currencySymbol?: string;
 }
 

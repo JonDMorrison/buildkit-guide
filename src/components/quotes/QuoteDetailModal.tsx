@@ -33,7 +33,7 @@ interface QuoteEvent {
   message: string | null;
   created_at: string;
   actor_user_id: string;
-  metadata: any;
+  metadata: Record<string, any>;
   actor_name?: string;
 }
 
@@ -67,13 +67,13 @@ export const QuoteDetailModal = ({ quote, canEdit, onClose, onUpdated }: Props) 
       setLineItems(items);
 
       // Load events with actor profiles
-      const { data: evts } = await (supabase as any)
-        .from('quote_events')
+      const { data: evts } = await supabase
+        .from('quote_events' as any)
         .select('*')
         .eq('quote_id', quote.id)
         .order('created_at', { ascending: false });
 
-      const rawEvents = (evts as any[]) || [];
+      const rawEvents = (evts as unknown as QuoteEvent[]) || [];
 
       // Fetch actor names
       const actorIds = [...new Set(rawEvents.map(e => e.actor_user_id).filter(Boolean))];

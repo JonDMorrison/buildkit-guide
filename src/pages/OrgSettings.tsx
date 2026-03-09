@@ -43,7 +43,7 @@ export default function OrgSettings() {
     setSandboxToggling(true);
 
     try {
-      const { error } = await supabase.rpc('rpc_set_org_sandbox_mode' as any, {
+      const { error } = await supabase.rpc('rpc_set_org_sandbox_mode', {
         p_org_id: activeOrganizationId,
         p_is_sandbox: checked,
       });
@@ -56,12 +56,13 @@ export default function OrgSettings() {
           ? 'This organization is now marked as sandbox/test data.'
           : 'This organization is now in production mode.',
       });
-    } catch (err: any) {
+    } catch (err) {
+      const error = err as Error;
       // Revert optimistic update
       setOptimisticSandbox(null);
       toast({
         title: 'Failed to update sandbox mode',
-        description: err.message || 'An error occurred.',
+        description: error.message || 'An error occurred.',
         variant: 'destructive',
       });
     } finally {

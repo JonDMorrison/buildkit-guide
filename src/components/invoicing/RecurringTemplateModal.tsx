@@ -23,7 +23,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   clients: Client[];
   projects: { id: string; name: string }[];
-  onSubmit: (template: Partial<RecurringInvoiceTemplate>) => Promise<any>;
+  onSubmit: (template: Partial<RecurringInvoiceTemplate>) => Promise<void>;
   initialData?: RecurringInvoiceTemplate | null;
 }
 
@@ -47,7 +47,7 @@ export const RecurringTemplateModal = ({ open, onOpenChange, clients, projects, 
       setNotes(initialData?.notes || "");
       setLineItems(
         initialData?.line_items?.length
-          ? initialData.line_items.map((li: any) => ({
+          ? (initialData.line_items as unknown as LineItemDraft[]).map((li) => ({
               description: li.description || "",
               quantity: li.quantity || 1,
               unit_price: li.unit_price || 0,
@@ -60,9 +60,9 @@ export const RecurringTemplateModal = ({ open, onOpenChange, clients, projects, 
 
   const addLine = () => setLineItems([...lineItems, defaultLine()]);
   const removeLine = (i: number) => setLineItems(lineItems.filter((_, idx) => idx !== i));
-  const updateLine = (i: number, field: keyof LineItemDraft, value: any) => {
+  const updateLine = <K extends keyof LineItemDraft>(i: number, field: K, value: LineItemDraft[K]) => {
     const updated = [...lineItems];
-    (updated[i] as any)[field] = value;
+    updated[i][field] = value;
     setLineItems(updated);
   };
 
@@ -96,7 +96,7 @@ export const RecurringTemplateModal = ({ open, onOpenChange, clients, projects, 
               <Select value={clientId} onValueChange={setClientId}>
                 <SelectTrigger><SelectValue placeholder="Select client" /></SelectTrigger>
                 <SelectContent>
-                  {clients.filter((c: any) => c.is_active !== false).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  {clients.filter((c) => c.is_active !== false).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

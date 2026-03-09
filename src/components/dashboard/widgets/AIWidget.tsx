@@ -8,9 +8,9 @@ import { supabase } from "@/integrations/supabase/client";
 interface AIWidgetProps {
   projectId: string | null;
   contextData: {
-    tasks: any[];
-    blockers: any[];
-    safetyForms: any[];
+    tasks: unknown[];
+    blockers: unknown[];
+    safetyForms: unknown[];
   };
 }
 
@@ -40,7 +40,7 @@ export const AIWidget = ({ projectId, contextData }: AIWidgetProps) => {
 
       if (error) throw error;
       setAiResponse(data.answer || "No response received.");
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error asking AI:", error);
       setAiResponse("Sorry, I encountered an error processing your question.");
     } finally {

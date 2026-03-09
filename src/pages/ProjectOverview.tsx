@@ -75,6 +75,59 @@ interface ProjectStats {
   safetyCompliance: number;
 }
 
+interface MiniTask {
+  id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  due_date: string | null;
+  trades: {
+    name: string;
+    trade_type: string | null;
+  } | null;
+}
+
+interface ProjectMember {
+  id: string;
+  profiles: {
+    full_name: string | null;
+    email: string;
+  } | null;
+  trades: {
+    name: string;
+    trade_type: string | null;
+    company_name: string | null;
+  } | null;
+}
+
+interface SafetyForm {
+  id: string;
+  title: string;
+  status: string;
+  form_type: string;
+  created_at: string;
+}
+
+interface ProjectAttachment {
+  id: string;
+  file_name: string;
+  file_type: string;
+  file_url: string;
+  document_type: string | null;
+  created_at: string;
+}
+
+interface Deficiency {
+  id: string;
+  title: string;
+  location: string | null;
+  status: string;
+  trades: {
+    name: string;
+    trade_type: string | null;
+  } | null;
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────
 
 const ProjectOverview = () => {
@@ -138,8 +191,9 @@ const ProjectOverview = () => {
         const safetyCompliance = totalForms > 0 ? Math.round((reviewedForms / totalForms) * 100) : 100;
 
         setStats({ totalTasks, completedTasks, blockedTasks, safetyCompliance });
-      } catch (error: any) {
-        toast({ title: 'Error loading project', description: error.message, variant: 'destructive' });
+      } catch (error: unknown) {
+        const errorMsg = error instanceof Error ? error.message : 'An unknown error occurred';
+        toast({ title: 'Error loading project', description: errorMsg, variant: 'destructive' });
         navigate('/');
       } finally {
         setLoading(false);
@@ -158,8 +212,9 @@ const ProjectOverview = () => {
       if (error) throw error;
       toast({ title: 'Project archived', description: 'This project has been archived successfully.' });
       navigate('/');
-    } catch (error: any) {
-      toast({ title: 'Error archiving project', description: error.message, variant: 'destructive' });
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : 'An unknown error occurred';
+      toast({ title: 'Error archiving project', description: errorMsg, variant: 'destructive' });
     } finally {
       setArchiveDialogOpen(false);
     }
@@ -334,7 +389,11 @@ function KebabMenu({
 }: {
   project: Project;
   projectId: string;
-  integrity: any;
+  integrity: {
+    status: string;
+    score: number;
+    blockers: string[];
+  } | null;
   canManageProject: boolean;
   onEditClick: () => void;
   onArchiveClick: () => void;
@@ -358,7 +417,7 @@ function KebabMenu({
           <Select
             value={project.currency || 'CAD'}
             onValueChange={async (val) => {
-              const { error } = await supabase.rpc('rpc_update_project_currency' as any, {
+              const { error } = await supabase.rpc('rpc_update_project_currency', {
                 p_project_id: projectId,
                 p_currency: val,
               });
@@ -430,8 +489,8 @@ function KebabMenu({
 
 function SimplifiedOverviewTab({ projectId, stats }: { projectId: string; stats: ProjectStats | null }) {
   const navigate = useNavigate();
-  const [blockedTasks, setBlockedTasks] = useState<any[]>([]);
-  const [upcomingDeadlines, setUpcomingDeadlines] = useState<any[]>([]);
+  const [blockedTasks, setBlockedTasks] = useState<MiniTask[]>([]);
+  const [upcomingDeadlines, setUpcomingDeadlines] = useState<MiniTask[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -445,7 +504,7 @@ function SimplifiedOverviewTab({ projectId, stats }: { projectId: string; stats:
         .order('created_at', { ascending: false })
         .limit(5);
 
-      setBlockedTasks(blocked || []);
+      setBlockedTasks((blocked as unknown) as MiniTask[] || []);
 
       const today = new Date();
       const nextWeek = new Date();
@@ -461,7 +520,7 @@ function SimplifiedOverviewTab({ projectId, stats }: { projectId: string; stats:
         .order('due_date', { ascending: true })
         .limit(5);
 
-      setUpcomingDeadlines(upcoming || []);
+      setUpcomingDeadlines((upcoming as unknown) as MiniTask[] || []);
       setLoading(false);
     };
 
@@ -477,7 +536,9 @@ function SimplifiedOverviewTab({ projectId, stats }: { projectId: string; stats:
     );
   }
 
-  const attentionItems = [
+  type AttentionItem = MiniTask & { _type: 'blocked' | 'deadline' };
+
+  const attentionItems: AttentionItem[] = [
     ...blockedTasks.map(t => ({ ...t, _type: 'blocked' as const })),
     ...upcomingDeadlines.map(t => ({ ...t, _type: 'deadline' as const })),
   ];
@@ -612,8 +673,9 @@ function DeleteDialog({ open, onOpenChange, projectName, projectId }: {
                 if (error) throw error;
                 toast({ title: 'Project deleted', description: 'The project has been permanently deleted.' });
                 navigate('/');
-              } catch (error: any) {
-                toast({ title: 'Error deleting project', description: error.message, variant: 'destructive' });
+              } catch (error: unknown) {
+                const errorMsg = error instanceof Error ? error.message : 'An unknown error occurred';
+                toast({ title: 'Error deleting project', description: errorMsg, variant: 'destructive' });
               } finally {
                 onOpenChange(false);
               }
@@ -628,30 +690,58 @@ function DeleteDialog({ open, onOpenChange, projectName, projectId }: {
   );
 }
 
-// ── Customer Hierarchy Card (unchanged logic) ──────────────────────────────
+interface Client {
+  id: string;
+  name: string;
+  billing_address: string | null;
+  city: string | null;
+  province: string | null;
+  postal_code: string | null;
+  ap_email: string | null;
+  ap_contact_name: string | null;
+  ap_phone: string | null;
+  gst_number: string | null;
+  pm_contact_name: string | null;
+  pm_email: string | null;
+  pm_phone: string | null;
+  contact_name: string | null;
+  site_contact_name: string | null;
+  site_contact_email: string | null;
+  site_contact_phone: string | null;
+  zones: number;
+  parent_client_id: string | null;
+}
 
 const CustomerHierarchyCard = ({ projectId }: { projectId: string }) => {
-  const [clientData, setClientData] = useState<any>(null);
-  const [parentData, setParentData] = useState<any>(null);
+  const [clientData, setClientData] = useState<Client | null>(null);
+  const [parentData, setParentData] = useState<Client | null>(null);
   const [projectPm, setProjectPm] = useState<{ pm_contact_name: string | null; pm_email: string | null; pm_phone: string | null }>({ pm_contact_name: null, pm_email: null, pm_phone: null });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetch = async () => {
-      const { data: proj } = await supabase
+      const { data: proj, error: projError } = await supabase
         .from('projects')
         .select('client_id, pm_contact_name, pm_email, pm_phone')
         .eq('id', projectId)
         .single();
-      if (!proj) { setLoading(false); return; }
-      setProjectPm({ pm_contact_name: (proj as any).pm_contact_name, pm_email: (proj as any).pm_email, pm_phone: (proj as any).pm_phone });
-      const cid = (proj as any).client_id;
+      
+      if (projError || !proj) { setLoading(false); return; }
+      
+      setProjectPm({ 
+        pm_contact_name: proj.pm_contact_name, 
+        pm_email: proj.pm_email, 
+        pm_phone: proj.pm_phone 
+      });
+      
+      const cid = proj.client_id;
       if (!cid) { setLoading(false); return; }
+      
       const { data: client } = await supabase.from('clients').select('*').eq('id', cid).single();
       if (client) {
         setClientData(client);
-        if ((client as any).parent_client_id) {
-          const { data: parent } = await supabase.from('clients').select('*').eq('id', (client as any).parent_client_id).single();
+        if (client.parent_client_id) {
+          const { data: parent } = await supabase.from('clients').select('*').eq('id', client.parent_client_id).single();
           setParentData(parent);
         }
       }
@@ -710,7 +800,7 @@ const CustomerHierarchyCard = ({ projectId }: { projectId: string }) => {
 // ── Existing Tab Sub-Components (logic unchanged) ──────────────────────────
 
 const ProjectTasks = ({ projectId }: { projectId: string }) => {
-  const [tasks, setTasks] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<MiniTask[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -722,7 +812,7 @@ const ProjectTasks = ({ projectId }: { projectId: string }) => {
         .eq('is_deleted', false)
         .order('created_at', { ascending: false })
         .limit(10);
-      setTasks(data || []);
+      setTasks((data as unknown) as MiniTask[] || []);
       setLoading(false);
     };
     fetchTasks();
@@ -747,8 +837,8 @@ const ProjectTasks = ({ projectId }: { projectId: string }) => {
 };
 
 const ProjectDrawings = ({ projectId }: { projectId: string }) => {
-  const [drawings, setDrawings] = useState<any[]>([]);
-  const [filteredDrawings, setFilteredDrawings] = useState<any[]>([]);
+  const [drawings, setDrawings] = useState<ProjectAttachment[]>([]);
+  const [filteredDrawings, setFilteredDrawings] = useState<ProjectAttachment[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<string>('all');
 
@@ -768,8 +858,8 @@ const ProjectDrawings = ({ projectId }: { projectId: string }) => {
         .eq('project_id', projectId)
         .in('document_type', ['plan', 'drawing', 'blueprint', 'specification'])
         .order('created_at', { ascending: false });
-      setDrawings(data || []);
-      setFilteredDrawings(data || []);
+      setDrawings((data as unknown) as ProjectAttachment[] || []);
+      setFilteredDrawings((data as unknown) as ProjectAttachment[] || []);
       setLoading(false);
     };
     fetchDrawings();
@@ -814,7 +904,7 @@ const ProjectDrawings = ({ projectId }: { projectId: string }) => {
                 <div className="flex flex-col items-center text-center">
                   {doc.file_type?.startsWith('image/') ? <img src={doc.file_url} alt={doc.file_name} className="w-full h-24 object-cover rounded mb-2" /> : <FileText className="h-12 w-12 text-muted-foreground mb-2" />}
                   <p className="text-sm font-medium truncate w-full">{doc.file_name}</p>
-                  <Badge variant="secondary" className="mt-1 capitalize">{doc.document_type}</Badge>
+                  <Badge variant="secondary" className="mt-1 capitalize">{doc.document_type || ''}</Badge>
                   <p className="text-xs text-muted-foreground mt-1">{new Date(doc.created_at).toLocaleDateString()}</p>
                 </div>
               </CardContent>
@@ -827,7 +917,7 @@ const ProjectDrawings = ({ projectId }: { projectId: string }) => {
 };
 
 const ProjectLookahead = ({ projectId }: { projectId: string }) => {
-  const [tasks, setTasks] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<MiniTask[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -841,7 +931,7 @@ const ProjectLookahead = ({ projectId }: { projectId: string }) => {
         .eq('is_deleted', false)
         .lte('due_date', twoWeeksFromNow.toISOString().split('T')[0])
         .order('due_date', { ascending: true });
-      setTasks(data || []);
+      setTasks((data as unknown) as MiniTask[] || []);
       setLoading(false);
     };
     fetchLookahead();
@@ -860,7 +950,7 @@ const ProjectLookahead = ({ projectId }: { projectId: string }) => {
 };
 
 const ProjectTrades = ({ projectId }: { projectId: string }) => {
-  const [members, setMembers] = useState<any[]>([]);
+  const [members, setMembers] = useState<ProjectMember[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -869,7 +959,7 @@ const ProjectTrades = ({ projectId }: { projectId: string }) => {
         .from('project_members')
         .select('*, profiles(full_name, email), trades(name, trade_type, company_name)')
         .eq('project_id', projectId);
-      setMembers(data || []);
+      setMembers((data as unknown) as ProjectMember[] || []);
       setLoading(false);
     };
     fetchMembers();
@@ -888,7 +978,7 @@ const ProjectTrades = ({ projectId }: { projectId: string }) => {
 };
 
 const ProjectSafety = ({ projectId }: { projectId: string }) => {
-  const [safetyForms, setSafetyForms] = useState<any[]>([]);
+  const [safetyForms, setSafetyForms] = useState<SafetyForm[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -900,7 +990,7 @@ const ProjectSafety = ({ projectId }: { projectId: string }) => {
         .eq('is_deleted', false)
         .order('created_at', { ascending: false })
         .limit(10);
-      setSafetyForms(data || []);
+      setSafetyForms((data as unknown) as SafetyForm[] || []);
       setLoading(false);
     };
     fetchSafety();
@@ -919,7 +1009,7 @@ const ProjectSafety = ({ projectId }: { projectId: string }) => {
 };
 
 const ProjectDocuments = ({ projectId }: { projectId: string }) => {
-  const [documents, setDocuments] = useState<any[]>([]);
+  const [documents, setDocuments] = useState<ProjectAttachment[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -930,7 +1020,7 @@ const ProjectDocuments = ({ projectId }: { projectId: string }) => {
         .eq('project_id', projectId)
         .order('created_at', { ascending: false })
         .limit(10);
-      setDocuments(data || []);
+      setDocuments((data as unknown) as ProjectAttachment[] || []);
       setLoading(false);
     };
     fetchDocuments();
@@ -949,7 +1039,7 @@ const ProjectDocuments = ({ projectId }: { projectId: string }) => {
 };
 
 const ProjectDeficiencies = ({ projectId }: { projectId: string }) => {
-  const [deficiencies, setDeficiencies] = useState<any[]>([]);
+  const [deficiencies, setDeficiencies] = useState<Deficiency[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -961,7 +1051,7 @@ const ProjectDeficiencies = ({ projectId }: { projectId: string }) => {
         .eq('is_deleted', false)
         .order('created_at', { ascending: false })
         .limit(10);
-      setDeficiencies(data || []);
+      setDeficiencies((data as unknown) as Deficiency[] || []);
       setLoading(false);
     };
     fetchDeficiencies();

@@ -103,7 +103,7 @@ export const SnapshotDetailModal = ({
                       </div>
                     </div>
                     {task.assigned_trade && (
-                      <TradeBadge trade={task.assigned_trade.trade_type as any} />
+                        <TradeBadge trade={task.assigned_trade.trade_type || "general"} />
                     )}
                   </div>
                 </div>

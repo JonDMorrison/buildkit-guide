@@ -82,14 +82,15 @@ export const SendInvoiceModal = ({ open, onOpenChange, invoice, settings, client
 
       await supabase
         .from('invoices')
-        .update({ send_to_emails: validEmails.join(", ") } as any)
+        .update({ send_to_emails: validEmails.join(", ") })
         .eq('id', invoice.id);
 
       toast({ title: "Invoice sent successfully!" });
       onSent?.();
       onOpenChange(false);
-    } catch (err: any) {
-      toast({ title: "Failed to send", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast({ title: "Failed to send", description: msg, variant: "destructive" });
     }
     setLoading(false);
   };
@@ -108,7 +109,7 @@ export const SendInvoiceModal = ({ open, onOpenChange, invoice, settings, client
   };
 
   // Derive projectId from invoice
-  const projectId = (invoice as any)?.project_id;
+  const projectId = invoice.project_id;
 
   return (
     <>

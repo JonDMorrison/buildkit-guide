@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Loader2, Copy, Check, Mail, AlertTriangle } from "lucide-react";
@@ -27,7 +27,7 @@ export const EscalationEmailModal = ({
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
 
-  const generateEmail = async () => {
+  const generateEmail = useCallback(async () => {
     setLoading(true);
     setEmail(null);
     
@@ -48,24 +48,25 @@ export const EscalationEmailModal = ({
         body: data.body || 'Email generation failed.',
         recipient: data.recipient_suggestion || 'General Contractor',
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error generating escalation email:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Please try again';
       toast({
         title: 'Error generating email',
-        description: error.message || 'Please try again',
+        description: errorMsg,
         variant: 'destructive',
       });
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId, blockerId, toast]);
 
   // Generate when modal opens
   useEffect(() => {
     if (open && !email && !loading) {
       generateEmail();
     }
-  }, [open]);
+  }, [open, email, loading, generateEmail]);
 
   // Reset when modal closes
   useEffect(() => {

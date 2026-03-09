@@ -280,8 +280,12 @@ export const SafetyFormDetailModal = ({
 
       toast({ title: "Form marked as reviewed" });
       fetchFormDetails();
-    } catch (error: any) {
-      toast({ title: "Failed to mark as reviewed", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ 
+        title: "Failed to mark as reviewed", 
+        description: error instanceof Error ? error.message : "An error occurred", 
+        variant: "destructive" 
+      });
     } finally {
       setMarkingReviewed(false);
     }

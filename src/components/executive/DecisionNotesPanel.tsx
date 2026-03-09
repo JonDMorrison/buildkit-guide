@@ -261,7 +261,7 @@ export function DecisionNotesPanel({
     const t = val as Template;
     setTemplate(t);
     setBody(TEMPLATES[t].outline);
-  }, [viewingNote]);
+  }, [viewingNote, setBody]);
 
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(fullText).then(() => {
@@ -285,7 +285,7 @@ export function DecisionNotesPanel({
   const handleClear = useCallback(() => {
     setViewingNote(null);
     setBody(TEMPLATES[template].outline);
-  }, [template]);
+  }, [template, setBody]);
 
   const handleSave = useCallback(() => { persistNote(); }, [persistNote]);
 
@@ -295,13 +295,13 @@ export function DecisionNotesPanel({
     setViewingNote(note);
     setTemplate(note.templateType);
     setBody(note.body);
-  }, []);
+  }, [setBody]);
 
   const handleDuplicate = useCallback((note: DisplayNote) => {
     setViewingNote(null);
     setTemplate(note.templateType);
     setBody(note.body);
-  }, []);
+  }, [setBody]);
 
   const handleDeleteNote = useCallback(async (note: DisplayNote) => {
     if (confirmDeleteId !== note.id) {
@@ -320,7 +320,7 @@ export function DecisionNotesPanel({
       setViewingNote(null);
       setBody(TEMPLATES[template].outline);
     }
-  }, [confirmDeleteId, deleteNote, localNotes, orgId, viewingNote, template]);
+  }, [confirmDeleteId, deleteNote, localNotes, orgId, viewingNote, template, setBody]);
 
   useEffect(() => {
     if (confirmDeleteId) {

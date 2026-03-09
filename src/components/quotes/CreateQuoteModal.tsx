@@ -75,7 +75,7 @@ export const CreateQuoteModal = ({ onClose, onCreated }: Props) => {
         .select('id, name')
         .eq('is_deleted', false)
         .order('name');
-      setProjects((data as any[]) || []);
+      setProjects((data as { id: string; name: string }[]) || []);
     };
     load();
   }, []);
@@ -115,24 +115,24 @@ export const CreateQuoteModal = ({ onClose, onCreated }: Props) => {
         .eq('id', projectId)
         .single();
       if (data) {
-        setShipToName((data as any).name || "");
-        setShipToAddress((data as any).location || (data as any).billing_address || "");
+        setShipToName(data.name || "");
+        setShipToAddress(data.location || data.billing_address || "");
         // Project-level PM override takes precedence over client PM
-        if ((data as any).pm_email) {
-          setCustomerPmEmail((data as any).pm_email);
+        if (data.pm_email) {
+          setCustomerPmEmail(data.pm_email);
         }
-        if ((data as any).pm_contact_name) {
-          setCustomerPmName((data as any).pm_contact_name);
+        if (data.pm_contact_name) {
+          setCustomerPmName(data.pm_contact_name);
         }
-        if ((data as any).pm_phone) {
-          setCustomerPmPhone((data as any).pm_phone);
+        if (data.pm_phone) {
+          setCustomerPmPhone(data.pm_phone);
         }
       }
     };
     load();
   }, [projectId]);
 
-  const updateLine = (idx: number, field: string, value: any) => {
+  const updateLine = <K extends keyof LineDraft>(idx: number, field: K, value: LineDraft[K]) => {
     setLineItems(prev => prev.map((li, i) => i === idx ? { ...li, [field]: value } : li));
   };
 
@@ -286,16 +286,16 @@ export const CreateQuoteModal = ({ onClose, onCreated }: Props) => {
                           <Input className="h-8 text-sm" value={li.description} onChange={e => updateLine(idx, 'description', e.target.value)} placeholder="Description" />
                         </TableCell>
                         <TableCell>
-                          <Input className="h-8 text-sm" type="number" value={li.quantity} onChange={e => updateLine(idx, 'quantity', e.target.value)} />
+                          <Input className="h-8 text-sm" type="number" value={li.quantity} onChange={e => updateLine(idx, 'quantity', Number(e.target.value))} />
                         </TableCell>
                         <TableCell>
-                          <Input className="h-8 text-sm" type="number" value={li.rate} onChange={e => updateLine(idx, 'rate', e.target.value)} />
+                          <Input className="h-8 text-sm" type="number" value={li.rate} onChange={e => updateLine(idx, 'rate', Number(e.target.value))} />
                         </TableCell>
                         <TableCell className="text-right text-sm font-medium">
                           {formatCurrency(amt)}
                         </TableCell>
                         <TableCell>
-                          <Input className="h-8 text-sm" type="number" value={li.sales_tax_rate} onChange={e => updateLine(idx, 'sales_tax_rate', e.target.value)} />
+                          <Input className="h-8 text-sm" type="number" value={li.sales_tax_rate} onChange={e => updateLine(idx, 'sales_tax_rate', Number(e.target.value))} />
                         </TableCell>
                         <TableCell>
                           {lineItems.length > 1 && (

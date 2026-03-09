@@ -38,7 +38,7 @@ export const useAIInsight = (projectId: string | null, enabled = true) => {
     setState(s => ({ ...s, loading: true, error: null }));
 
     let query = supabase
-      .from("ai_insights" as any)
+      .from("ai_insights")
       .select("content, snapshot_date, created_at")
       .eq("organization_id", activeOrganizationId)
       .eq("insight_type", "weekly_summary")
@@ -58,10 +58,10 @@ export const useAIInsight = (projectId: string | null, enabled = true) => {
       return;
     }
 
-    const row = (data as any)?.[0];
+    const row = data?.[0];
     if (row) {
       setState({
-        content: row.content as AIInsightContent,
+        content: (row.content as unknown) as AIInsightContent,
         loading: false,
         generating: false,
         error: null,
@@ -108,8 +108,9 @@ export const useAIInsight = (projectId: string | null, enabled = true) => {
       } else if (data?.message) {
         setState(s => ({ ...s, generating: false, error: data.message }));
       }
-    } catch (e: any) {
-      setState(s => ({ ...s, generating: false, error: e.message }));
+    } catch (e: unknown) {
+      const errorMsg = e instanceof Error ? e.message : "An unknown error occurred";
+      setState(s => ({ ...s, generating: false, error: errorMsg }));
     }
   }, [activeOrganizationId, projectId]);
 

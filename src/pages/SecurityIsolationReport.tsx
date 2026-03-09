@@ -83,7 +83,7 @@ async function runTableTest(
     }
 
     const rowCount = count ?? (data?.length || 0);
-    const sampleIds = (data || []).map((r: any) => r.id).slice(0, 3);
+    const sampleIds = (data as unknown as Array<{ id: string }> || []).map((r) => r.id).slice(0, 3);
 
     if (userOrgIds.length === 0) {
       return {
@@ -106,14 +106,15 @@ async function runTableTest(
       pass: true,
       reason: `${rowCount} rows visible, scoped to ${userOrgIds.length} org(s)`,
     };
-  } catch (e: any) {
+  } catch (e) {
+    const error = e as Error;
     return {
       table: tableName,
       rowCount: 0,
       sampleIds: [],
       pass: true,
       reason: "Exception treated as denied",
-      error: e.message,
+      error: error.message,
     };
   }
 }
@@ -175,7 +176,7 @@ async function runCrossOrgProbe(
     }
 
     const rowCount = count ?? (data?.length || 0);
-    const sampleIds = (data || []).map((r: any) => r.id).slice(0, 3);
+    const sampleIds = (data as unknown as Array<{ id: string }> || []).map((r) => r.id).slice(0, 3);
 
     if (!isMember) {
       return {
@@ -199,14 +200,15 @@ async function runCrossOrgProbe(
       reason: `Member of org → ${rowCount} rows visible (expected)`,
       targetOrgId,
     };
-  } catch (e: any) {
+  } catch (e) {
+    const error = e as Error;
     return {
       table: tableName,
       rowCount: 0,
       sampleIds: [],
       pass: true,
       reason: "Exception treated as denied",
-      error: e.message,
+      error: error.message,
       targetOrgId,
     };
   }

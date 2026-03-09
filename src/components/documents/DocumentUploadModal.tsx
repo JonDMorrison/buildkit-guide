@@ -42,7 +42,12 @@ export const DocumentUploadModal = ({
   const [documentType, setDocumentType] = useState<string>("other");
   const [dragActive, setDragActive] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string>(projectId || "");
-  const [projects, setProjects] = useState<any[]>([]);
+  interface Project {
+    id: string;
+    name: string;
+  }
+
+  const [projects, setProjects] = useState<Project[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useState(() => {
@@ -203,11 +208,12 @@ export const DocumentUploadModal = ({
       if (onUploadComplete) {
         onUploadComplete();
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error uploading document:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to upload document. Please try again.";
       toast({
         title: "Upload failed",
-        description: error.message || "Failed to upload document. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

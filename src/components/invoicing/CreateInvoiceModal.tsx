@@ -38,7 +38,7 @@ interface Props {
   defaultPaymentTerms: string;
   notesTemplate: string;
   paymentInstructions: string;
-  onSubmit: (invoice: Partial<Invoice>, lineItems: Partial<InvoiceLineItem>[]) => Promise<any>;
+  onSubmit: (invoice: Partial<Invoice>, lineItems: Partial<InvoiceLineItem>[]) => Promise<void>;
   onAddClient?: () => void;
   initialLineItems?: LineItemDraft[];
   initialProjectId?: string;
@@ -77,7 +77,7 @@ export const CreateInvoiceModal = ({
       setProgressPercent(0);
       setRetainagePercent(0);
     }
-  }, [open, initialLineItems, initialProjectId]);
+  }, [open, initialLineItems, initialProjectId, notesTemplate]);
 
   // Auto-populate client when project is selected
   useEffect(() => {
@@ -122,9 +122,9 @@ export const CreateInvoiceModal = ({
 
   const addLine = () => setLineItems([...lineItems, defaultLine()]);
   const removeLine = (i: number) => setLineItems(lineItems.filter((_, idx) => idx !== i));
-  const updateLine = (i: number, field: keyof LineItemDraft, value: any) => {
+  const updateLine = <K extends keyof LineItemDraft>(i: number, field: K, value: LineItemDraft[K]) => {
     const updated = [...lineItems];
-    (updated[i] as any)[field] = value;
+    updated[i][field] = value;
     setLineItems(updated);
   };
 
@@ -141,7 +141,7 @@ export const CreateInvoiceModal = ({
       tax_amount: taxAmount,
       total,
       notes: notes || null,
-      invoice_type: invoiceType as any,
+      invoice_type: invoiceType as "standard" | "progress" | "deposit",
       po_number: poNumber || null,
       retainage_percent: retainagePercent,
       retainage_amount: retainageAmount,

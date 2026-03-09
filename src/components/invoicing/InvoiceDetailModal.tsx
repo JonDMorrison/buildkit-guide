@@ -70,14 +70,23 @@ export const InvoiceDetailModal = ({
       setEditNotes(invoice.notes || "");
       fetchPayments(invoice.id);
     }
-  }, [open, invoice, lineItems]);
+  }, [open, invoice, lineItems, fetchPayments]);
 
   if (!invoice) return null;
+
+  const extInvoice = invoice as Invoice & {
+    invoice_type?: string;
+    contract_total?: number;
+    progress_percent?: number;
+    retainage_amount?: number;
+    retainage_percent?: number;
+    retainage_released?: boolean;
+  };
 
   const sc = statusConfig[invoice.status] || statusConfig.draft;
   const canEdit = invoice.status === "draft";
   const isCreditNote = !!invoice.credit_note_for;
-  const invType = (invoice as any).invoice_type || "standard";
+  const invType = extInvoice.invoice_type || "standard";
 
   const subtotal = editItems.reduce((s, li) => s + (Number(li.quantity) || 0) * (Number(li.unit_price) || 0), 0);
   const taxAmount = Math.round(subtotal * ((settings?.tax_rate || 0) / 100) * 100) / 100;
@@ -88,9 +97,9 @@ export const InvoiceDetailModal = ({
 
   const addLine = () => setEditItems([...editItems, { description: "", quantity: 1, unit_price: 0, category: "other" }]);
   const removeLine = (i: number) => setEditItems(editItems.filter((_, idx) => idx !== i));
-  const updateLine = (i: number, field: string, value: any) => {
+  const updateLine = <K extends keyof InvoiceLineItem>(i: number, field: K, value: Partial<InvoiceLineItem>[K]) => {
     const updated = [...editItems];
-    (updated[i] as any)[field] = value;
+    updated[i][field] = value;
     setEditItems(updated);
   };
 
@@ -248,11 +257,11 @@ export const InvoiceDetailModal = ({
               <div className="bg-muted/50 rounded-lg p-3 text-sm space-y-1">
                 <Label className="text-sm font-semibold">Progress Billing</Label>
                 <div className="grid grid-cols-3 gap-2">
-                  <div><span className="text-muted-foreground">Contract: </span><span className="font-medium">{fmt(Number((invoice as any).contract_total))}</span></div>
-                  <div><span className="text-muted-foreground">Progress: </span><span className="font-medium">{(invoice as any).progress_percent}%</span></div>
-                  <div><span className="text-muted-foreground">Holdback: </span><span className="font-medium">{fmt(Number((invoice as any).retainage_amount))}</span></div>
+                  <div><span className="text-muted-foreground">Contract: </span><span className="font-medium">{fmt(Number(extInvoice.contract_total))}</span></div>
+                  <div><span className="text-muted-foreground">Progress: </span><span className="font-medium">{extInvoice.progress_percent}%</span></div>
+                  <div><span className="text-muted-foreground">Holdback: </span><span className="font-medium">{fmt(Number(extInvoice.retainage_amount))}</span></div>
                 </div>
-                {(invoice as any).retainage_released && (
+                {extInvoice.retainage_released && (
                   <Badge variant="outline" className="mt-1">Holdback Released</Badge>
                 )}
               </div>
@@ -344,10 +353,10 @@ export const InvoiceDetailModal = ({
                 <span className="text-muted-foreground">Subtotal</span>
                 <span className="font-medium">{fmt(editing ? subtotal : Number(invoice.subtotal))}</span>
               </div>
-              {Number((invoice as any).retainage_amount) > 0 && !editing && (
+              {Number(extInvoice.retainage_amount) > 0 && !editing && (
                 <div className="flex gap-8">
-                  <span className="text-muted-foreground">Holdback ({(invoice as any).retainage_percent}%)</span>
-                  <span className="font-medium text-amber-600">-{fmt(Number((invoice as any).retainage_amount))}</span>
+                  <span className="text-muted-foreground">Holdback ({extInvoice.retainage_percent}%)</span>
+                  <span className="font-medium text-amber-600">-{fmt(Number(extInvoice.retainage_amount))}</span>
                 </div>
               )}
               {Number(editing ? taxAmount : invoice.tax_amount) > 0 && (

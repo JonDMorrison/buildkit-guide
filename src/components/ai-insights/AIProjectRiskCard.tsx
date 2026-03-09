@@ -12,6 +12,13 @@ interface Props {
   projectId: string | null;
 }
 
+interface RiskAssessmentData {
+  risk_score: number;
+  economic_position: 'stable' | 'volatile' | 'at_risk';
+  executive_summary: string | null;
+  risk_components: Record<string, number>;
+}
+
 export function AIProjectRiskCard({ projectId }: Props) {
   const { activeOrganizationId: orgId } = useOrganization();
   const queryClient = useQueryClient();
@@ -21,7 +28,7 @@ export function AIProjectRiskCard({ projectId }: Props) {
     queryKey: ['ai-risk-snapshot-count', projectId],
     queryFn: async () => {
       const { count, error } = await supabase
-        .from('project_economic_snapshots' as any)
+        .from('project_economic_snapshots')
         .select('id', { count: 'exact', head: true })
         .eq('project_id', projectId!);
       if (error) throw error;
@@ -36,12 +43,12 @@ export function AIProjectRiskCard({ projectId }: Props) {
   const { data: riskData, isLoading: riskLoading } = useQuery({
     queryKey: ['ai-project-risk', projectId],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).rpc(
+      const { data, error } = await supabase.rpc(
         'rpc_generate_project_margin_control',
         { p_project_id: projectId },
       );
       if (error) throw error;
-      return data as any;
+      return (data as unknown) as RiskAssessmentData;
     },
     enabled: !!projectId && hasEnoughSnapshots,
     staleTime: 5 * 60 * 1000,
@@ -53,7 +60,7 @@ export function AIProjectRiskCard({ projectId }: Props) {
     if (!orgId) return;
     setGenerating(true);
     try {
-      const { error } = await (supabase as any).rpc(
+      const { error } = await supabase.rpc(
         'rpc_capture_org_economic_snapshots',
         { p_org_id: orgId, p_force: true },
       );
@@ -62,8 +69,9 @@ export function AIProjectRiskCard({ projectId }: Props) {
       // Invalidate to re-check snapshot count
       queryClient.invalidateQueries({ queryKey: ['ai-risk-snapshot-count', projectId] });
       queryClient.invalidateQueries({ queryKey: ['ai-project-risk', projectId] });
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to generate analysis data');
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to generate analysis data';
+      toast.error(errorMsg);
     } finally {
       setGenerating(false);
     }

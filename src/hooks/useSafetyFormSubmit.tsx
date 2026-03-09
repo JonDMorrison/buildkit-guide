@@ -11,7 +11,9 @@ export type SafetyFormType =
   | 'right_to_refuse'
   | 'site_inspection'
   | 'incident_report'
-  | 'jha';
+  | 'jha'
+  | 'hazard_id'
+  | 'visitor_log';
 
 interface SafetyFormData {
   projectId: string;

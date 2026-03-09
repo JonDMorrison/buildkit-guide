@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useRouteAccess } from "@/hooks/useRouteAccess";
 import { useSnapshotCoverageReport } from "@/hooks/rpc/useSnapshotCoverageReport";
-import { useDataQualityAudit } from "@/hooks/rpc/useDataQualityAudit";
+import { useDataQualityAudit, QualityAuditRow, QualityIssue } from "@/hooks/rpc/useDataQualityAudit";
 import { DashboardCard } from "@/components/dashboard/shared/DashboardCard";
 import { DashboardGrid } from "@/components/dashboard/shared/DashboardGrid";
 import { ConfidenceRibbon } from "@/components/ConfidenceRibbon";
@@ -94,15 +94,14 @@ function DashboardMissionControlContent({ canViewExecutive, canViewDiagnostics }
   // Coverage %
   const coveragePercent = (() => {
     if (!coverageData) return null;
-    // The shared hook normalizes to SnapshotCoverageData which has coverage_percent
-    return (coverageData as any).coverage_percent ?? (coverageData as any).coverage_pct ?? null;
+    return coverageData.coverage_percent ?? null;
   })();
 
   // Projects with quality issues
   const qualityIssueCount = (() => {
     if (!qualityData) return null;
     if (Array.isArray(qualityData)) {
-      return qualityData.filter((row: any) => {
+      return qualityData.filter((row: QualityAuditRow) => {
         const issues = row.issues ?? row.issue_count ?? 0;
         return Array.isArray(issues) ? issues.length > 0 : Number(issues) > 0;
       }).length;
@@ -118,7 +117,7 @@ function DashboardMissionControlContent({ canViewExecutive, canViewDiagnostics }
       const issues = row.issues ?? [];
       if (Array.isArray(issues)) {
         for (const issue of issues) {
-          const cat = typeof issue === "string" ? issue : issue.category ?? issue.type ?? "Unknown";
+          const cat = typeof issue === "string" ? issue : (issue as QualityIssue).category ?? (issue as QualityIssue).type ?? "Unknown";
           categoryMap.set(cat, (categoryMap.get(cat) || 0) + 1);
         }
       }

@@ -8,6 +8,20 @@ import { AlertTriangle, CheckCircle2, Receipt, ShieldAlert } from "lucide-react"
 import { useNavigate } from "react-router-dom";
 import { formatNumber } from "@/lib/formatters";
 
+interface IntegrityIssue {
+  issue_key: string;
+  project_id?: string;
+  project_name?: string;
+  severity: string;
+}
+
+interface RiskSummary {
+  data_integrity: {
+    issue_count: number;
+    issues: IntegrityIssue[];
+  };
+}
+
 export function DataIntegrityBanner() {
   const { activeOrganizationId } = useOrganization();
   const navigate = useNavigate();
@@ -15,11 +29,16 @@ export function DataIntegrityBanner() {
   const { data, isLoading } = useQuery({
     queryKey: ["data-integrity-banner", activeOrganizationId],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).rpc("rpc_executive_risk_summary", {
+      const dbRpc = supabase.rpc as unknown as (
+        fn: string,
+        args: Record<string, unknown>
+      ) => Promise<{ data: unknown; error: { message: string } | null }>;
+
+      const { data, error } = await dbRpc("rpc_executive_risk_summary", {
         p_org_id: activeOrganizationId!,
       });
-      if (error) throw error;
-      return data as any;
+      if (error) throw new Error(error.message);
+      return data as RiskSummary;
     },
     enabled: !!activeOrganizationId,
     staleTime: 10 * 60 * 1000,
@@ -33,7 +52,7 @@ export function DataIntegrityBanner() {
 
   // Count receipts-related issues (unclassified receipts)
   const receiptIssues = issues.filter(
-    (i: any) => i.issue_key === "unclassified_receipts" || i.issue_key === "missing_receipt_category"
+    (i: IntegrityIssue) => i.issue_key === "unclassified_receipts" || i.issue_key === "missing_receipt_category"
   );
 
   return (
@@ -56,11 +75,11 @@ export function DataIntegrityBanner() {
               {issueCount > 0 && (
                 <div className="flex gap-1.5 ml-2">
                   {issues
-                    .filter((i: any, idx: number, arr: any[]) =>
-                      arr.findIndex((x: any) => x.issue_key === i.issue_key) === idx
+                    .filter((i: IntegrityIssue, idx: number, arr: IntegrityIssue[]) =>
+                      arr.findIndex((x: IntegrityIssue) => x.issue_key === i.issue_key) === idx
                     )
                     .slice(0, 3)
-                    .map((i: any) => (
+                    .map((i: IntegrityIssue) => (
                       <Badge
                         key={i.issue_key}
                         variant="outline"
@@ -96,7 +115,7 @@ export function DataIntegrityBanner() {
                 </Badge>
               </div>
               <div className="flex gap-1.5">
-                {receiptIssues.slice(0, 3).map((r: any) => (
+                {receiptIssues.slice(0, 3).map((r: IntegrityIssue) => (
                   <Badge
                     key={r.project_id}
                     variant="secondary"

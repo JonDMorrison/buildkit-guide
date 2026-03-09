@@ -64,7 +64,7 @@ export const EstimateDetailModal = ({ estimate, canEdit, onClose, onUpdated }: P
       setLoading(false);
     };
     load();
-  }, [estimate.id]);
+  }, [estimate.id, fetchLineItems]);
 
   const isDraft = estimate.status === "draft";
   const subtotal = lineItems.reduce((s, li) => s + li.amount, 0);

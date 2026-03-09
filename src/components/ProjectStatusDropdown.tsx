@@ -60,8 +60,9 @@ export function ProjectStatusDropdown({
       if (error) throw error;
       onStatusChanged(newStatus);
       toast({ title: 'Status updated', description: `Project status set to ${newStatus.replace(/_/g, ' ')}.` });
-    } catch (err: any) {
-      toast({ title: 'Failed to update status', description: err.message, variant: 'destructive' });
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'An unknown error occurred';
+      toast({ title: 'Failed to update status', description: errorMsg, variant: 'destructive' });
     } finally {
       setUpdating(false);
       setPendingStatus(null);

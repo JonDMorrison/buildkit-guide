@@ -264,9 +264,10 @@ export function useSafetyLogAutoFill(projectId: string | null) {
 
       // Extract unique trade types
       const tradeTypes = new Set<string>();
-      members?.forEach((member: any) => {
-        if (member.trades?.trade_type) {
-          tradeTypes.add(member.trades.trade_type);
+      members?.forEach((member) => {
+        const trade = member.trades as unknown as { trade_type: string | null };
+        if (trade?.trade_type) {
+          tradeTypes.add(trade.trade_type);
         }
       });
 

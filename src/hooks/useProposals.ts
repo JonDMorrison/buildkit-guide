@@ -23,7 +23,7 @@ export const useProposals = () => {
     if (error) {
       toast({ title: 'Error loading proposals', description: error.message, variant: 'destructive' });
     }
-    const mapped = ((data as any[]) || []).map((p: any) => ({
+    const mapped = ((data as unknown as (Proposal & { projects: any; estimates: any })[]) || []).map((p) => ({
       ...p,
       project: p.projects || null,
       estimate: p.estimates || null,
@@ -36,15 +36,20 @@ export const useProposals = () => {
 
   const createProposal = async (proposal: Partial<Proposal>) => {
     if (!activeOrganizationId || !user) return null;
+    
+    // Omit joined fields and other extra properties
+    const { project, estimate, ...cleanProposal } = proposal;
+    
     const { data, error } = await supabase
       .from('proposals')
       .insert({
-        ...proposal,
+        ...cleanProposal,
         organization_id: activeOrganizationId,
         created_by: user.id,
-      } as any)
+      } as any) // We use 'as any' here because Supabase generated types are very strict with required fields which Partial<Proposal> might not satisfy at compile-time, but UI ensures they are present.
       .select()
       .single();
+      
     if (error) {
       toast({ title: 'Error creating proposal', description: error.message, variant: 'destructive' });
       return null;
@@ -52,20 +57,21 @@ export const useProposals = () => {
     // Log event
     if (data) {
       await supabase.from('proposal_events').insert({
-        proposal_id: (data as any).id,
+        proposal_id: data.id,
         actor_user_id: user.id,
         event_type: 'created',
         message: 'Proposal created',
-      } as any);
+      });
     }
     await fetchProposals();
     return data;
   };
 
   const updateProposal = async (id: string, updates: Partial<Proposal>) => {
+    const { project, estimate, ...cleanUpdates } = updates;
     const { error } = await supabase
       .from('proposals')
-      .update(updates as any)
+      .update(cleanUpdates as any)
       .eq('id', id);
     if (error) {
       toast({ title: 'Error updating proposal', description: error.message, variant: 'destructive' });
@@ -77,7 +83,7 @@ export const useProposals = () => {
         actor_user_id: user.id,
         event_type: 'updated',
         message: 'Proposal updated',
-      } as any);
+      });
     }
     await fetchProposals();
     return true;
@@ -87,7 +93,7 @@ export const useProposals = () => {
     if (!user) return false;
     const { error } = await supabase
       .from('proposals')
-      .update({ status: 'submitted', submitted_at: new Date().toISOString() } as any)
+      .update({ status: 'submitted', submitted_at: new Date().toISOString() })
       .eq('id', id);
     if (error) {
       toast({ title: 'Error submitting proposal', description: error.message, variant: 'destructive' });
@@ -98,10 +104,10 @@ export const useProposals = () => {
       actor_user_id: user.id,
       event_type: 'submitted',
       message: 'Proposal submitted for approval',
-    } as any);
+    });
 
     // Create notifications for approvers (PM/Admin on the project)
-    const proposal = proposals.find(p => p.id === id);
+    const proposal = proposals.find((p) => p.id === id);
     if (proposal) {
       const { data: members } = await supabase
         .from('project_members')
@@ -120,7 +126,7 @@ export const useProposals = () => {
             link_url: '/proposals',
           }));
         if (notifs.length > 0) {
-          await supabase.from('notifications').insert(notifs as any);
+          await supabase.from('notifications').insert(notifs as any[]);
         }
       }
     }
@@ -138,7 +144,7 @@ export const useProposals = () => {
         status: 'approved',
         approved_at: new Date().toISOString(),
         approved_by: user.id,
-      } as any)
+      })
       .eq('id', id);
     if (error) {
       toast({ title: 'Error approving proposal', description: error.message, variant: 'destructive' });
@@ -149,7 +155,7 @@ export const useProposals = () => {
       actor_user_id: user.id,
       event_type: 'approved',
       message: 'Proposal approved',
-    } as any);
+    });
 
     // Notify creator
     const proposal = proposals.find(p => p.id === id);
@@ -161,7 +167,7 @@ export const useProposals = () => {
         title: 'Proposal Approved',
         message: `"${proposal.title}" has been approved. Create a Quote or proceed to Scope.`,
         link_url: '/proposals',
-      } as any);
+      });
     }
 
     toast({ title: 'Proposal approved' });
@@ -176,7 +182,7 @@ export const useProposals = () => {
       .update({
         status: 'rejected',
         rejected_reason: reason,
-      } as any)
+      })
       .eq('id', id);
     if (error) {
       toast({ title: 'Error rejecting proposal', description: error.message, variant: 'destructive' });
@@ -187,7 +193,7 @@ export const useProposals = () => {
       actor_user_id: user.id,
       event_type: 'rejected',
       message: reason ? `Rejected: ${reason}` : 'Proposal rejected',
-    } as any);
+    });
 
     // Notify creator
     const proposal = proposals.find(p => p.id === id);
@@ -199,7 +205,7 @@ export const useProposals = () => {
         title: 'Proposal Rejected',
         message: reason || 'Your proposal was rejected.',
         link_url: '/proposals',
-      } as any);
+      });
     }
 
     toast({ title: 'Proposal rejected' });
@@ -211,7 +217,7 @@ export const useProposals = () => {
     if (!user) return false;
     const { error } = await supabase
       .from('proposals')
-      .update({ status: 'archived' } as any)
+      .update({ status: 'archived' })
       .eq('id', id);
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -222,7 +228,7 @@ export const useProposals = () => {
       actor_user_id: user.id,
       event_type: 'archived',
       message: 'Proposal archived',
-    } as any);
+    });
     await fetchProposals();
     return true;
   };
@@ -252,7 +258,7 @@ export const useProposals = () => {
       .select('*, profiles!proposal_events_actor_user_id_fkey(full_name)')
       .eq('proposal_id', proposalId)
       .order('created_at', { ascending: true });
-    return ((data as any[]) || []).map((e: any) => ({
+    return ((data as unknown as (ProposalEvent & { profiles: any })[]) || []).map((e) => ({
       ...e,
       actor: e.profiles || null,
     }));

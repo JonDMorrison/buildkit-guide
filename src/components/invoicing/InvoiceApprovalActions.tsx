@@ -6,10 +6,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { CheckCircle2, XCircle, Clock, ShieldCheck } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, ShieldCheck, LucideIcon } from "lucide-react";
 import type { Invoice, ApprovalStatus } from "@/types/invoicing";
 
-const approvalConfig: Record<ApprovalStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: any }> = {
+const approvalConfig: Record<ApprovalStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: LucideIcon | null }> = {
   none: { label: "No Approval Required", variant: "outline", icon: null },
   pending: { label: "Pending Approval", variant: "secondary", icon: Clock },
   approved: { label: "Approved", variant: "default", icon: CheckCircle2 },

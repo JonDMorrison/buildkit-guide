@@ -88,8 +88,13 @@ const Insights = () => {
   const { rows: orgScopeRows, loading: orgScopeLoading } = useOrgScopeAccuracy(12);
   const { data: qualityAuditData, dataUpdatedAt: qualityUpdatedAt } = useDataQualityAudit();
 
+  interface AuditRow {
+    issues?: any[] | number;
+    issue_count?: number;
+  }
+
   const insightsIssueCount = Array.isArray(qualityAuditData)
-    ? qualityAuditData.filter((r: any) => {
+    ? (qualityAuditData as unknown as AuditRow[]).filter((r) => {
         const issues = r.issues ?? r.issue_count ?? 0;
         return Array.isArray(issues) ? issues.length > 0 : Number(issues) > 0;
       }).length

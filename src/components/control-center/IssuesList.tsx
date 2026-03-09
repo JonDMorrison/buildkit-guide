@@ -15,7 +15,7 @@ export function useSystemIssues() {
     queryFn: async () => {
       if (!currentProjectId) return [];
       const { data, error } = await supabase.rpc(
-        'rpc_get_system_integrity_issues' as any,
+        'rpc_get_system_integrity_issues',
         { p_project_id: currentProjectId }
       );
       if (error) throw error;

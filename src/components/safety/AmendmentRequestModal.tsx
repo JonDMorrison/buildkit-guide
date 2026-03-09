@@ -89,9 +89,13 @@ export const AmendmentRequestModal = ({
       setProposedChanges("");
       onSuccess?.();
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Amendment request error:", error);
-      toast({ title: "Failed to submit", description: error.message, variant: "destructive" });
+      toast({ 
+        title: "Failed to submit", 
+        description: error instanceof Error ? error.message : "An error occurred", 
+        variant: "destructive" 
+      });
     } finally {
       setSubmitting(false);
     }

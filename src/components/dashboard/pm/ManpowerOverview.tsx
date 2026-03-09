@@ -10,13 +10,23 @@ interface Props {
   projectId: string | null;
 }
 
+interface ManpowerRequest {
+  id: string;
+  status: string;
+  requested_count: number;
+  required_date: string;
+  reason: string | null;
+  trades?: { name: string } | null;
+  tasks?: { title: string } | null;
+}
+
 export function ManpowerOverview({ projectId }: Props) {
   const navigate = useNavigate();
 
   const { data, isLoading } = useQuery({
     queryKey: ["pm-manpower-overview", projectId],
     queryFn: async () => {
-      if (!projectId) return { pending: [], approved: 0, total: 0 };
+      if (!projectId) return { pending: [] as ManpowerRequest[], approved: 0, total: 0 };
       const { data: requests, error } = await supabase
         .from("manpower_requests")
         .select("id, status, requested_count, required_date, reason, trades:trade_id(name), tasks:task_id(title)")
@@ -25,9 +35,10 @@ export function ManpowerOverview({ projectId }: Props) {
         .order("created_at", { ascending: false })
         .limit(20);
       if (error) throw error;
-      const all = requests || [];
-      const pending = all.filter((r: any) => r.status === "pending");
-      const approved = all.filter((r: any) => r.status === "approved").length;
+      
+      const all = (requests as unknown as ManpowerRequest[]) || [];
+      const pending = all.filter((r) => r.status === "pending");
+      const approved = all.filter((r) => r.status === "approved").length;
       return { pending, approved, total: all.length };
     },
     enabled: !!projectId,
@@ -55,7 +66,7 @@ export function ManpowerOverview({ projectId }: Props) {
     >
       {pending.length > 0 && (
         <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-          {pending.slice(0, 4).map((r: any) => (
+          {pending.slice(0, 4).map((r) => (
             <div
               key={r.id}
               className="p-3 rounded-lg border border-border/50 bg-card space-y-1"

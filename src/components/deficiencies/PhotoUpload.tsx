@@ -113,11 +113,12 @@ export const PhotoUpload = ({
 
       onPhotosChange([...photos, ...newPhotos]);
       setPreviews([...previews, ...newPreviews]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error processing images:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Please try a different image.';
       toast({
         title: 'Error processing image',
-        description: error.message || 'Please try a different image.',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
@@ -174,11 +175,12 @@ export const PhotoUpload = ({
         title: 'AI description generated',
         description: 'Review and edit before saving',
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error analyzing photo:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Please describe manually';
       toast({
         title: 'Error analyzing photo',
-        description: error.message || 'Please describe manually',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {

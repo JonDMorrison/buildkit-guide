@@ -76,13 +76,14 @@ const NotificationSettings = () => {
           document_uploaded: data.document_uploaded,
           incident_report: data.incident_report,
           general: data.general,
-          weekly_digest: (data as any).weekly_digest ?? false,
+          weekly_digest: data.weekly_digest ?? false,
         });
       }
-    } catch (error: any) {
+    } catch (error) {
+      const err = error as Error;
       toast({
         title: 'Error loading preferences',
-        description: error.message,
+        description: err.message,
         variant: 'destructive',
       });
     } finally {
@@ -101,7 +102,7 @@ const NotificationSettings = () => {
         .upsert({
           user_id: user?.id,
           ...newPreferences,
-        });
+        } as any); // Upsert can be picky about extra fields if Preferences has more than DB
 
       if (error) throw error;
 
@@ -109,10 +110,11 @@ const NotificationSettings = () => {
         title: 'Preferences updated',
         description: 'Your notification preferences have been saved.',
       });
-    } catch (error: any) {
+    } catch (error) {
+      const err = error as Error;
       toast({
         title: 'Error updating preferences',
-        description: error.message,
+        description: err.message,
         variant: 'destructive',
       });
       // Revert on error

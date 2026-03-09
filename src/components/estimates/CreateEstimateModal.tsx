@@ -100,21 +100,29 @@ export const CreateEstimateModal = ({ projectId, onClose, onCreated }: Props) =>
   const [projectCurrency, setProjectCurrency] = useState("CAD");
   useEffect(() => {
     const loadProject = async () => {
+      interface ProjectData {
+        name: string;
+        location: string | null;
+        billing_address: string | null;
+        currency: string | null;
+      }
+    
       const { data } = await supabase
         .from('projects')
         .select('name, location, billing_address, currency')
         .eq('id', projectId)
         .single();
       if (data) {
-        setShipToName((data as any).name || "");
-        setShipToAddress((data as any).location || (data as any).billing_address || "");
-        setProjectCurrency((data as any).currency || "CAD");
+        const pd = data as unknown as ProjectData;
+        setShipToName(pd.name || "");
+        setShipToAddress(pd.location || pd.billing_address || "");
+        setProjectCurrency(pd.currency || "CAD");
       }
     };
     loadProject();
   }, [projectId]);
 
-  const updateLine = (idx: number, field: string, value: any) => {
+  const updateLine = (idx: number, field: keyof LineItemDraft, value: string | number) => {
     setLineItems(prev => prev.map((li, i) => i === idx ? { ...li, [field]: value } : li));
   };
 

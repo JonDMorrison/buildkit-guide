@@ -28,12 +28,21 @@ import {
 } from "@/lib/imageCompression";
 import { Progress } from "@/components/ui/progress";
 
+export interface Drawing {
+  id: string;
+  file_name: string;
+  sheet_number?: string | null;
+  revision_number?: string | null;
+  document_type?: string | null;
+  project_id: string;
+}
+
 interface DrawingUploadModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId?: string;
   onUploadComplete?: () => void;
-  existingDrawing?: any; // For revision uploads
+  existingDrawing?: Drawing; // For revision uploads
 }
 
 export const DrawingUploadModal = ({ 
@@ -61,7 +70,13 @@ export const DrawingUploadModal = ({
   const [drawingType, setDrawingType] = useState<string>("plan");
   const [dragActive, setDragActive] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string>(projectId || "");
-  const [projects, setProjects] = useState<any[]>([]);
+
+  interface Project {
+    id: string;
+    name: string;
+  }
+
+  const [projects, setProjects] = useState<Project[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -293,11 +308,12 @@ export const DrawingUploadModal = ({
       if (onUploadComplete) {
         onUploadComplete();
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error uploading drawing:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to upload drawing. Please try again.";
       toast({
         title: "Upload failed",
-        description: error.message || "Failed to upload drawing. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

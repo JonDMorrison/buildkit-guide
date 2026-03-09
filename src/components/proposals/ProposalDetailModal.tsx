@@ -69,7 +69,7 @@ export function ProposalDetailModal({
   const isSubmitted = proposal.status === 'submitted';
   const isApproved = proposal.status === 'approved';
 
-  const act = async (fn: () => Promise<any>) => {
+  const act = async (fn: () => Promise<void | boolean | string | null>) => {
     setActing(true);
     await fn();
     setActing(false);

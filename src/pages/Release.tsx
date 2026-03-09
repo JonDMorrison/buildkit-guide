@@ -25,7 +25,14 @@ interface AuditRunRow {
   manual_count: number;
   p0_blockers: number;
   created_at: string;
-  json_result: any;
+  json_result: AuditCheckResult[] | null;
+}
+
+interface AuditCheckResult {
+  name: string;
+  status: 'PASS' | 'FAIL' | 'MANUAL' | string;
+  severity: 'P0' | 'P1' | 'P2' | string;
+  actual: string;
 }
 
 interface ManualCheck {
@@ -71,7 +78,7 @@ function ReleaseContent() {
   // Ensure default manual checks exist
   useEffect(() => {
     if (!orgId) return;
-    supabase.rpc('rpc_ensure_release_checks' as any, { p_org_id: orgId }).then();
+    supabase.rpc('rpc_ensure_release_checks', { p_org_id: orgId }).then();
   }, [orgId]);
 
   // Latest audit run
@@ -116,14 +123,14 @@ function ReleaseContent() {
         .update({
           is_checked: checked,
           checked_at: checked ? new Date().toISOString() : null,
-        } as any)
+        })
         .eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['release-manual-checks', orgId] });
     },
-    onError: (e: any) => {
+    onError: (e) => {
       toast.error('Failed to update check: ' + e.message);
     },
   });
@@ -140,8 +147,8 @@ function ReleaseContent() {
   // Extract P0/fail checks from json_result for display
   const failChecks = useMemo(() => {
     if (!latestRun?.json_result) return [];
-    const checks = Array.isArray(latestRun.json_result) ? latestRun.json_result : [];
-    return checks.filter((c: any) => c.status === 'FAIL');
+    const checks: AuditCheckResult[] = Array.isArray(latestRun.json_result) ? latestRun.json_result : [];
+    return checks.filter((c) => c.status === 'FAIL');
   }, [latestRun]);
 
 
@@ -220,7 +227,7 @@ function ReleaseContent() {
                       Failed Checks ({failChecks.length})
                     </p>
                     <div className="space-y-1.5">
-                      {failChecks.map((c: any, i: number) => (
+                      {failChecks.map((c, i) => (
                         <div key={i} className="flex items-start gap-2 text-sm p-2 rounded-lg bg-destructive/5 border border-destructive/10">
                           <Badge className={`text-[10px] shrink-0 mt-0.5 ${c.severity === 'P0' ? 'bg-destructive text-destructive-foreground' : 'bg-amber-600 text-white'}`}>
                             {c.severity}

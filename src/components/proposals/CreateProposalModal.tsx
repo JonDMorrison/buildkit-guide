@@ -9,17 +9,19 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from '@/hooks/useOrganization';
 import { useCurrentProject } from '@/hooks/useCurrentProject';
 
+import type { Proposal } from '@/types/proposals';
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: any) => Promise<any>;
+  onSubmit: (data: Partial<Proposal>) => Promise<any>;
 }
 
 export function CreateProposalModal({ open, onOpenChange, onSubmit }: Props) {
   const { activeOrganizationId } = useOrganization();
   const { currentProjectId } = useCurrentProject();
-  const [projects, setProjects] = useState<any[]>([]);
-  const [estimates, setEstimates] = useState<any[]>([]);
+  const [projects, setProjects] = useState<{ id: string; name: string; job_number: string | null }[]>([]);
+  const [estimates, setEstimates] = useState<{ id: string; estimate_number: string }[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   const [form, setForm] = useState({
@@ -54,7 +56,7 @@ export function CreateProposalModal({ open, onOpenChange, onSubmit }: Props) {
   const handleSubmit = async () => {
     if (!form.project_id || !form.title.trim()) return;
     setSubmitting(true);
-    const payload: any = {
+    const payload: Partial<Proposal> = {
       project_id: form.project_id,
       title: form.title,
       summary: form.summary,

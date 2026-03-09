@@ -100,21 +100,27 @@ export function ExecutiveBriefCard({ orgId, onFeedLoaded }: Props) {
     setError(null);
     setNeedsSnapshot(false);
     try {
-      const { data, error: rpcErr } = await (supabase as any).rpc(
+      const dbRpc = supabase.rpc as unknown as (
+        fn: string,
+        args: Record<string, unknown>
+      ) => Promise<{ data: unknown; error: { message: string } | null }>;
+
+      const { data, error: rpcErr } = await dbRpc(
         'rpc_executive_change_feed',
         { p_org_id: orgId },
       );
       if (rpcErr) throw new Error(rpcErr.message);
-      if (!data || !data.latest_snapshot_date) {
+      const feedData = data as ChangeFeedData | null;
+      if (!feedData || !feedData.latest_snapshot_date) {
         setNeedsSnapshot(true);
         setFeed(null);
         onFeedLoaded?.(null);
       } else {
-        setFeed(data as ChangeFeedData);
-        onFeedLoaded?.(data as ChangeFeedData);
+        setFeed(feedData);
+        onFeedLoaded?.(feedData);
       }
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      if (e instanceof Error) setError(e.message);
     } finally {
       setLoading(false);
     }
@@ -124,14 +130,19 @@ export function ExecutiveBriefCard({ orgId, onFeedLoaded }: Props) {
     setCapturing(true);
     setError(null);
     try {
-      const { error: capErr } = await (supabase as any).rpc(
+      const dbRpc = supabase.rpc as unknown as (
+        fn: string,
+        args: Record<string, unknown>
+      ) => Promise<{ data: unknown; error: { message: string } | null }>;
+
+      const { error: capErr } = await dbRpc(
         'rpc_capture_org_economic_snapshots',
         { p_org_id: orgId, p_force: true },
       );
       if (capErr) throw new Error(capErr.message);
       await fetchFeed();
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      if (e instanceof Error) setError(e.message);
     } finally {
       setCapturing(false);
     }

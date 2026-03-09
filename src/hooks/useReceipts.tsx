@@ -17,7 +17,7 @@ export interface Receipt {
   category: ReceiptCategory;
   notes: string | null;
   uploaded_at: string;
-  processed_data_json: any;
+  processed_data_json: Record<string, any> | null;
   created_at: string;
   updated_at: string;
   notified_accounting_at: string | null;
@@ -91,13 +91,12 @@ export const useReceipts = (options: UseReceiptsOptions) => {
 
       const { data, error } = await query;
 
-      if (error) throw error;
-      setReceipts(data || []);
-    } catch (error: any) {
+      setReceipts((data as unknown as Receipt[]) || []);
+    } catch (error: unknown) {
       console.error('Error fetching receipts:', error);
       toast({
         title: 'Error loading receipts',
-        description: error.message,
+        description: error instanceof Error ? error.message : 'An error occurred while loading receipts',
         variant: 'destructive',
       });
     } finally {
@@ -145,11 +144,11 @@ export const useReceipts = (options: UseReceiptsOptions) => {
         title: 'Receipt deleted',
         description: 'The receipt has been removed.',
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting receipt:', error);
       toast({
         title: 'Error deleting receipt',
-        description: error.message,
+        description: error instanceof Error ? error.message : 'An error occurred while deleting receipt',
         variant: 'destructive',
       });
     }

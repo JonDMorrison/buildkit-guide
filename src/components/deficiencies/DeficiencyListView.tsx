@@ -110,7 +110,7 @@ export const DeficiencyListView = ({ deficiencies, onDeficiencyClick }: Deficien
 
                 <div className="flex items-center gap-2 flex-wrap">
                   {deficiency.trades && (
-                    <TradeBadge trade={deficiency.trades.trade_type as any} />
+                    <TradeBadge trade={deficiency.trades.trade_type} />
                   )}
                   {deficiency.location && (
                     <span className="text-xs text-muted-foreground">{deficiency.location}</span>

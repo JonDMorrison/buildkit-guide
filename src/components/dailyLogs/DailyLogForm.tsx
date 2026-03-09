@@ -13,12 +13,27 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useSmartDefaults } from "@/hooks/useSmartDefaults";
 import { Loader2, Sparkles } from "lucide-react";
 
+interface DailyLog {
+  id: string;
+  project_id: string;
+  log_date: string;
+  weather: string | null;
+  temperature: string | null;
+  crew_count: number | null;
+  work_performed: string;
+  issues: string | null;
+  next_day_plan: string | null;
+  safety_notes: string | null;
+  created_by: string;
+  created_at: string;
+}
+
 interface DailyLogFormProps {
   projectId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
-  existingLog?: any;
+  existingLog?: DailyLog;
 }
 
 interface DailyLogFormData {
@@ -127,7 +142,8 @@ export const DailyLogForm = ({
         title: 'Auto-filled from today\'s activity',
         description: 'Review and edit before saving',
       });
-    } catch (error: any) {
+    } catch (err) {
+      const error = err as Error;
       console.error('Error auto-filling:', error);
       toast({
         title: 'Error auto-filling',
@@ -193,7 +209,8 @@ export const DailyLogForm = ({
       queryClient.invalidateQueries({ queryKey: ['smart-defaults', projectId] });
       onSuccess();
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (err) {
+      const error = err as Error;
       toast({
         title: 'Error saving log',
         description: error.message,

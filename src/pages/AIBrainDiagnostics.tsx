@@ -63,8 +63,9 @@ function AIBrainContent() {
     (async () => {
       setDbAuthLoading(true);
       try {
-        const { data, error } = await (supabase as any).rpc('rpc_whoami');
-        setDbAuthOk(!error && !!data?.uid);
+        const { data, error } = await supabase.rpc('rpc_whoami');
+        const userData = data as { uid: string } | null;
+        setDbAuthOk(!error && !!userData?.uid);
       } catch {
         setDbAuthOk(false);
       } finally {

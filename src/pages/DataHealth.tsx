@@ -201,11 +201,13 @@ const DataHealth = () => {
       );
 
       // --- 3) Unclassified receipts ---
-      const { data: receipts } = await supabase
-        .from("receipts" as any)
+      const { data: receiptsData, error: receiptsError } = await supabase
+        .from("receipts")
         .select("project_id, amount, cost_type")
-        .in("project_id", projectIds as string[])
-        .neq("status", "rejected") as { data: { project_id: string; amount: number; cost_type: string | null }[] | null };
+        .in("project_id", projectIds);
+
+      if (receiptsError) throw receiptsError;
+      const receipts = receiptsData as { project_id: string; amount: number; cost_type: string | null }[] | null;
 
       const allowed = new Set(["material", "machine", "other"]);
       const receiptAgg: Record<string, { count: number; total: number }> = {};

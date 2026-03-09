@@ -51,7 +51,7 @@ interface AccountingReceipt {
   category: ReceiptCategory;
   notes: string | null;
   uploaded_at: string;
-  processed_data_json: any;
+  processed_data_json: Record<string, any> | null;
   review_status: ReceiptReviewStatus;
   reviewed_by: string | null;
   reviewed_at: string | null;
@@ -109,8 +109,9 @@ const AccountingReceipts = () => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchUpdating, setBatchUpdating] = useState(false);
 
-  // Check if user has accounting access (cast to any to handle new role)
-  const isAccounting = (roles as string[]).includes('accounting');
+  // Check if user has accounting access
+  const rolesArray = (roles || []) as string[];
+  const isAccounting = rolesArray.includes('accounting');
   const hasAccess = isAdmin || isAccounting;
 
   // Fetch projects
@@ -200,14 +201,13 @@ const AccountingReceipts = () => {
 
       const { data, error, count } = await query;
 
-      if (error) throw error;
-      setReceipts(data || []);
+      setReceipts(data as unknown as AccountingReceipt[] || []);
       setTotalCount(count || 0);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching receipts:', error);
       toast({
         title: 'Error loading receipts',
-        description: error.message,
+        description: error instanceof Error ? error.message : 'An error occurred',
         variant: 'destructive',
       });
     } finally {
@@ -353,7 +353,7 @@ const AccountingReceipts = () => {
     
     setBatchUpdating(true);
     try {
-      const updateData: any = { review_status: newStatus };
+      const updateData: Partial<AccountingReceipt> & { reviewed_by?: string | null; reviewed_at?: string | null } = { review_status: newStatus };
       
       // Only set reviewed_by and reviewed_at when moving from pending
       if (newStatus !== 'pending') {
@@ -378,10 +378,10 @@ const AccountingReceipts = () => {
 
       setSelectedIds(new Set());
       fetchReceipts();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error updating receipts',
-        description: error.message,
+        description: error instanceof Error ? error.message : 'An error occurred',
         variant: 'destructive',
       });
     } finally {

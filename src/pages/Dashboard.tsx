@@ -10,7 +10,7 @@ import { useAuthRole } from "@/hooks/useAuthRole";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
 import { useDashboardLayout } from "@/hooks/useDashboardLayout";
 import { Button } from "@/components/ui/button";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { SectionErrorBoundary } from "@/components/SectionErrorBoundary";
 import { NewUserWelcome } from "@/components/dashboard/NewUserWelcome";
 import {
   DailySnapshotStrip,
@@ -144,11 +144,14 @@ function DashboardContent() {
         .from("project_members")
         .select(`project_id, projects (id, name, location, status, organization_id)`)
         .eq("user_id", user.id);
+      
       if (error) throw error;
-      const projects = data?.map((pm: any) => pm.projects)
-        .filter((p: any) => p && p.organization_id === activeOrganizationId) || [];
+      
+      const projects = (data as unknown as Array<{ projects: { id: string; name: string; location: string; status: string; organization_id: string } | null }>)?.map((pm) => pm.projects)
+        .filter((p): p is { id: string; name: string; location: string; status: string; organization_id: string } => !!p && p.organization_id === activeOrganizationId) || [];
+        
       const projectsWithProgress = await Promise.all(
-        projects.map(async (project: any) => {
+        projects.map(async (project: { id: string; name: string; location: string; status: string; organization_id: string }) => {
           const { data: tasks } = await supabase
             .from("tasks")
             .select("id, status")
@@ -259,7 +262,7 @@ function DashboardContent() {
         .not("assigned_trade_id", "is", null);
       if (error) throw error;
       const tradeMap = new Map<string, SnapshotTrade>();
-      data?.forEach((t: any) => {
+      (data as unknown as Array<{ trades: SnapshotTrade | null }>)?.forEach((t) => {
         if (t.trades) {
           const existing = tradeMap.get(t.trades.id);
           if (existing) {
@@ -291,7 +294,15 @@ function DashboardContent() {
         .select(`id, user_id, role, trade:trades(name), profile:profiles(id, full_name, email)`)
         .eq("project_id", currentProjectId);
       if (error) throw error;
-      return (data || []).map((m: any) => ({
+
+      interface RawMember {
+        user_id: string;
+        role: string;
+        trade: { name: string } | null;
+        profile: { id: string; full_name: string | null; email: string } | null;
+      }
+
+      return (data as unknown as RawMember[] || []).map((m) => ({
         id: m.user_id, full_name: m.profile?.full_name || null,
         email: m.profile?.email || "", role: m.role, trade_name: m.trade?.name || null,
       }));
@@ -365,7 +376,7 @@ function DashboardContent() {
       />
 
       {/* ── 1. Your Priorities (merged Focus + At a Glance) ────────── */}
-      <ErrorBoundary>
+      <SectionErrorBoundary title="Your Priorities">
         <DashboardSection
           title="Your Priorities"
           helpText="Shows your top tasks by priority and due date, any active blockers, and today's key metrics like crew count and open tasks. Start here each morning."
@@ -382,11 +393,11 @@ function DashboardContent() {
             {(isPM() || isAdmin) && <OpenChangeOrdersCard projectId={currentProjectId} />}
           </DashboardGrid>
         </DashboardSection>
-      </ErrorBoundary>
+      </SectionErrorBoundary>
 
       {/* ── 2. Attention Needed (PM/Admin only — merged Mission Control + Attention Inbox) ── */}
       {(isPM() || isAdmin) && (
-        <ErrorBoundary>
+        <SectionErrorBoundary title="Attention Needed">
           <DashboardSection
             title="Attention Needed"
             helpText="Projects ranked by urgency — margin drops, missing data, or overdue items. Review these first to catch problems before they escalate."
@@ -401,7 +412,7 @@ function DashboardContent() {
             )}
             <DashboardMissionControl />
           </DashboardSection>
-        </ErrorBoundary>
+        </SectionErrorBoundary>
       )}
 
       {/* ── 3. Site Operations (tabs for PM/Admin, flat for Foreman) ── */}

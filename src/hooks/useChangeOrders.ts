@@ -91,9 +91,9 @@ export function useChangeOrderMutations() {
 
   const create = useMutation({
     mutationFn: async (args: { projectId: string; payload: Record<string, unknown> }) => {
-      const { data, error } = await supabase.rpc('rpc_create_change_order' as any, {
+      const { data, error } = await supabase.rpc('rpc_create_change_order', {
         p_project_id: args.projectId,
-        p_payload_json: args.payload,
+        p_payload_json: args.payload as any,
       });
       if (error) throw error;
       return data as { id: string; status: string };
@@ -104,9 +104,9 @@ export function useChangeOrderMutations() {
 
   const update = useMutation({
     mutationFn: async (args: { id: string; payload: Record<string, unknown> }) => {
-      const { data, error } = await supabase.rpc('rpc_update_change_order' as any, {
+      const { data, error } = await supabase.rpc('rpc_update_change_order', {
         p_change_order_id: args.id,
-        p_payload_json: args.payload,
+        p_payload_json: args.payload as any,
       });
       if (error) throw error;
       return data;
@@ -117,7 +117,7 @@ export function useChangeOrderMutations() {
 
   const send = useMutation({
     mutationFn: async (id: string) => {
-      const { data, error } = await supabase.rpc('rpc_send_change_order' as any, {
+      const { data, error } = await supabase.rpc('rpc_send_change_order', {
         p_change_order_id: id,
       });
       if (error) throw error;
@@ -129,7 +129,7 @@ export function useChangeOrderMutations() {
 
   const approve = useMutation({
     mutationFn: async (args: { id: string; approved: boolean }) => {
-      const { data, error } = await supabase.rpc('rpc_approve_change_order' as any, {
+      const { data, error } = await supabase.rpc('rpc_approve_change_order', {
         p_change_order_id: args.id,
         p_approved: args.approved,
       });
@@ -145,7 +145,7 @@ export function useChangeOrderMutations() {
 
   const addLineItem = useMutation({
     mutationFn: async (args: { changeOrderId: string; name: string; description?: string; quantity: number; rate: number; sortOrder?: number }) => {
-      const { data, error } = await supabase.rpc('rpc_add_change_order_line_item' as any, {
+      const { data, error } = await supabase.rpc('rpc_add_change_order_line_item', {
         p_change_order_id: args.changeOrderId,
         p_name: args.name,
         p_description: args.description ?? '',
@@ -162,9 +162,9 @@ export function useChangeOrderMutations() {
 
   const updateLineItem = useMutation({
     mutationFn: async (args: { id: string; payload: Record<string, unknown> }) => {
-      const { data, error } = await supabase.rpc('rpc_update_change_order_line_item' as any, {
+      const { data, error } = await supabase.rpc('rpc_update_change_order_line_item', {
         p_line_item_id: args.id,
-        p_payload_json: args.payload,
+        p_payload_json: args.payload as any,
       });
       if (error) throw error;
       return data;
@@ -175,7 +175,7 @@ export function useChangeOrderMutations() {
 
   const deleteLineItem = useMutation({
     mutationFn: async (id: string) => {
-      const { data, error } = await supabase.rpc('rpc_delete_change_order_line_item' as any, {
+      const { data, error } = await supabase.rpc('rpc_delete_change_order_line_item', {
         p_line_item_id: id,
       });
       if (error) throw error;
@@ -187,7 +187,7 @@ export function useChangeOrderMutations() {
 
   const suggest = useMutation({
     mutationFn: async (projectId: string) => {
-      const { data, error } = await supabase.rpc('rpc_suggest_change_order_from_risk' as any, {
+      const { data, error } = await supabase.rpc('rpc_suggest_change_order_from_risk', {
         p_project_id: projectId,
       });
       if (error) throw error;

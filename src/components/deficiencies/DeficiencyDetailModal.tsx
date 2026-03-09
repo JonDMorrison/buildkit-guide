@@ -22,6 +22,38 @@ interface DeficiencyDetailModalProps {
   onUpdate: () => void;
 }
 
+interface DeficiencyAttachment {
+  id: string;
+  file_url: string;
+  file_name: string;
+  file_type: string;
+  file_size: number;
+  created_at: string;
+}
+
+interface DeficiencyDetail {
+  id: string;
+  title: string;
+  description: string | null;
+  project_id: string;
+  assigned_trade_id: string | null;
+  location: string | null;
+  priority: string | null;
+  due_date: string | null;
+  status: "open" | "in_progress" | "fixed" | "verified";
+  created_at: string;
+  updated_at: string;
+  trades?: {
+    id: string;
+    company_name: string;
+    trade_type: string | null;
+  } | null;
+  created_by_profile?: {
+    full_name: string | null;
+    email: string;
+  } | null;
+}
+
 export const DeficiencyDetailModal = ({
   deficiencyId,
   isOpen,
@@ -29,8 +61,8 @@ export const DeficiencyDetailModal = ({
   onUpdate,
 }: DeficiencyDetailModalProps) => {
   const [loading, setLoading] = useState(false);
-  const [deficiency, setDeficiency] = useState<any>(null);
-  const [attachments, setAttachments] = useState<any[]>([]);
+  const [deficiency, setDeficiency] = useState<DeficiencyDetail | null>(null);
+  const [attachments, setAttachments] = useState<DeficiencyAttachment[]>([]);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [newStatus, setNewStatus] = useState("");
   const [newPhotos, setNewPhotos] = useState<File[]>([]);
@@ -89,10 +121,10 @@ export const DeficiencyDetailModal = ({
       }
       setSignedUrls(urls);
 
-      setDeficiency(deficiencyData);
-      setAttachments(attachmentsData || []);
+      setDeficiency(deficiencyData as unknown as DeficiencyDetail);
+      setAttachments((attachmentsData as unknown as DeficiencyAttachment[]) || []);
       setNewStatus(deficiencyData.status);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching deficiency:", error);
       toast({
         title: "Error",
@@ -121,7 +153,7 @@ export const DeficiencyDetailModal = ({
       });
       onUpdate();
       fetchDeficiencyDetails();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating status:", error);
       toast({
         title: "Error",
@@ -171,7 +203,7 @@ export const DeficiencyDetailModal = ({
       setNewPhotos([]);
       fetchDeficiencyDetails();
       onUpdate();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error uploading photos:", error);
       toast({
         title: "Error",
@@ -239,7 +271,7 @@ export const DeficiencyDetailModal = ({
               label={deficiency.status.replace("_", " ")}
             />
             {deficiency.trades && (
-              <TradeBadge trade={deficiency.trades.trade_type as any} />
+              <TradeBadge trade={deficiency.trades.trade_type || "general"} />
             )}
             {deficiency.priority && (
               <span className="text-sm text-muted-foreground">

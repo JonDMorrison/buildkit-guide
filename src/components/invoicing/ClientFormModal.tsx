@@ -12,7 +12,7 @@ import type { Client } from "@/types/invoicing";
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (client: Partial<Client>) => Promise<any>;
+  onSubmit: (client: Partial<Client>) => Promise<void>;
   initialData?: Client | null;
   allClients?: Client[];
 }

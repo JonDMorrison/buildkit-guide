@@ -11,6 +11,18 @@ interface Props {
   projectId: string | null;
 }
 
+interface LookaheadTask {
+  id: string;
+  title: string;
+  status: string;
+  start_date: string | null;
+  due_date: string | null;
+  assigned_trade_id: string | null;
+  trades: {
+    name: string;
+  } | null;
+}
+
 export function LookaheadPreview({ projectId }: Props) {
   const navigate = useNavigate();
   const today = startOfDay(new Date());
@@ -38,10 +50,10 @@ export function LookaheadPreview({ projectId }: Props) {
   });
 
   // Simple week grouping
-  const thisWeek = tasks.filter((t: any) =>
+  const thisWeek = tasks.filter((t) =>
     t.start_date && isWithinInterval(new Date(t.start_date), { start: today, end: addDays(today, 6) })
   );
-  const nextWeek = tasks.filter((t: any) =>
+  const nextWeek = tasks.filter((t) =>
     t.start_date && isWithinInterval(new Date(t.start_date), { start: addDays(today, 7), end: twoWeeksOut })
   );
 
@@ -67,7 +79,7 @@ export function LookaheadPreview({ projectId }: Props) {
           <div>
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5">This Week</p>
             <div className="space-y-1.5">
-              {thisWeek.slice(0, 4).map((t: any) => (
+              {thisWeek.slice(0, 4).map((t) => (
                 <LookaheadRow key={t.id} task={t} />
               ))}
               {thisWeek.length > 4 && (
@@ -82,7 +94,7 @@ export function LookaheadPreview({ projectId }: Props) {
           <div>
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5">Next Week</p>
             <div className="space-y-1.5">
-              {nextWeek.slice(0, 4).map((t: any) => (
+              {nextWeek.slice(0, 4).map((t) => (
                 <LookaheadRow key={t.id} task={t} />
               ))}
               {nextWeek.length > 4 && (
@@ -96,7 +108,7 @@ export function LookaheadPreview({ projectId }: Props) {
   );
 }
 
-function LookaheadRow({ task }: { task: any }) {
+function LookaheadRow({ task }: { task: LookaheadTask }) {
   const statusColor: Record<string, string> = {
     blocked: "bg-destructive",
     in_progress: "bg-primary",

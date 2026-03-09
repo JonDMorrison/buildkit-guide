@@ -165,13 +165,13 @@ export const DailySafetyWizard = ({
     const presentIds = [...new Set(timeEntries?.map((e) => e.user_id) || [])];
     setPresentTodayIds(presentIds);
 
-    const attendeeList: Attendee[] = (members || []).map((m: any) => ({
+    const attendeeList: Attendee[] = (members || []).map((m) => ({
       id: m.id,
       user_id: m.user_id,
-      full_name: m.profiles?.full_name,
-      email: m.profiles?.email,
-      avatar_url: m.profiles?.avatar_url,
-      trade_name: m.trades?.name,
+      full_name: m.profiles?.full_name || null,
+      email: m.profiles?.email || "",
+      avatar_url: m.profiles?.avatar_url || null,
+      trade_name: m.trades?.name || null,
       is_present_today: presentIds.includes(m.user_id),
     }));
 

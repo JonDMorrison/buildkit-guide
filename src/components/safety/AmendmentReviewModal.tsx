@@ -134,9 +134,13 @@ export const AmendmentReviewModal = ({
       setReviewNote("");
       onSuccess?.();
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Review error:", error);
-      toast({ title: "Review failed", description: error.message, variant: "destructive" });
+      toast({ 
+        title: "Review failed", 
+        description: error instanceof Error ? error.message : "An error occurred", 
+        variant: "destructive" 
+      });
     } finally {
       setSubmitting(false);
       setAction(null);

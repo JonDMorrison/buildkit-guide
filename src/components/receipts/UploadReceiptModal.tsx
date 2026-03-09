@@ -114,11 +114,11 @@ export const UploadReceiptModal = ({
       // Pre-compress to show estimated size
       const compressed = await compressImage(processedFile);
       setCompressedSize(compressed.size);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('File processing error:', error);
       toast({
         title: 'Error processing image',
-        description: error.message || 'Please try a different image.',
+        description: error instanceof Error ? error.message : 'Please try a different image.',
         variant: 'destructive',
       });
     }
@@ -242,7 +242,7 @@ export const UploadReceiptModal = ({
       } else {
         throw new Error(data?.error || 'Parsing failed');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('AI parse error:', error);
       toast({
         title: 'Could not read this receipt',
@@ -320,11 +320,11 @@ export const UploadReceiptModal = ({
       resetForm();
       onOpenChange(false);
       onUploadComplete?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Upload error:', error);
       toast({
         title: 'Upload failed',
-        description: error.message,
+        description: error instanceof Error ? error.message : 'An error occurred during upload',
         variant: 'destructive',
       });
     } finally {

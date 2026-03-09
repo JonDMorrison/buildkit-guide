@@ -25,7 +25,14 @@ interface Receipt {
   category: ReceiptCategory;
   notes: string | null;
   uploaded_at: string;
-  processed_data_json: any;
+  processed_data_json: {
+    total_amount?: number;
+    tax_amount?: number | null;
+    vendor_name?: string;
+    purchase_date?: string;
+    category?: string;
+    confidence?: number;
+  } | null;
   review_status: ReceiptReviewStatus;
   reviewed_by: string | null;
   reviewed_at: string | null;
@@ -109,11 +116,12 @@ export const AccountingReceiptDetail = ({
       });
 
       onUpdate?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating receipt:', error);
+      const errorMsg = error instanceof Error ? error.message : 'An unknown error occurred';
       toast({
         title: 'Error saving changes',
-        description: error.message,
+        description: errorMsg,
         variant: 'destructive',
       });
     } finally {
@@ -126,7 +134,11 @@ export const AccountingReceiptDetail = ({
 
     setUpdatingStatus(true);
     try {
-      const updateData: any = {
+      const updateData: {
+        review_status: ReceiptReviewStatus;
+        reviewed_by?: string;
+        reviewed_at?: string;
+      } = {
         review_status: newStatus,
       };
 
@@ -150,11 +162,12 @@ export const AccountingReceiptDetail = ({
       });
 
       onUpdate?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating status:', error);
+      const errorMsg = error instanceof Error ? error.message : 'An unknown error occurred';
       toast({
         title: 'Error updating status',
-        description: error.message,
+        description: errorMsg,
         variant: 'destructive',
       });
     } finally {
