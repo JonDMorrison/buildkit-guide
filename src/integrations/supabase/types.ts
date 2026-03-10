@@ -3639,41 +3639,59 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          certifications: string[] | null
           created_at: string
           email: string
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          employee_id: string | null
           full_name: string | null
           has_onboarded: boolean
           id: string
+          notes: string | null
           onboarding_org_id: string | null
           onboarding_project_id: string | null
           onboarding_step: number | null
           phone: string | null
+          trade_specialty: string | null
           updated_at: string
         }
         Insert: {
           avatar_url?: string | null
+          certifications?: string[] | null
           created_at?: string
           email: string
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          employee_id?: string | null
           full_name?: string | null
           has_onboarded?: boolean
           id: string
+          notes?: string | null
           onboarding_org_id?: string | null
           onboarding_project_id?: string | null
           onboarding_step?: number | null
           phone?: string | null
+          trade_specialty?: string | null
           updated_at?: string
         }
         Update: {
           avatar_url?: string | null
+          certifications?: string[] | null
           created_at?: string
           email?: string
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          employee_id?: string | null
           full_name?: string | null
           has_onboarded?: boolean
           id?: string
+          notes?: string | null
           onboarding_org_id?: string | null
           onboarding_project_id?: string | null
           onboarding_step?: number | null
           phone?: string | null
+          trade_specialty?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -7058,40 +7076,88 @@ export type Database = {
       }
       trades: {
         Row: {
+          address: string | null
+          bonding_company: string | null
+          bonding_limit: number | null
+          city: string | null
           company_name: string
           contact_email: string | null
           contact_phone: string | null
           created_at: string
+          default_hourly_rate: number | null
           id: string
+          insurance_expiry_date: string | null
+          insurance_policy_number: string | null
+          insurance_provider: string | null
           is_active: boolean
+          license_number: string | null
+          logo_url: string | null
           name: string
+          notes: string | null
           organization_id: string | null
+          rating: number | null
+          state_province: string | null
           trade_type: string
           updated_at: string
+          wcb_expiry_date: string | null
+          wcb_number: string | null
+          website: string | null
         }
         Insert: {
+          address?: string | null
+          bonding_company?: string | null
+          bonding_limit?: number | null
+          city?: string | null
           company_name: string
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
+          default_hourly_rate?: number | null
           id?: string
+          insurance_expiry_date?: string | null
+          insurance_policy_number?: string | null
+          insurance_provider?: string | null
           is_active?: boolean
+          license_number?: string | null
+          logo_url?: string | null
           name: string
+          notes?: string | null
           organization_id?: string | null
+          rating?: number | null
+          state_province?: string | null
           trade_type: string
           updated_at?: string
+          wcb_expiry_date?: string | null
+          wcb_number?: string | null
+          website?: string | null
         }
         Update: {
+          address?: string | null
+          bonding_company?: string | null
+          bonding_limit?: number | null
+          city?: string | null
           company_name?: string
           contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
+          default_hourly_rate?: number | null
           id?: string
+          insurance_expiry_date?: string | null
+          insurance_policy_number?: string | null
+          insurance_provider?: string | null
           is_active?: boolean
+          license_number?: string | null
+          logo_url?: string | null
           name?: string
+          notes?: string | null
           organization_id?: string | null
+          rating?: number | null
+          state_province?: string | null
           trade_type?: string
           updated_at?: string
+          wcb_expiry_date?: string | null
+          wcb_number?: string | null
+          website?: string | null
         }
         Relationships: [
           {
@@ -8267,6 +8333,10 @@ export type Database = {
       rpc_get_unrated_labor_summary: {
         Args: { p_project_id?: string }
         Returns: Json
+      }
+      rpc_import_estimate_to_project: {
+        Args: { p_source_estimate_id: string; p_target_project_id: string }
+        Returns: string
       }
       rpc_is_org_member: { Args: { p_org_id: string }; Returns: boolean }
       rpc_is_project_active: {
