@@ -17,8 +17,11 @@ export const useTimeTrackingEnabled = (): TimeTrackingState => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (orgLoading || !activeOrganizationId) {
-      setLoading(true);
+    if (orgLoading) return;
+    
+    if (!activeOrganizationId) {
+      setLoading(false);
+      setEnabled(false);
       return;
     }
 

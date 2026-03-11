@@ -102,5 +102,21 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
     "vite": "^5.4.19"
-  }
+  },
+  "description": "**URL**: https://lovable.dev/projects/4e4098c3-e93d-49cc-9e6c-99f0c48a10e3",
+  "main": "eslint.config.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://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@github.com/JonDMorrison/buildkit-guide.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/JonDMorrison/buildkit-guide/issues"
+  },
+  "homepage": "https://github.com/JonDMorrison/buildkit-guide#readme"
 }

@@ -103,7 +103,7 @@ const DataHealth = () => {
       // --- Fetch active projects for org ---
       const { data: orgProjects } = await supabase
         .from("projects")
-        .select("id, name, job_number, status")
+        .select("id,name,job_number,status")
         .eq("organization_id", activeOrganizationId)
         .eq("is_deleted", false);
       const projectIds = (orgProjects || []).map((p) => p.id);
@@ -123,7 +123,7 @@ const DataHealth = () => {
       // --- 1) Missing cost rates ---
       const { data: zeroCostMembers } = await supabase
         .from("project_members")
-        .select("user_id, project_id")
+        .select("user_id,project_id")
         .in("project_id", projectIds as string[])
         .eq("cost_rate", 0);
 
@@ -133,13 +133,13 @@ const DataHealth = () => {
       if (zeroCostUserIds.length > 0) {
         const { data: profiles } = await supabase
           .from("profiles")
-          .select("id, full_name")
+          .select("id,full_name")
           .in("id", zeroCostUserIds as string[]);
         const nameMap = Object.fromEntries((profiles || []).map((p) => [p.id, p.full_name || "Unknown"]));
 
         const { data: timeEntries } = await supabase
           .from("time_entries")
-          .select("user_id, duration_hours")
+          .select("user_id,duration_hours")
         .in("project_id", projectIds as string[])
         .in("user_id", zeroCostUserIds as string[])
         .eq("status", "closed")
@@ -169,14 +169,14 @@ const DataHealth = () => {
       // --- 2) Time entries with no project membership ---
       const { data: recentTime } = await supabase
         .from("time_entries")
-        .select("id, user_id, project_id")
+        .select("id,user_id,project_id")
         .in("project_id", projectIds as string[])
         .eq("status", "closed")
         .gte("check_in_time", since);
 
       const { data: allMembers } = await supabase
         .from("project_members")
-        .select("user_id, project_id")
+        .select("user_id,project_id")
         .in("project_id", projectIds as string[]);
 
       const memberSet = new Set((allMembers || []).map((m) => `${m.project_id}::${m.user_id}`));
@@ -203,7 +203,7 @@ const DataHealth = () => {
       // --- 3) Unclassified receipts ---
       const { data: receiptsData, error: receiptsError } = await supabase
         .from("receipts")
-        .select("project_id, amount, cost_type")
+        .select("project_id,amount,cost_type")
         .in("project_id", projectIds);
 
       if (receiptsError) throw receiptsError;
@@ -253,7 +253,7 @@ const DataHealth = () => {
       // Fetch recent closed entries with timestamps
       const { data: allRecentEntries } = await supabase
         .from("time_entries")
-        .select("id, user_id, project_id, check_in_at, check_out_at")
+        .select("id,user_id,project_id,check_in_at,check_out_at")
         .in("project_id", projectIds as string[])
         .eq("status", "closed")
         .not("check_out_at", "is", null)
@@ -274,7 +274,7 @@ const DataHealth = () => {
         const userIds = Object.keys(byUser);
         const { data: userProfiles } = await supabase
           .from("profiles")
-          .select("id, full_name")
+          .select("id,full_name")
           .in("id", userIds as string[]);
         const profileMap = Object.fromEntries((userProfiles || []).map((p) => [p.id, p.full_name || "Unknown"]));
 
@@ -311,7 +311,7 @@ const DataHealth = () => {
       // --- 6) Time entries with task_id referencing tasks from a different project (P0 invariant) ---
       const { data: taskLinkedEntries } = await supabase
         .from("time_entries")
-        .select("id, project_id, task_id")
+        .select("id,project_id,task_id")
         .in("project_id", projectIds as string[])
         .not("task_id", "is", null)
         .gte("check_in_at", since)
@@ -323,7 +323,7 @@ const DataHealth = () => {
         // Fetch tasks to get their project_ids
         const { data: tasks } = await supabase
           .from("tasks")
-          .select("id, project_id")
+          .select("id,project_id")
           .in("id", taskIds as string[]);
         const taskProjectMap = Object.fromEntries((tasks || []).map((t) => [t.id, t.project_id]));
 

@@ -65,7 +65,7 @@ export function BatchExportModal({ isOpen, onClose, currentProjectId }: BatchExp
       
       const { data, error } = await supabase
         .from("projects")
-        .select("id, name, job_number")
+        .select("id,name,job_number")
         .eq("organization_id", activeOrganizationId)
         .eq("is_deleted", false)
         .order("name");
@@ -93,12 +93,7 @@ export function BatchExportModal({ isOpen, onClose, currentProjectId }: BatchExp
       // Build query
       let query = supabase
         .from("safety_forms")
-        .select(`
-          *,
-          project:projects(name, location, job_number),
-          creator:profiles!safety_forms_created_by_fkey(full_name, email),
-          reviewer:profiles!safety_forms_reviewed_by_fkey(full_name, email)
-        `)
+        .select(`*,project:projects(name,location,job_number),creator:profiles!safety_forms_created_by_fkey(full_name,email),reviewer:profiles!safety_forms_reviewed_by_fkey(full_name,email)`)
         .eq("is_deleted", false)
         .gte("inspection_date", format(dateRange.from, "yyyy-MM-dd"))
         .lte("inspection_date", format(dateRange.to, "yyyy-MM-dd"))
@@ -147,19 +142,13 @@ export function BatchExportModal({ isOpen, onClose, currentProjectId }: BatchExp
         // Fetch attendees
         const { data: attendees } = await supabase
           .from("safety_form_attendees")
-          .select(`
-            *,
-            profiles:user_id(full_name, email)
-          `)
+          .select(`*,profiles:user_id(full_name,email)`)
           .eq("safety_form_id", form.id);
 
         // Fetch acknowledgments
         const { data: acknowledgments } = await supabase
           .from("safety_form_acknowledgments")
-          .select(`
-            *,
-            profiles!safety_form_acknowledgments_user_id_fkey(full_name, email)
-          `)
+          .select(`*,profiles!safety_form_acknowledgments_user_id_fkey(full_name,email)`)
           .eq("safety_form_id", form.id);
 
         // Generate PDF

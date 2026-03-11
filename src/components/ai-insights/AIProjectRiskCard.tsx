@@ -29,30 +29,21 @@ export function AIProjectRiskCard({ projectId }: Props) {
     queryFn: async () => {
       const { count, error } = await supabase
         .from('project_economic_snapshots')
-        .select('id', { count: 'exact', head: true })
-        .eq('project_id', projectId!);
+        .select('id',{ count: 'exact',head: true })
+        .eq('project_id',projectId!);
       if (error) throw error;
       return count ?? 0;
-    },
-    enabled: !!projectId,
-    staleTime: 10 * 60 * 1000,
-  });
+    },enabled: !!projectId,staleTime: 10 * 60 * 1000,});
 
   const hasEnoughSnapshots = (snapshotCount ?? 0) >= 2;
 
-  const { data: riskData, isLoading: riskLoading } = useQuery({
-    queryKey: ['ai-project-risk', projectId],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc(
-        'rpc_generate_project_margin_control',
-        { p_project_id: projectId },
-      );
+  const { data: riskData,isLoading: riskLoading } = useQuery({
+    queryKey: ['ai-project-risk',projectId],queryFn: async () => {
+      const { data,error } = await supabase.rpc(
+        'rpc_generate_project_margin_control',{ p_project_id: projectId },);
       if (error) throw error;
       return (data as unknown) as RiskAssessmentData;
-    },
-    enabled: !!projectId && hasEnoughSnapshots,
-    staleTime: 5 * 60 * 1000,
-  });
+    },enabled: !!projectId && hasEnoughSnapshots,staleTime: 5 * 60 * 1000,});
 
   const loading = countLoading || riskLoading;
 
@@ -61,9 +52,7 @@ export function AIProjectRiskCard({ projectId }: Props) {
     setGenerating(true);
     try {
       const { error } = await supabase.rpc(
-        'rpc_capture_org_economic_snapshots',
-        { p_org_id: orgId, p_force: true },
-      );
+        'rpc_capture_org_economic_snapshots',{ p_org_id: orgId,p_force: true },);
       if (error) throw error;
       toast.success('Analysis data generated. It may take a moment to process.');
       // Invalidate to re-check snapshot count

@@ -72,21 +72,47 @@ const Tasks = () => {
 
   const fetchTasks = async () => {
     try {
-      const { data, error } = await supabase
+      let tasksQuery = supabase
         .from('tasks')
-        .select(`
-          *,
-          trades(name, trade_type, company_name),
-          projects(name),
-          task_assignments(id, user_id, profiles(id, full_name, avatar_url, email))
-        `)
-        .eq('is_deleted', false)
-        .order('sort_order', { ascending: true })
-        .order('created_at', { ascending: false });
+        .select('*')
+        .eq('is_deleted', false);
+      
+      if (currentProjectId) {
+        tasksQuery = tasksQuery.eq('project_id', currentProjectId);
+      }
 
-      if (error) throw error;
-      setTasks((data as unknown) as Task[] || []);
-      setFilteredTasks((data as unknown) as Task[] || []);
+      const [tasksRes, tradesRes, projectsRes, assignmentsRes, profilesRes] = await Promise.all([
+        tasksQuery.order('created_at', { ascending: false }),
+        supabase.from('trades').select('id,name,trade_type,company_name'),
+        supabase.from('projects').select('id,name'),
+        supabase.from('task_assignments').select('id,task_id,user_id'),
+        supabase.from('profiles').select('id,full_name,avatar_url,email')
+      ]);
+
+      if (tasksRes.error) throw tasksRes.error;
+
+      const tradeMap = new Map(tradesRes.data?.map(t => [t.id, t]));
+      const projectMap = new Map(projectsRes.data?.map(p => [p.id, p]));
+      const profileMap = new Map(profilesRes.data?.map(p => [p.id, p]));
+      
+      const assignmentsByTask = (assignmentsRes.data || []).reduce((acc, a) => {
+        if (!acc[a.task_id]) acc[a.task_id] = [];
+        acc[a.task_id].push({
+          ...a,
+          profiles: profileMap.get(a.user_id)
+        });
+        return acc;
+      }, {} as any);
+
+      const tasksWithJoins = (tasksRes.data || []).map(task => ({
+        ...task,
+        trades: tradeMap.get(task.assigned_trade_id) || null,
+        projects: projectMap.get(task.project_id) || null,
+        task_assignments: assignmentsByTask[task.id] || []
+      }));
+
+      setTasks(tasksWithJoins as any);
+      setFilteredTasks(tasksWithJoins as any);
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : 'An unknown error occurred';
       toast({
@@ -158,7 +184,7 @@ const Tasks = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [currentProjectId]);
 
   // Apply initial filters once tasks are loaded
   useEffect(() => {

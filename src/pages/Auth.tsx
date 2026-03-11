@@ -140,7 +140,7 @@ const Auth = () => {
       const validatedData = signUpSchema.parse(signUpForm);
       setLoading(true);
       
-      const { error } = await signUp(
+      const { data, error } = await signUp(
         validatedData.email,
         validatedData.password,
         validatedData.fullName
@@ -149,9 +149,9 @@ const Auth = () => {
       if (error) {
         if (error.message.includes('already registered')) {
           toast({
-            title: 'Registration failed',
-            description: 'This email is already registered. Please sign in instead.',
-            variant: 'destructive',
+             title: 'Registration failed',
+             description: 'This email is already registered. Please sign in instead.',
+             variant: 'destructive',
           });
         } else {
           toast({
@@ -161,10 +161,19 @@ const Auth = () => {
           });
         }
       } else {
-        toast({
-          title: 'Account created!',
-          description: 'You have been signed in successfully.',
-        });
+        if (data?.session) {
+          toast({
+            title: 'Account created!',
+            description: 'You have been signed in successfully.',
+          });
+          // session exists, onAuthStateChange in useAuth should auto-redirect
+        } else {
+          toast({
+            title: 'Check your email',
+            description: 'We sent you a confirmation link. Please check your email to sign in.',
+          });
+          setActiveTab('signin');
+        }
       }
     } catch (error) {
       if (error instanceof z.ZodError) {

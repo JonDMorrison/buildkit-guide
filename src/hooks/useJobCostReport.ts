@@ -27,7 +27,7 @@ export const useJobCostReport = ({ projectId, startDate, endDate }: UseJobCostRe
         // Fetch time entries (closed only) with user info
         let timeQuery = supabase
           .from('time_entries')
-          .select('user_id, duration_hours, check_in_at')
+          .select('user_id,duration_hours,check_in_at')
           .eq('project_id', projectId)
           .eq('status', 'closed')
           .not('check_out_at', 'is', null)
@@ -41,31 +41,38 @@ export const useJobCostReport = ({ projectId, startDate, endDate }: UseJobCostRe
           timeQuery = timeQuery.lte('check_in_at', endDate.toISOString());
         }
 
-        const [timeResult, membersResult, receiptsResult] = await Promise.all([
+        const [timeResult, membersResult, receiptsResult, profilesResult] = await Promise.all([
           timeQuery,
           supabase
             .from('project_members')
-            .select('user_id, bill_rate, profiles(full_name, email)')
+            .select('user_id,bill_rate')
             .eq('project_id', projectId),
           (() => {
             let q = supabase
               .from('receipts')
-              .select('id, amount, vendor, category, notes, created_at')
+              .select('id,amount,vendor,category,notes,created_at')
               .eq('project_id', projectId);
             if (startDate) q = q.gte('created_at', startDate.toISOString());
             if (endDate) q = q.lte('created_at', endDate.toISOString());
             return q.order('created_at', { ascending: false });
           })(),
+          supabase
+            .from('profiles')
+            .select('id,full_name,email')
         ]);
 
         if (timeResult.error) throw timeResult.error;
         if (membersResult.error) throw membersResult.error;
         if (receiptsResult.error) throw receiptsResult.error;
+        if (profilesResult.error) throw profilesResult.error;
+
+        // Build profiles lookup
+        const profileMap = new Map(profilesResult.data?.map(p => [p.id, p]));
 
         // Build member lookup
         const memberMap = new Map<string, { name: string; billRate: number | null }>();
         for (const m of membersResult.data || []) {
-          const profile = m.profiles as any;
+          const profile = profileMap.get(m.user_id);
           memberMap.set(m.user_id, {
             name: profile?.full_name || profile?.email || 'Unknown',
             billRate: m.bill_rate as number | null,

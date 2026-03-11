@@ -497,7 +497,7 @@ function SimplifiedOverviewTab({ projectId, stats }: { projectId: string; stats:
     const fetchOverviewData = async () => {
       const { data: blocked } = await supabase
         .from('tasks')
-        .select('*, trades(name, trade_type)')
+        .select('*,trades(name,trade_type)')
         .eq('project_id', projectId)
         .eq('status', 'blocked')
         .eq('is_deleted', false)
@@ -512,7 +512,7 @@ function SimplifiedOverviewTab({ projectId, stats }: { projectId: string; stats:
 
       const { data: upcoming } = await supabase
         .from('tasks')
-        .select('*, trades(name, trade_type)')
+        .select('*,trades(name,trade_type)')
         .eq('project_id', projectId)
         .eq('is_deleted', false)
         .gte('due_date', today.toISOString().split('T')[0])
@@ -722,7 +722,7 @@ const CustomerHierarchyCard = ({ projectId }: { projectId: string }) => {
     const fetch = async () => {
       const { data: proj, error: projError } = await supabase
         .from('projects')
-        .select('client_id, pm_contact_name, pm_email, pm_phone')
+        .select('client_id,pm_contact_name,pm_email,pm_phone')
         .eq('id', projectId)
         .single();
       
@@ -807,7 +807,7 @@ const ProjectTasks = ({ projectId }: { projectId: string }) => {
     const fetchTasks = async () => {
       const { data } = await supabase
         .from('tasks')
-        .select('*, trades(name, trade_type)')
+        .select('*,trades(name,trade_type)')
         .eq('project_id', projectId)
         .eq('is_deleted', false)
         .order('created_at', { ascending: false })
@@ -854,7 +854,7 @@ const ProjectDrawings = ({ projectId }: { projectId: string }) => {
     const fetchDrawings = async () => {
       const { data } = await supabase
         .from('attachments')
-        .select('*, profiles(full_name)')
+        .select('*,profiles(full_name)')
         .eq('project_id', projectId)
         .in('document_type', ['plan', 'drawing', 'blueprint', 'specification'])
         .order('created_at', { ascending: false });
@@ -926,7 +926,7 @@ const ProjectLookahead = ({ projectId }: { projectId: string }) => {
     const fetchLookahead = async () => {
       const { data } = await supabase
         .from('tasks')
-        .select('*, trades(name, trade_type)')
+        .select('*,trades(name,trade_type)')
         .eq('project_id', projectId)
         .eq('is_deleted', false)
         .lte('due_date', twoWeeksFromNow.toISOString().split('T')[0])
@@ -957,7 +957,7 @@ const ProjectTrades = ({ projectId }: { projectId: string }) => {
     const fetchMembers = async () => {
       const { data } = await supabase
         .from('project_members')
-        .select('*, profiles(full_name, email), trades(name, trade_type, company_name)')
+        .select('*,profiles(full_name,email),trades(name,trade_type,company_name)')
         .eq('project_id', projectId);
       setMembers((data as unknown) as ProjectMember[] || []);
       setLoading(false);
@@ -1046,7 +1046,7 @@ const ProjectDeficiencies = ({ projectId }: { projectId: string }) => {
     const fetchDeficiencies = async () => {
       const { data } = await supabase
         .from('deficiencies')
-        .select('*, trades(name, trade_type)')
+        .select('*,trades(name,trade_type)')
         .eq('project_id', projectId)
         .eq('is_deleted', false)
         .order('created_at', { ascending: false })

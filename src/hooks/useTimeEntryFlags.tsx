@@ -25,7 +25,7 @@ export function useTimeEntryFlags(timeEntryId: string | null) {
 
       const { data, error } = await supabase
         .from('time_entry_flags')
-        .select('id, time_entry_id, flag_code, severity, metadata, created_at, resolved_at')
+        .select('id,time_entry_id,flag_code,severity,metadata,created_at,resolved_at')
         .eq('time_entry_id', timeEntryId)
         .is('resolved_at', null)
         .order('created_at', { ascending: false });
@@ -63,7 +63,7 @@ export function useTimeEntriesFlags(timeEntryIds: string[]) {
 
       const { data, error } = await supabase
         .from('time_entry_flags')
-        .select('id, time_entry_id, flag_code, severity, metadata, created_at, resolved_at')
+        .select('id,time_entry_id,flag_code,severity,metadata,created_at,resolved_at')
         .in('time_entry_id', timeEntryIds)
         .is('resolved_at', null)
         .order('created_at', { ascending: false });

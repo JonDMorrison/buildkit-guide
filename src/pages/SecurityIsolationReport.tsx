@@ -68,62 +68,37 @@ async function runTableTest(
   try {
     const { data, error, count } = await supabase
       .from(tableName as any)
-      .select("id", { count: "exact" })
+      .select("id",{ count: "exact" })
       .limit(3);
 
     if (error) {
       return {
-        table: tableName,
-        rowCount: 0,
-        sampleIds: [],
-        pass: true,
-        reason: "Query denied by RLS (PASS)",
-        error: error.message,
-      };
+        table: tableName,rowCount: 0,sampleIds: [],pass: true,reason: "Query denied by RLS (PASS)",error: error.message,};
     }
 
     const rowCount = count ?? (data?.length || 0);
-    const sampleIds = (data as unknown as Array<{ id: string }> || []).map((r) => r.id).slice(0, 3);
+    const sampleIds = (data as unknown as Array<{ id: string }> || []).map((r) => r.id).slice(0,3);
 
     if (userOrgIds.length === 0) {
       return {
-        table: tableName,
-        rowCount,
-        sampleIds,
-        pass: rowCount === 0,
-        reason:
+        table: tableName,rowCount,sampleIds,pass: rowCount === 0,reason:
           rowCount === 0
             ? "No org memberships → 0 rows (PASS)"
-            : `FAIL: ${rowCount} rows visible with no org membership`,
-      };
+            : `FAIL: ${rowCount} rows visible with no org membership`,};
     }
 
     // User has org memberships — rows should exist but be scoped
     return {
-      table: tableName,
-      rowCount,
-      sampleIds,
-      pass: true,
-      reason: `${rowCount} rows visible, scoped to ${userOrgIds.length} org(s)`,
-    };
+      table: tableName,rowCount,sampleIds,pass: true,reason: `${rowCount} rows visible,scoped to ${userOrgIds.length} org(s)`,};
   } catch (e) {
     const error = e as Error;
     return {
-      table: tableName,
-      rowCount: 0,
-      sampleIds: [],
-      pass: true,
-      reason: "Exception treated as denied",
-      error: error.message,
-    };
+      table: tableName,rowCount: 0,sampleIds: [],pass: true,reason: "Exception treated as denied",error: error.message,};
   }
 }
 
 async function runCrossOrgProbe(
-  tableName: string,
-  config: (typeof TABLES_CONFIG)[number],
-  targetOrgId: string,
-  userOrgIds: string[]
+  tableName: string,config: (typeof TABLES_CONFIG)[number],targetOrgId: string,userOrgIds: string[]
 ): Promise<ProbeResult> {
   const isMember = userOrgIds.includes(targetOrgId);
 
@@ -132,11 +107,11 @@ async function runCrossOrgProbe(
     if (config.direct && config.orgCol) {
       query = supabase
         .from(tableName as any)
-        .select("id", { count: "exact" })
-        .eq(config.orgCol, targetOrgId)
+        .select("id",{ count: "exact" })
+        .eq(config.orgCol,targetOrgId)
         .limit(3);
     } else {
-      // Indirect: get project IDs for the target org, then filter
+      // Indirect: get project IDs for the target org,then filter
       const { data: orgProjects } = await supabase
         .from("projects")
         .select("id")
@@ -156,61 +131,35 @@ async function runCrossOrgProbe(
 
       query = supabase
         .from(tableName as any)
-        .select("id", { count: "exact" })
-        .in("project_id", projectIds)
+        .select("id",{ count: "exact" })
+        .in("project_id",projectIds)
         .limit(3);
     }
 
-    const { data, error, count } = await query;
+    const { data,error,count } = await query;
 
     if (error) {
       return {
-        table: tableName,
-        rowCount: 0,
-        sampleIds: [],
-        pass: true,
-        reason: "Query denied by RLS (PASS)",
-        error: error.message,
-        targetOrgId,
-      };
+        table: tableName,rowCount: 0,sampleIds: [],pass: true,reason: "Query denied by RLS (PASS)",error: error.message,targetOrgId,};
     }
 
     const rowCount = count ?? (data?.length || 0);
-    const sampleIds = (data as unknown as Array<{ id: string }> || []).map((r) => r.id).slice(0, 3);
+    const sampleIds = (data as unknown as Array<{ id: string }> || []).map((r) => r.id).slice(0,3);
 
     if (!isMember) {
       return {
-        table: tableName,
-        rowCount,
-        sampleIds,
-        pass: rowCount === 0,
-        reason:
+        table: tableName,rowCount,sampleIds,pass: rowCount === 0,reason:
           rowCount === 0
             ? "Non-member → 0 rows (PASS)"
-            : `FAIL: ${rowCount} rows leaked to non-member!`,
-        targetOrgId,
-      };
+            : `FAIL: ${rowCount} rows leaked to non-member!`,targetOrgId,};
     }
 
     return {
-      table: tableName,
-      rowCount,
-      sampleIds,
-      pass: true,
-      reason: `Member of org → ${rowCount} rows visible (expected)`,
-      targetOrgId,
-    };
+      table: tableName,rowCount,sampleIds,pass: true,reason: `Member of org → ${rowCount} rows visible (expected)`,targetOrgId,};
   } catch (e) {
     const error = e as Error;
     return {
-      table: tableName,
-      rowCount: 0,
-      sampleIds: [],
-      pass: true,
-      reason: "Exception treated as denied",
-      error: error.message,
-      targetOrgId,
-    };
+      table: tableName,rowCount: 0,sampleIds: [],pass: true,reason: "Exception treated as denied",error: error.message,targetOrgId,};
   }
 }
 
@@ -223,15 +172,15 @@ function StatusIcon({ pass }: { pass: boolean }) {
 }
 
 export default function SecurityIsolationReport() {
-  const { isAdmin, loading: authLoading } = useAuthRole();
-  const { isOrgAdmin, loading: orgLoading } = useOrganization();
+  const { isAdmin,loading: authLoading } = useAuthRole();
+  const { isOrgAdmin,loading: orgLoading } = useOrganization();
 
-  const [results, setResults] = useState<TestResult[]>([]);
-  const [probeResults, setProbeResults] = useState<ProbeResult[]>([]);
-  const [userOrgIds, setUserOrgIds] = useState<string[]>([]);
-  const [running, setRunning] = useState(false);
-  const [probing, setProbing] = useState(false);
-  const [targetOrgId, setTargetOrgId] = useState("");
+  const [results,setResults] = useState<TestResult[]>([]);
+  const [probeResults,setProbeResults] = useState<ProbeResult[]>([]);
+  const [userOrgIds,setUserOrgIds] = useState<string[]>([]);
+  const [running,setRunning] = useState(false);
+  const [probing,setProbing] = useState(false);
+  const [targetOrgId,setTargetOrgId] = useState("");
   const [hasRun, setHasRun] = useState(false);
   const [hasProbed, setHasProbed] = useState(false);
 

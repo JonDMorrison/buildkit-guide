@@ -235,7 +235,7 @@ export const SafetyFormModal = ({
   const fetchProjects = async () => {
     const { data, error } = await supabase
       .from("projects")
-      .select("id, name")
+      .select("id,name")
       .eq("is_deleted", false)
       .order("name");
 

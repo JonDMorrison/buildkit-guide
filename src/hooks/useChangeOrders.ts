@@ -37,7 +37,7 @@ export function useChangeOrders(orgId: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('change_orders')
-        .select('*, project:projects(name, currency)')
+        .select('*,project:projects(name,currency)')
         .eq('organization_id', orgId!)
         .order('updated_at', { ascending: false });
       if (error) throw error;
@@ -53,7 +53,7 @@ export function useChangeOrder(id: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('change_orders')
-        .select('*, project:projects(name, currency)')
+        .select('*,project:projects(name,currency)')
         .eq('id', id!)
         .single();
       if (error) throw error;

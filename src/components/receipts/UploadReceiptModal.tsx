@@ -70,7 +70,7 @@ export const UploadReceiptModal = ({
       if (!projectId) return;
       const { data } = await supabase
         .from('tasks')
-        .select('id, title')
+        .select('id,title')
         .eq('project_id', projectId)
         .eq('is_deleted', false)
         .order('title');

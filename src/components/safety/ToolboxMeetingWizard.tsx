@@ -88,14 +88,9 @@ export const ToolboxMeetingWizard = ({ isOpen, onClose, onSuccess }: ToolboxMeet
     try {
       const { data, error } = await supabase
         .from("project_members")
-        .select(`
-          user_id,
-          profiles!project_members_user_id_fkey (
-            id,
-            full_name,
-            email
-          )
-        `)
+        .select(`user_id,profiles!project_members_user_id_fkey (
+            id,full_name,email
+          )`)
         .eq("project_id", currentProjectId);
 
       if (error) throw error;

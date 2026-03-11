@@ -63,8 +63,19 @@ import { HealthContextBanner } from "@/components/HealthContextBanner";
 /* ------------------------------------------------------------------ */
 
 export default function Dashboard() {
-  const { isAdmin, isPM, isForeman } = useRouteAccess();
+  const { isAdmin, isPM, isForeman, loading } = useRouteAccess();
   const { homeRoute } = useDefaultHomeRoute();
+  const { activeOrganizationId, loading: orgLoading } = useOrganization();
+
+  // While roles/org are loading, show skeleton
+  if (loading || orgLoading) {
+    return <DashboardLayout><div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div></DashboardLayout>;
+  }
+
+  // No organization → user hasn't completed onboarding → redirect to welcome wizard
+  if (!activeOrganizationId) {
+    return <DashboardRedirect to="/welcome" />;
+  }
 
   // Worker-tier users should not be on /dashboard — redirect to their home route
   const canViewDashboard = isAdmin || isPM || isForeman;
@@ -142,7 +153,7 @@ function DashboardContent() {
       if (!user?.id || !activeOrganizationId) return [];
       const { data, error } = await supabase
         .from("project_members")
-        .select(`project_id, projects (id, name, location, status, organization_id)`)
+        .select(`project_id,projects (id,name,location,status,organization_id)`)
         .eq("user_id", user.id);
       
       if (error) throw error;
@@ -154,7 +165,7 @@ function DashboardContent() {
         projects.map(async (project: { id: string; name: string; location: string; status: string; organization_id: string }) => {
           const { data: tasks } = await supabase
             .from("tasks")
-            .select("id, status")
+            .select("id,status")
             .eq("project_id", project.id)
             .eq("is_deleted", false);
           const totalTasks = tasks?.length || 0;
@@ -182,7 +193,7 @@ function DashboardContent() {
       if (!user || !currentProjectId) return [];
       const { data, error } = await supabase
         .from("tasks")
-        .select(`*, assigned_trade:trades(name), task_assignments(user_id), blockers(id, is_resolved)`)
+        .select(`*,assigned_trade:trades(name),task_assignments(user_id),blockers(id,is_resolved)`)
         .eq("project_id", currentProjectId)
         .eq("is_deleted", false);
       if (error) throw error;
@@ -199,7 +210,7 @@ function DashboardContent() {
       if (!currentProjectId) return [];
       const { data, error } = await supabase
         .from("blockers")
-        .select(`*, task:tasks(id, title, assigned_trade:trades(name))`)
+        .select(`*,task:tasks(id,title,assigned_trade:trades(name))`)
         .eq("is_resolved", false);
       if (error) throw error;
       return data || [];
@@ -255,7 +266,7 @@ function DashboardContent() {
       if (!currentProjectId) return [];
       const { data, error } = await supabase
         .from("tasks")
-        .select("assigned_trade_id, trades(id, name, trade_type)")
+        .select("assigned_trade_id,trades(id,name,trade_type)")
         .eq("project_id", currentProjectId)
         .eq("is_deleted", false)
         .in("status", ["in_progress", "not_started"])
@@ -291,7 +302,7 @@ function DashboardContent() {
       if (!currentProjectId) return [];
       const { data, error } = await supabase
         .from("project_members")
-        .select(`id, user_id, role, trade:trades(name), profile:profiles(id, full_name, email)`)
+        .select(`id,user_id,role,trade:trades(name),profile:profiles(id,full_name,email)`)
         .eq("project_id", currentProjectId);
       if (error) throw error;
 

@@ -71,7 +71,8 @@ EXECUTE FUNCTION public.update_updated_at_column();
 
 -- Create receipts storage bucket
 INSERT INTO storage.buckets (id, name, public)
-VALUES ('receipts', 'receipts', false);
+VALUES ('receipts', 'receipts', false)
+ON CONFLICT (id) DO NOTHING;
 
 -- Storage RLS: Project members can view receipt files
 CREATE POLICY "Project members can view receipt files"

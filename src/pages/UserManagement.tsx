@@ -77,7 +77,7 @@ const UserManagement = () => {
         // Admins see all projects
         const { data: allProjects, error } = await supabase
           .from('projects')
-          .select('id, name')
+          .select('id,name')
           .order('name');
 
         if (error) throw error;
@@ -86,7 +86,7 @@ const UserManagement = () => {
         // Non-admins only see projects they manage
         const { data: managedProjects, error } = await supabase
           .from('project_members')
-          .select('project_id, projects!inner(id, name)')
+          .select('project_id,projects!inner(id,name)')
           .eq('user_id', user?.id)
           .eq('role', 'project_manager');
 
@@ -132,16 +132,7 @@ const UserManagement = () => {
     try {
       const { data, error } = await supabase
         .from('project_members')
-        .select(`
-          id,
-          user_id,
-          project_id,
-          role,
-          trade_id,
-          profiles:user_id (full_name, email),
-          projects:project_id (name),
-          trades:trade_id (name)
-        `)
+        .select(`id,user_id,project_id,role,trade_id,profiles:user_id (full_name,email),projects:project_id (name),trades:trade_id (name)`)
         .eq('project_id', selectedProject)
         .order('role');
 

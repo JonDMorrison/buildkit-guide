@@ -109,7 +109,7 @@ export const CreateEstimateModal = ({ projectId, onClose, onCreated }: Props) =>
     
       const { data } = await supabase
         .from('projects')
-        .select('name, location, billing_address, currency')
+        .select('name,location,billing_address,currency')
         .eq('id', projectId)
         .single();
       if (data) {

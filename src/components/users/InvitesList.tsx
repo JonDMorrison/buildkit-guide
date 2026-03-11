@@ -39,17 +39,7 @@ export const InvitesList = () => {
     try {
       const { data, error } = await supabase
         .from('invitations')
-        .select(`
-          id,
-          email,
-          full_name,
-          role,
-          status,
-          created_at,
-          expires_at,
-          project_id,
-          projects:project_id (name)
-        `)
+        .select(`id,email,full_name,role,status,created_at,expires_at,project_id,projects:project_id (name)`)
         .eq('organization_id', activeOrganizationId)
         .eq('status', 'pending')
         .order('created_at', { ascending: false });

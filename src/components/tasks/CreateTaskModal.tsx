@@ -109,7 +109,7 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
       // Fetch projects
       supabase
         .from('projects')
-        .select('id, name')
+        .select('id,name')
         .eq('is_deleted', false)
         .order('name')
         .then(({ data, error }) => {
@@ -120,7 +120,7 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
       // Fetch trades
       supabase
         .from('trades')
-        .select('id, name, trade_type')
+        .select('id,name,trade_type')
         .eq('is_active', true)
         .order('name')
         .then(({ data, error }) => {
@@ -136,7 +136,7 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
       // Fetch tasks for dependencies
       supabase
         .from('tasks')
-        .select('id, title, status')
+        .select('id,title,status')
         .eq('project_id', form.projectId)
         .eq('is_deleted', false)
         .order('title')
@@ -148,7 +148,7 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
       // Fetch project members for worker assignment
       supabase
         .from('project_members')
-        .select('id, user_id, role, profiles(id, full_name, email, avatar_url)')
+        .select('id,user_id,role,profiles(id,full_name,email,avatar_url)')
         .eq('project_id', form.projectId)
         .then(({ data, error }) => {
           if (error) console.error('Error fetching project members:', error);

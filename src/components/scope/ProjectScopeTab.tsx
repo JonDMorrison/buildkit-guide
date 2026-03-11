@@ -58,7 +58,7 @@ export const ProjectScopeTab = ({ projectId }: ProjectScopeTabProps) => {
   const fetchItems = useCallback(async () => {
     const { data, error } = await supabase
       .from('project_scope_items')
-      .select('id, name, description, item_type, planned_hours, planned_total, sort_order, organization_id, is_archived, archived_at')
+      .select('id,name,description,item_type,planned_hours,planned_total,sort_order,organization_id,is_archived,archived_at')
       .eq('project_id', projectId)
       .order('sort_order');
 
@@ -163,16 +163,15 @@ export const ProjectScopeTab = ({ projectId }: ProjectScopeTabProps) => {
         previewScopeTaskGeneration(projectId, mode),
         supabase
           .from('tasks')
-          .select('id', { count: 'exact', head: true })
-          .eq('project_id', projectId)
-          .is('scope_item_id', null)
-          .eq('is_deleted', false),
-      ]);
+          .select('id',{ count: 'exact',head: true })
+          .eq('project_id',projectId)
+          .is('scope_item_id',null)
+          .eq('is_deleted',false),]);
       setPreviewItems(preview);
       setHasManualTasks((manualCheck.count || 0) > 0);
       setPreviewOpen(true);
     } catch (err: any) {
-      toast({ title: 'Error loading preview', description: err.message, variant: 'destructive' });
+      toast({ title: 'Error loading preview',description: err.message,variant: 'destructive' });
     } finally {
       setPreviewLoading(false);
     }

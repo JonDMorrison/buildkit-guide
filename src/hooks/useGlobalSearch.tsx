@@ -73,42 +73,42 @@ export function useGlobalSearch() {
         // Fetch projects
         const { data: projects } = await supabase
           .from('projects')
-          .select('id, name, location, status, job_number')
+          .select('id,name,location,status,job_number')
           .eq('is_deleted', false)
           .limit(200);
 
         // Fetch tasks
         const { data: tasks } = await supabase
           .from('tasks')
-          .select('id, title, status, location, project_id, projects(name)')
+          .select('id,title,status,location,project_id,projects(name)')
           .eq('is_deleted', false)
           .limit(500);
 
         // Fetch deficiencies
         const { data: deficiencies } = await supabase
           .from('deficiencies')
-          .select('id, title, status, location, project_id, projects(name)')
+          .select('id,title,status,location,project_id,projects(name)')
           .eq('is_deleted', false)
           .limit(500);
 
         // Fetch documents (attachments with document_type)
         const { data: documents } = await supabase
           .from('attachments')
-          .select('id, file_name, document_type, project_id, projects(name)')
+          .select('id,file_name,document_type,project_id,projects(name)')
           .not('document_type', 'is', null)
           .limit(500);
 
         // Fetch safety forms
         const { data: safetyForms } = await supabase
           .from('safety_forms')
-          .select('id, title, form_type, status, project_id, projects(name)')
+          .select('id,title,form_type,status,project_id,projects(name)')
           .eq('is_deleted', false)
           .limit(500);
 
         // Fetch team members (profiles via project_members)
         const { data: teamMembers } = await supabase
           .from('profiles')
-          .select('id, full_name, email')
+          .select('id,full_name,email')
           .limit(200);
 
         setSearchData({

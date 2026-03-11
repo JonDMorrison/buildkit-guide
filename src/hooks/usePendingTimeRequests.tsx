@@ -38,13 +38,7 @@ export function useMyTimeRequests(limit = 20) {
 
       const { data, error } = await supabase
         .from('time_adjustment_requests')
-        .select(`
-          *,
-          project:projects(name),
-          target_user:profiles!time_adjustment_requests_target_user_id_fkey(full_name),
-          requester:profiles!time_adjustment_requests_requester_user_id_fkey(full_name),
-          proposed_job_site:job_sites(name)
-        `)
+        .select(`*,project:projects(name),target_user:profiles!time_adjustment_requests_target_user_id_fkey(full_name),requester:profiles!time_adjustment_requests_requester_user_id_fkey(full_name),proposed_job_site:job_sites(name)`)
         .eq('requester_user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(limit);
@@ -90,13 +84,7 @@ export function usePendingTimeRequests(projectId?: string) {
 
       let query = supabase
         .from('time_adjustment_requests')
-        .select(`
-          *,
-          project:projects(name),
-          target_user:profiles!time_adjustment_requests_target_user_id_fkey(full_name),
-          requester:profiles!time_adjustment_requests_requester_user_id_fkey(full_name),
-          proposed_job_site:job_sites(name)
-        `)
+        .select(`*,project:projects(name),target_user:profiles!time_adjustment_requests_target_user_id_fkey(full_name),requester:profiles!time_adjustment_requests_requester_user_id_fkey(full_name),proposed_job_site:job_sites(name)`)
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 

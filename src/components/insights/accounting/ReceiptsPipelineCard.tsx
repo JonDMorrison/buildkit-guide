@@ -19,7 +19,7 @@ export function ReceiptsPipelineCard() {
       // Get all receipts across org projects
       const { data: receipts, error } = await supabase
         .from("receipts")
-        .select("id, review_status, category, cost_type, created_at, reviewed_at, project_id")
+        .select("id,review_status,category,cost_type,created_at,reviewed_at,project_id")
         .order("created_at", { ascending: false })
         .limit(500);
       if (error) throw error;

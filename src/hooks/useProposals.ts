@@ -17,7 +17,7 @@ export const useProposals = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('proposals')
-      .select('*, projects(name, job_number), estimates(estimate_number)')
+      .select('*,projects(name,job_number),estimates(estimate_number)')
       .eq('organization_id', activeOrganizationId)
       .order('created_at', { ascending: false });
     if (error) {
@@ -111,7 +111,7 @@ export const useProposals = () => {
     if (proposal) {
       const { data: members } = await supabase
         .from('project_members')
-        .select('user_id, role')
+        .select('user_id,role')
         .eq('project_id', proposal.project_id)
         .in('role', ['project_manager', 'admin']);
       if (members) {
@@ -255,7 +255,7 @@ export const useProposals = () => {
   const fetchEvents = async (proposalId: string): Promise<ProposalEvent[]> => {
     const { data } = await supabase
       .from('proposal_events')
-      .select('*, profiles!proposal_events_actor_user_id_fkey(full_name)')
+      .select('*,profiles!proposal_events_actor_user_id_fkey(full_name)')
       .eq('proposal_id', proposalId)
       .order('created_at', { ascending: true });
     return ((data as unknown as (ProposalEvent & { profiles: any })[]) || []).map((e) => ({

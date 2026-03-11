@@ -27,7 +27,7 @@ export function useSmartDefaults(projectId: string | undefined): SmartDefaults {
     queryFn: async () => {
       const { data } = await supabase
         .from('tasks')
-        .select('assigned_trade_id, location, created_at')
+        .select('assigned_trade_id,location,created_at')
         .eq('project_id', projectId!)
         .eq('is_deleted', false)
         .order('created_at', { ascending: false })
@@ -43,7 +43,7 @@ export function useSmartDefaults(projectId: string | undefined): SmartDefaults {
     queryFn: async () => {
       const { data } = await supabase
         .from('deficiencies')
-        .select('assigned_trade_id, location, created_at')
+        .select('assigned_trade_id,location,created_at')
         .eq('project_id', projectId!)
         .eq('is_deleted', false)
         .order('created_at', { ascending: false })
@@ -59,7 +59,7 @@ export function useSmartDefaults(projectId: string | undefined): SmartDefaults {
     queryFn: async () => {
       const { data } = await supabase
         .from('manpower_requests')
-        .select('trade_id, requested_count, created_at')
+        .select('trade_id,requested_count,created_at')
         .eq('project_id', projectId!)
         .order('created_at', { ascending: false })
         .limit(10);
@@ -74,7 +74,7 @@ export function useSmartDefaults(projectId: string | undefined): SmartDefaults {
     queryFn: async () => {
       const { data } = await supabase
         .from('daily_logs')
-        .select('crew_count, weather, created_at')
+        .select('crew_count,weather,created_at')
         .eq('project_id', projectId!)
         .order('created_at', { ascending: false })
         .limit(5);
@@ -99,7 +99,7 @@ export function useSmartDefaults(projectId: string | undefined): SmartDefaults {
       const ids = taskIds.map((t) => t.id);
       const { data } = await supabase
         .from('task_assignments')
-        .select('user_id, assigned_at')
+        .select('user_id,assigned_at')
         .in('task_id', ids)
         .order('assigned_at', { ascending: false })
         .limit(100);
@@ -114,7 +114,7 @@ export function useSmartDefaults(projectId: string | undefined): SmartDefaults {
     queryFn: async () => {
       const { data } = await supabase
         .from('trades')
-        .select('id, name')
+        .select('id,name')
         .eq('is_active', true);
       const map = new Map<string, string>();
       (data || []).forEach((t) => map.set(t.id, t.name));

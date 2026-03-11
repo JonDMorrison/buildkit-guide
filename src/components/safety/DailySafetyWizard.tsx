@@ -138,7 +138,7 @@ export const DailySafetyWizard = ({
   const fetchProjects = async () => {
     const { data } = await supabase
       .from("projects")
-      .select("id, name")
+      .select("id,name")
       .eq("is_deleted", false)
       .order("name");
     setProjects(data || []);
@@ -151,7 +151,7 @@ export const DailySafetyWizard = ({
     // Get project members
     const { data: members } = await supabase
       .from("project_members")
-      .select("id, user_id, trade_id, trades(name), profiles(full_name, avatar_url, email)")
+      .select("id,user_id,trade_id,trades(name),profiles(full_name,avatar_url,email)")
       .eq("project_id", projectId);
 
     // Get today's check-ins

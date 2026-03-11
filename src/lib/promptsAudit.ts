@@ -69,19 +69,19 @@ const tableExists = async (tableName: string): Promise<{ exists: boolean; count:
   try {
     const { count, error } = await (supabase as any)
       .from(tableName)
-      .select('*', { count: 'exact', head: true });
-    if (error) return { exists: false, count: 0 };
-    return { exists: true, count: count ?? 0 };
+      .select('*',{ count: 'exact',head: true });
+    if (error) return { exists: false,count: 0 };
+    return { exists: true,count: count ?? 0 };
   } catch {
-    return { exists: false, count: 0 };
+    return { exists: false,count: 0 };
   }
 };
 
 // -- Individual Checks --
 
 async function checkWorkflowTablesExist(): Promise<AuditCheck> {
-  const tables = ['workflow_phases', 'workflow_phase_requirements', 'project_workflows', 'project_workflow_steps'];
-  const results: Record<string, { exists: boolean; count: number }> = {};
+  const tables = ['workflow_phases','workflow_phase_requirements','project_workflows','project_workflow_steps'];
+  const results: Record<string,{ exists: boolean; count: number }> = {};
   for (const t of tables) {
     results[t] = await tableExists(t);
   }
@@ -330,7 +330,7 @@ async function checkQuoteConversion(): Promise<AuditCheck> {
   // 1. Find an approved quote (deterministic ordering)
   const { data: approvedQuotes } = await (supabase as any)
     .from('quotes')
-    .select('id, quote_number, converted_invoice_id')
+    .select('id,quote_number,converted_invoice_id')
     .eq('status', 'approved')
     .order('updated_at', { ascending: false })
     .limit(1);
@@ -407,7 +407,7 @@ async function checkConversionSnapshots(): Promise<AuditCheck> {
   // Find most recent converted quote
   const { data: convertedQuotes } = await (supabase as any)
     .from('quotes')
-    .select('id, quote_number, converted_invoice_id, parent_client_id, client_id, project_id, customer_pm_email')
+    .select('id,quote_number,converted_invoice_id,parent_client_id,client_id,project_id,customer_pm_email')
     .not('converted_invoice_id', 'is', null)
     .order('updated_at', { ascending: false })
     .limit(1);
@@ -424,7 +424,7 @@ async function checkConversionSnapshots(): Promise<AuditCheck> {
   // Load invoice
   const { data: invoice } = await (supabase as any)
     .from('invoices')
-    .select('bill_to_name, bill_to_address, ship_to_address, send_to_emails')
+    .select('bill_to_name,bill_to_address,ship_to_address,send_to_emails')
     .eq('id', invoiceId)
     .maybeSingle();
 
@@ -439,7 +439,7 @@ async function checkConversionSnapshots(): Promise<AuditCheck> {
   const clientId = quote.parent_client_id || quote.client_id;
   let parentClient: any = null;
   if (clientId) {
-    const { data } = await (supabase as any).from('clients').select('name, billing_address, ap_email, email').eq('id', clientId).maybeSingle();
+    const { data } = await (supabase as any).from('clients').select('name,billing_address,ap_email,email').eq('id', clientId).maybeSingle();
     parentClient = data;
   }
 
@@ -585,20 +585,16 @@ async function checkNotificationsHooked(projectId: string): Promise<AuditCheck> 
   try {
     const { data: notifications, count } = await (supabase as any)
       .from('notifications')
-      .select('id, type, link_url, created_at', { count: 'exact' })
-      .eq('project_id', projectId)
-      .order('created_at', { ascending: false })
+      .select('id,type,link_url,created_at',{ count: 'exact' })
+      .eq('project_id',projectId)
+      .order('created_at',{ ascending: false })
       .limit(20);
 
     const total = count ?? 0;
     const hasLinks = (notifications || []).some((n: any) => n.link_url);
 
     if (total === 0) {
-      return makeCheck(id, name, area, severity,
-        'At least 1 project-scoped notification with valid link_url',
-        'No notifications found for this project',
-        'NEEDS_MANUAL',
-        'Trigger a workflow phase request/approval or quote conversion for this project, then rerun.');
+      return makeCheck(id,name,area,severity,'At least 1 project-scoped notification with valid link_url','No notifications found for this project','NEEDS_MANUAL','Trigger a workflow phase request/approval or quote conversion for this project,then rerun.');
     }
 
     const pass = total > 0 && hasLinks;
@@ -692,7 +688,7 @@ async function checkConversionSourceIntegrity(): Promise<AuditCheck> {
 
   const { data: convertedQuotes } = await (supabase as any)
     .from('quotes')
-    .select('id, quote_number, converted_invoice_id, parent_client_id, client_id, project_id, customer_pm_email')
+    .select('id,quote_number,converted_invoice_id,parent_client_id,client_id,project_id,customer_pm_email')
     .not('converted_invoice_id', 'is', null)
     .order('updated_at', { ascending: false })
     .limit(1);
@@ -706,7 +702,7 @@ async function checkConversionSourceIntegrity(): Promise<AuditCheck> {
   const quote = convertedQuotes[0];
   const { data: invoice } = await (supabase as any)
     .from('invoices')
-    .select('bill_to_name, bill_to_address, ship_to_address, send_to_emails')
+    .select('bill_to_name,bill_to_address,ship_to_address,send_to_emails')
     .eq('id', quote.converted_invoice_id)
     .maybeSingle();
 
@@ -720,7 +716,7 @@ async function checkConversionSourceIntegrity(): Promise<AuditCheck> {
   const clientId = quote.parent_client_id || quote.client_id;
   let client: any = null;
   if (clientId) {
-    const { data } = await (supabase as any).from('clients').select('name, billing_address, ap_email, email').eq('id', clientId).maybeSingle();
+    const { data } = await (supabase as any).from('clients').select('name,billing_address,ap_email,email').eq('id', clientId).maybeSingle();
     client = data;
   }
 
@@ -941,7 +937,7 @@ async function checkOrgOnboardingWizardRpc(): Promise<AuditCheck> {
       if (error.message?.includes('does not exist') || error.code === 'PGRST202' || error.message?.includes('NOT_FOUND')) {
         const { data: fnRows } = await supabase
           .from('v_rpc_metadata')
-          .select('function_name, security_definer, arguments')
+          .select('function_name,security_definer,arguments')
           .eq('function_name', 'rpc_run_org_onboarding_wizard')
           .limit(1);
         if (fnRows && fnRows.length > 0) {
@@ -1683,7 +1679,7 @@ async function checkGuardrailEnforcementInEdge(): Promise<AuditCheck> {
     // We verify by checking that the guardrail table has the expected key
     const { data: guardrail, error } = await supabase
       .from('organization_guardrails')
-      .select('key, mode')
+      .select('key,mode')
       .eq('key', 'block_time_before_estimate')
       .limit(1)
       .maybeSingle();

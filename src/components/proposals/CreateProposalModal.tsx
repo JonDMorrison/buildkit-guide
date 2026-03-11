@@ -39,7 +39,7 @@ export function CreateProposalModal({ open, onOpenChange, onSubmit }: Props) {
     if (!activeOrganizationId || !open) return;
     supabase
       .from('projects')
-      .select('id, name, job_number')
+      .select('id,name,job_number')
       .eq('organization_id', activeOrganizationId)
       .then(({ data }) => setProjects(data || []));
   }, [activeOrganizationId, open]);
@@ -48,7 +48,7 @@ export function CreateProposalModal({ open, onOpenChange, onSubmit }: Props) {
     if (!form.project_id) { setEstimates([]); return; }
     supabase
       .from('estimates')
-      .select('id, estimate_number')
+      .select('id,estimate_number')
       .eq('project_id', form.project_id)
       .then(({ data }) => setEstimates(data || []));
   }, [form.project_id]);

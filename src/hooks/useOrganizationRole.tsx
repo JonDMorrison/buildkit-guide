@@ -9,16 +9,14 @@ export function useOrganizationRole() {
   const { user } = useAuth();
   const { activeOrganization } = useOrganization();
 
-  const { data: role, isLoading } = useQuery({
+  const query = useQuery({
     queryKey: ['organization-role', user?.id, activeOrganization?.id],
     queryFn: async (): Promise<OrgRole | null> => {
-      if (!user?.id || !activeOrganization?.id) return null;
-
       const { data, error } = await supabase
         .from('organization_memberships')
         .select('role')
-        .eq('user_id', user.id)
-        .eq('organization_id', activeOrganization.id)
+        .eq('user_id', user!.id)
+        .eq('organization_id', activeOrganization!.id)
         .eq('is_active', true)
         .single();
 
@@ -27,6 +25,9 @@ export function useOrganizationRole() {
     },
     enabled: !!user?.id && !!activeOrganization?.id,
   });
+
+  const isLoading = query.isLoading && !!user?.id && !!activeOrganization?.id;
+  const role = query.data;
 
   const isAdmin = role === 'admin';
   const isHR = role === 'hr';

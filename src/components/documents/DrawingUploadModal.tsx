@@ -83,7 +83,7 @@ export const DrawingUploadModal = ({
     const fetchProjects = async () => {
       const { data } = await supabase
         .from('projects')
-        .select('id, name')
+        .select('id,name')
         .eq('is_deleted', false)
         .order('name');
       setProjects(data || []);

@@ -78,7 +78,7 @@ export function useSafetyLogAutoFill(projectId: string | null) {
       // First try to get job site location for the project
       const { data: jobSite } = await supabase
         .from('job_sites')
-        .select('latitude, longitude')
+        .select('latitude,longitude')
         .eq('project_id', projectId)
         .eq('is_active', true)
         .not('latitude', 'is', null)
@@ -178,7 +178,7 @@ export function useSafetyLogAutoFill(projectId: string | null) {
       // Get the entries for that form
       const { data: entries, error: entriesError } = await supabase
         .from('safety_entries')
-        .select('field_name, field_value')
+        .select('field_name,field_value')
         .eq('safety_form_id', form.id);
 
       if (entriesError || !entries) return null;
@@ -252,7 +252,7 @@ export function useSafetyLogAutoFill(projectId: string | null) {
       // Step 2: Get project members with those user IDs and their trades
       const { data: members, error: membersError } = await supabase
         .from('project_members')
-        .select('trade_id, trades(name, trade_type)')
+        .select('trade_id,trades(name,trade_type)')
         .eq('project_id', projectId)
         .in('user_id', userIds)
         .not('trade_id', 'is', null);

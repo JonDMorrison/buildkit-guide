@@ -17,7 +17,7 @@ export const useRecurringInvoices = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('recurring_invoice_templates')
-      .select('*, clients(name), projects(name)')
+      .select('*,clients(name),projects(name)')
       .eq('organization_id', activeOrganizationId)
       .order('created_at', { ascending: false });
     if (error) {

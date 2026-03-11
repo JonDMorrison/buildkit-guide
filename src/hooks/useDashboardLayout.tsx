@@ -141,7 +141,7 @@ export const useDashboardLayout = (projectId: string | null, roleHint?: 'foreman
 
       const { data, error } = await supabase
         .from('dashboard_layouts')
-        .select('layout, hidden_widgets')
+        .select('layout,hidden_widgets')
         .eq('user_id', user.id)
         .eq('project_id', projectId)
         .maybeSingle();

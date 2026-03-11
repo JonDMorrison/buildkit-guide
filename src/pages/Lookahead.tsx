@@ -28,6 +28,7 @@ interface TaskWithJoins {
   due_date: string | null;
   project_id: string;
   trade_id: string | null;
+  priority: number;
   status: string;
   is_deleted: boolean;
   trades: { name: string; trade_type: string | null; company_name: string | null } | null;
@@ -46,7 +47,7 @@ const Lookahead = () => {
   const [startDate, setStartDate] = useState(new Date());
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(false);
-  const [summary, setSummary] = useState<string | null>(null);
+  const [summary, setSummary] = useState<any | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
@@ -68,7 +69,7 @@ const Lookahead = () => {
     const fetchProjects = async () => {
       const { data } = await supabase
         .from('projects')
-        .select('id, name')
+        .select('id,name')
         .eq('is_deleted', false)
         .order('name');
       
@@ -122,47 +123,40 @@ const Lookahead = () => {
 
       let query = supabase
         .from('tasks')
-        .select(`
-          *,
-          trades(name, trade_type, company_name),
-          projects(name)
-        `)
+        .select('*')
         .eq('project_id', selectedProjectId)
         .eq('is_deleted', false);
 
       // Query tasks that overlap with the 14-day window
-      // Use start_date/end_date if available, fallback to due_date
       query = query.or(`and(start_date.lte.${endDateStr},end_date.gte.${startDateStr}),and(start_date.is.null,end_date.is.null,due_date.gte.${startDateStr},due_date.lte.${endDateStr})`);
 
-      const { data, error } = await query;
+      const [tasksRes, tradesRes, projectsRes, blockersRes] = await Promise.all([
+        query,
+        supabase.from('trades').select('id,name,trade_type,company_name'),
+        supabase.from('projects').select('id,name'),
+        supabase.from('blockers').select('task_id').eq('is_resolved', false)
+      ]);
 
-      if (error) throw error;
+      if (tasksRes.error) throw tasksRes.error;
 
-      // Fetch blocker counts for each task
-      if (data && data.length > 0) {
-        const taskIds = data.map(t => t.id);
-        const { data: blockers } = await supabase
-          .from('blockers')
-          .select('task_id')
-          .in('task_id', taskIds)
-          .eq('is_resolved', false);
+      const tradeMap = new Map(tradesRes.data?.map((t: any) => [t.id, t]));
+      const projectMap = new Map(projectsRes.data?.map((p: any) => [p.id, p]));
+      
+      const blockerCounts = (blockersRes.data || []).reduce((acc: any, b: any) => {
+        acc[b.task_id] = (acc[b.task_id] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
 
-        const blockerCounts = blockers?.reduce((acc, b) => {
-          acc[b.task_id] = (acc[b.task_id] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>) || {};
+      const tasksWithJoins = (tasksRes.data || []).map((task: any) => ({
+        ...task,
+        _blockerCount: blockerCounts[task.id] || 0,
+        trades: tradeMap.get(task.assigned_trade_id || (task as any).trade_id) || null,
+        projects: projectMap.get(task.project_id) || null
+      }));
 
-        let tasksWithBlockers = data.map(task => ({
-          ...task,
-          _blockerCount: blockerCounts[task.id] || 0,
-        }));
-
-
-        setTasks(tasksWithBlockers as unknown as TaskWithJoins[]);
-      } else {
-        setTasks([]);
-      }
+      setTasks(tasksWithJoins as any);
     } catch (error) {
+      console.error('Error loading lookahead tasks:', error);
       const err = error as Error;
       toast({
         title: 'Error loading tasks',

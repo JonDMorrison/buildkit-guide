@@ -46,10 +46,7 @@ const Safety = () => {
     try {
       let query = supabase
         .from("safety_forms")
-        .select(`
-          *,
-          profiles:created_by(full_name)
-        `)
+        .select(`*,profiles:created_by(full_name)`)
         .eq("is_deleted", false)
         .order("created_at", { ascending: false });
 
@@ -67,23 +64,21 @@ const Safety = () => {
         (data || []).map(async (form) => {
           const { count } = await supabase
             .from("attachments")
-            .select("id", { count: "exact", head: true })
-            .eq("safety_form_id", form.id);
+            .select("id",{ count: "exact",head: true })
+            .eq("safety_form_id",form.id);
 
           return {
-            ...form,
-            attachments: Array(count || 0).fill({ id: '' }),
-          };
+            ...form,attachments: Array(count || 0).fill({ id: '' }),};
         })
       );
 
       setForms(formsWithAttachments);
     } catch (error) {
-      console.error("Error fetching forms:", error);
+      console.error("Error fetching forms:",error);
     } finally {
       setLoading(false);
     }
-  }, [currentProjectId]);
+  },[currentProjectId]);
 
   useEffect(() => {
     fetchForms();

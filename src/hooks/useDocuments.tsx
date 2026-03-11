@@ -11,7 +11,7 @@ export const useDocuments = (projectId?: string, documentType?: string) => {
     try {
       let query = supabase
         .from('attachments')
-        .select('*, profiles(full_name, email)')
+        .select('*')
         .is('task_id', null)
         .is('deficiency_id', null)
         .is('safety_form_id', null)
@@ -25,11 +25,22 @@ export const useDocuments = (projectId?: string, documentType?: string) => {
         query = query.eq('document_type', documentType);
       }
 
-      const { data, error } = await query;
+      const [docResult, profilesResult] = await Promise.all([
+        query,
+        supabase.from('profiles').select('id,full_name,email')
+      ]);
 
-      if (error) throw error;
+      if (docResult.error) throw docResult.error;
+      if (profilesResult.error) throw profilesResult.error;
 
-      setDocuments(data || []);
+      const profileMap = new Map(profilesResult.data?.map(p => [p.id, p]));
+      
+      const docsWithProfiles = (docResult.data || []).map(doc => ({
+        ...doc,
+        profiles: profileMap.get(doc.uploaded_by) || null
+      }));
+
+      setDocuments(docsWithProfiles);
     } catch (error: any) {
       toast({
         title: 'Error loading documents',

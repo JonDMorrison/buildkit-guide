@@ -48,30 +48,39 @@ export default function Manpower() {
   const fetchRequests = async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
+      let mquery = supabase
         .from("manpower_requests")
-        .select(`
-          *,
-          trades:trade_id (
-            name,
-            company_name,
-            trade_type
-          ),
-          projects:project_id (
-            name
-          ),
-          created_by_profile:created_by (
-            full_name
-          ),
-          tasks:task_id (
-            title
-          )
-        `)
-        .eq("is_deleted", false)
-        .order("required_date", { ascending: true });
+        .select('*')
+        .eq("is_deleted", false);
 
-      if (error) throw error;
-      setRequests((data as unknown as ManpowerRequest[]) || []);
+      if (currentProjectId) {
+        mquery = mquery.eq('project_id', currentProjectId);
+      }
+
+      const [reqRes, tradesRes, projectsRes, profilesRes, tasksRes] = await Promise.all([
+        mquery.order("required_date", { ascending: true }),
+        supabase.from('trades').select('id,name,company_name,trade_type'),
+        supabase.from('projects').select('id,name'),
+        supabase.from('profiles').select('id,full_name'),
+        supabase.from('tasks').select('id,title')
+      ]);
+
+      if (reqRes.error) throw reqRes.error;
+
+      const tradeMap = new Map(tradesRes.data?.map(t => [t.id, t]));
+      const projectMap = new Map(projectsRes.data?.map(p => [p.id, p]));
+      const profileMap = new Map(profilesRes.data?.map(p => [p.id, p]));
+      const taskMap = new Map(tasksRes.data?.map(t => [t.id, t]));
+
+      const reqWithJoins = (reqRes.data || []).map(req => ({
+        ...req,
+        trades: tradeMap.get(req.trade_id) || null,
+        projects: projectMap.get(req.project_id) || null,
+        created_by_profile: profileMap.get(req.created_by) || null,
+        tasks: taskMap.get(req.task_id as any) || null
+      }));
+
+      setRequests(reqWithJoins as any);
     } catch (error) {
       console.error("Error fetching manpower requests:", error);
       toast({
@@ -86,7 +95,7 @@ export default function Manpower() {
 
   useEffect(() => {
     fetchRequests();
-  }, []);
+  }, [currentProjectId]);
 
   const handleApproval = async (requestId: string, approved: boolean) => {
     try {

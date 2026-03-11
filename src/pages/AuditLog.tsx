@@ -42,7 +42,7 @@ const AuditLog = () => {
     try {
       const { data, error } = await supabase
         .from("audit_log")
-        .select("*, profiles(full_name, email)")
+        .select("*,profiles(full_name,email)")
         .order("created_at", { ascending: false })
         .limit(100);
 

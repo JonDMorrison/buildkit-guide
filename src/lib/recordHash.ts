@@ -127,7 +127,7 @@ export async function generateAndPersistRecordHash(formId: string): Promise<stri
     // Fetch form details - including created_at for determinism
     const { data: form, error: formError } = await supabase
       .from("safety_forms")
-      .select("id, project_id, form_type, created_by, inspection_date, created_at, status")
+      .select("id,project_id,form_type,created_by,inspection_date,created_at,status")
       .eq("id", formId)
       .single();
 
@@ -139,7 +139,7 @@ export async function generateAndPersistRecordHash(formId: string): Promise<stri
     // Fetch all entries ordered deterministically
     const { data: entries, error: entriesError } = await supabase
       .from("safety_entries")
-      .select("field_name, field_value")
+      .select("field_name,field_value")
       .eq("safety_form_id", formId)
       .order("field_name", { ascending: true });
 
@@ -151,7 +151,7 @@ export async function generateAndPersistRecordHash(formId: string): Promise<stri
     // Fetch attendees ordered deterministically
     const { data: attendees, error: attendeesError } = await supabase
       .from("safety_form_attendees")
-      .select("user_id, is_foreman")
+      .select("user_id,is_foreman")
       .eq("safety_form_id", formId)
       .order("user_id", { ascending: true });
 
@@ -213,7 +213,7 @@ export async function verifyHashDeterminism(formId: string): Promise<{
   // Fetch form data once
   const { data: form, error: formError } = await supabase
     .from("safety_forms")
-    .select("id, project_id, form_type, created_by, inspection_date, created_at")
+    .select("id,project_id,form_type,created_by,inspection_date,created_at")
     .eq("id", formId)
     .single();
 
@@ -224,13 +224,13 @@ export async function verifyHashDeterminism(formId: string): Promise<{
 
   const { data: entries } = await supabase
     .from("safety_entries")
-    .select("field_name, field_value")
+    .select("field_name,field_value")
     .eq("safety_form_id", formId)
     .order("field_name", { ascending: true });
 
   const { data: attendees } = await supabase
     .from("safety_form_attendees")
-    .select("user_id, is_foreman")
+    .select("user_id,is_foreman")
     .eq("safety_form_id", formId)
     .order("user_id", { ascending: true });
 

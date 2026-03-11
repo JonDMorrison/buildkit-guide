@@ -118,7 +118,7 @@ export const EditProjectModal = ({ open, onOpenChange, project, onSuccess }: Edi
     if (open && activeOrganizationId) {
       supabase
         .from('clients')
-        .select('id, name, parent_client_id, billing_address, is_active')
+        .select('id,name,parent_client_id,billing_address,is_active')
         .eq('organization_id', activeOrganizationId)
         .order('name')
         .then(({ data }) => setAllClients(data || []));

@@ -68,14 +68,7 @@ export const AssignWorkerModal = ({
       try {
         const { data, error } = await supabase
           .from('project_members')
-          .select(`
-            id,
-            user_id,
-            role,
-            trade_id,
-            profile:profiles!project_members_user_id_fkey(id, full_name, email, avatar_url),
-            trade:trades(id, name)
-          `)
+          .select(`id,user_id,role,trade_id,profile:profiles!project_members_user_id_fkey(id,full_name,email,avatar_url),trade:trades(id,name)`)
           .eq('project_id', projectId);
 
         if (error) throw error;

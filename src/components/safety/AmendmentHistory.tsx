@@ -53,11 +53,7 @@ export const AmendmentHistory = ({ formId, projectId, onRefresh }: AmendmentHist
     try {
       const { data, error } = await supabase
         .from("safety_form_amendments")
-        .select(`
-          *,
-          requester:profiles!safety_form_amendments_requested_by_fkey(full_name, email),
-          reviewer:profiles!safety_form_amendments_reviewed_by_fkey(full_name, email)
-        `)
+        .select(`*,requester:profiles!safety_form_amendments_requested_by_fkey(full_name,email),reviewer:profiles!safety_form_amendments_reviewed_by_fkey(full_name,email)`)
         .eq("safety_form_id", formId)
         .order("created_at", { ascending: false });
 

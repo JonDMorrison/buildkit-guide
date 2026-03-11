@@ -52,16 +52,7 @@ export function useHoursTracking(projectId?: string) {
 
       let tasksQuery = supabase
         .from('tasks')
-        .select(`
-          id,
-          title,
-          status,
-          budgeted_hours,
-          planned_hours,
-          estimated_hours,
-          assigned_trade_id,
-          trades(id, name)
-        `)
+        .select(`id,title,status,budgeted_hours,planned_hours,estimated_hours,assigned_trade_id,trades(id,name)`)
         .eq('is_deleted', false)
         .in('project_id', projectId ? [projectId] : projectIds);
 
@@ -75,7 +66,7 @@ export function useHoursTracking(projectId?: string) {
       // Fetch time entries
       let entriesQuery = supabase
         .from('time_entries')
-        .select('duration_hours, task_id, scope_item_id, user_id')
+        .select('duration_hours,task_id,scope_item_id,user_id')
         .eq('organization_id', activeOrganization.id)
         .eq('status', 'closed');
 
@@ -93,7 +84,7 @@ export function useHoursTracking(projectId?: string) {
       // Fetch scope items
       let scopeQuery = supabase
         .from('scope_items')
-        .select('id, name, phase, budgeted_hours, trade_id, trades(name)')
+        .select('id,name,phase,budgeted_hours,trade_id,trades(name)')
         .eq('is_active', true);
 
       if (projectId) {

@@ -39,7 +39,7 @@ export const useAIInsight = (projectId: string | null, enabled = true) => {
 
     let query = supabase
       .from("ai_insights")
-      .select("content, snapshot_date, created_at")
+      .select("content,snapshot_date,created_at")
       .eq("organization_id", activeOrganizationId)
       .eq("insight_type", "weekly_summary")
       .order("snapshot_date", { ascending: false })

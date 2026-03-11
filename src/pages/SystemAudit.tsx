@@ -207,7 +207,7 @@ function SystemAuditContent() {
       if (!currentProjectId) return null;
       const { data } = await supabase
         .from("projects")
-        .select("id, name")
+        .select("id,name")
         .eq("id", currentProjectId)
         .maybeSingle();
       return data;

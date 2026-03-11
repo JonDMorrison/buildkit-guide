@@ -229,17 +229,36 @@ All colors MUST be HSL.
     @apply shadow-md border-primary/30;
   }
 
-  .stagger-in > *:nth-child(1) { animation-delay: 0ms; }
-  .stagger-in > *:nth-child(2) { animation-delay: 60ms; }
-  .stagger-in > *:nth-child(3) { animation-delay: 120ms; }
-  .stagger-in > *:nth-child(4) { animation-delay: 180ms; }
-  .stagger-in > *:nth-child(5) { animation-delay: 240ms; }
-  .stagger-in > *:nth-child(6) { animation-delay: 300ms; }
-  .stagger-in > *:nth-child(7) { animation-delay: 360ms; }
-  .stagger-in > *:nth-child(8) { animation-delay: 420ms; }
-  .stagger-in > *:nth-child(9) { animation-delay: 480ms; }
+  .stagger-in > *:nth-child(1) { animation-delay: 0.02s; }
+  .stagger-in > *:nth-child(2) { animation-delay: 0.04s; }
+  .stagger-in > *:nth-child(3) { animation-delay: 0.06s; }
+  .stagger-in > *:nth-child(4) { animation-delay: 0.08s; }
+  .stagger-in > *:nth-child(5) { animation-delay: 0.1s; }
+  .stagger-in > *:nth-child(6) { animation-delay: 0.12s; }
+  .stagger-in > *:nth-child(7) { animation-delay: 0.14s; }
+  .stagger-in > *:nth-child(8) { animation-delay: 0.16s; }
+  .stagger-in > *:nth-child(9) { animation-delay: 0.18s; }
   .stagger-in > * {
     animation-fill-mode: both;
+  }
+
+  /* Premium Sidebar Animations */
+  @keyframes slide-right-smooth {
+    0% { transform: translateX(-8px); opacity: 0; }
+    100% { transform: translateX(0); opacity: 1; }
+  }
+
+  @keyframes scale-in-subtle {
+    0% { transform: scale(0.98); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  .animate-sidebar-item {
+    animation: slide-right-smooth 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .animate-section-title {
+    animation: scale-in-subtle 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 }
 

@@ -34,7 +34,7 @@ export default function DailyLogs() {
       if (!currentProjectId) return null;
       const { data, error } = await supabase
         .from('projects')
-        .select('name, job_number')
+        .select('name,job_number')
         .eq('id', currentProjectId)
         .single();
       if (error) throw error;
@@ -61,7 +61,7 @@ export default function DailyLogs() {
     try {
       const { data, error } = await supabase
         .from('daily_logs')
-        .select('*, profiles:created_by(full_name, email)')
+        .select('*,profiles:created_by(full_name,email)')
         .eq('project_id', currentProjectId)
         .order('log_date', { ascending: false });
 

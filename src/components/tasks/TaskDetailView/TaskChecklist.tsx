@@ -36,7 +36,7 @@ export const TaskChecklist = ({ taskId, canEdit }: TaskChecklistProps) => {
       try {
         const { data, error } = await supabase
           .from('task_checklist_items')
-          .select('id, title, is_completed, sort_order')
+          .select('id,title,is_completed,sort_order')
           .eq('task_id', taskId)
           .order('sort_order', { ascending: true });
 
@@ -73,7 +73,7 @@ export const TaskChecklist = ({ taskId, canEdit }: TaskChecklistProps) => {
           is_completed: false,
           sort_order: items.length,
         })
-        .select('id, title, is_completed, sort_order')
+        .select('id,title,is_completed,sort_order')
         .single();
 
       if (error) throw error;

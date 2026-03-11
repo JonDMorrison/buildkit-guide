@@ -30,7 +30,7 @@ export const useQuotes = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('quotes')
-      .select('*, projects(name, job_number), clients!quotes_client_id_fkey(name)')
+      .select('*,projects(name,job_number),clients!quotes_client_id_fkey(name)')
       .eq('organization_id', activeOrganizationId)
       .order('created_at', { ascending: false });
     if (error) {

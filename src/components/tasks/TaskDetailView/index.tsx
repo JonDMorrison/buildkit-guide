@@ -92,11 +92,7 @@ export const TaskDetailView = ({
       // Fetch task
       const { data: taskData, error: taskError } = await supabase
         .from('tasks')
-        .select(`
-          *,
-          trades(id, name, trade_type, company_name),
-          projects(name)
-        `)
+        .select(`*,trades(id,name,trade_type,company_name),projects(name)`)
         .eq('id', taskId)
         .single();
 
@@ -117,12 +113,12 @@ export const TaskDetailView = ({
       ] = await Promise.all([
         supabase
           .from('blockers')
-          .select('*, trades(name, trade_type)')
+          .select('*,trades(name,trade_type)')
           .eq('task_id', taskId)
           .eq('is_resolved', false),
         supabase
           .from('task_dependencies')
-          .select('*, depends_on_task:tasks!task_dependencies_depends_on_task_id_fkey(id, title, status)')
+          .select('*,depends_on_task:tasks!task_dependencies_depends_on_task_id_fkey(id,title,status)')
           .eq('task_id', taskId),
         supabase
           .from('attachments')
@@ -131,30 +127,25 @@ export const TaskDetailView = ({
           .order('created_at', { ascending: false }),
         supabase
           .from('audit_log')
-          .select('*, profiles:user_id(full_name, email)')
+          .select('*,profiles:user_id(full_name,email)')
           .eq('record_id', taskId)
           .eq('table_name', 'tasks')
           .order('created_at', { ascending: false })
           .limit(10),
         supabase
           .from('trades')
-          .select('id, name, trade_type')
+          .select('id,name,trade_type')
           .eq('is_active', true)
           .order('name'),
         supabase
           .from('manpower_requests')
-          .select('*, approved_by_profile:approved_by(full_name)')
+          .select('*,approved_by_profile:approved_by(full_name)')
           .eq('task_id', taskId)
           .eq('is_deleted', false)
           .order('created_at', { ascending: false }),
         supabase
           .from('task_assignments')
-          .select(`
-            id,
-            user_id,
-            assigned_at,
-            profile:profiles!task_assignments_user_id_fkey(id, full_name, email, avatar_url)
-          `)
+          .select(`id,user_id,assigned_at,profile:profiles!task_assignments_user_id_fkey(id,full_name,email,avatar_url)`)
           .eq('task_id', taskId),
       ]);
 
@@ -227,7 +218,7 @@ export const TaskDetailView = ({
   const refetchBlockers = async () => {
     const { data } = await supabase
       .from('blockers')
-      .select('*, trades(name, trade_type)')
+      .select('*,trades(name,trade_type)')
       .eq('task_id', taskId)
       .eq('is_resolved', false);
     setBlockers(data || []);
@@ -236,7 +227,7 @@ export const TaskDetailView = ({
   const refetchDependencies = async () => {
     const { data } = await supabase
       .from('task_dependencies')
-      .select('*, depends_on_task:tasks!task_dependencies_depends_on_task_id_fkey(id, title, status)')
+      .select('*,depends_on_task:tasks!task_dependencies_depends_on_task_id_fkey(id,title,status)')
       .eq('task_id', taskId);
     setDependencies(data || []);
   };
@@ -244,7 +235,7 @@ export const TaskDetailView = ({
   const refetchManpower = async () => {
     const { data } = await supabase
       .from('manpower_requests')
-      .select('*, approved_by_profile:approved_by(full_name)')
+      .select('*,approved_by_profile:approved_by(full_name)')
       .eq('task_id', taskId)
       .eq('is_deleted', false)
       .order('created_at', { ascending: false });
@@ -254,12 +245,7 @@ export const TaskDetailView = ({
   const refetchAssignees = async () => {
     const { data } = await supabase
       .from('task_assignments')
-      .select(`
-        id,
-        user_id,
-        assigned_at,
-        profile:profiles!task_assignments_user_id_fkey(id, full_name, email, avatar_url)
-      `)
+      .select(`id,user_id,assigned_at,profile:profiles!task_assignments_user_id_fkey(id,full_name,email,avatar_url)`)
       .eq('task_id', taskId);
     setAssignedWorkers(data || []);
     onTaskUpdated?.();

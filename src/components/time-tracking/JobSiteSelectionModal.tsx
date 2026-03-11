@@ -57,7 +57,7 @@ export function JobSiteSelectionModal({
       if (!projectId) return [];
       const { data, error } = await supabase
         .from('tasks')
-        .select('id, title, status')
+        .select('id,title,status')
         .eq('project_id', projectId)
         .in('status', ['not_started', 'in_progress'])
         .order('title');

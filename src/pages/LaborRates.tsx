@@ -60,7 +60,7 @@ export default function LaborRates() {
       setLoading(true);
       const { data, error } = await supabase
         .from("organization_memberships")
-        .select("id, user_id, role, is_active, hourly_cost_rate, hourly_bill_rate, rates_currency, profiles(full_name, email)")
+        .select("id,user_id,role,is_active,hourly_cost_rate,hourly_bill_rate,rates_currency,profiles(full_name,email)")
         .eq("organization_id", activeOrganizationId)
         .eq("is_active", true)
         .order("role");

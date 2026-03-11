@@ -58,7 +58,7 @@ export const AddUserToProjectModal = ({
 
       let query = supabase
         .from('profiles')
-        .select('id, email, full_name')
+        .select('id,email,full_name')
         .order('email');
 
       // Only filter if there are existing members
@@ -83,7 +83,7 @@ export const AddUserToProjectModal = ({
     try {
       const { data, error } = await supabase
         .from('trades')
-        .select('id, name')
+        .select('id,name')
         .eq('is_active', true)
         .order('name');
 

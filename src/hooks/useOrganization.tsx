@@ -46,19 +46,9 @@ export const OrganizationProvider = ({ children }: { children: ReactNode }) => {
         // Fetch memberships with organization data
         const { data: memberships, error } = await supabase
           .from('organization_memberships')
-          .select(`
-            organization_id,
-            role,
-            is_active,
-            organizations (
-              id,
-              name,
-              slug,
-              is_sandbox,
-              sandbox_label,
-              base_currency
-            )
-          `)
+          .select(`organization_id,role,is_active,organizations (
+              id,name,slug,is_sandbox,sandbox_label,base_currency
+            )`)
           .eq('user_id', user.id)
           .eq('is_active', true);
 

@@ -30,109 +30,83 @@ function useTenantProbes(orgId: string | null) {
       try {
         const { count, error } = await supabase
           .from('projects')
-          .select('*', { count: 'exact', head: true })
-          .eq('organization_id', orgId);
+          .select('*',{ count: 'exact',head: true })
+          .eq('organization_id',orgId);
         probes.push({
-          label: 'Projects (org-scoped)',
-          count: error ? null : count,
-          status: error ? 'error' : 'pass',
-          error: error?.message,
-        });
+          label: 'Projects (org-scoped)',count: error ? null : count,status: error ? 'error' : 'pass',error: error?.message,});
       } catch (e: any) {
-        probes.push({ label: 'Projects (org-scoped)', count: null, status: 'error', error: e.message });
+        probes.push({ label: 'Projects (org-scoped)',count: null,status: 'error',error: e.message });
       }
 
       // Probe 2: Tasks count (RLS-scoped via project membership)
       try {
-        const { count, error } = await supabase
+        const { count,error } = await supabase
           .from('tasks')
-          .select('*', { count: 'exact', head: true });
+          .select('*',{ count: 'exact',head: true });
         probes.push({
-          label: 'Tasks (RLS-visible)',
-          count: error ? null : count,
-          status: error ? 'error' : 'pass',
-          error: error?.message,
-        });
+          label: 'Tasks (RLS-visible)',count: error ? null : count,status: error ? 'error' : 'pass',error: error?.message,});
       } catch (e: any) {
-        probes.push({ label: 'Tasks (RLS-visible)', count: null, status: 'error', error: e.message });
+        probes.push({ label: 'Tasks (RLS-visible)',count: null,status: 'error',error: e.message });
       }
 
       // Probe 3: Estimates count (org-scoped)
       try {
-        const { count, error } = await supabase
+        const { count,error } = await supabase
           .from('estimates')
-          .select('*', { count: 'exact', head: true })
-          .eq('organization_id', orgId);
+          .select('*',{ count: 'exact',head: true })
+          .eq('organization_id',orgId);
         probes.push({
-          label: 'Estimates (org-scoped)',
-          count: error ? null : count,
-          status: error ? 'error' : 'pass',
-          error: error?.message,
-        });
+          label: 'Estimates (org-scoped)',count: error ? null : count,status: error ? 'error' : 'pass',error: error?.message,});
       } catch (e: any) {
-        probes.push({ label: 'Estimates (org-scoped)', count: null, status: 'error', error: e.message });
+        probes.push({ label: 'Estimates (org-scoped)',count: null,status: 'error',error: e.message });
       }
 
       // Probe 4: Change orders (org-scoped)
       try {
-        const { count, error } = await supabase
+        const { count,error } = await supabase
           .from('change_orders')
-          .select('*', { count: 'exact', head: true })
-          .eq('organization_id', orgId);
+          .select('*',{ count: 'exact',head: true })
+          .eq('organization_id',orgId);
         probes.push({
-          label: 'Change Orders (org-scoped)',
-          count: error ? null : count,
-          status: error ? 'error' : 'pass',
-          error: error?.message,
-        });
+          label: 'Change Orders (org-scoped)',count: error ? null : count,status: error ? 'error' : 'pass',error: error?.message,});
       } catch (e: any) {
-        probes.push({ label: 'Change Orders (org-scoped)', count: null, status: 'error', error: e.message });
+        probes.push({ label: 'Change Orders (org-scoped)',count: null,status: 'error',error: e.message });
       }
 
       // Probe 5: Organization memberships (only current org)
       try {
-        const { count, error } = await supabase
+        const { count,error } = await supabase
           .from('organization_memberships')
-          .select('*', { count: 'exact', head: true })
-          .eq('organization_id', orgId)
-          .eq('is_active', true);
+          .select('*',{ count: 'exact',head: true })
+          .eq('organization_id',orgId)
+          .eq('is_active',true);
         probes.push({
-          label: 'Org Members (active)',
-          count: error ? null : count,
-          status: error ? 'error' : 'pass',
-          error: error?.message,
-        });
+          label: 'Org Members (active)',count: error ? null : count,status: error ? 'error' : 'pass',error: error?.message,});
       } catch (e: any) {
-        probes.push({ label: 'Org Members (active)', count: null, status: 'error', error: e.message });
+        probes.push({ label: 'Org Members (active)',count: null,status: 'error',error: e.message });
       }
 
       return probes;
-    },
-    enabled: !!orgId,
-    staleTime: 0,
-  });
+    },enabled: !!orgId,staleTime: 0,});
 }
 
 function SmokeContent() {
   const { user } = useAuth();
-  const { activeOrganization, activeOrganizationId } = useOrganization();
+  const { activeOrganization,activeOrganizationId } = useOrganization();
   const { role: orgRole } = useOrganizationRole();
   const { roles: globalRoles } = useUserRole();
   const routeAccess = useRouteAccess();
-  const { data: probes, isLoading: probesLoading } = useTenantProbes(activeOrganizationId);
+  const { data: probes,isLoading: probesLoading } = useTenantProbes(activeOrganizationId);
 
   // Count project memberships
   const { data: projectMemberCount } = useQuery({
-    queryKey: ['tenant-smoke-pm-count', user?.id],
-    queryFn: async () => {
+    queryKey: ['tenant-smoke-pm-count',user?.id],queryFn: async () => {
       const { count } = await supabase
         .from('project_members')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user!.id);
+        .select('*',{ count: 'exact',head: true })
+        .eq('user_id',user!.id);
       return count ?? 0;
-    },
-    enabled: !!user?.id,
-  });
+    },enabled: !!user?.id,});
 
   return (
     <div className="container mx-auto py-8 space-y-6 max-w-4xl">
@@ -179,7 +153,7 @@ function SmokeContent() {
             <div className="grid grid-cols-3 gap-3 text-sm">
               <div>
                 <span className="text-muted-foreground">Global Roles:</span>
-                <p>{globalRoles.length > 0 ? globalRoles.join(', ') : 'none'}</p>
+                <p>{globalRoles.length > 0 ? globalRoles.join(',') : 'none'}</p>
               </div>
               <div>
                 <span className="text-muted-foreground">Org Membership:</span>

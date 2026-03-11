@@ -76,12 +76,7 @@ export function useOrganizationTimesheetPeriods(status?: string) {
 
       let query = supabase
         .from('timesheet_periods')
-        .select(`
-          *,
-          user:profiles!user_id(full_name),
-          approver:profiles!approved_by(full_name),
-          locker:profiles!locked_by(full_name)
-        `)
+        .select(`*,user:profiles!user_id(full_name),approver:profiles!approved_by(full_name),locker:profiles!locked_by(full_name)`)
         .eq('organization_id', activeOrganization.id)
         .order('period_start', { ascending: false });
 

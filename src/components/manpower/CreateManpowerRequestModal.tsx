@@ -92,7 +92,7 @@ export const CreateManpowerRequestModal = ({
   const fetchProjects = async () => {
     const { data } = await supabase
       .from('projects')
-      .select('id, name')
+      .select('id,name')
       .eq('is_deleted', false)
       .order('name');
     setProjects(data || []);
@@ -101,7 +101,7 @@ export const CreateManpowerRequestModal = ({
   const fetchTrades = async () => {
     const { data } = await supabase
       .from('trades')
-      .select('id, name, trade_type')
+      .select('id,name,trade_type')
       .eq('is_active', true)
       .order('name');
     setTrades(data || []);
@@ -110,7 +110,7 @@ export const CreateManpowerRequestModal = ({
   const fetchTasks = async (projectId: string) => {
     const { data } = await supabase
       .from('tasks')
-      .select('id, title')
+      .select('id,title')
       .eq('project_id', projectId)
       .eq('is_deleted', false)
       .in('status', ['not_started', 'in_progress'])

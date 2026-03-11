@@ -54,9 +54,9 @@ export function ScopePhaseActions({ projectId }: ScopePhaseActionsProps) {
     try {
       const { count } = await supabase
         .from('project_scope_items')
-        .select('id', { count: 'exact', head: true })
-        .eq('project_id', projectId)
-        .eq('is_archived', false);
+        .select('id',{ count: 'exact',head: true })
+        .eq('project_id',projectId)
+        .eq('is_archived',false);
 
       if (!count || count === 0) {
         setHasScopeItems(false);
@@ -64,7 +64,7 @@ export function ScopePhaseActions({ projectId }: ScopePhaseActionsProps) {
         return;
       }
       setHasScopeItems(true);
-      const items = await previewScopeTaskGeneration(projectId, 'create_missing');
+      const items = await previewScopeTaskGeneration(projectId,'create_missing');
       setPreview(items);
     } catch (err: any) {
       toast({ title: 'Preview failed', description: err.message, variant: 'destructive' });

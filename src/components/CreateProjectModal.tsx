@@ -98,7 +98,7 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
     if (open && activeOrganizationId) {
       supabase
         .from('clients')
-        .select('id, name, is_active')
+        .select('id,name,is_active')
         .eq('organization_id', activeOrganizationId)
         .order('name')
         .then(({ data }) => setAllClients(data || []));

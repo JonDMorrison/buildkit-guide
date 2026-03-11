@@ -104,7 +104,7 @@ export default function MarginToolsSection({ orgId, session, projects, dbAuthOk,
     try {
       const { data: allProjects, error: projErr } = await supabase
         .from('projects')
-        .select('id, name')
+        .select('id,name')
         .eq('organization_id', orgId)
         .not('status', 'in', '("completed","archived","deleted","cancelled")')
         .eq('is_deleted', false)

@@ -87,7 +87,7 @@ export function PlaybookSuggestionStep({
             if (phaseIds.length > 0) {
               const { data: tasks } = await supabase
                 .from('playbook_tasks')
-                .select('expected_hours_low, expected_hours_high')
+                .select('expected_hours_low,expected_hours_high')
                 .in('playbook_phase_id', phaseIds);
               (tasks ?? []).forEach(t => {
                 totalLow += Number(t.expected_hours_low) || 0;

@@ -43,7 +43,7 @@ const JobCostReport = () => {
     const fetchProjects = async () => {
       const { data } = await supabase
         .from("projects")
-        .select("id, name, job_number")
+        .select("id,name,job_number")
         .eq("is_deleted", false)
         .order("name");
       setProjects(data || []);

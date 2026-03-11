@@ -168,7 +168,7 @@ const Invoicing = () => {
     if (!activeOrganizationId) return;
     const fetchProjects = async () => {
       const { data } = await supabase
-        .from("projects").select("id, name, client_id, location")
+        .from("projects").select("id,name,client_id,location")
         .eq("is_deleted", false)
         .eq("organization_id", activeOrganizationId)
         .order("name");
@@ -177,7 +177,7 @@ const Invoicing = () => {
     const fetchSendSettings = async () => {
       const { data } = await supabase
         .from("organization_settings")
-        .select("invoice_send_roles, invoice_send_requires_approval, invoice_send_approver_roles, invoice_send_blocked_message")
+        .select("invoice_send_roles,invoice_send_requires_approval,invoice_send_approver_roles,invoice_send_blocked_message")
         .eq("organization_id", activeOrganizationId)
         .single();
       if (data) {

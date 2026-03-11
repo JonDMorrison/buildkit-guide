@@ -74,7 +74,7 @@ export const CreateDeficiencyModal = ({
   const fetchProjects = async () => {
     const { data, error } = await supabase
       .from("projects")
-      .select("id, name")
+      .select("id,name")
       .eq("is_deleted", false)
       .order("name");
 
@@ -88,7 +88,7 @@ export const CreateDeficiencyModal = ({
   const fetchTrades = async () => {
     const { data, error } = await supabase
       .from("trades")
-      .select("id, company_name, trade_type")
+      .select("id,company_name,trade_type")
       .eq("is_active", true)
       .order("company_name");
 

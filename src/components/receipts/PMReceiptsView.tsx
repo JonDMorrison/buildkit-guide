@@ -108,10 +108,7 @@ export const PMReceiptsView = ({ projectId }: PMReceiptsViewProps) => {
     const fetchMembers = async () => {
       const { data } = await supabase
         .from('project_members')
-        .select(`
-          user_id,
-          profile:profiles!user_id(full_name, email)
-        `)
+        .select(`user_id,profile:profiles!user_id(full_name,email)`)
         .eq('project_id', projectId);
       
       if (data) {

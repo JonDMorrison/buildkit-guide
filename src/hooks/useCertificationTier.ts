@@ -32,7 +32,7 @@ export function useCertificationTier() {
       // Read current tier from profile (fast, no recalc)
       const { data: profile, error } = await supabase
         .from('organization_operational_profile')
-        .select('certification_tier, certification_updated_at, score_snapshot')
+        .select('certification_tier,certification_updated_at,score_snapshot')
         .eq('organization_id', activeOrganizationId)
         .maybeSingle();
 

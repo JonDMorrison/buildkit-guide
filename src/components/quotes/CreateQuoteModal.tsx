@@ -72,7 +72,7 @@ export const CreateQuoteModal = ({ onClose, onCreated }: Props) => {
     const load = async () => {
       const { data } = await supabase
         .from('projects')
-        .select('id, name')
+        .select('id,name')
         .eq('is_deleted', false)
         .order('name');
       setProjects((data as { id: string; name: string }[]) || []);
@@ -111,7 +111,7 @@ export const CreateQuoteModal = ({ onClose, onCreated }: Props) => {
     const load = async () => {
       const { data } = await supabase
         .from('projects')
-        .select('name, location, billing_address, pm_contact_name, pm_email, pm_phone')
+        .select('name,location,billing_address,pm_contact_name,pm_email,pm_phone')
         .eq('id', projectId)
         .single();
       if (data) {

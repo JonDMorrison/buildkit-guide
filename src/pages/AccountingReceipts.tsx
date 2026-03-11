@@ -119,7 +119,7 @@ const AccountingReceipts = () => {
     const fetchProjects = async () => {
       const { data } = await supabase
         .from('projects')
-        .select('id, name')
+        .select('id,name')
         .eq('is_deleted', false)
         .order('name');
       setProjects(data || []);
@@ -139,7 +139,7 @@ const AccountingReceipts = () => {
         const uniqueIds = [...new Set(data.map(r => r.uploaded_by))];
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('id, full_name, email')
+          .select('id,full_name,email')
           .in('id', uniqueIds);
         setUploaders(profiles || []);
       }
@@ -155,24 +155,20 @@ const AccountingReceipts = () => {
     try {
       let query = supabase
         .from('receipts')
-        .select(`
-          *,
-          project:projects(name),
-          uploader:profiles!uploaded_by(full_name, email),
-          reviewer:profiles!reviewed_by(full_name, email)
-        `, { count: 'exact' });
+        .select(`*,project:projects(name),uploader:profiles!uploaded_by(full_name,email),reviewer:profiles!reviewed_by(full_name,email)
+        `,{ count: 'exact' });
 
       // Apply filters
       if (selectedProjects.length > 0) {
-        query = query.in('project_id', selectedProjects);
+        query = query.in('project_id',selectedProjects);
       }
       if (startDate) {
-        query = query.gte('uploaded_at', startDate.toISOString());
+        query = query.gte('uploaded_at',startDate.toISOString());
       }
       if (endDate) {
         const endOfDay = new Date(endDate);
-        endOfDay.setHours(23, 59, 59, 999);
-        query = query.lte('uploaded_at', endOfDay.toISOString());
+        endOfDay.setHours(23,59,59,999);
+        query = query.lte('uploaded_at',endOfDay.toISOString());
       }
       if (category && category !== 'all') {
         query = query.eq('category', category as ReceiptCategory);

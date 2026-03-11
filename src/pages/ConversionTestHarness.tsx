@@ -185,7 +185,7 @@ export default function ConversionTestHarness() {
       // Load quote with parent client + project
       const { data: quote } = await (supabase as any)
         .from('quotes')
-        .select('id, parent_client_id, client_id, project_id, customer_pm_email, converted_invoice_id')
+        .select('id,parent_client_id,client_id,project_id,customer_pm_email,converted_invoice_id')
         .eq('id', quoteId)
         .maybeSingle();
 
@@ -198,7 +198,7 @@ export default function ConversionTestHarness() {
       const clientId = quote.parent_client_id || quote.client_id;
       let parentClient: any = null;
       if (clientId) {
-        const { data } = await (supabase as any).from('clients').select('name, billing_address, ap_email, email').eq('id', clientId).maybeSingle();
+        const { data } = await (supabase as any).from('clients').select('name,billing_address,ap_email,email').eq('id', clientId).maybeSingle();
         parentClient = data;
       }
 
@@ -212,7 +212,7 @@ export default function ConversionTestHarness() {
       // Load invoice
       const { data: invoice } = await (supabase as any)
         .from('invoices')
-        .select('bill_to_name, bill_to_address, ship_to_address, send_to_emails')
+        .select('bill_to_name,bill_to_address,ship_to_address,send_to_emails')
         .eq('id', invoiceIdParam)
         .maybeSingle();
 

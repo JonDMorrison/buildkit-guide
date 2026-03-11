@@ -70,7 +70,7 @@ const Estimates = () => {
     if (!activeOrganizationId) return;
     supabase
       .from("projects")
-      .select("id, name")
+      .select("id,name")
       .eq("organization_id", activeOrganizationId)
       .eq("is_deleted", false)
       .order("name")

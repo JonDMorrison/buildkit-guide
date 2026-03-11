@@ -264,7 +264,7 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
           location: projectAddress.trim() || null,
           job_type: projectJobType || null,
           organization_id: orgCreated.id,
-          status: 'active',
+          status: 'in_progress',
           created_by: user!.id,
         })
         .select('id')

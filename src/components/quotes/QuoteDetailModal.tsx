@@ -81,7 +81,7 @@ export const QuoteDetailModal = ({ quote, canEdit, onClose, onUpdated }: Props) 
       if (actorIds.length > 0) {
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('id, full_name')
+          .select('id,full_name')
           .in('id', actorIds);
         if (profiles) {
           profileMap = Object.fromEntries(profiles.map(p => [p.id, p.full_name || 'Unknown']));

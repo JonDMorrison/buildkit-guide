@@ -136,7 +136,7 @@ function InsightsAuditContent({ orgId }: { orgId: string | null }) {
 
   useEffect(() => {
     if (!orgId) return;
-    supabase.from('projects').select('id, name').eq('organization_id', orgId)
+    supabase.from('projects').select('id,name').eq('organization_id', orgId)
       .order('name').then(({ data }) => setProjects(data || []));
   }, [orgId]);
 

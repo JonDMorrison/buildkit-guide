@@ -85,7 +85,7 @@ async function detectAllSteps(orgId: string): Promise<DetectionOutput> {
       async () => {
         const { data } = await supabase
           .from('organization_settings')
-          .select('default_timezone, time_tracking_enabled, invoice_send_roles')
+          .select('default_timezone,time_tracking_enabled,invoice_send_roles')
           .eq('organization_id', orgId)
           .maybeSingle();
         const d: Partial<SetupProgress> = {};
@@ -103,49 +103,42 @@ async function detectAllSteps(orgId: string): Promise<DetectionOutput> {
         const d: Partial<SetupProgress> = {};
         const { count: projectCount, data: projects } = await supabase
           .from('projects')
-          .select('id', { count: 'exact' })
-          .eq('organization_id', orgId)
-          .eq('is_deleted', false);
+          .select('id',{ count: 'exact' })
+          .eq('organization_id',orgId)
+          .eq('is_deleted',false);
         if (projectCount && projectCount > 0) d.step_first_project = true;
         if (projects && projects.length > 0) {
           const projectIds = projects.map(p => p.id);
-          const [tradesRes, assignRes, safetyRes, drawingRes] = await Promise.all([
-            supabase.from('trades').select('id', { count: 'exact', head: true }).eq('organization_id', orgId),
-            supabase.from('project_members').select('id', { count: 'exact', head: true }).in('project_id', projectIds),
-            supabase.from('safety_forms').select('id', { count: 'exact', head: true }).in('project_id', projectIds).eq('is_deleted', false).eq('status', 'submitted'),
-            supabase.from('attachments').select('id', { count: 'exact', head: true }).in('project_id', projectIds).not('document_type', 'is', null),
-          ]);
+          const [tradesRes,assignRes,safetyRes,drawingRes] = await Promise.all([
+            supabase.from('trades').select('id',{ count: 'exact',head: true }).eq('organization_id',orgId),supabase.from('project_members').select('id',{ count: 'exact',head: true }).in('project_id',projectIds),supabase.from('safety_forms').select('id',{ count: 'exact',head: true }).in('project_id',projectIds).eq('is_deleted',false).eq('status','submitted'),
+            supabase.from('attachments').select('id',{ count: 'exact',head: true }).in('project_id',projectIds).not('document_type','is',null),]);
           if (tradesRes.count && tradesRes.count >= 3) d.step_trades_configured = true;
           if (assignRes.count && assignRes.count > 0) d.step_users_assigned = true;
           if (safetyRes.count && safetyRes.count > 0) d.step_first_safety_form = true;
           if (drawingRes.count && drawingRes.count > 0) d.step_first_drawing = true;
         }
         return d;
-      }),
-    runDetector('job-sites', ['step_first_job_site'], async () => {
+      }),runDetector('job-sites',['step_first_job_site'],async () => {
       const { count } = await supabase
         .from('job_sites')
-        .select('id', { count: 'exact', head: true })
-        .eq('organization_id', orgId)
-        .eq('is_active', true);
+        .select('id',{ count: 'exact',head: true })
+        .eq('organization_id',orgId)
+        .eq('is_active',true);
       return count && count > 0 ? { step_first_job_site: true } : {};
-    }),
-    runDetector('members', ['step_first_invite'], async () => {
+    }),runDetector('members',['step_first_invite'],async () => {
       const { count } = await supabase
         .from('organization_memberships')
-        .select('id', { count: 'exact', head: true })
-        .eq('organization_id', orgId)
-        .eq('is_active', true);
+        .select('id',{ count: 'exact',head: true })
+        .eq('organization_id',orgId)
+        .eq('is_active',true);
       return count && count > 1 ? { step_first_invite: true } : {};
-    }),
-    runDetector('labor-rates', ['step_labor_rates'], async () => {
-      const { data } = await supabase.rpc('rpc_get_org_costing_setup_status', { p_org_id: orgId });
+    }),runDetector('labor-rates',['step_labor_rates'],async () => {
+      const { data } = await supabase.rpc('rpc_get_org_costing_setup_status',{ p_org_id: orgId });
       if (data && (data as any).missing_labor_rates_count === 0 && !(data as any).has_currency_mismatch) {
         return { step_labor_rates: true } as Partial<SetupProgress>;
       }
       return {};
-    }),
-  ];
+    }),];
 
   const results = await Promise.all(detectors);
   const detected: Partial<SetupProgress> = {};
@@ -153,7 +146,7 @@ async function detectAllSteps(orgId: string): Promise<DetectionOutput> {
   const errors: string[] = [];
 
   for (const r of results) {
-    Object.assign(detected, r.result);
+    Object.assign(detected,r.result);
     if (r.error) {
       errors.push(`${r.name}: ${r.error}`);
       for (const key of r.coveredKeys) failedStepKeys.add(key);

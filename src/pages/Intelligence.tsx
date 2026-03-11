@@ -29,7 +29,7 @@ function useOrgProjects(orgId: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('projects')
-        .select('id, name, currency, status')
+        .select('id,name,currency,status')
         .eq('organization_id', orgId!)
         .neq('status', 'deleted')
         .order('name');

@@ -29,7 +29,7 @@ export function ManpowerOverview({ projectId }: Props) {
       if (!projectId) return { pending: [] as ManpowerRequest[], approved: 0, total: 0 };
       const { data: requests, error } = await supabase
         .from("manpower_requests")
-        .select("id, status, requested_count, required_date, reason, trades:trade_id(name), tasks:task_id(title)")
+        .select("id,status,requested_count,required_date,reason,trades:trade_id(name),tasks:task_id(title)")
         .eq("project_id", projectId)
         .eq("is_deleted", false)
         .order("created_at", { ascending: false })

@@ -406,7 +406,7 @@ function SystemDiagnosticsPanel({ orgId }: { orgId: string | null }) {
     const fetchProjects = async () => {
       const { data } = await supabase
         .from('projects')
-        .select('id, name')
+        .select('id,name')
         .eq('organization_id', orgId)
         .eq('is_deleted', false)
         .order('name');

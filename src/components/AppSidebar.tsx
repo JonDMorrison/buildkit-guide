@@ -64,16 +64,19 @@ export const AppSidebar = () => {
 
   return (
     <Sidebar collapsible="icon">
-      {/* Background — theme-aware */}
+      {/* Background — theme-aware premium effects */}
       <div className="absolute inset-0 pointer-events-none bg-sidebar" />
       <div
-        className="absolute inset-0 pointer-events-none opacity-[0.015] dark:block hidden"
+        className="absolute inset-0 pointer-events-none opacity-[0.03] dark:block hidden"
         style={{
           backgroundImage:
-            "linear-gradient(hsl(215 20% 40% / 0.2) 1px, transparent 1px), linear-gradient(90deg, hsl(215 20% 40% / 0.2) 1px, transparent 1px)",
-          backgroundSize: "24px 24px",
+            "linear-gradient(hsl(var(--sidebar-primary)) 0.5px, transparent 0.5px), linear-gradient(90deg, hsl(var(--sidebar-primary)) 0.5px, transparent 0.5px)",
+          backgroundSize: "32px 32px",
         }}
       />
+      
+      {/* Subtle radial glow at top */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[300px] bg-sidebar-primary/5 blur-[120px] pointer-events-none opacity-50" />
 
       <SidebarContent className="relative z-10 flex flex-col h-full py-3 overflow-y-auto overflow-x-hidden scrollbar-thin">
         {/* ── Collapse toggle ── */}
@@ -141,16 +144,17 @@ function SidebarCollapseToggle({ collapsed }: { collapsed: boolean }) {
     <button
       onClick={toggleSidebar}
       className={cn(
-        "flex items-center justify-center rounded-md transition-colors duration-150",
-        "text-sidebar-foreground/40 hover:text-sidebar-foreground/70 hover:bg-sidebar-accent/50",
-        collapsed ? "h-8 w-8" : "h-7 w-7",
+        "flex items-center justify-center rounded-lg transition-all duration-300 ease-in-out",
+        "text-sidebar-foreground/30 hover:text-sidebar-foreground/80 hover:bg-sidebar-primary/10 hover:shadow-sm",
+        "active:scale-90",
+        collapsed ? "h-9 w-9" : "h-8 w-8",
       )}
       aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
     >
       {collapsed ? (
-        <PanelLeft className="h-4 w-4" />
+        <PanelLeft className="h-4.5 w-4.5 transition-transform duration-500 hover:scale-110" />
       ) : (
-        <PanelLeftClose className="h-4 w-4" />
+        <PanelLeftClose className="h-4.5 w-4.5 transition-transform duration-500 hover:scale-110" />
       )}
     </button>
   );

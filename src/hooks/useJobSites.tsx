@@ -19,7 +19,7 @@ export function useJobSites(projectId: string | undefined) {
 
       const { data, error } = await supabase
         .from('job_sites')
-        .select('id, name, address, latitude, longitude, geofence_radius_meters, is_active')
+        .select('id,name,address,latitude,longitude,geofence_radius_meters,is_active')
         .eq('project_id', projectId)
         .eq('is_active', true)
         .order('name');

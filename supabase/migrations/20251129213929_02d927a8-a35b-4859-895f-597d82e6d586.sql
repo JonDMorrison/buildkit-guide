@@ -1,6 +1,7 @@
 -- Create storage bucket for project documents
 INSERT INTO storage.buckets (id, name, public)
-VALUES ('project-documents', 'project-documents', false);
+VALUES ('project-documents', 'project-documents', false)
+ON CONFLICT (id) DO NOTHING;
 
 -- RLS policies for project-documents bucket
 CREATE POLICY "Project members can upload documents"

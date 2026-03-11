@@ -18,7 +18,7 @@ export function InvoicePipelineCard() {
       if (!activeOrganizationId) return null;
       const { data: invoices, error } = await supabase
         .from("invoices")
-        .select("id, status, total, amount_paid")
+        .select("id,status,total,amount_paid")
         .eq("organization_id", activeOrganizationId);
       if (error) throw error;
 

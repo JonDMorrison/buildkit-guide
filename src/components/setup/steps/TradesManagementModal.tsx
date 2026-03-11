@@ -111,7 +111,7 @@ export function TradesManagementModal({
       // Fetch projects
       const { data: projectData } = await supabase
         .from('projects')
-        .select('id, name')
+        .select('id,name')
         .eq('organization_id', activeOrganizationId)
         .eq('is_deleted', false)
         .order('name');

@@ -14,7 +14,7 @@ export function OpenChangeOrdersCard({ projectId }: Props) {
       if (!projectId) return { open: 0, total: 0, pendingAmount: 0 };
       const { data: cos, error } = await supabase
         .from("change_orders")
-        .select("id, status, amount")
+        .select("id,status,amount")
         .eq("project_id", projectId);
       if (error) throw error;
       const open = (cos || []).filter(c => c.status === "pending" || c.status === "draft");

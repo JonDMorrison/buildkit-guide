@@ -106,7 +106,7 @@ function ReleaseContent() {
       if (!orgId) return [];
       const { data, error } = await supabase
         .from('release_manual_checks')
-        .select('id, check_key, label, is_checked, checked_by, checked_at')
+        .select('id,check_key,label,is_checked,checked_by,checked_at')
         .eq('organization_id', orgId)
         .order('created_at', { ascending: true });
       if (error) throw error;

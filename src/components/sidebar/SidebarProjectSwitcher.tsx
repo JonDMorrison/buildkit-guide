@@ -32,7 +32,7 @@ export const SidebarProjectSwitcher = ({ collapsed }: SidebarProjectSwitcherProp
       if (!user?.id) return [];
       const { data, error } = await supabase
         .from("project_members")
-        .select("project_id, projects (id, name, status)")
+        .select("project_id,projects (id,name,status)")
         .eq("user_id", user.id);
       if (error) throw error;
       return (data?.map((pm: any) => pm.projects).filter(Boolean) || []) as {
@@ -87,17 +87,18 @@ export const SidebarProjectSwitcher = ({ collapsed }: SidebarProjectSwitcherProp
         <PopoverTrigger asChild>
           <button
             className={cn(
-              "flex items-center justify-center rounded-md h-9 w-9 mx-auto",
-              "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-white/[0.06]",
-              "transition-colors duration-150",
-              open && "bg-white/[0.08] text-primary"
+              "flex items-center justify-center rounded-xl h-10 w-10 mx-auto transition-all duration-300",
+              "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-white/[0.08]",
+              "border border-transparent hover:border-sidebar-primary/20",
+              "animate-sidebar-item",
+              open && "bg-white/[0.08] text-primary shadow-inner"
             )}
             aria-label="Switch project"
           >
             <Building2 className="h-5 w-5" />
           </button>
         </PopoverTrigger>
-        <PopoverContent side="right" align="start" className="w-[280px] p-0 bg-popover border-border" sideOffset={8}>
+        <PopoverContent side="right" align="start" className="w-[280px] p-0 bg-popover/95 backdrop-blur-xl border-border shadow-2xl animate-in zoom-in-95 fade-in duration-200" sideOffset={12}>
           <ProjectList
             projects={filtered}
             currentProjectId={currentProjectId}
@@ -113,35 +114,40 @@ export const SidebarProjectSwitcher = ({ collapsed }: SidebarProjectSwitcherProp
   }
 
   return (
-    <div className="px-3 mb-0">
+    <div className="px-3 mb-2">
       <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setSearch(""); }}>
         <PopoverTrigger asChild>
           <button
             className={cn(
-              "w-full flex items-center gap-2.5 rounded-lg px-3 py-2.5",
-              "bg-white/[0.04] hover:bg-white/[0.08]",
-              "border border-transparent hover:border-primary/30",
-              "transition-all duration-200 ease-out group",
-              open && "border-primary/40 bg-white/[0.08]"
+              "w-full flex items-center gap-3 rounded-xl px-3 py-3 mt-2",
+              "bg-white/[0.03] hover:bg-white/[0.06] backdrop-blur-sm",
+              "border border-sidebar-border/50 hover:border-sidebar-primary/40",
+              "transition-all duration-500 cubic-bezier(0.16, 1, 0.3, 1) group",
+              "animate-sidebar-item",
+              open && "border-sidebar-primary/60 bg-white/[0.08] shadow-lg shadow-black/20"
             )}
             role="combobox"
             aria-expanded={open}
           >
-            <div className="flex items-center justify-center h-8 w-8 rounded-md bg-primary/15 shrink-0">
-              <Building2 className="h-4 w-4 text-primary" />
+            <div className={cn(
+              "flex items-center justify-center h-9 w-9 rounded-lg shrink-0 transition-all duration-500",
+              "bg-sidebar-primary/10 group-hover:bg-sidebar-primary/20 group-hover:scale-105",
+              "shadow-[inset_0_1px_1px_rgba(255,255,255,0.05),0_1px_3px_rgba(0,0,0,0.1)]"
+            )}>
+              <Building2 className="h-4.5 w-4.5 text-sidebar-primary" />
             </div>
             <div className="flex-1 min-w-0 text-left">
-              <p className="text-[10px] font-medium uppercase tracking-[0.1em] text-sidebar-foreground/40">
-                Project
+              <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-sidebar-foreground/25 mb-0.5">
+                Current Project
               </p>
-              <p className="text-sm font-semibold text-sidebar-foreground truncate">
+              <p className="text-[13px] font-semibold text-sidebar-foreground/90 truncate group-hover:text-sidebar-foreground transition-colors">
                 {currentProject?.name || "Select Project"}
               </p>
             </div>
             <ChevronDown
               className={cn(
-                "h-4 w-4 text-sidebar-foreground/30 transition-transform duration-200",
-                open && "rotate-180"
+                "h-4 w-4 text-sidebar-foreground/20 transition-all duration-500",
+                open && "rotate-180 text-sidebar-primary"
               )}
             />
           </button>
@@ -149,8 +155,8 @@ export const SidebarProjectSwitcher = ({ collapsed }: SidebarProjectSwitcherProp
         <PopoverContent
           side="bottom"
           align="start"
-          className="w-[var(--radix-popover-trigger-width)] p-0 bg-popover border-border"
-          sideOffset={4}
+          className="w-[var(--radix-popover-trigger-width)] p-0 bg-popover/98 backdrop-blur-2xl border-sidebar-border shadow-2xl animate-in slide-in-from-top-2 fade-in duration-300"
+          sideOffset={8}
         >
           <ProjectList
             projects={filtered}

@@ -34,7 +34,7 @@ export function LookaheadPreview({ projectId }: Props) {
       if (!projectId) return [];
       const { data, error } = await supabase
         .from("tasks")
-        .select("id, title, status, start_date, due_date, assigned_trade_id, trades:assigned_trade_id(name)")
+        .select("id,title,status,start_date,due_date,assigned_trade_id,trades:assigned_trade_id(name)")
         .eq("project_id", projectId)
         .eq("is_deleted", false)
         .or(`start_date.gte.${today.toISOString()},due_date.gte.${today.toISOString()}`)

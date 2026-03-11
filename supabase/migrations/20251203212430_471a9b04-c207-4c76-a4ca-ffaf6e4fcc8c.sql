@@ -130,7 +130,7 @@ ON public.gc_import_logs FOR INSERT
 WITH CHECK (true);
 
 -- Create storage bucket for GC deficiency uploads
-INSERT INTO storage.buckets (id, name, public) VALUES ('gc_deficiency_uploads', 'gc_deficiency_uploads', false);
+INSERT INTO storage.buckets (id, name, public) VALUES ('gc_deficiency_uploads', 'gc_deficiency_uploads', false) ON CONFLICT (id) DO NOTHING;
 
 -- Storage policies
 CREATE POLICY "Project members can upload GC files"

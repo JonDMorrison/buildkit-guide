@@ -1,6 +1,6 @@
 
 -- 1. Storage bucket for invoice logos/assets
-INSERT INTO storage.buckets (id, name, public) VALUES ('invoice-assets', 'invoice-assets', true);
+INSERT INTO storage.buckets (id, name, public) VALUES ('invoice-assets', 'invoice-assets', true) ON CONFLICT (id) DO NOTHING;
 
 CREATE POLICY "Anyone can view invoice assets"
 ON storage.objects FOR SELECT

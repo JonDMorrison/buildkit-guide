@@ -45,7 +45,7 @@ const Deficiencies = () => {
     const fetchProjects = async () => {
       const { data } = await supabase
         .from('projects')
-        .select('id, name')
+        .select('id,name')
         .eq('is_deleted', false)
         .order('name');
       
@@ -100,14 +100,9 @@ const Deficiencies = () => {
     try {
       const { data, error } = await supabase
         .from("deficiencies")
-        .select(`
-          *,
-          trades:assigned_trade_id (
-            id,
-            company_name,
-            trade_type
-          )
-        `)
+        .select(`*,trades:assigned_trade_id (
+            id,company_name,trade_type
+          )`)
         .eq("project_id", selectedProjectId)
         .eq("is_deleted", false)
         .order("created_at", { ascending: false });
@@ -119,7 +114,7 @@ const Deficiencies = () => {
         (data || []).map(async (deficiency) => {
           const { data: attachments } = await supabase
             .from("attachments")
-            .select("id, file_url, file_type")
+            .select("id,file_url,file_type")
             .eq("deficiency_id", deficiency.id)
             .limit(4);
 
@@ -141,7 +136,7 @@ const Deficiencies = () => {
   const fetchTrades = async () => {
     const { data, error } = await supabase
       .from("trades")
-      .select("id, company_name")
+      .select("id,company_name")
       .eq("is_active", true)
       .order("company_name");
 

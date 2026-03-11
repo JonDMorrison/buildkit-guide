@@ -55,7 +55,7 @@ function AIBrainContent() {
 
   useEffect(() => {
     if (!activeOrganizationId) return;
-    supabase.from('projects').select('id, name').eq('organization_id', activeOrganizationId)
+    supabase.from('projects').select('id,name').eq('organization_id', activeOrganizationId)
       .order('name').then(({ data }) => setProjects(data || []));
   }, [activeOrganizationId]);
 

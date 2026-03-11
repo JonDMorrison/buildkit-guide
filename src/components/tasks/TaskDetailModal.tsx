@@ -48,60 +48,57 @@ export const TaskDetailModal = ({ taskId, open, onOpenChange, onTaskUpdated }: T
     const fetchTaskDetails = async () => {
       setLoading(true);
       try {
-        // Fetch task
-        const { data: taskData, error: taskError } = await supabase
-          .from('tasks')
-          .select(`
-            *,
-            trades(name, trade_type, company_name),
-            projects(name)
-          `)
-          .eq('id', taskId)
-          .single();
+        // Fetch task details, blockers, assignments, etc. in parallel
+        const [taskRes, blockersRes, depsRes, attachRes, assignRes, manpowerRes, tradesRes, profilesRes, projectsRes] = await Promise.all([
+          supabase.from('tasks').select('*').eq('id', taskId).single(),
+          supabase.from('blockers').select('*').eq('task_id', taskId).eq('is_resolved', false),
+          supabase.from('task_dependencies').select('*').eq('task_id', taskId),
+          supabase.from('attachments').select('*').eq('task_id', taskId).order('created_at', { ascending: false }),
+          supabase.from('task_assignments').select('*').eq('task_id', taskId),
+          supabase.from('manpower_requests').select('*').eq('task_id', taskId).eq('is_deleted', false).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+          supabase.from('trades').select('id,name,trade_type,company_name'),
+          supabase.from('profiles').select('id,full_name,email'),
+          supabase.from('projects').select('id,name')
+        ]);
 
-        if (taskError) throw taskError;
-        setTask(taskData);
+        if (taskRes.error) throw taskRes.error;
 
-        // Fetch blockers
-        const { data: blockersData } = await supabase
-          .from('blockers')
-          .select('*, trades(name, trade_type)')
-          .eq('task_id', taskId)
-          .eq('is_resolved', false);
-        setBlockers(blockersData || []);
+        const tradeMap = new Map(tradesRes.data?.map((t: any) => [t.id, t]));
+        const profileMap = new Map(profilesRes.data?.map((p: any) => [p.id, p]));
+        const projectMap = new Map(projectsRes.data?.map((p: any) => [p.id, p]));
 
-        // Fetch dependencies
-        const { data: depsData } = await supabase
-          .from('task_dependencies')
-          .select('*, depends_on_task:tasks!task_dependencies_depends_on_task_id_fkey(id, title, status)')
-          .eq('task_id', taskId);
-        setDependencies(depsData || []);
+        const { data: allTasks } = await supabase.from('tasks').select('id,title,status');
+        const taskLookup = new Map(allTasks?.map(t => [t.id, t]));
 
-        // Fetch attachments
-        const { data: attachData } = await supabase
-          .from('attachments')
-          .select('*')
-          .eq('task_id', taskId)
-          .order('created_at', { ascending: false });
-        setAttachments(attachData || []);
+        // Enrich task
+        const enrichedTask = {
+          ...taskRes.data,
+          trades: tradeMap.get(taskRes.data.assigned_trade_id || (taskRes.data as any).trade_id),
+          projects: projectMap.get(taskRes.data.project_id)
+        };
+        setTask(enrichedTask);
 
-        // Fetch assignments
-        const { data: assignData } = await supabase
-          .from('task_assignments')
-          .select('*, profiles(full_name, email)')
-          .eq('task_id', taskId);
-        setAssignments(assignData || []);
+        // Enrich blockers
+        setBlockers((blockersRes.data || []).map(b => ({
+          ...b,
+          trades: tradeMap.get(b.trade_id)
+        })));
 
-        // Fetch manpower request for this task
-        const { data: manpowerData } = await supabase
-          .from('manpower_requests')
-          .select('*')
-          .eq('task_id', taskId)
-          .eq('is_deleted', false)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        setManpowerRequest(manpowerData);
+        // Enrich dependencies
+        setDependencies((depsRes.data || []).map(d => ({
+          ...d,
+          depends_on_task: taskLookup.get(d.depends_on_task_id)
+        })));
+
+        setAttachments(attachRes.data || []);
+        
+        // Enrich assignments
+        setAssignments((assignRes.data || []).map(a => ({
+          ...a,
+          profiles: profileMap.get(a.user_id)
+        })));
+
+        setManpowerRequest(manpowerRes.data);
 
       } catch (error: any) {
         toast({

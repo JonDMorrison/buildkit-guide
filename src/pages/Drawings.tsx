@@ -72,7 +72,7 @@ const Drawings = () => {
     const fetchProjects = async () => {
       const { data } = await supabase
         .from('projects')
-        .select('id, name')
+        .select('id,name')
         .eq('is_deleted', false)
         .order('name');
       setProjects(data || []);
@@ -106,7 +106,7 @@ const Drawings = () => {
     try {
       let query = supabase
         .from('attachments')
-        .select('*, profiles(full_name, email), projects(name)')
+        .select('*,profiles(full_name,email),projects(name)')
         .in('document_type', ['plan', 'drawing', 'blueprint', 'specification'])
         .order('sheet_number', { ascending: true, nullsFirst: false })
         .order('revision_date', { ascending: false });

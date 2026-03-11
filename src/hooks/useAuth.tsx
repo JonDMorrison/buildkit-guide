@@ -4,7 +4,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: AuthError | null }>;
+  signUp: (email: string, password: string, fullName: string) => Promise<{ data: any, error: AuthError | null }>;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
 }
@@ -77,7 +77,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           try {
             const roleCtx = await fetchRoleContext(session.user.id);
             const homeRoute = getDefaultHomeRoute(roleCtx);
-            navigate(homeRoute);
+            
+            // New user with no roles/org → let ProtectedRoute handle onboarding redirect
+            const hasAnyRole = roleCtx.isAdmin || roleCtx.orgRole || 
+              roleCtx.globalRoles.length > 0 || roleCtx.projectRoles.length > 0;
+            
+            if (!hasAnyRole) {
+              // New user — navigate to dashboard and let ProtectedRoute 
+              // check has_onboarded and redirect to /welcome if needed
+              navigate('/dashboard');
+            } else {
+              navigate(homeRoute);
+            }
           } catch (err) {
             console.error('Failed to resolve home route, falling back to /dashboard', err);
             navigate('/dashboard');
@@ -101,7 +112,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signUp = async (email: string, password: string, fullName: string) => {
     const redirectUrl = `${window.location.origin}/`;
     
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -113,17 +124,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
     
     // If signup succeeded, send trial notification email (fire and forget)
-    if (!error) {
-      supabase.functions.invoke('notify-trial-signup', {
-        body: { 
-          fullName, 
-          email,
-          company: undefined // Company not collected during signup currently
-        }
-      }).catch(err => console.error('Failed to send trial notification:', err));
-    }
+    // if (!error) {
+    //   supabase.functions.invoke('notify-trial-signup', 
+    //     {
+    //     body: { 
+    //       fullName, 
+    //       email,
+    //       company: undefined // Company not collected during signup currently
+    //     }
+    //   }).catch(err => console.error('Failed to send trial notification:', err));
+    // }
     
-    return { error };
+    return { data, error };
   };
 
   const signIn = async (email: string, password: string) => {
@@ -136,7 +148,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      // Clear onboarding cache
+      if (user) {
+        try { localStorage.removeItem(`pp_onboarded_${user.id}`); } catch {}
+      }
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('Sign out error:', err);
+    }
+    // Always navigate to auth, even if signOut fails
+    setUser(null);
+    setSession(null);
     navigate('/auth');
   };
 

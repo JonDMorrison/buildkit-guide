@@ -73,14 +73,14 @@ export function ScopeItemVarianceTable({ projectId, canEdit = false }: ScopeItem
         const [scopeRes, tasksRes, actualRes, totalRes, unassignedRes] = await Promise.all([
           supabase
             .from('project_scope_items')
-            .select('id, name, planned_hours')
+            .select('id,name,planned_hours')
             .eq('project_id', projectId)
             .eq('item_type', 'labor')
             .eq('is_archived', false)
             .order('sort_order'),
           supabase
             .from('tasks')
-            .select('id, scope_item_id')
+            .select('id,scope_item_id')
             .eq('project_id', projectId)
             .not('scope_item_id', 'is', null),
           // RPC: server-side aggregation — no client-side IN() needed
@@ -91,16 +91,16 @@ export function ScopeItemVarianceTable({ projectId, canEdit = false }: ScopeItem
           // Total project hours (all closed entries)
           supabase
             .from('time_entries')
-            .select('duration_hours, task_id')
+            .select('duration_hours,task_id')
             .eq('project_id', projectId)
             .eq('status', 'closed')
             .not('duration_hours', 'is', null),
           // Unassigned count
           supabase
             .from('time_entries')
-            .select('id', { count: 'exact', head: true })
-            .eq('project_id', projectId)
-            .eq('status', 'closed')
+            .select('id',{ count: 'exact',head: true })
+            .eq('project_id',projectId)
+            .eq('status','closed')
             .not('duration_hours', 'is', null)
             .is('task_id', null),
         ]);
@@ -171,7 +171,7 @@ export function ScopeItemVarianceTable({ projectId, canEdit = false }: ScopeItem
       const [entriesRes, tasksRes] = await Promise.all([
         supabase
           .from('time_entries')
-          .select('id, user_id, check_in_at, duration_hours, notes')
+          .select('id,user_id,check_in_at,duration_hours,notes')
           .eq('project_id', projectId)
           .eq('status', 'closed')
           .not('duration_hours', 'is', null)
@@ -180,7 +180,7 @@ export function ScopeItemVarianceTable({ projectId, canEdit = false }: ScopeItem
           .limit(100),
         supabase
           .from('tasks')
-          .select('id, title')
+          .select('id,title')
           .eq('project_id', projectId)
           .in('status', ['not_started', 'in_progress'])
           .order('title'),
@@ -188,7 +188,7 @@ export function ScopeItemVarianceTable({ projectId, canEdit = false }: ScopeItem
 
       const userIds = [...new Set((entriesRes.data || []).map(e => e.user_id))];
       const { data: profiles } = userIds.length > 0
-        ? await supabase.from('profiles').select('id, full_name').in('id', userIds)
+        ? await supabase.from('profiles').select('id,full_name').in('id', userIds)
         : { data: [] };
 
       const nameMap = new Map((profiles || []).map(p => [p.id, p.full_name || 'Unknown']));

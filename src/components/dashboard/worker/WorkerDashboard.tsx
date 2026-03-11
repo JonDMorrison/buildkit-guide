@@ -59,7 +59,7 @@ export function WorkerDashboard() {
       if (!user?.id || !currentProjectId) return [] as WorkerTask[];
       const { data, error } = await supabase
         .from("tasks")
-        .select(`*, assigned_trade:trades(name), task_assignments!inner(user_id), blockers(id, is_resolved, reason)`)
+        .select(`*,assigned_trade:trades(name),task_assignments!inner(user_id),blockers(id,is_resolved,reason)`)
         .eq("project_id", currentProjectId)
         .eq("is_deleted", false)
         .eq("task_assignments.user_id", user.id);
@@ -78,7 +78,7 @@ export function WorkerDashboard() {
       if (!user?.id) return [] as WorkerProject[];
       const { data, error } = await supabase
         .from("project_members")
-        .select(`project_id, role, trade:trades(name), projects(id, name, location, status)`)
+        .select(`project_id,role,trade:trades(name),projects(id,name,location,status)`)
         .eq("user_id", user.id);
       if (error) throw error;
 

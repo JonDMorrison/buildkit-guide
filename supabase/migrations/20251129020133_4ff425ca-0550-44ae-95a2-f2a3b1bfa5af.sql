@@ -6,7 +6,7 @@ VALUES (
   true,
   5242880, -- 5MB limit
   ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/heic']
-);
+) ON CONFLICT (id) DO NOTHING;
 
 -- Create RLS policies for deficiency photos bucket
 CREATE POLICY "Project members can view deficiency photos"

@@ -98,7 +98,7 @@ export function useReceiptLag(projectId: string | null) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('receipts')
-        .select('created_at, review_status')
+        .select('created_at,review_status')
         .eq('project_id', projectId!)
         .order('created_at', { ascending: true });
       if (error) throw error;
@@ -127,7 +127,7 @@ export function useSafetyGaps(projectId: string | null) {
       // Count submitted safety forms vs expected (daily logs should have corresponding forms)
       const { data: forms, error } = await supabase
         .from('safety_forms')
-        .select('id, status')
+        .select('id,status')
         .eq('project_id', projectId!);
       if (error) throw error;
 

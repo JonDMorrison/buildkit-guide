@@ -74,7 +74,7 @@ export const CommentsSection = ({ taskId, deficiencyId, projectId }: CommentsSec
     try {
       const query = supabase
         .from("comments")
-        .select("*, profiles(full_name, email)")
+        .select("*,profiles(full_name,email)")
         .order("created_at", { ascending: true });
 
       if (taskId) {
@@ -98,7 +98,7 @@ export const CommentsSection = ({ taskId, deficiencyId, projectId }: CommentsSec
     try {
       const { data, error } = await supabase
         .from("project_members")
-        .select("user_id, profiles(id, full_name, email)")
+        .select("user_id,profiles(id,full_name,email)")
         .eq("project_id", projectId);
 
       if (error) throw error;

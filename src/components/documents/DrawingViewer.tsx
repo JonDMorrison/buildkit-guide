@@ -120,7 +120,7 @@ export const DrawingViewer = ({
 
     const { data } = await supabase
       .from('attachments')
-      .select('*, profiles(full_name)')
+      .select('*,profiles(full_name)')
       .eq('project_id', drawing.project_id)
       .eq('sheet_number', drawing.sheet_number)
       .order('revision_date', { ascending: false });

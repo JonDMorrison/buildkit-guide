@@ -162,12 +162,7 @@ export const SafetyFormDetailModal = ({
       // Fetch form with project, creator, and reviewer
       const { data: formData, error: formError } = await supabase
         .from("safety_forms")
-        .select(`
-          *, 
-          projects(name, location, job_number), 
-          profiles!safety_forms_created_by_fkey(full_name, email),
-          reviewer:profiles!safety_forms_reviewed_by_fkey(full_name, email)
-        `)
+        .select(`*,projects(name,location,job_number),profiles!safety_forms_created_by_fkey(full_name,email),reviewer:profiles!safety_forms_reviewed_by_fkey(full_name,email)`)
         .eq("id", formId)
         .single();
 
@@ -212,18 +207,14 @@ export const SafetyFormDetailModal = ({
       // Fetch attendees
       const { data: attendeesData } = await supabase
         .from("safety_form_attendees")
-        .select("*, profiles(full_name, email)")
+        .select("*,profiles(full_name,email)")
         .eq("safety_form_id", formId);
       setAttendees(attendeesData || []);
 
       // Fetch acknowledgments with both worker profile and initiator profile
       const { data: acksData } = await supabase
         .from("safety_form_acknowledgments")
-        .select(`
-          *,
-          profiles!safety_form_acknowledgments_user_id_fkey(full_name, email),
-          initiator:profiles!safety_form_acknowledgments_initiated_by_user_id_fkey(full_name, email)
-        `)
+        .select(`*,profiles!safety_form_acknowledgments_user_id_fkey(full_name,email),initiator:profiles!safety_form_acknowledgments_initiated_by_user_id_fkey(full_name,email)`)
         .eq("safety_form_id", formId);
       setAcknowledgments(acksData || []);
     } catch (error) {

@@ -170,9 +170,9 @@ export async function checkIdempotencyTable(): Promise<ConsistencyCheck> {
   try {
     const { count, error } = await supabase
       .from('api_idempotency_keys')
-      .select('*', { count: 'exact', head: true });
+      .select('*',{ count: 'exact',head: true });
 
-    // RLS should block this, but if it doesn't we know the table exists
+    // RLS should block this,but if it doesn't we know the table exists
     if (error) {
       // Expected: RLS blocks client access
       if (error.message?.includes('permission') || error.code === '42501') {

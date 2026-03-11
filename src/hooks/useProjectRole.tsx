@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { useQuery } from '@tanstack/react-query';
 
 export type ProjectRole = 'admin' | 'project_manager' | 'foreman' | 'internal_worker' | 'external_trade';
 
@@ -12,53 +12,48 @@ interface ProjectRoleInfo {
 
 export const useProjectRole = (projectId?: string) => {
   const { user } = useAuth();
-  const [projectRoles, setProjectRoles] = useState<ProjectRoleInfo[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
 
-  useEffect(() => {
-    if (!user) {
-      setProjectRoles([]);
-      setIsGlobalAdmin(false);
-      setLoading(false);
-      return;
-    }
+  const query = useQuery({
+    queryKey: ['project-roles', user?.id, projectId],
+    queryFn: async () => {
+      // Check if user is global admin and get project roles in parallel
+      const [adminRes, projectRes] = await Promise.all([
+        supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user!.id)
+          .eq('role', 'admin')
+          .maybeSingle(),
+        (() => {
+          let q = supabase
+            .from('project_members')
+            .select('project_id,role,trade_id')
+            .eq('user_id', user!.id);
+          if (projectId) {
+            q = q.eq('project_id', projectId);
+          }
+          return q;
+        })()
+      ]);
 
-    const fetchRoles = async () => {
-      // Check if user is global admin
-      const { data: adminData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('role', 'admin')
-        .maybeSingle();
-
-      setIsGlobalAdmin(!!adminData);
-
-      // Get project-specific roles
-      let query = supabase
-        .from('project_members')
-        .select('project_id, role, trade_id')
-        .eq('user_id', user.id);
-
-      if (projectId) {
-        query = query.eq('project_id', projectId);
-      }
-
-      const { data, error } = await query;
-
-      if (!error && data) {
-        setProjectRoles(data.map(r => ({
+      return {
+        isGlobalAdmin: !!adminRes.data,
+        roles: (projectRes.data || []).map(r => ({
           projectId: r.project_id,
           role: r.role as ProjectRole,
           tradeId: r.trade_id,
-        })));
-      }
-      setLoading(false);
-    };
+        })) as ProjectRoleInfo[]
+      };
+    },
+    enabled: !!user,
+    staleTime: 1000 * 60 * 5,
+  });
 
-    fetchRoles();
-  }, [user, projectId]);
+  const loading = query.isLoading && !!user;
+  const data = query.data;
+
+  const projectRoles = data?.roles || [];
+  const isGlobalAdmin = data?.isGlobalAdmin || false;
 
   const getRoleForProject = (pid: string): ProjectRole | null => {
     if (isGlobalAdmin) return 'admin';

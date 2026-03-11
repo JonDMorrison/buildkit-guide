@@ -60,7 +60,7 @@ export default function TimeTracking() {
       // Get projects where user has membership
       const { data, error } = await supabase
         .from('project_members')
-        .select('project:projects!inner(id, name, job_number, is_deleted, organization_id)')
+        .select('project:projects!inner(id,name,job_number,is_deleted,organization_id)')
         .eq('user_id', user.id);
       
       if (error) throw error;

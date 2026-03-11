@@ -144,7 +144,7 @@ export const TaskDetailModalEnhanced = ({
       // Refetch assigned workers to sync UI in all cases
       const { data } = await supabase
         .from('task_assignments')
-        .select('id, user_id, assigned_at, profile:profiles!task_assignments_user_id_fkey(id, full_name, email, avatar_url)')
+        .select('id,user_id,assigned_at,profile:profiles!task_assignments_user_id_fkey(id,full_name,email,avatar_url)')
         .eq('task_id', taskId);
       setAssignedWorkers(data || []);
       queryClient.invalidateQueries({ queryKey: ['smart-defaults', task?.project_id] });
@@ -169,11 +169,7 @@ export const TaskDetailModalEnhanced = ({
         // Fetch task
         const { data: taskData, error: taskError } = await supabase
           .from('tasks')
-          .select(`
-            *,
-            trades(id, name, trade_type, company_name),
-            projects(name)
-          `)
+          .select(`*,trades(id,name,trade_type,company_name),projects(name)`)
           .eq('id', taskId)
           .single();
 
@@ -191,7 +187,7 @@ export const TaskDetailModalEnhanced = ({
         // Fetch blockers
         const { data: blockersData } = await supabase
           .from('blockers')
-          .select('*, trades(name, trade_type)')
+          .select('*,trades(name,trade_type)')
           .eq('task_id', taskId)
           .eq('is_resolved', false);
         setBlockers(blockersData || []);
@@ -199,7 +195,7 @@ export const TaskDetailModalEnhanced = ({
         // Fetch dependencies
         const { data: depsData } = await supabase
           .from('task_dependencies')
-          .select('*, depends_on_task:tasks!task_dependencies_depends_on_task_id_fkey(id, title, status)')
+          .select('*,depends_on_task:tasks!task_dependencies_depends_on_task_id_fkey(id,title,status)')
           .eq('task_id', taskId);
         setDependencies(depsData || []);
 
@@ -214,7 +210,7 @@ export const TaskDetailModalEnhanced = ({
         // Fetch activity log from audit_log
         const { data: auditData } = await supabase
           .from('audit_log')
-          .select('*, profiles:user_id(full_name, email)')
+          .select('*,profiles:user_id(full_name,email)')
           .eq('record_id', taskId)
           .eq('table_name', 'tasks')
           .order('created_at', { ascending: false })
@@ -224,7 +220,7 @@ export const TaskDetailModalEnhanced = ({
         // Fetch trades for dropdown
         const { data: tradesData } = await supabase
           .from('trades')
-          .select('id, name, trade_type')
+          .select('id,name,trade_type')
           .eq('is_active', true)
           .order('name');
         setTrades(tradesData || []);
@@ -232,7 +228,7 @@ export const TaskDetailModalEnhanced = ({
         // Fetch manpower requests
         const { data: manpowerData } = await supabase
           .from('manpower_requests')
-          .select('*, approved_by_profile:approved_by(full_name)')
+          .select('*,approved_by_profile:approved_by(full_name)')
           .eq('task_id', taskId)
           .eq('is_deleted', false)
           .order('created_at', { ascending: false });
@@ -241,12 +237,7 @@ export const TaskDetailModalEnhanced = ({
         // Fetch assigned workers
         const { data: assignmentsData } = await supabase
           .from('task_assignments')
-          .select(`
-            id,
-            user_id,
-            assigned_at,
-            profile:profiles!task_assignments_user_id_fkey(id, full_name, email, avatar_url)
-          `)
+          .select(`id,user_id,assigned_at,profile:profiles!task_assignments_user_id_fkey(id,full_name,email,avatar_url)`)
           .eq('task_id', taskId);
         setAssignedWorkers(assignmentsData || []);
 
@@ -254,7 +245,7 @@ export const TaskDetailModalEnhanced = ({
         if (taskData.project_id) {
           const { data: membersData } = await supabase
             .from('project_members')
-            .select('user_id, profile:profiles!project_members_user_id_fkey(full_name, email)')
+            .select('user_id,profile:profiles!project_members_user_id_fkey(full_name,email)')
             .eq('project_id', taskData.project_id);
           const map = new Map<string, { full_name: string | null; email: string }>();
           (membersData || []).forEach((m: any) => {
@@ -695,7 +686,7 @@ export const TaskDetailModalEnhanced = ({
               // Refetch dependencies
               supabase
                 .from('task_dependencies')
-                .select('*, depends_on_task:tasks!task_dependencies_depends_on_task_id_fkey(id, title, status)')
+                .select('*,depends_on_task:tasks!task_dependencies_depends_on_task_id_fkey(id,title,status)')
                 .eq('task_id', taskId)
                 .then(({ data }) => setDependencies(data || []));
             }}
@@ -936,7 +927,7 @@ export const TaskDetailModalEnhanced = ({
             // Refetch manpower requests
             supabase
               .from('manpower_requests')
-              .select('*, approved_by_profile:approved_by(full_name)')
+              .select('*,approved_by_profile:approved_by(full_name)')
               .eq('task_id', task.id)
               .eq('is_deleted', false)
               .order('created_at', { ascending: false })
@@ -958,12 +949,7 @@ export const TaskDetailModalEnhanced = ({
             // Refetch assigned workers
             supabase
               .from('task_assignments')
-              .select(`
-                id,
-                user_id,
-                assigned_at,
-                profile:profiles!task_assignments_user_id_fkey(id, full_name, email, avatar_url)
-              `)
+              .select(`id,user_id,assigned_at,profile:profiles!task_assignments_user_id_fkey(id,full_name,email,avatar_url)`)
               .eq('task_id', task.id)
               .then(({ data }) => setAssignedWorkers(data || []));
             onTaskUpdated?.();

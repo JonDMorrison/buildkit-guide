@@ -50,7 +50,7 @@ export const TaskDependencyManager = ({
       // Fetch all tasks from the same project except current task
       const { data, error } = await supabase
         .from('tasks')
-        .select('id, title, status')
+        .select('id,title,status')
         .eq('project_id', projectId)
         .eq('is_deleted', false)
         .neq('id', taskId)

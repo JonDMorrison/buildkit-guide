@@ -31,7 +31,7 @@ export const TaskFilters = ({ onFilterChange }: TaskFiltersProps) => {
     // Fetch trades for filter
     supabase
       .from('trades')
-      .select('id, name, trade_type')
+      .select('id,name,trade_type')
       .eq('is_active', true)
       .order('name')
       .then(({ data, error }) => {

@@ -23,7 +23,7 @@ export function useOnboardingState() {
       if (!user) throw new Error('No user');
       const { data: profile, error } = await supabase
         .from('profiles')
-        .select('onboarding_step, onboarding_org_id, onboarding_project_id, has_onboarded')
+        .select('onboarding_step,onboarding_org_id,onboarding_project_id,has_onboarded')
         .eq('id', user.id)
         .single();
 

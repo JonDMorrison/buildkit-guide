@@ -86,18 +86,11 @@ export const DeficiencyDetailModal = ({
     try {
       const { data: deficiencyData, error: deficiencyError } = await supabase
         .from("deficiencies")
-        .select(`
-          *,
-          trades:assigned_trade_id (
-            id,
-            company_name,
-            trade_type
-          ),
-          created_by_profile:profiles!deficiencies_created_by_fkey (
-            full_name,
-            email
-          )
-        `)
+        .select(`*,trades:assigned_trade_id (
+            id,company_name,trade_type
+          ),created_by_profile:profiles!deficiencies_created_by_fkey (
+            full_name,email
+          )`)
         .eq("id", deficiencyId)
         .single();
 
