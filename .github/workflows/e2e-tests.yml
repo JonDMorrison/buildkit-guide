@@ -9,6 +9,8 @@ on:
       - 'supabase/migrations/**'
       - 'supabase/functions/**'
       - 'e2e/**'
+      - 'playwright.config.ts'
+      - 'package.json'
   push:
     branches:
       - main
@@ -19,6 +21,8 @@ on:
       - 'supabase/migrations/**'
       - 'supabase/functions/**'
       - 'e2e/**'
+      - 'playwright.config.ts'
+      - 'package.json'
 
 jobs:
   e2e-tests:
