@@ -87,6 +87,12 @@ export function ProjectHealthSignalCard({ projectId }: Props) {
   const marginPct = marginControl?.projected_margin_at_completion_percent ?? null;
   const burnRatio = marginControl?.labor_burn_ratio ?? null;
 
+  const gradientColor = (riskScore ?? 0) < 30
+    ? '34, 197, 94'
+    : (riskScore ?? 0) < 60
+    ? '245, 158, 11'
+    : '239, 68, 68';
+
   // Previous snapshot for delta indicators
   const prevSnapshot = snapshotHistory && snapshotHistory.length >= 2 ? snapshotHistory[snapshotHistory.length - 2] : null;
   const prevRisk = prevSnapshot?.risk_score ?? null;
@@ -111,7 +117,10 @@ export function ProjectHealthSignalCard({ projectId }: Props) {
           <div className="flex items-center justify-between">
             {getPositionBadge(position)}
             <div className="flex items-center gap-3">
-              <div className="text-right">
+              <div
+                className="text-right rounded-lg px-3 py-1.5"
+                style={{ background: `radial-gradient(ellipse at center, rgba(${gradientColor}, 0.08) 0%, transparent 70%)` }}
+              >
                 <span className="text-xs text-muted-foreground block">Risk</span>
                 <span className={`text-2xl font-bold tabular-nums ${getRiskColor(riskScore)}`}>
                   {riskScore ?? "—"}

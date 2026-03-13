@@ -25,17 +25,12 @@ export const NavItem = forwardRef<HTMLAnchorElement, NavItemProps>(({ label, ico
       onMouseEnter={handleMouseEnter}
       onFocus={handleMouseEnter}
       className={cn(
-        "group relative flex items-center gap-3 rounded-xl transition-all duration-300 ease-in-out",
-        "text-sidebar-foreground/60 hover:text-sidebar-foreground",
-        "hover:bg-sidebar-accent/40 active:scale-[0.98]",
-        "animate-sidebar-item",
+        "group relative flex items-center gap-3 rounded-xl animate-sidebar-item",
+        "border-l-[3px] border-transparent text-slate-400 hover:text-white hover:bg-white/5 transition-colors duration-150",
+        "active:scale-[0.98]",
         collapsed ? "justify-center px-0 py-2.5 mx-2" : "px-3 py-2.5 mx-2",
       )}
-      activeClassName={cn(
-        "!text-sidebar-primary font-medium bg-sidebar-primary/8 shadow-sm",
-        "before:absolute before:left-[-8px] before:top-1/2 before:-translate-y-1/2 before:h-6 before:w-[4px] before:rounded-r-full before:bg-sidebar-primary before:shadow-[0_0_12px_rgba(var(--sidebar-primary),0.5)]",
-        "after:absolute after:inset-0 after:rounded-xl after:ring-1 after:ring-sidebar-primary/20",
-      )}
+      activeClassName="border-l-[3px] !border-amber-500 bg-white/5 !text-white font-medium"
     >
       <div className={cn(
         "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all duration-300",

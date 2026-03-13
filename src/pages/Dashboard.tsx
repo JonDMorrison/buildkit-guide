@@ -349,7 +349,7 @@ function DashboardContent() {
       )}
 
       <SectionErrorBoundary title="Right Now">
-        <DashboardGrid columns={2}>
+        <DashboardGrid columns={2} gap="lg">
           <MyDayTaskList tasks={priorityTasks} loading={tasksLoading} />
           <BlockersCard blockers={unresolvedBlockers} loading={tasksLoading} />
         </DashboardGrid>
@@ -376,7 +376,7 @@ function DashboardContent() {
             onFinishingClick={() => setFinishingModalOpen(true)}
             onBlockersClick={() => setBlockersModalOpen(true)}
           />
-          <DashboardGrid columns={2}>
+          <DashboardGrid columns={2} gap="lg">
             <ProjectHealthSignalCard projectId={currentProjectId} />
             {(isPM() || isAdmin) && <OpenChangeOrdersCard projectId={currentProjectId} />}
           </DashboardGrid>
@@ -391,7 +391,7 @@ function DashboardContent() {
         skeletonHeight="h-48"
         skeletonCount={2}
       >
-        <DashboardGrid columns={2}>
+        <DashboardGrid columns={2} gap="lg">
           <LookaheadPreview projectId={currentProjectId} />
           <div className="space-y-4">
             <AIChangeFeedCard />

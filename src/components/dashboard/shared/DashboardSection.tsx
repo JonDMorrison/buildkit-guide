@@ -42,7 +42,7 @@ export const DashboardSection = forwardRef<HTMLElement, DashboardSectionProps>(
       <section ref={ref} className={cn("space-y-3 pt-4 first:pt-0", className)}>
         {title && (
           <div className="flex items-center justify-between pb-1 border-b border-border/30 mb-1">
-            <h2 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
+            <h2 className="text-xs font-medium tracking-widest text-slate-500 uppercase">
               {title}
             </h2>
             {helpText && <SectionHelp text={helpText} />}

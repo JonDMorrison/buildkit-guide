@@ -117,7 +117,7 @@ function LookaheadRow({ task }: { task: LookaheadTask }) {
   };
 
   return (
-    <div className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted/30 transition-colors">
+    <div className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-white/5 transition-colors duration-150">
       <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusColor[task.status] ?? "bg-muted-foreground/40"}`} />
       <span className="text-xs text-foreground truncate flex-1">{task.title}</span>
       {task.start_date && (

@@ -43,7 +43,7 @@ export const MyDayTaskList = memo(function MyDayTaskList({ tasks, loading }: Pro
         {tasks.map(task => (
           <div
             key={task.id}
-            className="flex items-start gap-3 p-3 rounded-lg border border-border/50 bg-muted/5 hover:bg-muted/10 hover:border-primary/20 transition-all cursor-pointer"
+            className="flex items-start gap-3 p-3 rounded-lg border border-border/50 bg-muted/5 hover:bg-white/5 hover:border-primary/20 transition-colors duration-150 cursor-pointer"
             onClick={() => navigate("/tasks")}
           >
             <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${statusColors[task.status] ?? "bg-muted-foreground/40"}`} />

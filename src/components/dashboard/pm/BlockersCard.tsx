@@ -34,7 +34,7 @@ export const BlockersCard = memo(function BlockersCard({ blockers, loading }: Pr
         {blockers.slice(0, 6).map(b => (
           <div
             key={b.id}
-            className="p-3 rounded-lg border border-border/50 bg-card hover:border-destructive/30 transition-colors cursor-pointer"
+            className="p-3 rounded-lg border border-border/50 bg-card hover:bg-white/5 hover:border-destructive/30 transition-colors duration-150 cursor-pointer"
             onClick={() => navigate("/tasks?status=blocked")}
           >
             <p className="text-sm font-medium text-foreground line-clamp-1">{b.reason}</p>

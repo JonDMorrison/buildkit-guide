@@ -113,13 +113,9 @@ const skeletonMap: Record<CardVariant, () => JSX.Element> = {
 /* ------------------------------------------------------------------ */
 
 const BASE_CARD = [
-  "relative rounded-xl border border-border/60 bg-card",
+  "relative rounded-xl border border-white/5 bg-card",
   // Consistent min-height for visual alignment
   "min-h-[140px]",
-  // Shadows & transitions
-  "shadow-elevation-1 transition-all duration-200 ease-out",
-  // Hover elevation
-  "hover:shadow-elevation-2 hover:-translate-y-0.5",
   // Card-enter animation (stagger delay set by parent .stagger-in)
   "animate-card-enter",
 ].join(" ");
@@ -156,14 +152,14 @@ export function DashboardCard({
     const SkeletonComponent = skeletonMap[variant];
     return (
       <Card className={cn(BASE_CARD, variantAccent[variant], "hover:translate-y-0", className)}>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-5 pt-5">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-6 pt-6">
           <div className="flex items-center gap-2">
             <Skeleton className="h-4 w-4 rounded" />
             <Skeleton className="h-4 w-28 rounded" />
           </div>
           <Skeleton className="h-4 w-4 rounded-full" />
         </CardHeader>
-        <CardContent className={cn("px-5 pb-5 space-y-3", contentClassName)}>
+        <CardContent className={cn("px-6 pb-6 space-y-3", contentClassName)}>
           <SkeletonComponent />
         </CardContent>
       </Card>
@@ -174,7 +170,7 @@ export function DashboardCard({
   if (error) {
     return (
       <Card className={cn(BASE_CARD, "border-destructive/30", className)}>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-5 pt-5">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-6 pt-6">
           <div className="flex items-center gap-2 min-w-0">
             <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
             <CardTitle className="text-sm font-medium text-destructive truncate">
@@ -182,7 +178,7 @@ export function DashboardCard({
             </CardTitle>
           </div>
         </CardHeader>
-        <CardContent className="px-5 pb-5">
+        <CardContent className="px-6 pb-6">
           <p className="text-sm text-destructive/80">{error}</p>
         </CardContent>
       </Card>
@@ -192,7 +188,7 @@ export function DashboardCard({
   /* ── Normal ──────────────────────────────────────────────────── */
   return (
     <Card className={cn(BASE_CARD, variantAccent[variant], className)}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-5 pt-5">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-6 pt-6">
         <div className="flex items-center gap-2 min-w-0">
           {Icon && <Icon className="h-4 w-4 text-muted-foreground shrink-0" />}
           <div className="min-w-0">
@@ -225,7 +221,7 @@ export function DashboardCard({
         </div>
       </CardHeader>
 
-      <CardContent className={cn("px-5 pb-5 space-y-2", contentClassName)}>
+      <CardContent className={cn("px-6 pb-6 space-y-2", contentClassName)}>
         {value !== undefined && value !== null && (
           <div className="text-2xl font-bold text-foreground leading-none">{value}</div>
         )}
