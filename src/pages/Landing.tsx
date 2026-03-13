@@ -63,11 +63,14 @@ export default function Landing() {
           <div className="grid lg:grid-cols-2 gap-8 md:gap-12 items-center">
             <div className="text-center lg:text-left">
                <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 md:mb-6 leading-[1.15]">
-                Build Every Project Like Your Best One
+                Run Every Construction Project the Way Your Best One Ran
                </h1>
                <p className="text-lg sm:text-xl md:text-2xl text-gray-200 mb-4 md:mb-6 leading-relaxed">
-                 Start with a proven workflow, run the job faster, and automatically reuse what works across every project.
+                 ProjectPath turns your best projects into repeatable workflows so every job runs faster, safer, and more profitably.
                </p>
+              <p className="text-sm font-medium text-amber-500 uppercase tracking-widest mt-2 mb-4 md:mb-6">
+                Most software tracks work. This system helps you repeat it.
+              </p>
               <p className="text-sm sm:text-base text-white/70 mb-6 md:mb-8">
                 No credit card required • Free 14-day trial • Setup in minutes
               </p>
@@ -379,10 +382,9 @@ export default function Landing() {
               </p>
               <div className="space-y-4">
                 {[
-                  { icon: FolderSearch, text: "Document Q&A with source references" },
-                  { icon: FileBarChart, text: "Weekly insight reports from project snapshots" },
-                  { icon: AlertTriangle, text: "Hazard suggestions based on weather and tasks" },
-                  { icon: MessageSquareWarning, text: "Escalation emails drafted instantly" }
+                  { icon: AlertTriangle, text: "Electrical inspection is scheduled before drywall — flag this before it causes a delay." },
+                  { icon: Shield, text: "Weather forecast shows rain Thursday. Concrete pour is scheduled Wednesday — risk alert." },
+                  { icon: BarChart3, text: "Labor burn rate is 18% over budget on framing. Recommend reviewing crew allocation." }
                 ].map((item, index) => {
                   const Icon = item.icon;
                   return (
@@ -548,7 +550,7 @@ export default function Landing() {
              Stop Rebuilding. Start Repeating What Works.
            </h3>
            <p className="text-lg md:text-xl text-primary-foreground/90 mb-8 max-w-xl mx-auto">
-             Join contractors who run every project with the same consistency as their best one.
+             Join contractors who've stopped rebuilding from scratch and started running every project from a proven playbook.
            </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
             <Button 
