@@ -60,7 +60,8 @@ serve(async (req) => {
       });
     }
 
-    const { job_type } = await req.json();
+    const body = await req.json();
+    const { job_type, audience, trade_name } = body;
     if (!job_type || typeof job_type !== "string" || job_type.trim().length < 2) {
       return new Response(JSON.stringify({ error: "job_type is required (min 2 chars)" }), {
         status: 400,
@@ -122,12 +123,98 @@ serve(async (req) => {
       }
     }
 
+    // Fallback: no historical projects — generate from best practices
     if (projectList.length === 0) {
-      return new Response(JSON.stringify({
-        error: "No similar projects found",
-        suggestion: "Create more projects with this job type before generating a predictive playbook.",
-      }), {
-        status: 404,
+      const fallbackSystemPrompt = `You are an expert construction project consultant with 20 years of experience. Generate a comprehensive playbook template based on industry best practices. Output ONLY valid JSON matching the schema.`;
+
+      const fallbackUserPrompt = `Generate a best-practice playbook for: job_type="${job_type}"${audience ? `, audience="${audience}"` : ""}${trade_name ? `, trade="${trade_name}"` : ""}
+
+This should represent typical phases, tasks, and hour ranges for this type of construction work based on industry standards.
+
+OUTPUT SCHEMA:
+{
+  "name": "string - suggested playbook name",
+  "job_type": "string - the job type this is for",
+  "description": "string - brief description",
+  "confidence_score": 0,
+  "data_quality_note": "No historical projects found — generated using best-practice construction templates.",
+  "phases": [
+    {
+      "name": "string - phase name",
+      "description": "string - what this phase covers",
+      "sequence_order": "number",
+      "tasks": [
+        {
+          "title": "string - task title",
+          "description": "string - brief task description",
+          "role_type": "string|null - suggested crew role",
+          "expected_hours_low": "number",
+          "expected_hours_high": "number",
+          "required": "boolean - whether this is a standard task",
+          "frequency_percent": 100
+        }
+      ]
+    }
+  ],
+  "total_hours_band": { "low": "number", "high": "number" },
+  "variance_band_percent": { "low": 0, "high": 0 },
+  "projects_analyzed": 0
+}`;
+
+      const fallbackAiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${openaiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: fallbackSystemPrompt },
+            { role: "user", content: fallbackUserPrompt },
+          ],
+          response_format: { type: "json_object" },
+          max_tokens: 4000,
+        }),
+      });
+
+      if (!fallbackAiResponse.ok) {
+        if (fallbackAiResponse.status === 429) {
+          return new Response(JSON.stringify({ error: "AI rate limit exceeded. Please try again in a moment." }), {
+            status: 429,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        return new Response(JSON.stringify({ error: "AI analysis failed" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const fallbackAiData = await fallbackAiResponse.json();
+      const fallbackRawContent = fallbackAiData.choices?.[0]?.message?.content || "";
+
+      let fallbackSuggestion: any;
+      try {
+        const cleaned = fallbackRawContent.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+        fallbackSuggestion = JSON.parse(cleaned);
+      } catch (e) {
+        return new Response(JSON.stringify({ error: "AI returned invalid format", raw: fallbackRawContent }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Ensure fallback fields are set
+      fallbackSuggestion.confidence_score = 0;
+      fallbackSuggestion.projects_analyzed = 0;
+      fallbackSuggestion.data_quality_note = "No historical projects found — generated using best-practice construction templates.";
+      fallbackSuggestion.generated_at = new Date().toISOString();
+      fallbackSuggestion.generated_by = user.id;
+      fallbackSuggestion.organization_id = orgId;
+      fallbackSuggestion.source_project_ids = [];
+
+      return new Response(JSON.stringify(fallbackSuggestion), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -194,8 +281,9 @@ serve(async (req) => {
       };
     });
 
-    // Call Lovable AI to analyze and generate playbook suggestion
-    const systemPrompt = `You are a construction project analyst. Analyze historical project data and generate a suggested playbook structure.
+    // Build system prompt with audience context
+    const audienceContext = audience ? ` Generate a ${audience} playbook${trade_name ? ` for ${trade_name} crews` : ""} doing ${job_type} work.` : "";
+    const systemPrompt = `You are a construction project analyst. Analyze historical project data and generate a suggested playbook structure.${audienceContext}
 
 RULES:
 - Output ONLY valid JSON matching the schema below. No markdown, no explanation.
@@ -256,6 +344,8 @@ Generate a comprehensive playbook based on the patterns you observe. Focus on:
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
+        response_format: { type: "json_object" },
+        max_tokens: 4000,
       }),
     });
 
