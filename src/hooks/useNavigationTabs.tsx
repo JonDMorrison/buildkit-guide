@@ -4,6 +4,7 @@ import { useProjectRole } from "@/hooks/useProjectRole";
 import { useOrganizationRole } from "@/hooks/useOrganizationRole";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useTimeTrackingEnabled } from "@/hooks/useTimeTrackingEnabled";
+import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
@@ -58,6 +59,7 @@ export const tabs: TabConfig[] = [
 ];
 
 export const useNavigationTabs = () => {
+  const { loading: authLoading } = useAuth();
   const { isGlobalAdmin, projectRoles, loading: roleLoading } = useProjectRole();
   const { role: orgRole, isLoading: orgRoleLoading } = useOrganizationRole();
   const { hasRole, loading: userRoleLoading } = useUserRole();
@@ -78,7 +80,7 @@ export const useNavigationTabs = () => {
     enabled: !!currentProjectId,
   });
 
-  const isLoading = roleLoading || timeTrackingLoading || orgRoleLoading || userRoleLoading;
+  const isLoading = authLoading || roleLoading || timeTrackingLoading || orgRoleLoading || userRoleLoading;
 
   const navTier = useMemo((): NavTier => {
     if (isLoading) return 'all';

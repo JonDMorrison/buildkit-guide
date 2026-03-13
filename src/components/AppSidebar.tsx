@@ -27,7 +27,7 @@ const SECTIONS: SectionDef[] = [
   },
   {
     title: "Financial",
-    paths: ["/job-cost-report", "/invoicing", "/estimates", "/quotes", "/proposals", "/change-orders", "/receipts", "/insights", "/intelligence"],
+    paths: ["/job-cost-report", "/invoicing", "/financials", "/change-orders", "/receipts", "/insights", "/intelligence"],
   },
   {
     title: "Field & Compliance",
@@ -39,7 +39,7 @@ const SECTIONS: SectionDef[] = [
   },
   {
     title: "Admin",
-    paths: ["/users", "/data-health", "/insights/ai-brain", "/settings/labor-rates", "/playbooks", "/release"],
+    paths: ["/users", "/data-health", "/insights/ai-brain", "/settings/labor-rates", "/playbooks", "/release", "/export"],
   },
 ];
 
