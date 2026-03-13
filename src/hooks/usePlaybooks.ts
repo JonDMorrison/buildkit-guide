@@ -12,6 +12,9 @@ export interface PlaybookSummary {
   version: number;
   is_default: boolean;
   is_archived: boolean;
+  audience: string;
+  trade_id: string | null;
+  trade_name: string | null;
   created_at: string;
   updated_at: string;
   phase_count: number;
@@ -148,6 +151,24 @@ export function usePlaybookPerformance(playbookId?: string | null) {
   });
 }
 
+export function usePlaybookPerformanceBatch(playbookIds: string[]) {
+  return useQuery({
+    queryKey: ['playbook-performance-batch', playbookIds.slice().sort().join(',')],
+    queryFn: async () => {
+      if (playbookIds.length === 0) return {};
+      const results = await Promise.all(
+        playbookIds.map(async id => {
+          const { data } = await supabase.rpc('rpc_get_playbook_performance', { p_playbook_id: id });
+          return { id, perf: data as PlaybookPerformance | null };
+        })
+      );
+      return Object.fromEntries(results.map(r => [r.id, r.perf])) as Record<string, PlaybookPerformance | null>;
+    },
+    enabled: playbookIds.length > 0,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function usePlaybookMutations() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -159,13 +180,15 @@ export function usePlaybookMutations() {
   };
 
   const createPlaybook = useMutation({
-    mutationFn: async (args: { name: string; job_type?: string; description?: string; phases?: Json[] }) => {
+    mutationFn: async (args: { name: string; job_type?: string; description?: string; phases?: Json[]; audience?: string; trade_id?: string | null }) => {
       const { data, error } = await supabase.rpc('rpc_create_playbook', {
         p_organization_id: activeOrganization!.id,
         p_name: args.name,
         p_job_type: args.job_type ?? '',
         p_description: args.description ?? '',
         p_phases: args.phases ?? [],
+        p_audience: args.audience ?? 'office',
+        p_trade_id: args.trade_id ?? null,
       });
       if (error) throw error;
       return data as { playbook: { id: string } };
