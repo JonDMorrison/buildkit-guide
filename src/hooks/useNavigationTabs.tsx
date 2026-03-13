@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { Home, CheckSquare, Calendar, Users, AlertCircle, Shield, Receipt, Clock, Layers, BarChart3, DollarSign, FileText, TrendingUp, Workflow, Settings, Brain, FileDiff, Rocket, BookOpen, Crown, Cpu, FolderOpen, ClipboardList, Download } from "lucide-react";
 import { useProjectRole } from "@/hooks/useProjectRole";
 import { useOrganizationRole } from "@/hooks/useOrganizationRole";
@@ -148,9 +148,8 @@ export const useNavigationTabs = () => {
     };
   }, [isAdmin, isPM, isForeman]);
 
-  const visibleTabs = useMemo(() => {
-    if (isLoading) return tabs;
-
+  const computedTabs = useMemo(() => {
+    if (isLoading) return null; // null = not ready yet, don't change anything
     return tabs.filter(tab => {
       if (!tab.tiers.includes(navTier)) return false;
       if (tab.requiresTimeTracking && !timeTrackingEnabled) return false;
@@ -159,6 +158,13 @@ export const useNavigationTabs = () => {
       return true;
     });
   }, [navTier, timeTrackingEnabled, workflowEnabled, isLoading, canAccessRoute]);
+
+  // Hold last known good tabs — never flash back to full list during loading
+  const lastGoodTabs = useRef<typeof tabs | null>(null);
+  if (computedTabs !== null) {
+    lastGoodTabs.current = computedTabs;
+  }
+  const visibleTabs = lastGoodTabs.current ?? [];
 
   return { tabs, visibleTabs, isLoading };
 };
