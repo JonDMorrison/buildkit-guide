@@ -13,7 +13,6 @@ import {
   Loader2,
   Settings2,
   Stethoscope,
-  Brain,
   Sparkles,
 } from 'lucide-react';
 
@@ -138,8 +137,8 @@ export default function OrgOnboardingWizard({ onComplete, startPhase }: OrgOnboa
   const { toast } = useToast();
   const { profile, saveProfile, isSaving, wizardPhaseCompleted } = useOperationalProfile();
 
-  // Determine starting phase: resume from saved progress or explicit start
-  const initialPhase = startPhase ?? Math.min(wizardPhaseCompleted + 1, 3);
+  // Determine starting phase: resume from saved progress or explicit start (max 2 phases now)
+  const initialPhase = startPhase ?? Math.min(wizardPhaseCompleted + 1, 2);
   const [phase, setPhase] = useState(initialPhase);
   const [localData, setLocalData] = useState<Partial<OperationalProfileData>>({});
 
@@ -158,8 +157,15 @@ export default function OrgOnboardingWizard({ onComplete, startPhase }: OrgOnboa
 
   const savePhase = async (phaseNum: number) => {
     try {
+      const extraData = phaseNum >= 2 ? {
+        ai_risk_mode: localData.ai_risk_mode ?? 'balanced',
+        ai_flag_profit_risk: localData.ai_flag_profit_risk ?? true,
+        ai_auto_change_orders: localData.ai_auto_change_orders ?? false,
+        ai_recommend_pricing: localData.ai_recommend_pricing ?? false,
+      } : {};
       await saveProfile({
         ...localData,
+        ...extraData,
         wizard_phase_completed: phaseNum,
       });
       toast({ title: `Phase ${phaseNum} saved`, description: 'Your progress has been saved.' });
@@ -171,7 +177,7 @@ export default function OrgOnboardingWizard({ onComplete, startPhase }: OrgOnboa
 
   const handleNextPhase = async () => {
     await savePhase(phase);
-    if (phase < 3) {
+    if (phase < 2) {
       setPhase(phase + 1);
     } else {
       onComplete();
@@ -185,9 +191,8 @@ export default function OrgOnboardingWizard({ onComplete, startPhase }: OrgOnboa
   const phaseIcons = [
     <Settings2 key="1" className="h-5 w-5" />,
     <Stethoscope key="2" className="h-5 w-5" />,
-    <Brain key="3" className="h-5 w-5" />,
   ];
-  const phaseLabels = ['Structural Configuration', 'Operational Diagnostics', 'AI Calibration'];
+  const phaseLabels = ['Structural Configuration', 'Operational Diagnostics'];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/50 flex items-center justify-center p-4">
@@ -195,7 +200,7 @@ export default function OrgOnboardingWizard({ onComplete, startPhase }: OrgOnboa
         {/* Phase progress */}
         <div className="px-6 pt-6">
           <div className="flex gap-2 mb-3">
-            {[1, 2, 3].map(p => (
+            {[1, 2].map(p => (
               <button
                 key={p}
                 onClick={() => p <= wizardPhaseCompleted + 1 && setPhase(p)}
@@ -296,72 +301,6 @@ export default function OrgOnboardingWizard({ onComplete, startPhase }: OrgOnboa
           </>
         )}
 
-        {/* Phase 3: AI Calibration */}
-        {phase === 3 && (
-          <>
-            <CardHeader className="pt-4 pb-2">
-              <CardTitle className="text-xl font-bold flex items-center gap-2">
-                <Brain className="h-5 w-5 text-primary" />
-                AI Calibration
-              </CardTitle>
-              <CardDescription>
-                Configure how the AI assistant behaves for your organization
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6 pb-6 max-h-[60vh] overflow-y-auto">
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">
-                  Should AI block risky actions automatically?
-                </Label>
-                <RadioGroup
-                  value={merged.ai_risk_mode || 'balanced'}
-                  onValueChange={v => updateField('ai_risk_mode', v)}
-                  className="space-y-2"
-                >
-                  {[
-                    { value: 'strict', label: 'Strict', desc: 'Block risky actions automatically' },
-                    { value: 'balanced', label: 'Balanced', desc: 'Warn but allow override' },
-                    { value: 'advisory', label: 'Advisory', desc: 'Suggest only, never block' },
-                  ].map(opt => (
-                    <label
-                      key={opt.value}
-                      className={`flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-all ${
-                        (merged.ai_risk_mode || 'balanced') === opt.value
-                          ? 'border-primary bg-primary/5'
-                          : 'border-border hover:border-primary/50'
-                      }`}
-                    >
-                      <RadioGroupItem value={opt.value} className="mt-0.5" />
-                      <div>
-                        <span className="font-medium text-sm">{opt.label}</span>
-                        <p className="text-xs text-muted-foreground">{opt.desc}</p>
-                      </div>
-                    </label>
-                  ))}
-                </RadioGroup>
-              </div>
-
-              <AIToggle
-                label="Auto-generate change order suggestions"
-                description="AI will suggest change orders when scope deviations are detected"
-                checked={merged.ai_auto_change_orders}
-                onChange={v => updateField('ai_auto_change_orders', v)}
-              />
-              <AIToggle
-                label="Flag profit risk early"
-                description="AI monitors burn rate and warns before margins erode"
-                checked={merged.ai_flag_profit_risk}
-                onChange={v => updateField('ai_flag_profit_risk', v)}
-              />
-              <AIToggle
-                label="Recommend price adjustments"
-                description="AI suggests rate changes based on historical variance data"
-                checked={merged.ai_recommend_pricing}
-                onChange={v => updateField('ai_recommend_pricing', v)}
-              />
-            </CardContent>
-          </>
-        )}
 
         {/* Navigation */}
         <div className="px-6 pb-6">
@@ -378,7 +317,7 @@ export default function OrgOnboardingWizard({ onComplete, startPhase }: OrgOnboa
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Saving...
                 </>
-              ) : phase < 3 ? (
+              ) : phase < 2 ? (
                 <>
                   Save & Continue
                   <ArrowRight className="ml-2 h-4 w-4" />

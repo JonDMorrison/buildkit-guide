@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
 import { useOrganization } from '@/hooks/useOrganization';
@@ -17,9 +17,10 @@ import {
   CheckCircle,
   Building2,
   Loader2,
-  Brain,
   MapPin,
   Globe,
+  Plus,
+  X,
 } from 'lucide-react';
 import projectPathLogo from '@/assets/project-path-logo.png';
 
@@ -77,14 +78,13 @@ const JOB_TYPES = [
 ];
 
 /**
- * Maps old 4-step onboarding_step values to new 3-step values.
- * Old: 1=Role, 2=Org, 3=Project, 4=AI
- * New: 1=Org,  2=Project, 3=AI
+ * Maps old onboarding_step values to new 3-step values.
+ * New: 1=Org, 2=Trades, 3=First Project
  */
 function migrateStepNumber(oldStep: number): number {
-  if (oldStep <= 2) return 1;  // old Role(1) or Org(2) → new Org(1)
-  if (oldStep === 3) return 2; // old Project(3) → new Project(2)
-  return 3;                     // old AI(4) → new AI(3)
+  if (oldStep <= 1) return 1;
+  if (oldStep === 2) return 2;
+  return 3;
 }
 
 export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
@@ -93,7 +93,7 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
   const { state: onboardingState, isLoading: stateLoading, updateState } = useOnboardingState();
   const { toast } = useToast();
 
-  // Step state: 1=Org+Timezone, 2=First Project, 3=AI Mode
+  // Step state: 1=Org+Timezone, 2=Trades, 3=First Project
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -106,14 +106,15 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
   const [province, setProvince] = useState('');
   const [orgCreated, setOrgCreated] = useState<{ id: string } | null>(null);
 
-  // Step 2 (Project)
+  // Step 2 (Trades)
+  const [tradeInputValue, setTradeInputValue] = useState('');
+  const [tradesEntered, setTradesEntered] = useState<string[]>([]);
+
+  // Step 3 (Project)
   const [projectName, setProjectName] = useState('');
   const [projectAddress, setProjectAddress] = useState('');
   const [projectJobType, setProjectJobType] = useState('');
   const [projectCreatedId, setProjectCreatedId] = useState<string | null>(null);
-
-  // Step 3 (AI)
-  const [aiRiskMode, setAiRiskMode] = useState('balanced');
 
   const totalSteps = 3;
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'there';
@@ -140,7 +141,7 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
       setProjectCreatedId(onboardingState.onboarding_project_id);
     }
 
-    // Determine resume step from saved state (with migration from old 4-step numbering)
+    // Determine resume step from saved state
     const savedStep = onboardingState.onboarding_step;
     if (savedStep && savedStep >= 1) {
       const mappedStep = migrateStepNumber(savedStep);
@@ -171,7 +172,7 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
     } catch (err: any) {
       console.error('Failed to persist onboarding state:', err);
       toast({ title: 'Save error', description: 'Could not save progress. Please try again.', variant: 'destructive' });
-      throw err; // Re-throw so caller knows it failed
+      throw err;
     }
   };
 
@@ -181,7 +182,6 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
       return;
     }
 
-    // Prevent double-submit
     if (isSubmitting) return;
     setIsSubmitting(true);
     setIsLoading(true);
@@ -208,7 +208,6 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
       const newOrgId = result.org_id;
       setOrgCreated({ id: newOrgId });
 
-      // Persist org ID + advance step atomically
       await persistStep({ onboarding_step: 2, onboarding_org_id: newOrgId });
 
       if (result.already_existed) {
@@ -225,32 +224,85 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
     }
   };
 
+  const handleTradesSave = async () => {
+    if (isSubmitting) return;
+    setIsLoading(true);
+    try {
+      if (tradesEntered.length > 0 && orgCreated) {
+        const tradeInserts = tradesEntered.map(tradeName => ({
+          name: tradeName,
+          trade_type: tradeName.toLowerCase(),
+          company_name: orgName || tradeName,
+          is_active: true,
+          organization_id: orgCreated.id,
+        }));
+        const { error: tradesError } = await supabase.from('trades').insert(tradeInserts);
+        if (tradesError) console.warn('Trades insert failed:', tradesError.message);
+      }
+      await persistStep({ onboarding_step: 3 });
+      setStep(3);
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleFinish = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    setIsLoading(true);
+    try {
+      // Mark onboarding complete
+      await persistStep({ has_onboarded: true, onboarding_step: 3 });
+
+      // Set sensible AI defaults automatically
+      if (orgCreated) {
+        await supabase.rpc('rpc_upsert_operational_profile', {
+          p_organization_id: orgCreated.id,
+          p_data: {
+            ai_risk_mode: 'balanced',
+            ai_flag_profit_risk: true,
+            ai_auto_change_orders: false,
+            ai_recommend_pricing: false,
+            wizard_phase_completed: 2,
+          } as any,
+        });
+      }
+
+      // Update localStorage cache for ProtectedRoute
+      if (user) {
+        try {
+          localStorage.setItem(`pp_onboarded_${user.id}`, 'true');
+        } catch { /* ignore */ }
+      }
+
+      onComplete();
+    } catch (error: any) {
+      console.error('Error finishing onboarding:', error);
+      toast({ title: 'Save failed', description: 'Could not save preferences. Please try again.', variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+      setIsSubmitting(false);
+    }
+  };
+
   const handleProjectCreate = async () => {
     if (isSubmitting) return;
     if (!orgCreated) {
-      setStep(3);
+      await handleFinish();
       return;
     }
 
     if (!projectName.trim()) {
-      // Allow skipping — persist step advance
-      try {
-        await persistStep({ onboarding_step: 3 });
-        setStep(3);
-      } catch {
-        // Error already toasted
-      }
+      // Allow skipping — go straight to finish
+      await handleFinish();
       return;
     }
 
-    // If project already created (rehydrated), just advance
+    // If project already created (rehydrated), just finish
     if (projectCreatedId) {
-      try {
-        await persistStep({ onboarding_step: 3 });
-        setStep(3);
-      } catch {
-        // Error already toasted
-      }
+      await handleFinish();
       return;
     }
 
@@ -309,58 +361,15 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
       }, { onConflict: 'organization_id' });
 
       setProjectCreatedId(project.id);
-
-      // Persist project ID + advance step
-      await persistStep({ onboarding_step: 3, onboarding_project_id: project.id });
+      await persistStep({ onboarding_project_id: project.id });
 
       toast({ title: 'Project created', description: `${projectName} is ready to go.` });
-      setStep(3);
+      await handleFinish();
     } catch (error: any) {
       console.error('Error creating project:', error);
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleFinish = async () => {
-    if (isSubmitting) return;
-    setIsSubmitting(true);
-    setIsLoading(true);
-    try {
-      // Save AI risk mode — block completion on failure
-      if (orgCreated) {
-        const { error: rpcError } = await supabase.rpc('rpc_upsert_operational_profile', {
-          p_organization_id: orgCreated.id,
-          p_data: {
-            ai_risk_mode: aiRiskMode,
-            ai_flag_profit_risk: true,
-            ai_auto_change_orders: false,
-            ai_recommend_pricing: false,
-            wizard_phase_completed: 3,
-            wizard_completed_at: new Date().toISOString(),
-          } as any,
-        });
-        if (rpcError) throw rpcError;
-      }
-
-      // Mark onboarding complete
-      await persistStep({ has_onboarded: true, onboarding_step: 3 });
-
-      // Update localStorage cache for ProtectedRoute
-      if (user) {
-        try {
-          localStorage.setItem(`pp_onboarded_${user.id}`, 'true');
-        } catch { /* ignore */ }
-      }
-
-      onComplete();
-    } catch (error: any) {
-      console.error('Error finishing onboarding:', error);
-      toast({ title: 'Save failed', description: 'Could not save preferences. Please try again.', variant: 'destructive' });
-    } finally {
-      setIsLoading(false);
-      setIsSubmitting(false);
     }
   };
 
@@ -484,8 +493,88 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
           </>
         )}
 
-        {/* Step 2: First Project */}
+        {/* Step 2: Trades */}
         {step === 2 && (
+          <>
+            <CardHeader className="text-center pt-6 pb-2">
+              <CardTitle className="text-2xl font-bold">What trades do you work in?</CardTitle>
+              <CardDescription>
+                Add as many as you need. You can always update this in Settings.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5 pb-6">
+              <div className="space-y-2">
+                <Label>Trades or divisions</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={tradeInputValue}
+                    onChange={e => setTradeInputValue(e.target.value)}
+                    placeholder="e.g. Framing, Electrical, Drywall"
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (tradeInputValue.trim() && !tradesEntered.includes(tradeInputValue.trim())) {
+                          setTradesEntered(prev => [...prev, tradeInputValue.trim()]);
+                          setTradeInputValue('');
+                        }
+                      }
+                    }}
+                    className="h-11"
+                  />
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      if (tradeInputValue.trim() && !tradesEntered.includes(tradeInputValue.trim())) {
+                        setTradesEntered(prev => [...prev, tradeInputValue.trim()]);
+                        setTradeInputValue('');
+                      }
+                    }}
+                    variant="outline"
+                    className="h-11 px-4"
+                    disabled={!tradeInputValue.trim()}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add
+                  </Button>
+                </div>
+                {tradesEntered.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {tradesEntered.map(trade => (
+                      <Badge key={trade} variant="secondary" className="gap-1.5 pr-1.5">
+                        {trade}
+                        <button
+                          type="button"
+                          onClick={() => setTradesEntered(prev => prev.filter(t => t !== trade))}
+                          className="hover:text-destructive transition-colors"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-3 pt-2">
+                <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back
+                </Button>
+                <Button onClick={handleTradesSave} className="flex-1" disabled={isLoading || isSubmitting}>
+                  {isLoading ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</>
+                  ) : tradesEntered.length > 0 ? (
+                    <>Continue <ArrowRight className="ml-2 h-4 w-4" /></>
+                  ) : (
+                    <>Skip for now <ArrowRight className="ml-2 h-4 w-4" /></>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </>
+        )}
+
+        {/* Step 3: First Project */}
+        {step === 3 && (
           <>
             <CardHeader className="text-center pt-6 pb-2">
               <CardTitle className="text-2xl font-bold">Create your first project</CardTitle>
@@ -535,7 +624,7 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
               </div>
 
               <div className="flex gap-3 pt-2">
-                <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
+                <Button variant="outline" onClick={() => setStep(2)} className="flex-1">
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back
                 </Button>
@@ -543,106 +632,17 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating...
+                      Finishing...
                     </>
                   ) : projectName.trim() ? (
                     <>
-                      Create & Continue
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </>
-                  ) : (
-                    <>
-                      Skip for Now
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </>
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </>
-        )}
-
-        {/* Step 3: AI Assistant */}
-        {step === 3 && (
-          <>
-            <CardHeader className="text-center pt-6 pb-2">
-              <div className="mx-auto mb-3 p-3 rounded-full bg-primary/10">
-                <Brain className="h-8 w-8 text-primary" />
-              </div>
-              <CardTitle className="text-2xl font-bold">Your AI Assistant</CardTitle>
-              <CardDescription>
-                Project Path's AI Brain monitors your projects, flags risks, and suggests actions. 
-                How should it handle risky situations?
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-5 pb-6">
-              <RadioGroup
-                value={aiRiskMode}
-                onValueChange={setAiRiskMode}
-                className="space-y-3"
-              >
-                {[
-                  {
-                    value: 'strict',
-                    label: 'Strict',
-                    desc: 'Block risky actions automatically — best for regulated or high-liability projects',
-                    emoji: '🛑',
-                  },
-                  {
-                    value: 'balanced',
-                    label: 'Balanced',
-                    desc: 'Warn and require confirmation — recommended for most teams',
-                    emoji: '⚖️',
-                  },
-                  {
-                    value: 'advisory',
-                    label: 'Advisory',
-                    desc: 'Suggest improvements but never block — for experienced teams who want full control',
-                    emoji: '💡',
-                  },
-                ].map((opt) => (
-                  <label
-                    key={opt.value}
-                    className={`flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                      aiRiskMode === opt.value
-                        ? 'border-primary bg-primary/5 shadow-md'
-                        : 'border-border hover:border-primary/50 hover:bg-muted/50'
-                    }`}
-                  >
-                    <RadioGroupItem value={opt.value} className="mt-1" />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">{opt.emoji}</span>
-                        <span className="font-semibold">{opt.label}</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1">{opt.desc}</p>
-                    </div>
-                    {aiRiskMode === opt.value && (
-                      <CheckCircle className="h-5 w-5 text-primary mt-1" />
-                    )}
-                  </label>
-                ))}
-              </RadioGroup>
-
-              <p className="text-xs text-muted-foreground text-center">
-                You can change this anytime in Settings. The AI learns from your usage — no further setup needed.
-              </p>
-
-              <div className="flex gap-3 pt-2">
-                <Button variant="outline" onClick={() => setStep(2)} className="flex-1">
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back
-                </Button>
-                <Button onClick={handleFinish} className="flex-1" disabled={isLoading || isSubmitting}>
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Finishing...
+                      <Rocket className="mr-2 h-4 w-4" />
+                      Create & Finish Setup
                     </>
                   ) : (
                     <>
                       <Rocket className="mr-2 h-4 w-4" />
-                      Go to Dashboard
+                      Finish Setup
                     </>
                   )}
                 </Button>
