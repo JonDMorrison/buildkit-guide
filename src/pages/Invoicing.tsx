@@ -45,7 +45,7 @@ import {
   Plus, Users, FileText, Settings, Send, CheckCircle2, Ban, Clock,
   Copy, DollarSign, BarChart3, RefreshCw, CreditCard, Mail,
   Trash2, Pencil, Search, Download, ShieldCheck, Activity,
-  CheckSquare, XCircle, AlertTriangle, ChevronDown, ChevronRight, ArrowRightLeft,
+  CheckSquare, XCircle, AlertTriangle, ChevronDown, ChevronRight, ArrowRightLeft, ArrowLeft,
 } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -553,6 +553,14 @@ const Invoicing = () => {
 
   return (
     <DashboardLayout>
+      <div className="px-4 pt-3 pb-1">
+        <button
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          onClick={() => navigate("/financials")}
+        >
+          <ArrowLeft className="h-3 w-3" /> View Pipeline
+        </button>
+      </div>
       <DashboardHeader title="Invoicing" subtitle="Create and manage invoices" />
 
         <Tabs defaultValue="invoices" className="space-y-4">
