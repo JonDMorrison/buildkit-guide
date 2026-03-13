@@ -14,7 +14,8 @@ import { useOrganization } from "@/hooks/useOrganization";
 import { useOrganizationRole } from "@/hooks/useOrganizationRole";
 import { NoAccess } from "@/components/NoAccess";
 import { supabase } from "@/integrations/supabase/client";
-import { AlertTriangle, Save, DollarSign, RefreshCw } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { AlertTriangle, Save, DollarSign, RefreshCw, UserPlus } from "lucide-react";
 
 interface MemberRate {
   membership_id: string;
@@ -46,6 +47,7 @@ export default function LaborRates() {
   const { activeOrganizationId, activeOrganization } = useOrganization();
   const { role: orgRole, isLoading: roleLoading } = useOrganizationRole();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [members, setMembers] = useState<MemberRate[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -198,12 +200,20 @@ export default function LaborRates() {
               Set default hourly cost and bill rates for your team. These are used when project-level rates aren't set.
             </p>
           </div>
-          {canEdit && dirtyMembers.length > 0 && (
-            <Button onClick={handleSave} disabled={saving}>
-              <Save className="h-4 w-4 mr-2" />
-              {saving ? "Saving..." : `Save ${dirtyMembers.length} Change${dirtyMembers.length > 1 ? "s" : ""}`}
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {canEdit && (
+              <Button variant="outline" size="sm" onClick={() => navigate('/users')}>
+                <UserPlus className="h-4 w-4 mr-2" />
+                Add a Member
+              </Button>
+            )}
+            {canEdit && dirtyMembers.length > 0 && (
+              <Button onClick={handleSave} disabled={saving}>
+                <Save className="h-4 w-4 mr-2" />
+                {saving ? "Saving..." : `Save ${dirtyMembers.length} Change${dirtyMembers.length > 1 ? "s" : ""}`}
+              </Button>
+            )}
+          </div>
         </div>
 
         {!canEdit && (
