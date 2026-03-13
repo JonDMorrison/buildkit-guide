@@ -9,6 +9,7 @@ import { CreatePlaybookDialog } from '@/components/playbooks/CreatePlaybookDialo
 import { GeneratePlaybookDialog } from '@/components/playbooks/GeneratePlaybookDialog';
 import {
   usePlaybookList, usePlaybookDetail, usePlaybookPerformance, usePlaybookMutations,
+  usePlaybookPerformanceBatch,
 } from '@/hooks/usePlaybooks';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -53,6 +54,10 @@ function PlaybooksContent() {
   const { data: performance } = usePlaybookPerformance(selectedId);
   const { createPlaybook, updatePlaybook, duplicatePlaybook, archivePlaybook } = usePlaybookMutations();
 
+  // Batch performance for all playbooks (used in list sidebar)
+  const playbookIds = (playbooks ?? []).map(p => p.id);
+  const { data: allPerformance } = usePlaybookPerformanceBatch(playbookIds);
+
   // Auto-select first playbook if none selected
   useEffect(() => {
     if (!selectedId && playbooks && playbooks.length > 0) {
@@ -60,14 +65,21 @@ function PlaybooksContent() {
     }
   }, [playbooks, selectedId]);
 
-  // Build perf map for the list
+  // Build perf map for the list from batch performance
   const perfMap: Record<string, { variance_percent: number; projects_using: number }> = {};
-  if (performance && selectedId) {
-    perfMap[selectedId] = {
-      variance_percent: performance.variance_percent,
-      projects_using: performance.projects_using,
-    };
+  if (allPerformance) {
+    for (const [id, perf] of Object.entries(allPerformance)) {
+      if (perf) {
+        perfMap[id] = {
+          variance_percent: perf.variance_percent,
+          projects_using: perf.projects_using,
+        };
+      }
+    }
   }
+
+  // Existing job types for suggestion chips
+  const existingJobTypes = [...new Set((playbooks ?? []).map(p => p.job_type).filter(Boolean))];
 
   return (
     <Layout>
@@ -114,15 +126,26 @@ function PlaybooksContent() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         onCreate={data => {
-      createPlaybook.mutate(data as any, { // CreatePlaybookDialog data might need a specific type
-        onSuccess: (result) => {
-          setCreateOpen(false);
-          const newId = result?.playbook?.id;
-          if (newId) setSelectedId(newId);
-        },
-      });
+          createPlaybook.mutate(
+            {
+              name: data.name,
+              job_type: data.job_type,
+              description: data.description,
+              audience: data.audience,
+              trade_id: data.trade_id,
+              phases: data.phases as any,
+            },
+            {
+              onSuccess: (result) => {
+                setCreateOpen(false);
+                const newId = (result as any)?.playbook?.id;
+                if (newId) setSelectedId(newId);
+              },
+            }
+          );
         }}
         isCreating={createPlaybook.isPending}
+        existingJobTypes={existingJobTypes}
       />
 
       <GeneratePlaybookDialog
