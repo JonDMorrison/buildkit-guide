@@ -97,24 +97,7 @@ serve(async (req: Request) => {
       log('info', 'Admin invite authorized', { inviterId: user.id });
     }
 
-    // Check if user already exists
-    const { data: existingProfile } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("email", email.toLowerCase().trim())
-      .single();
-
-    if (existingProfile) {
-      return new Response(
-        JSON.stringify({ error: `${email} already has an account and can sign in directly at projectpath.app` }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // Get inviter's organization membership
+    // Get inviter's organization membership (needed for both new and existing user paths)
     const { data: inviterMembership } = await supabase
       .from("organization_memberships")
       .select("organization_id")
@@ -124,6 +107,70 @@ serve(async (req: Request) => {
       .single();
 
     const organizationId = inviterMembership?.organization_id || null;
+
+    // Check if user already exists
+    const { data: existingProfile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("email", email.toLowerCase().trim())
+      .single();
+
+    if (existingProfile) {
+      // User exists — still create the invitation so process-pending-invites
+      // can add them to this org/project when they next sign in
+      const { data: invitation, error: inviteError } = await supabase
+        .from("invitations")
+        .insert({
+          email: email.toLowerCase().trim(),
+          full_name: fullName || null,
+          invited_by: user.id,
+          organization_id: organizationId,
+          project_id: projectId || null,
+          role: role || "internal_worker",
+        })
+        .select()
+        .single();
+
+      if (inviteError) throw inviteError;
+
+      // Send a "sign in to accept" email instead of a signup link
+      if (resendApiKey) {
+        const resend = new Resend(resendApiKey);
+        await resend.emails.send({
+          from: "Project Path <noreply@projectpath.app>",
+          to: [email],
+          subject: `${inviterName} added you to their team on Project Path`,
+          html: `
+            <body style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <h1 style="color: #E53935;">Project Path</h1>
+              <p>Hi ${fullName || email.split('@')[0]},</p>
+              <p><strong>${inviterName}</strong> has added you to their team on Project Path.</p>
+              <p>Since you already have an account, just sign in and your new project access will be ready automatically.</p>
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="https://projectpath.app/auth" style="background: #E53935; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold;">
+                  Sign In to ProjectPath
+                </a>
+              </div>
+              <p style="color: #666; font-size: 14px;">If you didn't expect this email, you can safely ignore it.</p>
+            </body>
+          `,
+        });
+      }
+
+      log('info', 'Existing user invited — invitation created for process-pending-invites', {
+        invitationId: invitation.id,
+        hasProject: !!projectId,
+      });
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          emailSent: !!resendApiKey,
+          message: `${email} already has an account — they've been notified to sign in to access the new project.`,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Create invitation record with organization and project context
     const { data: invitation, error: inviteError } = await supabase
