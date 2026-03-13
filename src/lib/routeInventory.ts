@@ -60,6 +60,7 @@ export const ROUTE_WRAPPER_MAP: Record<string, RouteWrapper[]> = {
   '/hours-tracking': ['protected'],
   '/job-cost-report': ['protected'],
   '/invoicing': ['protected'],
+  '/financials': ['protected'],
   '/estimates': ['protected'],
   '/estimates/:estimateId': ['protected'],
   '/quotes': ['protected'],
@@ -86,6 +87,8 @@ export const ROUTE_WRAPPER_MAP: Record<string, RouteWrapper[]> = {
   '/release': ['protected', 'adminOrPM'],
   '/executive': ['protected', 'adminOrPM'],
   '/health': ['protected', 'adminOrPM'],
+
+  '/export': ['protected'],
 
   // Protected + AdminRoute
   '/admin/time-diagnostics': ['protected', 'admin'],
@@ -134,6 +137,7 @@ export function canAccessRoute(path: string, role: RoleName): boolean {
     case '/insights/ai-brain':
     case '/release':
     case '/playbooks':
+    case '/export':
       return isAdmin;
     case '/executive':
     case '/data-health':
@@ -145,7 +149,7 @@ export function canAccessRoute(path: string, role: RoleName): boolean {
     case '/lookahead':
     case '/manpower':
     case '/drawings':
-    case '/estimates':
+    case '/financials':
       return isAdmin || isPM || isForeman;
     default:
       return true;

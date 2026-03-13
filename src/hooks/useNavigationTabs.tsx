@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Home, CheckSquare, Calendar, Users, AlertCircle, Shield, Receipt, Clock, Layers, BarChart3, DollarSign, FileText, TrendingUp, Workflow, Settings, Brain, FileDiff, Rocket, BookOpen, Crown, Cpu, FolderOpen, ClipboardList } from "lucide-react";
+import { Home, CheckSquare, Calendar, Users, AlertCircle, Shield, Receipt, Clock, Layers, BarChart3, DollarSign, FileText, TrendingUp, Workflow, Settings, Brain, FileDiff, Rocket, BookOpen, Crown, Cpu, FolderOpen, ClipboardList, Download } from "lucide-react";
 import { useProjectRole } from "@/hooks/useProjectRole";
 import { useOrganizationRole } from "@/hooks/useOrganizationRole";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -54,6 +54,7 @@ export const tabs: TabConfig[] = [
   { name: "Playbooks", path: "/playbooks", icon: BookOpen, tiers: ['all'] },
   { name: "Release", path: "/release", icon: Rocket, tiers: ['all'] },
   { name: "Health Check", path: "/health", icon: Shield, tiers: ['all'] },
+  { name: "Export", path: "/export", icon: Download, tiers: ['all'] },
 ];
 
 export const useNavigationTabs = () => {
@@ -116,6 +117,7 @@ export const useNavigationTabs = () => {
         case '/insights/ai-brain':
         case '/release':
         case '/playbooks':
+        case '/export':
           return isAdmin;
 
         // Admin or PM routes

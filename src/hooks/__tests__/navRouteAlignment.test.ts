@@ -13,6 +13,7 @@ const ROUTE_GATES: Record<string, string[]> = {
   '/insights/ai-brain': ['admin'],
   '/release': ['admin'],
   '/playbooks': ['admin'],
+  '/export': ['admin'],
   '/executive': ['admin', 'pm'],
   '/data-health': ['admin', 'pm'],
   '/users': ['admin', 'pm'],
@@ -21,7 +22,7 @@ const ROUTE_GATES: Record<string, string[]> = {
   '/lookahead': ['admin', 'pm', 'foreman'],
   '/manpower': ['admin', 'pm', 'foreman'],
   '/drawings': ['admin', 'pm', 'foreman'],
-  '/estimates': ['admin', 'pm', 'foreman'],
+  '/financials': ['admin', 'pm', 'foreman'],
 };
 
 describe('Nav ↔ Route gate alignment', () => {
