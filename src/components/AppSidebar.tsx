@@ -7,6 +7,8 @@ import { NavSection } from "./sidebar/NavSection";
 import { SidebarProjectSwitcher } from "./sidebar/SidebarProjectSwitcher";
 import { CertificationBadge } from "@/components/CertificationBadge";
 import { useCertificationTier } from "@/hooks/useCertificationTier";
+import { useAuth } from "@/hooks/useAuth";
+import { useOrganization } from "@/hooks/useOrganization";
 import {
   Sidebar,
   SidebarContent,
@@ -45,6 +47,8 @@ const SECTIONS: SectionDef[] = [
 
 export const AppSidebar = () => {
   const { visibleTabs, isLoading } = useNavigationTabs();
+  const { loading: authLoading } = useAuth();
+  const { loading: orgLoading } = useOrganization();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const { tier } = useCertificationTier();
@@ -93,13 +97,10 @@ export const AppSidebar = () => {
         <SidebarProjectSwitcher collapsed={collapsed} />
 
         {/* ── Navigation sections ── */}
-        {isLoading ? (
-          <div className="px-3 space-y-3 mt-2">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 px-2">
-                <Skeleton className="h-4 w-4 rounded bg-white/10" />
-                <Skeleton className="h-4 w-24 rounded bg-white/10" />
-              </div>
+        {isLoading || authLoading || orgLoading ? (
+          <div className="space-y-1 px-2 mt-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-9 rounded-xl bg-white/5 animate-pulse mx-2" />
             ))}
           </div>
         ) : (

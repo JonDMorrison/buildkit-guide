@@ -25,7 +25,7 @@ export const NavItem = forwardRef<HTMLAnchorElement, NavItemProps>(({ label, ico
       onMouseEnter={handleMouseEnter}
       onFocus={handleMouseEnter}
       className={cn(
-        "group relative flex items-center gap-3 rounded-xl animate-sidebar-item",
+        "group relative flex items-center gap-3 rounded-xl",
         "border-l-[3px] border-transparent text-slate-400 hover:text-white hover:bg-white/5 transition-colors duration-150",
         "active:scale-[0.98]",
         collapsed ? "justify-center px-0 py-2.5 mx-2" : "px-3 py-2.5 mx-2",
