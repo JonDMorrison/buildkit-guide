@@ -1,6 +1,8 @@
 import { useAuth } from './useAuth';
 import { useUserRole } from './useUserRole';
 import { useProjectRole, ProjectRole } from './useProjectRole';
+import { useOrganizationRole } from './useOrganizationRole';
+import { useOrganization } from './useOrganization';
 
 /**
  * Unified hook combining global roles and project-specific roles
@@ -28,10 +30,13 @@ export const useAuthRole = (projectId?: string) => {
     loading: projectRolesLoading,
   } = useProjectRole(projectId);
 
-  const loading = projectRolesLoading;
+  const { isAdmin: isOrgAdmin, isLoading: orgRoleLoading } = useOrganizationRole();
+  const { loading: orgContextLoading } = useOrganization();
 
-  // Check if user is admin (global or project-level doesn't matter for most checks)
-  const isAdmin = isGlobalAdmin || isGlobalAdminFromProject;
+  const loading = projectRolesLoading || orgContextLoading || orgRoleLoading;
+
+  // Check if user is admin (global, project-level, or org-level)
+  const isAdmin = isGlobalAdmin || isGlobalAdminFromProject || isOrgAdmin;
 
   // Get role for specific project
   const currentProjectRole = projectId ? getRoleForProject(projectId) : null;

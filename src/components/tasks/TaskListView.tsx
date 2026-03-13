@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   DndContext,
@@ -277,9 +277,11 @@ export const TaskListView = ({ tasks, onTaskClick, canReorder = false, onTasksRe
   const [optionalExpanded, setOptionalExpanded] = useState(false);
 
   // Update local tasks when prop changes
-  if (tasks !== localTasks && !canReorder) {
-    setLocalTasks(tasks);
-  }
+  useEffect(() => {
+    if (!canReorder) {
+      setLocalTasks(tasks);
+    }
+  }, [tasks, canReorder]);
 
   const displayTasks = canReorder ? localTasks : tasks;
 

@@ -272,6 +272,18 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
 
       if (projectError) throw projectError;
 
+      // Add creator as project_manager so they have full project access
+      if (project) {
+        const { error: memberError } = await supabase.from('project_members').insert({
+          project_id: project.id,
+          user_id: user!.id,
+          role: 'project_manager',
+        });
+        if (memberError) {
+          console.warn('project_members insert failed:', memberError.message);
+        }
+      }
+
       // Auto-create a job site from the address if provided
       if (projectAddress.trim() && project) {
         const { error: jobSiteError } = await supabase.from('job_sites').insert({

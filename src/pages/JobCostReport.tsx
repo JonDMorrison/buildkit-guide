@@ -18,6 +18,7 @@ import { DollarSign, Clock, Package, AlertTriangle, FileText } from "lucide-reac
 import { Button } from "@/components/ui/button";
 import { format, parse } from "date-fns";
 import { useProjectRole } from "@/hooks/useProjectRole";
+import { useOrganizationRole } from "@/hooks/useOrganizationRole";
 import { NoAccess } from "@/components/NoAccess";
 import { UnratedLaborBanner } from "@/components/UnratedLaborBanner";
 
@@ -25,6 +26,7 @@ const JobCostReport = () => {
   const navigate = useNavigate();
   const { currentProjectId } = useCurrentProject();
   const { isGlobalAdmin, hasAnyProjectRole, loading: roleLoading } = useProjectRole();
+  const { isAdmin: isOrgAdmin, isLoading: orgRoleLoading } = useOrganizationRole();
   const [selectedProject, setSelectedProject] = useState<string>(currentProjectId || "");
   const [projects, setProjects] = useState<{ id: string; name: string; job_number: string | null }[]>([]);
   const [startDateStr, setStartDateStr] = useState<string>("");
@@ -58,7 +60,7 @@ const JobCostReport = () => {
   }, [currentProjectId]);
 
   // Access control
-  const hasAccess = isGlobalAdmin || (selectedProject ? hasAnyProjectRole(selectedProject, ["project_manager", "foreman"]) : true);
+  const hasAccess = isGlobalAdmin || isOrgAdmin || (selectedProject ? hasAnyProjectRole(selectedProject, ["project_manager", "foreman"]) : true);
 
   const selectedProjectData = projects.find((p) => p.id === selectedProject);
   const dateRange =
@@ -70,7 +72,7 @@ const JobCostReport = () => {
           ? `Until ${format(endDate, "MMM d, yyyy")}`
           : "All time";
 
-  if (roleLoading) {
+  if (roleLoading || orgRoleLoading) {
     return (
       <Layout>
         <div className="flex items-center justify-center h-64">
