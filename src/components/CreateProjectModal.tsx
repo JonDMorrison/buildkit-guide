@@ -171,7 +171,7 @@ export const CreateProjectModal = ({ open, onOpenChange, onSuccess }: CreateProj
           description: validatedData.description,
           start_date: validatedData.startDate || null,
           end_date: validatedData.endDate || null,
-          status: 'planning',
+          status: 'not_started',
           created_by: user?.id,
           organization_id: orgId,
           client_id: validatedData.clientId || null,
