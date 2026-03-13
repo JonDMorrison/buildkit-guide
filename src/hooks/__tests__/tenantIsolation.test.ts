@@ -111,8 +111,8 @@ describe('getDefaultHomeRoute determinism', () => {
     expect(getDefaultHomeRoute({ isAdmin: false, globalRoles: ['internal_worker'] })).toBe('/tasks');
   });
 
-  it('unknown => /dashboard fallback', () => {
-    expect(getDefaultHomeRoute({ isAdmin: false })).toBe('/dashboard');
+  it('unknown => /welcome fallback', () => {
+    expect(getDefaultHomeRoute({ isAdmin: false })).toBe('/welcome');
   });
 });
 
