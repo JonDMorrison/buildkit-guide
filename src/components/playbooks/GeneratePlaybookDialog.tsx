@@ -108,59 +108,34 @@ export function GeneratePlaybookDialog({ open, onOpenChange, onCreated, initialJ
     setCreating(true);
 
     try {
-      // Create the playbook via the existing mutation pattern
-      const { data: pb, error: pbErr } = await supabase
-        .from('playbooks')
-        .insert([{
-          organization_id: activeOrganizationId,
-          name: suggestion.name,
-          job_type: suggestion.job_type,
-          description: suggestion.description,
-          version: 1,
-          is_default: false,
-          is_archived: false,
-          created_by: (await supabase.auth.getUser()).data.user?.id ?? '',
-        }])
-        .select()
-        .single();
-
-      if (pbErr) throw pbErr;
-
-      // Create phases and tasks
-      for (const phase of suggestion.phases) {
-        const { data: phaseRow, error: phaseErr } = await supabase
-          .from('playbook_phases')
-          .insert({
-            playbook_id: pb.id,
-            name: phase.name,
-            description: phase.description,
-            sequence_order: phase.sequence_order,
-          })
-          .select()
-          .single();
-
-        if (phaseErr) throw phaseErr;
-
-        const taskInserts = phase.tasks.map((t, idx) => ({
-          playbook_phase_id: phaseRow.id,
+      const p_phases = suggestion.phases.map((phase, phaseIdx) => ({
+        name: phase.name,
+        description: phase.description ?? '',
+        sequence_order: phase.sequence_order ?? phaseIdx + 1,
+        tasks: phase.tasks.map((t, idx) => ({
           title: t.title,
-          description: t.description,
-          role_type: t.role_type || null,
-          expected_hours_low: t.expected_hours_low,
-          expected_hours_high: t.expected_hours_high,
+          description: t.description ?? '',
+          role_type: t.role_type ?? 'laborer',
+          expected_hours_low: t.expected_hours_low ?? 0,
+          expected_hours_high: t.expected_hours_high ?? 0,
           required_flag: t.required,
           allow_skip: !t.required,
           density_weight: 1,
           sequence_order: idx + 1,
-        }));
+        })),
+      }));
 
-        if (taskInserts.length > 0) {
-          const { error: taskErr } = await supabase
-            .from('playbook_tasks')
-            .insert(taskInserts);
-          if (taskErr) throw taskErr;
-        }
-      }
+      const { data, error: rpcErr } = await supabase.rpc('rpc_create_playbook', {
+        p_organization_id: activeOrganizationId,
+        p_name: suggestion.name,
+        p_job_type: suggestion.job_type,
+        p_description: suggestion.description,
+        p_phases: p_phases as any,
+      });
+
+      if (rpcErr) throw rpcErr;
+
+      const newId = (data as any)?.playbook?.id;
 
       toast({
         title: 'Workflow created',
@@ -168,7 +143,7 @@ export function GeneratePlaybookDialog({ open, onOpenChange, onCreated, initialJ
       });
 
       onOpenChange(false);
-      onCreated(pb.id);
+      if (newId) onCreated(newId);
       setSuggestion(null);
       setJobType('');
     } catch (e: any) {
