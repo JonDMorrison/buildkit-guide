@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,16 @@ import {
   Save, Copy, Archive, ChevronDown, Plus, Trash2,
   GripVertical, TrendingUp, TrendingDown, Minus,
 } from 'lucide-react';
+import {
+  DndContext, closestCenter, KeyboardSensor, PointerSensor,
+  useSensor, useSensors,
+} from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
+import {
+  SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy,
+  useSortable, arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import type { PlaybookDetail, PlaybookPerformance, PlaybookPhaseTask } from '@/hooks/usePlaybooks';
 
@@ -51,6 +61,76 @@ function generateId() {
   return crypto.randomUUID();
 }
 
+/* ── Sortable Phase Card wrapper ── */
+function SortablePhaseCard({
+  phase,
+  children,
+}: {
+  phase: EditablePhase;
+  children: (dragHandleProps: { listeners: any; attributes: any }) => React.ReactNode;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: phase.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    position: 'relative' as const,
+    zIndex: isDragging ? 10 : undefined,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      {children({ listeners, attributes })}
+    </div>
+  );
+}
+
+/* ── Sortable Task Row wrapper ── */
+function SortableTaskRow({
+  task,
+  onUpdate,
+  onRemove,
+}: {
+  task: EditableTask;
+  onUpdate: (field: string, val: any) => void;
+  onRemove: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: task.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <TaskRow
+        task={task}
+        onUpdate={onUpdate}
+        onRemove={onRemove}
+        dragListeners={listeners}
+        dragAttributes={attributes}
+      />
+    </div>
+  );
+}
+
 export function PlaybookEditor({
   detail, performance, isLoading, onSave, onDuplicate, onArchive, isSaving,
 }: PlaybookEditorProps) {
@@ -59,6 +139,11 @@ export function PlaybookEditor({
   const [description, setDescription] = useState('');
   const [phases, setPhases] = useState<EditablePhase[]>([]);
   const [dirty, setDirty] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   // Sync from detail
   useEffect(() => {
@@ -119,6 +204,7 @@ export function PlaybookEditor({
   };
 
   const removePhase = (idx: number) => {
+    if (!window.confirm('Delete this phase and all its tasks?')) return;
     setPhases(prev => prev.filter((_, i) => i !== idx));
     markDirty();
   };
@@ -150,6 +236,7 @@ export function PlaybookEditor({
   };
 
   const removeTask = (phaseIdx: number, taskIdx: number) => {
+    if (!window.confirm('Delete this task?')) return;
     setPhases(prev => prev.map((p, i) =>
       i === phaseIdx ? { ...p, tasks: p.tasks.filter((_, ti) => ti !== taskIdx) } : p
     ));
@@ -163,6 +250,31 @@ export function PlaybookEditor({
         tasks: p.tasks.map((t, ti) => ti === taskIdx ? { ...t, [field]: value } : t),
       } : p
     ));
+    markDirty();
+  };
+
+  // Phase drag end
+  const handlePhaseDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setPhases(prev => {
+      const oldIndex = prev.findIndex(p => p.id === active.id);
+      const newIndex = prev.findIndex(p => p.id === over.id);
+      return arrayMove(prev, oldIndex, newIndex);
+    });
+    markDirty();
+  };
+
+  // Task drag end for a specific phase
+  const handleTaskDragEnd = (phaseId: string, event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setPhases(prev => prev.map(p => {
+      if (p.id !== phaseId) return p;
+      const oldIndex = p.tasks.findIndex(t => t.id === active.id);
+      const newIndex = p.tasks.findIndex(t => t.id === over.id);
+      return { ...p, tasks: arrayMove(p.tasks, oldIndex, newIndex) };
+    }));
     markDirty();
   };
 
@@ -268,86 +380,111 @@ export function PlaybookEditor({
           )}
         </div>
 
-        {/* Phase editor */}
-        <div className="space-y-3">
-          {phases.map((phase, phaseIdx) => {
-            const perfPhase = performance?.phase_breakdown?.find(p => p.phase_name === phase.name);
+        {/* Phase editor with DnD */}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handlePhaseDragEnd}
+        >
+          <SortableContext items={phases.map(p => p.id)} strategy={verticalListSortingStrategy}>
+            <div className="space-y-3">
+              {phases.map((phase, phaseIdx) => {
+                const perfPhase = performance?.phase_breakdown?.find(p => p.phase_name === phase.name);
 
-            return (
-              <Collapsible key={phase.id} defaultOpen>
-                <Card className="border-border/50 overflow-hidden">
-                  <CollapsibleTrigger asChild>
-                    <CardHeader className="py-3 px-4 cursor-pointer hover:bg-muted/30 transition-colors">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          <GripVertical className="h-4 w-4 text-muted-foreground/30 shrink-0" />
-                          <Input
-                            value={phase.name}
-                            onChange={e => updatePhase(phaseIdx, 'name', e.target.value)}
-                            onClick={e => e.stopPropagation()}
-                            className="h-8 text-sm font-semibold border-transparent hover:border-border bg-transparent px-1"
-                            placeholder="Phase name"
-                          />
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-[10px] text-muted-foreground tabular-nums">{phase.tasks.length} tasks</span>
-                          {perfPhase && perfPhase.variance_percent !== 0 && (
-                            <Badge className={cn('text-[9px] h-4 px-1',
-                              Math.abs(perfPhase.variance_percent) <= 10 ? 'bg-status-complete/15 text-status-complete' :
-                              Math.abs(perfPhase.variance_percent) <= 25 ? 'bg-status-warning/15 text-status-warning' :
-                              'bg-status-issue/15 text-status-issue'
-                            )}>
-                              {perfPhase.variance_percent > 0 ? '+' : ''}{perfPhase.variance_percent}%
-                            </Badge>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={e => { e.stopPropagation(); removePhase(phaseIdx); }}
-                          >
-                            <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
-                          </Button>
-                          <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform [[data-state=open]_&]:rotate-180" />
-                        </div>
-                      </div>
-                    </CardHeader>
-                  </CollapsibleTrigger>
+                return (
+                  <SortablePhaseCard key={phase.id} phase={phase}>
+                    {({ listeners, attributes }) => (
+                      <Collapsible defaultOpen>
+                        <Card className="border-border/50 overflow-hidden">
+                          <CollapsibleTrigger asChild>
+                            <CardHeader className="py-3 px-4 cursor-pointer hover:bg-muted/30 transition-colors">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                  <GripVertical
+                                    className="h-4 w-4 text-muted-foreground/50 shrink-0 cursor-grab active:cursor-grabbing"
+                                    {...listeners}
+                                    {...attributes}
+                                    onClick={e => e.stopPropagation()}
+                                  />
+                                  <Input
+                                    value={phase.name}
+                                    onChange={e => updatePhase(phaseIdx, 'name', e.target.value)}
+                                    onClick={e => e.stopPropagation()}
+                                    className="h-8 text-sm font-semibold border-transparent hover:border-border bg-transparent px-1"
+                                    placeholder="Phase name"
+                                  />
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <span className="text-[10px] text-muted-foreground tabular-nums">{phase.tasks.length} tasks</span>
+                                  {perfPhase && perfPhase.variance_percent !== 0 && (
+                                    <Badge className={cn('text-[9px] h-4 px-1',
+                                      Math.abs(perfPhase.variance_percent) <= 10 ? 'bg-status-complete/15 text-status-complete' :
+                                      Math.abs(perfPhase.variance_percent) <= 25 ? 'bg-status-warning/15 text-status-warning' :
+                                      'bg-status-issue/15 text-status-issue'
+                                    )}>
+                                      {perfPhase.variance_percent > 0 ? '+' : ''}{perfPhase.variance_percent}%
+                                    </Badge>
+                                  )}
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    onClick={e => { e.stopPropagation(); removePhase(phaseIdx); }}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+                                  </Button>
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform [[data-state=open]_&]:rotate-180" />
+                                </div>
+                              </div>
+                            </CardHeader>
+                          </CollapsibleTrigger>
 
-                  <CollapsibleContent>
-                    <CardContent className="px-4 pb-4 pt-0 space-y-2">
-                      {phase.tasks.map((task, taskIdx) => (
-                        <TaskRow
-                          key={task.id}
-                          task={task}
-                          onUpdate={(field, val) => updateTask(phaseIdx, taskIdx, field, val)}
-                          onRemove={() => removeTask(phaseIdx, taskIdx)}
-                        />
-                      ))}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-[11px] h-7 gap-1 text-muted-foreground"
-                        onClick={() => addTask(phaseIdx)}
-                      >
-                        <Plus className="h-3 w-3" /> Add task
-                      </Button>
-                    </CardContent>
-                  </CollapsibleContent>
-                </Card>
-              </Collapsible>
-            );
-          })}
+                          <CollapsibleContent>
+                            <CardContent className="px-4 pb-4 pt-0 space-y-2">
+                              <DndContext
+                                sensors={sensors}
+                                collisionDetection={closestCenter}
+                                onDragEnd={(event) => handleTaskDragEnd(phase.id, event)}
+                              >
+                                <SortableContext items={phase.tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                                  {phase.tasks.map((task, taskIdx) => (
+                                    <SortableTaskRow
+                                      key={task.id}
+                                      task={task}
+                                      onUpdate={(field, val) => updateTask(phaseIdx, taskIdx, field, val)}
+                                      onRemove={() => removeTask(phaseIdx, taskIdx)}
+                                    />
+                                  ))}
+                                </SortableContext>
+                              </DndContext>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-[11px] h-7 gap-1 text-muted-foreground"
+                                onClick={() => addTask(phaseIdx)}
+                              >
+                                <Plus className="h-3 w-3" /> Add task
+                              </Button>
+                            </CardContent>
+                          </CollapsibleContent>
+                        </Card>
+                      </Collapsible>
+                    )}
+                  </SortablePhaseCard>
+                );
+              })}
 
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full h-9 gap-1.5"
-            onClick={addPhase}
-          >
-            <Plus className="h-3.5 w-3.5" /> Add phase
-          </Button>
-        </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full h-9 gap-1.5"
+                onClick={addPhase}
+              >
+                <Plus className="h-3.5 w-3.5" /> Add phase
+              </Button>
+            </div>
+          </SortableContext>
+        </DndContext>
 
         {/* Action bar */}
         <div className="flex items-center gap-2 pt-2 border-t border-border/50">
@@ -383,11 +520,13 @@ export function PlaybookEditor({
 
 /* ── Task Row ── */
 function TaskRow({
-  task, onUpdate, onRemove,
+  task, onUpdate, onRemove, dragListeners, dragAttributes,
 }: {
   task: EditableTask;
   onUpdate: (field: string, val: any) => void;
   onRemove: () => void;
+  dragListeners?: any;
+  dragAttributes?: any;
 }) {
   return (
     <div className={cn(
@@ -397,7 +536,11 @@ function TaskRow({
     )}>
       {/* Title row */}
       <div className="flex items-center gap-2">
-        <GripVertical className="h-3.5 w-3.5 text-muted-foreground/30 shrink-0" />
+        <GripVertical
+          className="h-3.5 w-3.5 text-muted-foreground/30 shrink-0 cursor-grab active:cursor-grabbing"
+          {...dragListeners}
+          {...dragAttributes}
+        />
         <Input
           value={task.title}
           onChange={e => onUpdate('title', e.target.value)}
