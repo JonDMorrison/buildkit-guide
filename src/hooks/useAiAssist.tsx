@@ -4,11 +4,15 @@ import { useToast } from '@/hooks/use-toast';
 
 export interface ActionSuggestion {
   label: string;
-  type: 'navigate' | 'prefill';
+  type: 'navigate' | 'prefill' | 'confirm';
   route?: string;
   prefill_type?: string;
   prefill_content?: string;
   prefillData?: Record<string, unknown>;
+  // For 'confirm' type
+  entity_type?: 'task' | 'deficiency' | 'project' | 'manpower_request';
+  entity_data?: Record<string, unknown>;
+  confirmation_id?: string;
 }
 
 export interface PressingIssues {
@@ -29,10 +33,12 @@ export interface ChatMessage {
   timestamp: Date;
 }
 
+type ConversationTurn = { role: 'user' | 'assistant'; content: string };
 type QuickAction = 'initial_summary' | 'blocked_tasks' | 'due_today' | 'safety_summary' | 'receipts_summary' | 'gc_deficiencies';
 
 export const useAiAssist = (projectId: string | null) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [conversationHistory, setConversationHistory] = useState<ConversationTurn[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pressingIssues, setPressingIssues] = useState<PressingIssues | null>(null);
@@ -52,7 +58,7 @@ export const useAiAssist = (projectId: string | null) => {
     setIsLoading(true);
     setError(null);
 
-    // Add user message to chat if it's a text message
+    // Add user message to display chat
     if (userMessage) {
       const userMsg: ChatMessage = {
         id: generateId(),
@@ -63,12 +69,18 @@ export const useAiAssist = (projectId: string | null) => {
       setMessages(prev => [...prev, userMsg]);
     }
 
+    // Build updated history for this call
+    const updatedHistory: ConversationTurn[] = userMessage
+      ? [...conversationHistory, { role: 'user', content: userMessage }]
+      : conversationHistory;
+
     try {
       const { data, error: fnError } = await supabase.functions.invoke('ai-assist', {
         body: {
           project_id: projectId,
           user_message: userMessage,
           quick_action: quickAction,
+          messages: updatedHistory,
         },
       });
 
@@ -80,14 +92,12 @@ export const useAiAssist = (projectId: string | null) => {
         throw new Error(data.error);
       }
 
-      // Update pressing issues if provided
       if (data.pressing_issues) {
         setPressingIssues(data.pressing_issues);
       }
 
       const answer = data.answer || 'I could not generate a response.';
 
-      // Add AI response to chat
       const assistantMsg: ChatMessage = {
         id: generateId(),
         role: 'assistant',
@@ -97,20 +107,25 @@ export const useAiAssist = (projectId: string | null) => {
       };
       setMessages(prev => [...prev, assistantMsg]);
 
+      // Update conversation history with both turns
+      setConversationHistory([
+        ...updatedHistory,
+        { role: 'assistant', content: answer },
+      ]);
+
       return answer;
 
     } catch (err) {
       console.error('AI Assist error:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to get AI response';
       setError(errorMessage);
-      
+
       toast({
         title: 'AI Assist Error',
         description: errorMessage,
         variant: 'destructive',
       });
 
-      // Add error message to chat
       const errorMsg: ChatMessage = {
         id: generateId(),
         role: 'assistant',
@@ -118,8 +133,57 @@ export const useAiAssist = (projectId: string | null) => {
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, errorMsg]);
-      
+
       return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [projectId, conversationHistory, toast]);
+
+  const confirmAction = useCallback(async (
+    confirmationId: string,
+    entityType: string,
+    entityData: Record<string, unknown>
+  ): Promise<void> => {
+    if (!projectId) return;
+    setIsLoading(true);
+
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke('ai-assist', {
+        body: {
+          project_id: projectId,
+          confirm_action: {
+            confirmation_id: confirmationId,
+            entity_type: entityType,
+            entity_data: entityData,
+          },
+        },
+      });
+
+      if (fnError) throw new Error(fnError.message);
+      if (data?.error) throw new Error(data.error);
+
+      const answer = data.answer || 'Done!';
+      const assistantMsg: ChatMessage = {
+        id: generateId(),
+        role: 'assistant',
+        content: answer,
+        actions: data.actions || [],
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, assistantMsg]);
+      setConversationHistory(prev => [...prev, { role: 'assistant', content: answer }]);
+
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create';
+      toast({ title: 'Error creating record', description: errorMessage, variant: 'destructive' });
+      const errorMsg: ChatMessage = {
+        id: generateId(),
+        role: 'assistant',
+        content: `Sorry, I couldn't create that. ${errorMessage}`,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMsg]);
     } finally {
       setIsLoading(false);
     }
@@ -131,6 +195,7 @@ export const useAiAssist = (projectId: string | null) => {
 
   const clearMessages = useCallback(() => {
     setMessages([]);
+    setConversationHistory([]);
     setPressingIssues(null);
     setError(null);
   }, []);
@@ -141,6 +206,7 @@ export const useAiAssist = (projectId: string | null) => {
     error,
     pressingIssues,
     sendMessage,
+    confirmAction,
     getInitialSummary,
     clearMessages,
   };

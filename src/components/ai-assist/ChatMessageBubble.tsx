@@ -1,25 +1,28 @@
+import { useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import type { ActionSuggestion } from '@/hooks/useAiAssist';
+import { ConfirmationCard } from './ConfirmationCard';
 
 interface ChatMessageBubbleProps {
   role: 'user' | 'assistant';
   content: string;
   actions?: ActionSuggestion[];
+  onConfirmAction?: (confirmationId: string, entityType: string, entityData: Record<string, unknown>) => void;
 }
 
-export const ChatMessageBubble = ({ role, content, actions }: ChatMessageBubbleProps) => {
+export const ChatMessageBubble = ({ role, content, actions, onConfirmAction }: ChatMessageBubbleProps) => {
   const navigate = useNavigate();
   const isUser = role === 'user';
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
 
   const handleAction = (action: ActionSuggestion) => {
     if (action.type === 'navigate' && action.route) {
       navigate(action.route);
     } else if (action.type === 'prefill' && action.prefillData) {
-      // Prefill actions: store data in sessionStorage for the target form to pick up
       sessionStorage.setItem('ai_prefill_data', JSON.stringify(action.prefillData));
       if (action.route) {
         navigate(action.route);
@@ -27,10 +30,17 @@ export const ChatMessageBubble = ({ role, content, actions }: ChatMessageBubbleP
     }
   };
 
-  // All actions with valid routes are now implemented
-  const implementedActions = actions?.filter(action => {
-    return action.route && (action.type === 'navigate' || action.type === 'prefill');
-  });
+  const navActions = actions?.filter(a =>
+    a.route && (a.type === 'navigate' || a.type === 'prefill')
+  );
+
+  const confirmActions = actions?.filter(a =>
+    a.type === 'confirm' && a.confirmation_id && !dismissedIds.has(a.confirmation_id)
+  );
+
+  const handleDismiss = (confirmationId: string) => {
+    setDismissedIds(prev => new Set(prev).add(confirmationId));
+  };
 
   return (
     <div className={cn('flex gap-2', isUser ? 'justify-end' : 'justify-start')}>
@@ -39,7 +49,7 @@ export const ChatMessageBubble = ({ role, content, actions }: ChatMessageBubbleP
           <Sparkles className="h-3.5 w-3.5 text-accent" />
         </div>
       )}
-      
+
       <div className={cn('max-w-[85%] space-y-2', isUser && 'order-first')}>
         <div
           className={cn(
@@ -58,10 +68,24 @@ export const ChatMessageBubble = ({ role, content, actions }: ChatMessageBubbleP
           )}
         </div>
 
-        {/* Action chips for AI messages - only show implemented actions */}
-        {!isUser && implementedActions && implementedActions.length > 0 && (
+        {/* Confirmation cards for create intents */}
+        {!isUser && confirmActions && confirmActions.length > 0 && (
+          <div className="space-y-2 pl-1">
+            {confirmActions.map((action) => (
+              <ConfirmationCard
+                key={action.confirmation_id}
+                action={action}
+                onConfirm={onConfirmAction ?? (() => {})}
+                onCancel={() => handleDismiss(action.confirmation_id!)}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Navigation action chips */}
+        {!isUser && navActions && navActions.length > 0 && (
           <div className="flex flex-wrap gap-1.5 pl-1">
-            {implementedActions.map((action, idx) => (
+            {navActions.map((action, idx) => (
               <Button
                 key={idx}
                 variant="outline"

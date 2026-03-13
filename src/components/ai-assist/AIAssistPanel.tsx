@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
-import { 
-  X, Sparkles, AlertTriangle, 
-  Shield, Loader2, ClipboardList, CalendarDays, Trash2
+import {
+  X, Sparkles, AlertTriangle,
+  Shield, Loader2, ClipboardList, CalendarDays, Trash2,
+  CheckSquare, Users, Rocket
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,37 @@ interface AIAssistPanelProps {
   projectId: string | null;
   projectName?: string;
 }
+
+const CREATE_ACTIONS = [
+  {
+    id: 'create-task',
+    label: 'Add a Task',
+    icon: CheckSquare,
+    prompt: 'I want to add a task to this project.',
+    color: 'text-amber-500',
+  },
+  {
+    id: 'create-deficiency',
+    label: 'Log a Deficiency',
+    icon: AlertTriangle,
+    prompt: 'I want to log a deficiency for this project.',
+    color: 'text-amber-500',
+  },
+  {
+    id: 'request-manpower',
+    label: 'Request Manpower',
+    icon: Users,
+    prompt: 'I want to submit a manpower request for this project.',
+    color: 'text-amber-500',
+  },
+  {
+    id: 'start-project',
+    label: 'Start a Project',
+    icon: Rocket,
+    prompt: 'I want to create a new project.',
+    color: 'text-amber-500',
+  },
+];
 
 const QUICK_ACTIONS = [
   { 
@@ -64,6 +96,7 @@ export const AIAssistPanel = ({ isOpen, onClose, projectId, projectName }: AIAss
     messages,
     isLoading,
     sendMessage,
+    confirmAction,
     clearMessages,
   } = useAiAssist(projectId);
 
@@ -184,6 +217,26 @@ export const AIAssistPanel = ({ isOpen, onClose, projectId, projectName }: AIAss
                   ))}
                 </div>
 
+                <div className="pt-1">
+                  <p className="text-xs font-medium text-muted-foreground mb-2 px-1">Create Something</p>
+                  <div className="grid gap-2">
+                    {CREATE_ACTIONS.map((action) => (
+                      <Button
+                        key={action.id}
+                        variant="outline"
+                        className="h-auto py-3 px-4 justify-start text-left hover:bg-amber-500/5 border-amber-500/20"
+                        onClick={() => handleQuickAction(action.prompt)}
+                        disabled={isLoading || !projectId}
+                      >
+                        <div className={cn("mr-3", action.color)}>
+                          <action.icon className="h-4 w-4" />
+                        </div>
+                        <span className="text-sm">{action.label}</span>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
                 {!projectId && (
                   <p className="text-xs text-muted-foreground text-center">
                     Select a project to use AI Assist
@@ -201,6 +254,7 @@ export const AIAssistPanel = ({ isOpen, onClose, projectId, projectName }: AIAss
                     role={message.role}
                     content={message.content}
                     actions={message.actions}
+                    onConfirmAction={confirmAction}
                   />
                 ))}
               </div>

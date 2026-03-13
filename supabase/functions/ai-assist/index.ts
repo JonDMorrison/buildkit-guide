@@ -11,14 +11,23 @@ interface AiAssistRequest {
   project_id: string;
   user_message?: string;
   quick_action?: 'initial_summary' | 'blocked_tasks' | 'due_today' | 'safety_summary' | 'receipts_summary' | 'gc_deficiencies';
+  messages?: Array<{ role: 'user' | 'assistant'; content: string }>;
+  confirm_action?: {
+    confirmation_id: string;
+    entity_type: 'task' | 'deficiency' | 'project' | 'manpower_request';
+    entity_data: Record<string, unknown>;
+  };
 }
 
 interface ActionSuggestion {
   label: string;
-  type: 'navigate' | 'prefill';
+  type: 'navigate' | 'prefill' | 'confirm';
   route?: string;
   prefill_type?: string;
   prefill_content?: string;
+  entity_type?: string;
+  entity_data?: Record<string, unknown>;
+  confirmation_id?: string;
 }
 
 interface AiAssistResponse {
@@ -41,7 +50,7 @@ serve(async (req) => {
 
   try {
     const body: AiAssistRequest = await req.json();
-    const { project_id, user_message, quick_action } = body;
+    const { project_id, user_message, quick_action, messages: conversationMessages, confirm_action } = body;
 
     if (!project_id) {
       throw new Error('project_id is required');
@@ -105,6 +114,120 @@ serve(async (req) => {
     if (!openaiKey) {
       throw new Error('OPENAI_API_KEY is not configured');
     }
+
+    // ─── Handle confirmed entity creation ───────────────────────────────────
+    if (confirm_action) {
+      const { entity_type, entity_data } = confirm_action;
+
+      // Need org context for some inserts — get it quickly
+      const { data: proj } = await serviceClient
+        .from('projects')
+        .select('organization_id')
+        .eq('id', project_id)
+        .single();
+
+      switch (entity_type) {
+        case 'task': {
+          const { error: taskErr } = await serviceClient.from('tasks').insert({
+            project_id,
+            title: entity_data.title,
+            description: entity_data.description || null,
+            due_date: entity_data.due_date || null,
+            location: entity_data.location || null,
+            priority: Number(entity_data.priority) || 1,
+            status: 'not_started',
+            created_by: user.id,
+            is_deleted: false,
+            is_generated: false,
+            playbook_collapsed: false,
+          });
+          if (taskErr) throw new Error(`Failed to create task: ${taskErr.message}`);
+          return new Response(JSON.stringify({
+            answer: '✅ Task created! Head to the Tasks page to view and assign it.',
+            actions: [{ type: 'navigate', label: 'View Tasks', route: '/tasks' }],
+          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
+        case 'deficiency': {
+          const { error: defErr } = await serviceClient.from('deficiencies').insert({
+            project_id,
+            title: entity_data.title,
+            description: entity_data.description || '',
+            location: entity_data.location || null,
+            due_date: entity_data.due_date || null,
+            priority: Number(entity_data.priority) || 1,
+            status: 'open',
+            created_by: user.id,
+            is_deleted: false,
+          });
+          if (defErr) throw new Error(`Failed to log deficiency: ${defErr.message}`);
+          return new Response(JSON.stringify({
+            answer: '✅ Deficiency logged successfully.',
+            actions: [{ type: 'navigate', label: 'View Deficiencies', route: '/deficiencies' }],
+          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
+        case 'project': {
+          const { error: projErr } = await serviceClient.from('projects').insert({
+            name: entity_data.name,
+            location: entity_data.location || '',
+            organization_id: proj?.organization_id,
+            status: 'active',
+            start_date: entity_data.start_date || null,
+            end_date: entity_data.end_date || null,
+            job_type: entity_data.job_type || null,
+            created_by: user.id,
+            is_deleted: false,
+            currency: 'CAD',
+          });
+          if (projErr) throw new Error(`Failed to create project: ${projErr.message}`);
+          return new Response(JSON.stringify({
+            answer: `✅ Project "${entity_data.name}" created!`,
+            actions: [],
+          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
+        case 'manpower_request': {
+          // Look up trade by trade_type or name match
+          const { data: tradeMatch } = await serviceClient
+            .from('trades')
+            .select('id, name')
+            .eq('organization_id', proj?.organization_id)
+            .eq('is_active', true)
+            .ilike('trade_type', `%${entity_data.trade_name}%`)
+            .limit(1)
+            .maybeSingle();
+
+          if (!tradeMatch) {
+            return new Response(JSON.stringify({
+              answer: `⚠️ Couldn't find a trade matching "${entity_data.trade_name}". Please go to the Manpower page to submit manually.`,
+              actions: [{ type: 'navigate', label: 'Open Manpower', route: '/manpower' }],
+            }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          }
+
+          const { error: mpErr } = await serviceClient.from('manpower_requests').insert({
+            project_id,
+            trade_id: tradeMatch.id,
+            requested_count: Number(entity_data.requested_count),
+            required_date: entity_data.required_date,
+            reason: entity_data.reason,
+            duration_days: entity_data.duration_days ? Number(entity_data.duration_days) : null,
+            status: 'pending',
+            created_by: user.id,
+            is_deleted: false,
+          });
+          if (mpErr) throw new Error(`Failed to create manpower request: ${mpErr.message}`);
+          return new Response(JSON.stringify({
+            answer: `✅ Manpower request submitted for ${tradeMatch.name}!`,
+            actions: [{ type: 'navigate', label: 'View Manpower', route: '/manpower' }],
+          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
+        default:
+          throw new Error(`Unknown entity type: ${entity_type}`);
+      }
+    }
+    // ────────────────────────────────────────────────────────────────────────
 
     // Get project info (comprehensive)
     const { data: project } = await serviceClient
@@ -631,6 +754,92 @@ Available routes:
 
 ${roleContext}`;
 
+    // Tool definitions for entity creation
+    const createTools = [
+      {
+        type: 'function',
+        function: {
+          name: 'create_task',
+          description: 'Create a new task for the project. Only call this when the user explicitly wants to add a task and has provided enough details (at minimum a title).',
+          parameters: {
+            type: 'object',
+            properties: {
+              title: { type: 'string', description: 'Task title' },
+              description: { type: 'string', description: 'Task description or details' },
+              due_date: { type: 'string', description: 'Due date in YYYY-MM-DD format' },
+              location: { type: 'string', description: 'Location or area for the task' },
+              priority: { type: 'number', description: 'Priority 1 (low) to 3 (high), default 1' },
+            },
+            required: ['title'],
+          },
+        },
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'log_deficiency',
+          description: 'Log a deficiency for the project. Only call this when the user explicitly wants to log/record a deficiency and has provided enough details.',
+          parameters: {
+            type: 'object',
+            properties: {
+              title: { type: 'string', description: 'Short deficiency title' },
+              description: { type: 'string', description: 'Detailed description of the deficiency' },
+              location: { type: 'string', description: 'Location or area where deficiency exists' },
+              due_date: { type: 'string', description: 'Due date for resolution in YYYY-MM-DD format' },
+              priority: { type: 'number', description: 'Priority 1 (low) to 3 (high), default 1' },
+            },
+            required: ['title', 'description'],
+          },
+        },
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'create_project',
+          description: 'Create a new project. Only call this when the user explicitly wants to start/create a new project and has provided name and location.',
+          parameters: {
+            type: 'object',
+            properties: {
+              name: { type: 'string', description: 'Project name' },
+              location: { type: 'string', description: 'Project location or address' },
+              start_date: { type: 'string', description: 'Start date in YYYY-MM-DD format' },
+              end_date: { type: 'string', description: 'End date in YYYY-MM-DD format' },
+              job_type: { type: 'string', description: 'Type of job (e.g. renovation, new build)' },
+            },
+            required: ['name', 'location'],
+          },
+        },
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'request_manpower',
+          description: 'Submit a manpower request. Only call this when the user explicitly wants to request workers and has provided the trade type, count, and required date.',
+          parameters: {
+            type: 'object',
+            properties: {
+              trade_name: { type: 'string', description: 'Type of trade needed (e.g. Electrician, Plumber, Framer)' },
+              requested_count: { type: 'number', description: 'Number of workers needed' },
+              required_date: { type: 'string', description: 'Date workers are needed in YYYY-MM-DD format' },
+              reason: { type: 'string', description: 'Reason for the manpower request' },
+              duration_days: { type: 'number', description: 'Number of days workers are needed' },
+            },
+            required: ['trade_name', 'requested_count', 'required_date', 'reason'],
+          },
+        },
+      },
+    ];
+
+    // Build OpenAI messages — use conversation history when available
+    const hasHistory = conversationMessages && conversationMessages.length > 0;
+    const openaiMessages: Array<{ role: string; content: string }> = hasHistory
+      ? conversationMessages.map(m => ({ role: m.role, content: m.content }))
+      : [{ role: 'user', content: `Context:\n${contextString}\n\nQuestion: ${userPrompt}` }];
+
+    const systemContent = hasHistory
+      ? `${systemPrompt}\n\nProject Context:\n${contextString}`
+      : systemPrompt;
+
     console.log('Calling OpenAI...');
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -642,9 +851,11 @@ ${roleContext}`;
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Context:\n${contextString}\n\nQuestion: ${userPrompt}` }
+          { role: 'system', content: systemContent },
+          ...openaiMessages,
         ],
+        tools: createTools,
+        tool_choice: 'auto',
       }),
     });
 
@@ -661,7 +872,46 @@ ${roleContext}`;
     }
 
     const result = await response.json();
-    const rawAnswer = result.choices?.[0]?.message?.content || '';
+    const choice = result.choices?.[0];
+
+    // Handle tool call — AI wants to create an entity
+    if (choice?.finish_reason === 'tool_calls') {
+      const toolCall = choice.message?.tool_calls?.[0];
+      if (toolCall) {
+        const toolName = toolCall.function.name;
+        let toolArgs: Record<string, unknown> = {};
+        try {
+          toolArgs = JSON.parse(toolCall.function.arguments);
+        } catch {
+          throw new Error('Failed to parse tool arguments from AI');
+        }
+
+        const entityTypeMap: Record<string, string> = {
+          create_task: 'task',
+          log_deficiency: 'deficiency',
+          create_project: 'project',
+          request_manpower: 'manpower_request',
+        };
+        const entityType = entityTypeMap[toolName] || toolName;
+        const confirmationId = crypto.randomUUID();
+
+        console.log('AI called tool:', toolName, toolArgs);
+
+        return new Response(JSON.stringify({
+          answer: "Here's what I'll create — please review and confirm:",
+          actions: [{
+            type: 'confirm',
+            label: 'Confirm & Create',
+            entity_type: entityType,
+            entity_data: toolArgs,
+            confirmation_id: confirmationId,
+          }],
+          pressing_issues: pressingIssues,
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+    }
+
+    const rawAnswer = choice?.message?.content || '';
 
     console.log('Raw AI response:', rawAnswer.substring(0, 200));
 
