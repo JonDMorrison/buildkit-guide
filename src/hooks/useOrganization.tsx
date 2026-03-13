@@ -41,6 +41,8 @@ export const OrganizationProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
+    let retryCount = 0;
+
     const fetchOrganizations = async () => {
       try {
         // Fetch memberships with organization data
@@ -102,10 +104,19 @@ export const OrganizationProvider = ({ children }: { children: ReactNode }) => {
           setActiveOrganizationIdState(null);
           setOrgRole(null);
         }
+
+        setLoading(false);
       } catch (error) {
+        // Retry up to 2 more times (3 total) for transient network errors.
+        // Return early during retries so loading stays true and the app
+        // doesn't permanently render as if the user has no organisation.
+        if (retryCount < 2) {
+          retryCount++;
+          setTimeout(fetchOrganizations, retryCount * 1500);
+          return;
+        }
         console.error('Error fetching organizations:', error);
         setActiveOrganizationIdState(null);
-      } finally {
         setLoading(false);
       }
     };

@@ -52,7 +52,7 @@ export default function Welcome() {
 
       if (error) {
         console.error('Error checking onboarding status:', error);
-        setChecking(false);
+        navigate('/dashboard');
         return;
       }
 
@@ -64,7 +64,7 @@ export default function Welcome() {
       setChecking(false);
     } catch (error) {
       console.error('Error checking onboarding status:', error);
-      setChecking(false);
+      navigate('/dashboard');
     }
   };
 
