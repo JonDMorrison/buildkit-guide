@@ -18,7 +18,10 @@ export function useSystemIssues() {
         'rpc_get_system_integrity_issues',
         { p_project_id: currentProjectId }
       );
-      if (error) throw error;
+      if (error) {
+        console.warn('rpc_get_system_integrity_issues:', error.message);
+        return [] as SystemIssue[];
+      }
       return (Array.isArray(data) ? data : []) as SystemIssue[];
     },
     enabled: !!currentProjectId,

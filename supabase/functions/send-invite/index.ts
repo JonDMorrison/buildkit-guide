@@ -157,7 +157,10 @@ serve(async (req: Request) => {
       const recipientName = fullName || email.split("@")[0];
       
       try {
-        const emailResponse = await resend.emails.send({
+        const sendTimeout = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Email send timeout after 15s')), 15000)
+        );
+        const emailResponse = await Promise.race([resend.emails.send({
           from: "Project Path <noreply@projectpath.app>",
           to: [email],
           subject: `${inviterName} invited you to join Project Path`,
@@ -198,7 +201,7 @@ serve(async (req: Request) => {
             </body>
             </html>
           `,
-        });
+        }), sendTimeout]);
 
         // Check if Resend returned an error in the response
         if (emailResponse.error) {

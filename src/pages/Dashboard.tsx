@@ -266,21 +266,21 @@ function DashboardContent() {
       if (!currentProjectId) return [];
       const { data, error } = await supabase
         .from("tasks")
-        .select("assigned_trade_id,trades(id,name,trade_type)")
+        .select("assigned_trade_id,assigned_trade:trades(id,name,trade_type)")
         .eq("project_id", currentProjectId)
         .eq("is_deleted", false)
         .in("status", ["in_progress", "not_started"])
         .not("assigned_trade_id", "is", null);
       if (error) throw error;
       const tradeMap = new Map<string, SnapshotTrade>();
-      (data as unknown as Array<{ trades: SnapshotTrade | null }>)?.forEach((t) => {
-        if (t.trades) {
-          const existing = tradeMap.get(t.trades.id);
+      (data as unknown as Array<{ assigned_trade: SnapshotTrade | null }>)?.forEach((t) => {
+        if (t.assigned_trade) {
+          const existing = tradeMap.get(t.assigned_trade.id);
           if (existing) {
             existing.taskCount++;
           } else {
-            tradeMap.set(t.trades.id, {
-              id: t.trades.id, name: t.trades.name, trade_type: t.trades.trade_type, taskCount: 1,
+            tradeMap.set(t.assigned_trade.id, {
+              id: t.assigned_trade.id, name: t.assigned_trade.name, trade_type: t.assigned_trade.trade_type, taskCount: 1,
             });
           }
         }
