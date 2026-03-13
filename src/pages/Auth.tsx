@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Mail, Lock, User, Eye, EyeOff, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Loader2, Mail, Lock, User, Building2, Eye, EyeOff, CheckCircle2, ArrowRight } from 'lucide-react';
 import projectPathLogo from '@/assets/project-path-logo.png';
 import { cn } from '@/lib/utils';
 
@@ -18,6 +18,7 @@ const signInSchema = z.object({
 
 const signUpSchema = signInSchema.extend({
   fullName: z.string().trim().min(2, { message: 'Full name must be at least 2 characters' }),
+  companyName: z.string().trim().min(2, { message: 'Company name must be at least 2 characters' }),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
@@ -86,6 +87,7 @@ const Auth = () => {
     email: '',
     password: '',
     fullName: '',
+    companyName: '',
     confirmPassword: '',
   });
 
@@ -143,7 +145,8 @@ const Auth = () => {
       const { data, error } = await signUp(
         validatedData.email,
         validatedData.password,
-        validatedData.fullName
+        validatedData.fullName,
+        validatedData.companyName
       );
       
       if (error) {
@@ -346,6 +349,16 @@ const Auth = () => {
                       value={signUpForm.fullName}
                       onChange={(e) => setSignUpForm({ ...signUpForm, fullName: e.target.value })}
                       placeholder="Full name"
+                      className="pl-12 h-12 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                    />
+                  </InputWrapper>
+
+                  <InputWrapper icon={Building2} error={signUpErrors.companyName}>
+                    <Input
+                      type="text"
+                      value={signUpForm.companyName}
+                      onChange={(e) => setSignUpForm({ ...signUpForm, companyName: e.target.value })}
+                      placeholder="Company name"
                       className="pl-12 h-12 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
                     />
                   </InputWrapper>
