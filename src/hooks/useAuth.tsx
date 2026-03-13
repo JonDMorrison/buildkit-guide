@@ -12,6 +12,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { getDefaultHomeRoute, RoleContext } from '@/utils/getDefaultHomeRoute';
+import { useQueryClient } from '@tanstack/react-query';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -20,6 +21,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     // Track if this is the initial session check
@@ -159,6 +161,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.error('Sign out error:', err);
     }
     // Always navigate to auth, even if signOut fails
+    queryClient.clear();
     setUser(null);
     setSession(null);
     navigate('/auth');
