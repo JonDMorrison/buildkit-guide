@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { useEstimates } from "@/hooks/useEstimates";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, Copy, Lock, Plus, Trash2, Wand2, Save, Loader2 } from "lucide-react";
+import { CheckCircle2, Copy, Lock, Plus, Trash2, Wand2, Save, Loader2, ArrowRight } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
 import { format } from "date-fns";
 import type { Estimate, EstimateLineItem } from "@/types/estimates";
@@ -133,6 +133,17 @@ export const EstimateDetailModal = ({ estimate, canEdit, onClose, onUpdated }: P
             </Badge>
           </div>
         </DialogHeader>
+
+        {/* Pipeline breadcrumb */}
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">Estimate</span>
+          <ArrowRight className="h-3 w-3" />
+          <span>Proposal</span>
+          <ArrowRight className="h-3 w-3" />
+          <span>Quote</span>
+          <ArrowRight className="h-3 w-3" />
+          <span>Invoice</span>
+        </div>
 
         <div className="space-y-6">
           {/* Header info */}
@@ -323,6 +334,16 @@ export const EstimateDetailModal = ({ estimate, canEdit, onClose, onUpdated }: P
                 </Button>
               </div>
             </>
+          )}
+
+          {/* Next pipeline step */}
+          {!isDraft && (
+            <div className="flex items-center gap-2 text-sm p-3 rounded-lg bg-primary/5 border border-primary/20">
+              <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" />
+              <span className="text-muted-foreground">Approved — ready to advance</span>
+              <ArrowRight className="h-3 w-3 text-muted-foreground" />
+              <span className="font-medium text-foreground">Create a Proposal from this estimate in the Financials pipeline.</span>
+            </div>
           )}
 
           {/* Actions */}

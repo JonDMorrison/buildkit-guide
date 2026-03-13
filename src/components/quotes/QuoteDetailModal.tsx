@@ -15,7 +15,7 @@ import { useQuotes } from "@/hooks/useQuotes";
 import { useOrganizationRole } from "@/hooks/useOrganizationRole";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { CheckCircle2, Send, XCircle, Lock, ArrowRightLeft, Mail, AlertTriangle, ChevronDown, Bug, Clock } from "lucide-react";
+import { CheckCircle2, Send, XCircle, Lock, ArrowRightLeft, Mail, AlertTriangle, ChevronDown, Bug, Clock, ArrowRight } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { Quote, QuoteLineItem } from "@/types/quotes";
@@ -145,6 +145,19 @@ export const QuoteDetailModal = ({ quote, canEdit, onClose, onUpdated }: Props) 
               )}
             </div>
           </DialogHeader>
+
+          {/* Pipeline breadcrumb */}
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <CheckCircle2 className="h-3 w-3 text-primary" />
+            <span>Estimate</span>
+            <ArrowRight className="h-3 w-3" />
+            <CheckCircle2 className="h-3 w-3 text-primary" />
+            <span>Proposal</span>
+            <ArrowRight className="h-3 w-3" />
+            <span className="font-medium text-foreground">Quote</span>
+            <ArrowRight className="h-3 w-3" />
+            <span>Invoice</span>
+          </div>
 
           <div className="space-y-6">
             {/* Header info */}

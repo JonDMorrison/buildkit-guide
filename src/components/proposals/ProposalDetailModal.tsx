@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  CheckCircle2, Send, ThumbsDown, Archive, FileText, Clock, AlertTriangle,
+  CheckCircle2, Send, ThumbsDown, Archive, FileText, Clock, AlertTriangle, ArrowRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -98,6 +98,17 @@ export function ProposalDetailModal({
             {proposal.project?.job_number && ` (${proposal.project.job_number})`}
             {proposal.estimate?.estimate_number && ` · Est: ${proposal.estimate.estimate_number}`}
           </p>
+          {/* Pipeline breadcrumb */}
+          <div className="flex items-center gap-1 text-xs text-muted-foreground pt-1">
+            <CheckCircle2 className="h-3 w-3 text-primary" />
+            <span>Estimate</span>
+            <ArrowRight className="h-3 w-3" />
+            <span className="font-medium text-foreground">Proposal</span>
+            <ArrowRight className="h-3 w-3" />
+            <span>Quote</span>
+            <ArrowRight className="h-3 w-3" />
+            <span>Invoice</span>
+          </div>
         </DialogHeader>
 
         {editing && isDraft ? (
