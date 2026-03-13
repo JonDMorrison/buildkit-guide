@@ -60,30 +60,12 @@ export const DailyLogForm = ({
   const [autoFilling, setAutoFilling] = useState(false);
   const smartDefaults = useSmartDefaults(projectId || undefined);
 
-  // Pre-fill crew count and weather from most recent log
-  useEffect(() => {
-    if (open && !existingLog && smartDefaults.lastCrewCount !== null) {
-      const currentCrewCount = watch('crew_count');
-      if (currentCrewCount === null || currentCrewCount === undefined) {
-        setValue('crew_count', smartDefaults.lastCrewCount);
-      }
-    }
-  }, [open, existingLog, smartDefaults.lastCrewCount]);
-
-  useEffect(() => {
-    if (open && !existingLog && smartDefaults.lastWeather) {
-      const currentWeather = watch('weather');
-      if (!currentWeather) {
-        setValue('weather', smartDefaults.lastWeather);
-      }
-    }
-  }, [open, existingLog, smartDefaults.lastWeather]);
-
   const {
     register,
     handleSubmit,
     reset,
     setValue,
+    getValues,
     watch,
     formState: { errors },
   } = useForm<DailyLogFormData>({
@@ -99,6 +81,25 @@ export const DailyLogForm = ({
     },
   });
 
+  // Pre-fill crew count and weather from most recent log (after useForm so setValue/getValues are ready)
+  useEffect(() => {
+    if (open && !existingLog && smartDefaults.lastCrewCount !== null) {
+      const current = getValues('crew_count');
+      if (current === null || current === undefined || current === 0) {
+        setValue('crew_count', smartDefaults.lastCrewCount);
+      }
+    }
+  }, [open, existingLog, smartDefaults.lastCrewCount]);
+
+  useEffect(() => {
+    if (open && !existingLog && smartDefaults.lastWeather) {
+      const current = getValues('weather');
+      if (!current) {
+        setValue('weather', smartDefaults.lastWeather);
+      }
+    }
+  }, [open, existingLog, smartDefaults.lastWeather]);
+
   const watchedWeather = watch('weather');
   const watchedCrewCount = watch('crew_count');
   const weatherCarried = !existingLog && !!smartDefaults.lastWeather && watchedWeather === smartDefaults.lastWeather;
@@ -111,37 +112,26 @@ export const DailyLogForm = ({
         body: {
           project_id: projectId,
           quick_action: 'daily_log_autofill',
+          response_format: 'json',
+          instructions: 'Respond ONLY with a valid JSON object with exactly these keys: work_performed (string), issues (string, empty string if none), next_day_plan (string). No markdown, no explanation, no extra keys.',
         },
       });
 
       if (error) throw error;
 
-      // Parse the response to extract structured data
       const answer = data?.answer || '';
-      
-      // Try to extract sections from the AI response
-      let workPerformed = '';
-      let issues = '';
-      let nextDayPlan = '';
+      let parsed: { work_performed?: string; issues?: string; next_day_plan?: string } = {};
 
-      // Parse sections from the answer
-      const workMatch = answer.match(/(?:Work Performed|Completed Today|Work Summary)[:\s]*([^]*?)(?=(?:Issues|Delays|Problems|Next Day|Tomorrow|$))/i);
-      const issuesMatch = answer.match(/(?:Issues|Delays|Problems|Blockers)[:\s]*([^]*?)(?=(?:Next Day|Tomorrow|Plan|$))/i);
-      const planMatch = answer.match(/(?:Next Day|Tomorrow|Plan)[:\s]*([^]*?)$/i);
-
-      if (workMatch) workPerformed = workMatch[1].trim();
-      if (issuesMatch) issues = issuesMatch[1].trim();
-      if (planMatch) nextDayPlan = planMatch[1].trim();
-
-      // If parsing failed, use the full answer for work_performed
-      if (!workPerformed && !issues && !nextDayPlan) {
-        workPerformed = answer;
+      try {
+        const clean = answer.replace(/```json|```/g, '').trim();
+        parsed = JSON.parse(clean);
+      } catch {
+        parsed = { work_performed: answer, issues: '', next_day_plan: '' };
       }
 
-      // Update form fields
-      if (workPerformed) setValue('work_performed', workPerformed);
-      if (issues) setValue('issues', issues);
-      if (nextDayPlan) setValue('next_day_plan', nextDayPlan);
+      if (parsed.work_performed) setValue('work_performed', parsed.work_performed);
+      if (parsed.issues) setValue('issues', parsed.issues);
+      if (parsed.next_day_plan) setValue('next_day_plan', parsed.next_day_plan);
 
       toast({
         title: 'Auto-filled from today\'s activity',
@@ -149,10 +139,9 @@ export const DailyLogForm = ({
       });
     } catch (err) {
       const error = err as Error;
-      console.error('Error auto-filling:', error);
       toast({
-        title: 'Error auto-filling',
-        description: error.message || 'Please try again or fill manually',
+        title: 'Auto-fill failed',
+        description: error.message || 'Please fill manually',
         variant: 'destructive',
       });
     } finally {
