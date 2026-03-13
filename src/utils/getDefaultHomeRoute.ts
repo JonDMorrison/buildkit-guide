@@ -45,6 +45,6 @@ export function getDefaultHomeRoute(ctx: RoleContext): string {
     return '/tasks';
   }
 
-  // Fallback
-  return '/dashboard';
+  // Fallback: new users with no roles go to onboarding, not dashboard (which requires roles)
+  return '/welcome';
 }

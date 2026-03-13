@@ -90,8 +90,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               navigate(homeRoute);
             }
           } catch (err) {
-            console.error('Failed to resolve home route, falling back to /dashboard', err);
-            navigate('/dashboard');
+            console.error('Failed to resolve home route, falling back to /welcome', err);
+            navigate('/welcome');
           }
         }
       }
