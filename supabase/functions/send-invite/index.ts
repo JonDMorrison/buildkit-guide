@@ -42,14 +42,21 @@ serve(async (req: Request) => {
     // Get authenticated user
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      throw new Error("No authorization header");
+      return new Response(
+        JSON.stringify({ error: "Your session has expired. Please refresh the page and try again." }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
+
     if (authError || !user) {
-      throw new Error("Unauthorized");
+      log('warn', 'Auth token invalid or expired', { error: authError?.message });
+      return new Response(
+        JSON.stringify({ error: "Your session has expired. Please refresh the page and try again." }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Get inviter's name for the email
@@ -99,9 +106,9 @@ serve(async (req: Request) => {
 
     if (existingProfile) {
       return new Response(
-        JSON.stringify({ error: "User already exists" }),
+        JSON.stringify({ error: `${email} already has an account and can sign in directly at projectpath.app` }),
         {
-          status: 400,
+          status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
@@ -247,11 +254,11 @@ serve(async (req: Request) => {
       }
     );
   } catch (error: any) {
-    console.error("Error in send-invite:", error);
+    log('error', 'Unhandled error in send-invite', { error: error.message });
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message || "An unexpected error occurred. Please try again." }),
       {
-        status: 500,
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
