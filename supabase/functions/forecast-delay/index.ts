@@ -24,10 +24,10 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    const openaiKey = Deno.env.get('OPENAI_API_KEY');
 
-    if (!lovableApiKey) {
-      throw new Error('LOVABLE_API_KEY not configured');
+    if (!openaiKey) {
+      throw new Error('OPENAI_API_KEY not configured');
     }
 
     // Get user from auth header
@@ -245,17 +245,16 @@ ${taskId ? `\n**Focus Task:** Analyze impact specifically for task ID: ${taskId}
 
 Provide a detailed forecast analysis.`;
 
-    console.log('Calling Lovable AI for delay forecast...');
+    console.log('Calling OpenAI for delay forecast...');
 
-    // Call Lovable AI with tool calling for structured output
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${lovableApiKey}`,
+        'Authorization': `Bearer ${openaiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
@@ -307,8 +306,8 @@ Provide a detailed forecast analysis.`;
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      console.error('Lovable AI error:', aiResponse.status, errorText);
-      throw new Error(`AI Gateway error: ${errorText}`);
+      console.error('OpenAI error:', aiResponse.status, errorText);
+      throw new Error(`OpenAI error: ${errorText}`);
     }
 
     const aiResult = await aiResponse.json();

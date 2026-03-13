@@ -20,9 +20,9 @@ serve(async (req) => {
 
     console.log('Extracting task from text:', text);
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    const openaiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openaiKey) {
+      throw new Error('OPENAI_API_KEY is not configured');
     }
 
     // Build trade context for the AI
@@ -48,7 +48,7 @@ Extract:
 Be smart about inferring urgency, trades, and blockers from context.`;
 
     const body = {
-      model: "google/gemini-2.5-flash",
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: text }
@@ -81,11 +81,11 @@ Be smart about inferring urgency, trades, and blockers from context.`;
       tool_choice: { type: "function", function: { name: "create_task" } }
     };
 
-    console.log('Calling Lovable AI...');
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    console.log('Calling OpenAI...');
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${openaiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
@@ -93,8 +93,8 @@ Be smart about inferring urgency, trades, and blockers from context.`;
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Lovable AI error:', response.status, errorText);
-      throw new Error(`Lovable AI error: ${errorText}`);
+      console.error('OpenAI error:', response.status, errorText);
+      throw new Error(`OpenAI error: ${errorText}`);
     }
 
     const result = await response.json();
