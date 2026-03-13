@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Loader2, Download, Copy, CheckCircle2, AlertTriangle, XCircle, ChevronDown, ShieldCheck, Activity, RefreshCw, ShieldAlert } from 'lucide-react';
+import { DashboardMissionControl } from '@/components/dashboard/DashboardMissionControl';
 import { startConsoleCapture } from '@/lib/consoleCapture';
 import { buildHealthCheckReport, type HealthCheckResult, type CheckStatus } from '@/lib/healthCheckReport';
 import { downloadText } from '@/lib/downloadText';
@@ -388,6 +389,9 @@ function HealthCheckContent() {
             )}
           </div>
         </div>
+
+        {/* Data confidence + quality — reuses cached queries, no extra fetches */}
+        <DashboardMissionControl />
 
         {/* Confidence Ribbon */}
         <ConfidenceRibbon

@@ -66,18 +66,19 @@ export function ProjectHealthSignalCard({ projectId }: Props) {
     gcTime: 30 * 60 * 1000,
   });
 
+  // Shares query key with AIMarginSignalCard — TanStack Query deduplicates to a single fetch
   const { data: snapshotHistory } = useQuery({
-    queryKey: ["pm-snapshot-history", projectId],
+    queryKey: ["ai-margin-signal", projectId],
     queryFn: async () => {
       const { data, error } = await supabase.rpc(
-        "rpc_get_margin_snapshot_history" as any,
-        { p_project_id: projectId, p_window_days: 7 }
+        "rpc_get_margin_snapshot_history",
+        { p_project_id: projectId, p_days: 30 }
       );
       if (error) throw error;
       return (data as unknown as MarginSnapshotEntry[]) ?? [];
     },
     enabled: !!projectId,
-    staleTime: 10 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });
 

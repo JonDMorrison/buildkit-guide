@@ -2,13 +2,11 @@ import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDefaultHomeRoute } from "@/hooks/useDefaultHomeRoute";
 import { useRouteAccess } from "@/hooks/useRouteAccess";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAuthRole } from "@/hooks/useAuthRole";
 import { useCurrentProject } from "@/hooks/useCurrentProject";
-import { useDashboardLayout } from "@/hooks/useDashboardLayout";
 import { Button } from "@/components/ui/button";
 import { SectionErrorBoundary } from "@/components/SectionErrorBoundary";
 import { NewUserWelcome } from "@/components/dashboard/NewUserWelcome";
@@ -24,9 +22,8 @@ import type { SnapshotTask, SnapshotTrade } from "@/components/dashboard/widgets
 import { ArrowRight, Building2, Plus, Loader2 } from "lucide-react";
 import { CertificationBadge } from "@/components/CertificationBadge";
 import { useCertificationTier } from "@/hooks/useCertificationTier";
-import { EconomicPulseStrip } from "@/components/dashboard/EconomicPulseStrip";
 import { QuickAddModal } from "@/components/dashboard/QuickAddModal";
-import { format, isBefore, addDays, startOfDay, subDays } from "date-fns";
+import { format, isBefore, addDays, startOfDay } from "date-fns";
 import { WorkerDashboard } from "@/components/dashboard/worker/WorkerDashboard";
 import { SmartChecklist } from "@/components/setup/SmartChecklist";
 
@@ -38,20 +35,17 @@ import { DashboardGrid } from "@/components/dashboard/shared/DashboardGrid";
 
 // PM card components
 import {
-  TodayTasksCard,
-  BlockedTasksCard,
-  CrewAssignedCard,
-  ActiveProjectsCard,
   OpenChangeOrdersCard,
   ProjectHealthSignalCard,
   MyDayTaskList,
   BlockersCard,
   LookaheadPreview,
-  ManpowerOverview,
 } from "@/components/dashboard/pm";
 
-import { AIInsightsSection } from "@/components/ai-insights";
-import { DashboardMissionControl } from "@/components/dashboard/DashboardMissionControl";
+// AI insight cards (direct imports — AIProjectRiskCard excluded, deduped via canonical keys)
+import { AIChangeFeedCard } from "@/components/ai-insights/AIChangeFeedCard";
+import { AIMarginSignalCard } from "@/components/ai-insights/AIMarginSignalCard";
+
 import { AttentionInbox } from "@/components/executive/AttentionInbox";
 import { useOrganization } from "@/hooks/useOrganization";
 import { usePrefetchRoute } from "@/hooks/usePrefetchRoute";
@@ -67,17 +61,14 @@ export default function Dashboard() {
   const { homeRoute } = useDefaultHomeRoute();
   const { activeOrganizationId, loading: orgLoading } = useOrganization();
 
-  // While roles/org are loading, show skeleton
   if (loading || orgLoading) {
     return <DashboardLayout><div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div></DashboardLayout>;
   }
 
-  // No organization → user hasn't completed onboarding → redirect to welcome wizard
   if (!activeOrganizationId) {
     return <DashboardRedirect to="/welcome" />;
   }
 
-  // Worker-tier users should not be on /dashboard — redirect to their home route
   const canViewDashboard = isAdmin || isPM || isForeman;
   if (!canViewDashboard) {
     if (homeRoute !== '/dashboard') {
@@ -89,12 +80,9 @@ export default function Dashboard() {
   return <DashboardContent />;
 }
 
-/** Tiny component so the redirect runs as an effect, not during render */
 function DashboardRedirect({ to }: { to: string }) {
   const navigate = useNavigate();
-  useEffect(() => {
-    navigate(to, { replace: true });
-  }, [to, navigate]);
+  useEffect(() => { navigate(to, { replace: true }); }, [to, navigate]);
   return (
     <DashboardLayout>
       <div className="flex items-center justify-center h-64">
@@ -112,22 +100,22 @@ function DashboardContent() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { currentProjectId, setCurrentProject } = useCurrentProject();
-  const { isPM, isForeman, isAdmin, isInternalWorker, isExternalTrade, loading: roleLoading } = useAuthRole(currentProjectId || undefined);
+  const { isPM, isForeman, isAdmin, loading: roleLoading } = useAuthRole(currentProjectId || undefined);
   const { tier, certification } = useCertificationTier();
   const { activeOrganizationId } = useOrganization();
   const { prefetchRoute } = usePrefetchRoute();
 
-  // Cross-page warming: PM on /dashboard warms /executive data if they have access
+  // Warm executive data for PM/Admin
   useEffect(() => {
     if (!roleLoading && (isAdmin || isPM()) && activeOrganizationId) {
       prefetchRoute('/executive');
     }
   }, [roleLoading, isAdmin, isPM, activeOrganizationId, prefetchRoute]);
 
-  // Reuse shared change feed hook (canonical key: rpc-executive-change-feed)
+  // Change feed — canonical key, deduped with AIChangeFeedCard
   const { data: changeFeed, isLoading: feedLoading } = useExecutiveChangeFeed();
 
-  // Modal states (preserved)
+  // Modal states
   const [startingModalOpen, setStartingModalOpen] = useState(false);
   const [finishingModalOpen, setFinishingModalOpen] = useState(false);
   const [tradesPopoverOpen, setTradesPopoverOpen] = useState(false);
@@ -136,16 +124,9 @@ function DashboardContent() {
   const [blockersModalOpen, setBlockersModalOpen] = useState(false);
   const [quickAddModalOpen, setQuickAddModalOpen] = useState(false);
 
-  const roleHint = isForeman() ? 'foreman' as const : isPM() ? 'pm' as const : isAdmin ? 'admin' as const : 'other' as const;
-  const {
-    isLoading: layoutLoading,
-    layouts,
-  } = useDashboardLayout(currentProjectId, roleHint);
-
   const today = startOfDay(new Date());
-  const nextWeek = addDays(today, 7);
 
-  // ── All existing queries (preserved) ──────────────────────────────────
+  // ── Data queries ────────────────────────────────────────────────────
 
   const { data: userProjects } = useQuery({
     queryKey: ["user-projects", user?.id, activeOrganizationId],
@@ -155,14 +136,12 @@ function DashboardContent() {
         .from("project_members")
         .select(`project_id,projects (id,name,location,status,organization_id)`)
         .eq("user_id", user.id);
-      
       if (error) throw error;
-      
-      const projects = (data as unknown as Array<{ projects: { id: string; name: string; location: string; status: string; organization_id: string } | null }>)?.map((pm) => pm.projects)
+      const projects = (data as unknown as Array<{ projects: { id: string; name: string; location: string; status: string; organization_id: string } | null }>)
+        ?.map((pm) => pm.projects)
         .filter((p): p is { id: string; name: string; location: string; status: string; organization_id: string } => !!p && p.organization_id === activeOrganizationId) || [];
-        
       const projectsWithProgress = await Promise.all(
-        projects.map(async (project: { id: string; name: string; location: string; status: string; organization_id: string }) => {
+        projects.map(async (project) => {
           const { data: tasks } = await supabase
             .from("tasks")
             .select("id,status")
@@ -177,7 +156,7 @@ function DashboardContent() {
       return projectsWithProgress;
     },
     enabled: !!user?.id && !!activeOrganizationId,
-    staleTime: 10 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });
 
@@ -187,13 +166,14 @@ function DashboardContent() {
     }
   }, [currentProjectId, userProjects, setCurrentProject]);
 
+  // Tasks — expanded to include blocker detail, replaces standalone dashboard-blockers query
   const { data: tasks = [], isLoading: tasksLoading } = useQuery({
     queryKey: ["dashboard-tasks", user?.id, activeOrganizationId, currentProjectId],
     queryFn: async () => {
       if (!user || !currentProjectId) return [];
       const { data, error } = await supabase
         .from("tasks")
-        .select(`*,assigned_trade:trades(name),task_assignments(user_id),blockers(id,is_resolved)`)
+        .select(`*,assigned_trade:trades(name),task_assignments(user_id),blockers(id,is_resolved,reason,created_at)`)
         .eq("project_id", currentProjectId)
         .eq("is_deleted", false);
       if (error) throw error;
@@ -201,41 +181,6 @@ function DashboardContent() {
     },
     enabled: !!user && !!currentProjectId,
     staleTime: 5 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
-  });
-
-  const { data: blockers = [], isLoading: blockersLoading } = useQuery({
-    queryKey: ["dashboard-blockers", activeOrganizationId, currentProjectId],
-    queryFn: async () => {
-      if (!currentProjectId) return [];
-      const { data, error } = await supabase
-        .from("blockers")
-        .select(`*,task:tasks(id,title,assigned_trade:trades(name))`)
-        .eq("is_resolved", false);
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!currentProjectId,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
-  });
-
-  // Safety forms — deferred, not needed for top fold
-  const { data: safetyForms = [] } = useQuery({
-    queryKey: ["dashboard-safety", activeOrganizationId, currentProjectId],
-    queryFn: async () => {
-      if (!currentProjectId) return [];
-      const { data, error } = await supabase
-        .from("safety_forms")
-        .select("*")
-        .eq("project_id", currentProjectId)
-        .eq("is_deleted", false)
-        .gte("created_at", subDays(today, 7).toISOString());
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: false, // deferred — not used on page, only by modals if needed
-    staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });
 
@@ -257,6 +202,7 @@ function DashboardContent() {
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });
+
   const todayLog = recentLog;
   const logIsStale = recentLog && recentLog.log_date !== format(today, "yyyy-MM-dd");
 
@@ -294,7 +240,7 @@ function DashboardContent() {
 
   const activeTrades = activeTradesData.length;
 
-  // Team members — only needed when crew modal opens, defer initial load
+  // Team members — deferred until crew modal opens
   const [crewModalOpened, setCrewModalOpened] = useState(false);
   const { data: teamMembers = [] } = useQuery({
     queryKey: ["dashboard-team-members", activeOrganizationId, currentProjectId],
@@ -305,14 +251,12 @@ function DashboardContent() {
         .select(`id,user_id,role,trade:trades(name),profile:profiles(id,full_name,email)`)
         .eq("project_id", currentProjectId);
       if (error) throw error;
-
       interface RawMember {
         user_id: string;
         role: string;
         trade: { name: string } | null;
         profile: { id: string; full_name: string | null; email: string } | null;
       }
-
       return (data as unknown as RawMember[] || []).map((m) => ({
         id: m.user_id, full_name: m.profile?.full_name || null,
         email: m.profile?.email || "", role: m.role, trade_name: m.trade?.name || null,
@@ -323,33 +267,40 @@ function DashboardContent() {
     gcTime: 30 * 60 * 1000,
   });
 
-  // ── Memoized metrics ──────────────────────────────────────────────────
+  // ── Derived metrics ─────────────────────────────────────────────────
 
-  const openTasks = useMemo(() => tasks.filter(t => t.status !== "done").length, [tasks]);
   const blockedTasks = useMemo(() => tasks.filter(t => t.status === "blocked").length, [tasks]);
 
   const tasksStartingTodayList: SnapshotTask[] = useMemo(() => tasks
     .filter(t => t.start_date && format(new Date(t.start_date), "yyyy-MM-dd") === format(today, "yyyy-MM-dd"))
-    .map(t => ({ id: t.id, title: t.title, status: t.status, due_date: t.due_date, start_date: t.start_date, location: t.location, assigned_trade: t.assigned_trade })), [tasks, today]);
+    .map(t => ({ id: t.id, title: t.title, status: t.status, due_date: t.due_date, start_date: t.start_date, location: t.location, assigned_trade: t.assigned_trade })),
+  [tasks, today]);
 
   const tasksFinishingTodayList: SnapshotTask[] = useMemo(() => tasks
     .filter(t => t.due_date && format(new Date(t.due_date), "yyyy-MM-dd") === format(today, "yyyy-MM-dd"))
-    .map(t => ({ id: t.id, title: t.title, status: t.status, due_date: t.due_date, start_date: t.start_date, location: t.location, assigned_trade: t.assigned_trade })), [tasks, today]);
-
-  const tasksStartingToday = tasksStartingTodayList.length;
-  const tasksFinishingToday = tasksFinishingTodayList.length;
+    .map(t => ({ id: t.id, title: t.title, status: t.status, due_date: t.due_date, start_date: t.start_date, location: t.location, assigned_trade: t.assigned_trade })),
+  [tasks, today]);
 
   const priorityTasks = useMemo(() => tasks
     .filter(t => t.status !== "done" && (t.priority === 1 || (t.due_date && isBefore(new Date(t.due_date), addDays(today, 3)))))
-    .slice(0, 8), [tasks, today]);
+    .slice(0, 5),
+  [tasks, today]);
 
-  const blockersForModal = useMemo(() => blockers.filter(b => !b.is_resolved).map(b => ({
-    id: b.id, reason: b.reason, created_at: b.created_at, task: b.task,
-  })), [blockers]);
+  // Blockers derived from tasks — eliminates the standalone dashboard-blockers query
+  const unresolvedBlockers = useMemo(() =>
+    tasks.flatMap(task =>
+      ((task.blockers as Array<{ id: string; is_resolved: boolean; reason: string; created_at?: string }> | undefined) || [])
+        .filter(b => !b.is_resolved)
+        .map(b => ({
+          id: b.id,
+          reason: b.reason,
+          created_at: b.created_at,
+          task: { id: task.id, title: task.title, assigned_trade: task.assigned_trade },
+        }))
+    ),
+  [tasks]);
 
-  const unresolvedBlockers = useMemo(() => blockers.filter(b => !b.is_resolved), [blockers]);
-
-  // ── Guards ────────────────────────────────────────────────────────────
+  // ── Guard ────────────────────────────────────────────────────────────
 
   if (!userProjects || userProjects.length === 0) {
     return (
@@ -359,14 +310,14 @@ function DashboardContent() {
     );
   }
 
-  // ── Render ────────────────────────────────────────────────────────────
+  // ── Render ───────────────────────────────────────────────────────────
 
   return (
     <DashboardLayout>
       <HealthContextBanner />
-      {/* Setup checklist — visible until completed or dismissed */}
       <SmartChecklist />
-      {/* Header */}
+
+      {/* ── Zone 1: Right Now ────────────────────────────────────────── */}
       <DashboardHeader
         title={isForeman() ? "Site Operations" : "Today on Site"}
         subtitle={isForeman() ? "Your crew, tasks, and blockers" : "Operational clarity — project status and priorities"}
@@ -386,58 +337,36 @@ function DashboardContent() {
         }
       />
 
-      {/* ── 1. Your Priorities (merged Focus + At a Glance) ────────── */}
-      <SectionErrorBoundary title="Your Priorities">
-        <DashboardSection
-          title="Your Priorities"
-          helpText="Shows your top tasks by priority and due date, any active blockers, and today's key metrics like crew count and open tasks. Start here each morning."
-        >
-          <DashboardGrid columns={2}>
-            <MyDayTaskList tasks={priorityTasks} loading={tasksLoading} />
-            <BlockersCard blockers={unresolvedBlockers} loading={blockersLoading} />
-          </DashboardGrid>
-          <DashboardGrid columns={5} className="grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
-            <TodayTasksCard todayCount={tasksFinishingToday} totalOpen={openTasks} loading={tasksLoading} />
-            <BlockedTasksCard blockedCount={blockedTasks} loading={tasksLoading} />
-            <CrewAssignedCard crewCount={todayLog?.crew_count || 0} activeTrades={activeTrades} loading={logLoading} />
-            <ActiveProjectsCard projects={userProjects || []} loading={layoutLoading} />
-            {(isPM() || isAdmin) && <OpenChangeOrdersCard projectId={currentProjectId} />}
-          </DashboardGrid>
-        </DashboardSection>
-      </SectionErrorBoundary>
-
-      {/* ── 2. Attention Needed (PM/Admin only — merged Mission Control + Attention Inbox) ── */}
-      {(isPM() || isAdmin) && (
+      {(isPM() || isAdmin) && (changeFeed?.attention_ranked_projects?.length ?? 0) > 0 && (
         <SectionErrorBoundary title="Attention Needed">
-          <DashboardSection
-            title="Attention Needed"
-            helpText="Projects ranked by urgency — margin drops, missing data, or overdue items. Review these first to catch problems before they escalate."
-          >
-            {changeFeed?.attention_ranked_projects?.length > 0 && (
-              <AttentionInbox
-                attentionProjects={changeFeed.attention_ranked_projects}
-                topChanges={changeFeed.top_changes ?? []}
-                compact
-                loading={feedLoading}
-              />
-            )}
-            <DashboardMissionControl />
-          </DashboardSection>
+          <AttentionInbox
+            attentionProjects={changeFeed!.attention_ranked_projects.slice(0, 3)}
+            topChanges={changeFeed!.top_changes ?? []}
+            compact
+            loading={feedLoading}
+          />
         </SectionErrorBoundary>
       )}
 
-      {/* ── 3. Site Operations (tabs for PM/Admin, flat for Foreman) ── */}
-      {isForeman() ? (
+      <SectionErrorBoundary title="Right Now">
+        <DashboardGrid columns={2}>
+          <MyDayTaskList tasks={priorityTasks} loading={tasksLoading} />
+          <BlockersCard blockers={unresolvedBlockers} loading={tasksLoading} />
+        </DashboardGrid>
+      </SectionErrorBoundary>
+
+      {/* ── Zone 2: Project Pulse ─────────────────────────────────────── */}
+      <SectionErrorBoundary title="Project Pulse">
         <DashboardSection
-          title="Site Operations"
-          helpText="Today's weather, crew size, active trades, and task counts. Use the tabs to check project health metrics or plan upcoming work."
+          title="Project Pulse"
+          helpText="Today's site status, project health, and open change orders."
         >
           <DailySnapshotStrip
             weather={todayLog?.weather || null}
             crewCount={todayLog?.crew_count || 0}
             activeTrades={activeTrades}
-            tasksStarting={tasksStartingToday}
-            tasksFinishing={tasksFinishingToday}
+            tasksStarting={tasksStartingTodayList.length}
+            tasksFinishing={tasksFinishingTodayList.length}
             blockedCount={blockedTasks}
             staleLogDate={logIsStale ? recentLog?.log_date : null}
             onWeatherClick={() => setWeatherPopoverOpen(true)}
@@ -447,62 +376,37 @@ function DashboardContent() {
             onFinishingClick={() => setFinishingModalOpen(true)}
             onBlockersClick={() => setBlockersModalOpen(true)}
           />
+          <DashboardGrid columns={2}>
+            <ProjectHealthSignalCard projectId={currentProjectId} />
+            {(isPM() || isAdmin) && <OpenChangeOrdersCard projectId={currentProjectId} />}
+          </DashboardGrid>
         </DashboardSection>
-      ) : (
-        <DashboardSection
-          title="Site Operations"
-          helpText="Today's weather, crew size, active trades, and task counts. Use the tabs to check project health metrics or plan upcoming work."
-        >
-          <Tabs defaultValue="site" className="w-full">
-            <TabsList className="mb-4">
-              <TabsTrigger value="site">Site Status</TabsTrigger>
-              <TabsTrigger value="health">Project Health</TabsTrigger>
-              <TabsTrigger value="planning">Planning</TabsTrigger>
-            </TabsList>
+      </SectionErrorBoundary>
 
-            <TabsContent value="site" className="mt-0 space-y-4">
-              <DailySnapshotStrip
-                weather={todayLog?.weather || null}
-                crewCount={todayLog?.crew_count || 0}
-                activeTrades={activeTrades}
-                tasksStarting={tasksStartingToday}
-                tasksFinishing={tasksFinishingToday}
-                blockedCount={blockedTasks}
-                staleLogDate={logIsStale ? recentLog?.log_date : null}
-                onWeatherClick={() => setWeatherPopoverOpen(true)}
-                onCrewClick={() => { setCrewModalOpened(true); setCrewPopoverOpen(true); }}
-                onTradesClick={() => setTradesPopoverOpen(true)}
-                onStartingClick={() => setStartingModalOpen(true)}
-                onFinishingClick={() => setFinishingModalOpen(true)}
-                onBlockersClick={() => setBlockersModalOpen(true)}
-              />
-            </TabsContent>
+      {/* ── Zone 3: This Week (lazy, below fold) ──────────────────────── */}
+      <DashboardSection
+        title="This Week"
+        helpText="Upcoming tasks and what changed since the last snapshot."
+        lazy
+        skeletonHeight="h-48"
+        skeletonCount={2}
+      >
+        <DashboardGrid columns={2}>
+          <LookaheadPreview projectId={currentProjectId} />
+          <div className="space-y-4">
+            <AIChangeFeedCard />
+            <AIMarginSignalCard projectId={currentProjectId} />
+          </div>
+        </DashboardGrid>
+      </DashboardSection>
 
-            <TabsContent value="health" className="mt-0 space-y-4">
-              <EconomicPulseStrip projectId={currentProjectId} />
-              <ProjectHealthSignalCard projectId={currentProjectId} />
-            </TabsContent>
-
-            <TabsContent value="planning" className="mt-0">
-              <DashboardGrid columns={2}>
-                <LookaheadPreview projectId={currentProjectId} />
-                <ManpowerOverview projectId={currentProjectId} />
-              </DashboardGrid>
-            </TabsContent>
-          </Tabs>
-        </DashboardSection>
-      )}
-
-      {/* ── 4. AI Insights (lazy, below fold) ──────────────────────── */}
-      <AIInsightsSection showChangeFeed projectId={currentProjectId} />
-
-      {/* ── All Modals (preserved) ───────────────────────────────── */}
+      {/* ── Modals ───────────────────────────────────────────────────── */}
       <WeatherInfoModal todayLog={todayLog} open={weatherPopoverOpen} onOpenChange={setWeatherPopoverOpen} projectId={currentProjectId} />
       <CrewInfoModal crewCount={todayLog?.crew_count || 0} teamMembers={teamMembers} open={crewPopoverOpen} onOpenChange={setCrewPopoverOpen} />
       <ActiveTradesModal trades={activeTradesData} open={tradesPopoverOpen} onOpenChange={setTradesPopoverOpen} />
       <SnapshotDetailModal open={startingModalOpen} onOpenChange={setStartingModalOpen} title="Tasks Starting Today" tasks={tasksStartingTodayList} filterParam="dateRange=today" />
       <SnapshotDetailModal open={finishingModalOpen} onOpenChange={setFinishingModalOpen} title="Tasks Due Today" tasks={tasksFinishingTodayList} filterParam="dateRange=today" />
-      <BlockersPreviewModal open={blockersModalOpen} onOpenChange={setBlockersModalOpen} blockers={blockersForModal} />
+      <BlockersPreviewModal open={blockersModalOpen} onOpenChange={setBlockersModalOpen} blockers={unresolvedBlockers} />
       <QuickAddModal open={quickAddModalOpen} onOpenChange={setQuickAddModalOpen} currentProjectId={currentProjectId} />
     </DashboardLayout>
   );
