@@ -54,7 +54,7 @@ export const ChatInputBar = ({
   const isBusy = isLoading || isTranscribing;
 
   return (
-    <div className="border-t border-border bg-background p-3">
+    <div className="border-t border-border bg-background p-3 flex-shrink-0">
       {/* Recording indicator */}
       {isRecording && (
         <div className="flex items-center gap-2 mb-2 text-xs text-destructive animate-pulse">

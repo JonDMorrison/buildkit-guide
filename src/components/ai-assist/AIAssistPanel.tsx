@@ -123,17 +123,16 @@ export const AIAssistPanel = ({ isOpen, onClose, projectId, projectName }: AIAss
               </div>
             </div>
             <div className="flex items-center gap-1">
-              {hasMessages && (
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+              <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={handleClearChat}
                   className="h-8 w-8 text-muted-foreground hover:text-foreground"
                   title="Clear conversation"
+                  disabled={!hasMessages}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
-              )}
               <Button variant="ghost" size="icon" onClick={handleClose} className="h-8 w-8">
                 <X className="h-4 w-4" />
               </Button>
@@ -176,7 +175,6 @@ export const AIAssistPanel = ({ isOpen, onClose, projectId, projectName }: AIAss
                       variant="outline"
                       className="h-auto py-3 px-4 justify-start text-left hover:bg-muted/50"
                       onClick={() => handleQuickAction(action.prompt)}
-                      disabled={!projectId}
                     >
                       <div className={cn("mr-3", action.color)}>
                         <action.icon className="h-4 w-4" />

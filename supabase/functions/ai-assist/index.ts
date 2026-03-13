@@ -599,7 +599,7 @@ Rules:
 - Use specific names, dates, and numbers from the data
 - If information is not available, say so
 - Never make up project data
-- Format responses in plain text with clear structure
+- Format responses using markdown (bold, bullet lists, headings where appropriate) for readability
 - When suggesting actions, be specific about what to do
 - You can answer questions about financials, team composition, labor hours, change orders, and any other aspect of the project
 
