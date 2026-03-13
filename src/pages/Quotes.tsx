@@ -45,7 +45,7 @@ const Quotes = () => {
   } = useQuotes();
   const { clients } = useClients();
 
-  const canEdit = orgRole === 'admin' || orgRole === 'pm';
+  const canEdit = orgRole === 'admin' || orgRole === 'pm' || orgRole === 'accounting';
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Quote | null>(null);

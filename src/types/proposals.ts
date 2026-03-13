@@ -19,7 +19,6 @@ export interface Proposal {
   rejected_reason: string | null;
   created_at: string;
   updated_at: string;
-  converted_quote_id?: string | null;
   // Joined
   project?: { name: string; job_number: string | null } | null;
   estimate?: { estimate_number: string } | null;
