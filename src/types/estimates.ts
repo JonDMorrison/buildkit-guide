@@ -36,6 +36,7 @@ export interface Estimate {
   updated_at: string;
   approved_at: string | null;
   converted_invoice_id?: string | null;
+  playbook_id?: string | null;
   // Joined
   project?: { name: string; job_number: string | null } | null;
   client?: { name: string } | null;

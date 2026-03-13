@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { useEstimates } from "@/hooks/useEstimates";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { CheckCircle2, Copy, Lock, Plus, Trash2, Wand2, Save, Loader2, ArrowRight } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
 import { format } from "date-fns";
@@ -45,6 +46,18 @@ export const EstimateDetailModal = ({ estimate, canEdit, onClose, onUpdated }: P
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [playbookName, setPlaybookName] = useState<string | null>(null);
+
+  // Load playbook name if linked
+  useEffect(() => {
+    if (!estimate.playbook_id) return;
+    supabase
+      .from('playbooks')
+      .select('name')
+      .eq('id', estimate.playbook_id)
+      .single()
+      .then(({ data }) => { if (data) setPlaybookName((data as any).name); });
+  }, [estimate.playbook_id]);
 
   // Editable header fields
   const [contractValue, setContractValue] = useState(String(estimate.contract_value));
@@ -125,12 +138,17 @@ export const EstimateDetailModal = ({ estimate, canEdit, onClose, onUpdated }: P
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <DialogTitle>{estimate.estimate_number}</DialogTitle>
             <Badge variant={estimate.status === "approved" ? "default" : "secondary"}>
               {estimate.status === "approved" && <Lock className="h-3 w-3 mr-1" />}
               {estimate.status.charAt(0).toUpperCase() + estimate.status.slice(1)}
             </Badge>
+            {playbookName && (
+              <Badge variant="outline" className="text-xs font-normal text-muted-foreground">
+                Based on: {playbookName}
+              </Badge>
+            )}
           </div>
         </DialogHeader>
 

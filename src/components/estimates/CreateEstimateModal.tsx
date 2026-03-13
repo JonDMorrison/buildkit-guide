@@ -9,10 +9,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useEstimates } from "@/hooks/useEstimates";
 import { useClients } from "@/hooks/useClients";
 import { useToast } from "@/hooks/use-toast";
+import { usePlaybookList, usePlaybookDetail } from "@/hooks/usePlaybooks";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, BookOpen } from "lucide-react";
 import { formatCurrency as sharedFmtCurrency } from "@/lib/formatters";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 
 interface Props {
   projectId: string;
@@ -52,6 +54,12 @@ export const CreateEstimateModal = ({ projectId, onClose, onCreated }: Props) =>
   const { clients } = useClients();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+
+  // Playbook toggle
+  const [usePlaybook, setUsePlaybook] = useState(false);
+  const [selectedPlaybookId, setSelectedPlaybookId] = useState<string>("");
+  const { data: playbookList } = usePlaybookList();
+  const { data: playbookDetail } = usePlaybookDetail(usePlaybook ? selectedPlaybookId : null);
 
   // Header fields
   const [clientId, setClientId] = useState<string>("");
@@ -95,6 +103,22 @@ export const CreateEstimateModal = ({ projectId, onClose, onCreated }: Props) =>
     setCustomerPmEmail(client.pm_email || "");
     setCustomerPmPhone(client.pm_phone || "");
   }, [clientId, clients]);
+
+  // Auto-populate line items when a playbook is selected
+  useEffect(() => {
+    if (!playbookDetail) return;
+    const tasks = playbookDetail.phases.flatMap(ph => ph.tasks);
+    if (tasks.length === 0) return;
+    setLineItems(tasks.map(t => ({
+      item_type: "labor",
+      name: t.title,
+      description: t.description || "",
+      quantity: ((t.expected_hours_low || 0) + (t.expected_hours_high || 0)) / 2 || 1,
+      unit: "hours",
+      rate: 0,
+      sales_tax_rate: 0,
+    })));
+  }, [playbookDetail]);
 
   // Auto-populate ship-to from project + get currency
   const [projectCurrency, setProjectCurrency] = useState("CAD");
@@ -167,6 +191,7 @@ export const CreateEstimateModal = ({ projectId, onClose, onCreated }: Props) =>
       ship_to_address: shipToAddress || null,
       note_for_customer: noteCustomer || null,
       internal_notes: internalNotes || null,
+      ...(usePlaybook && selectedPlaybookId ? { playbook_id: selectedPlaybookId } : {}),
     });
 
     // 3. Add line items via RPC
@@ -249,6 +274,37 @@ export const CreateEstimateModal = ({ projectId, onClose, onCreated }: Props) =>
               <Input value={shipToAddress} onChange={e => setShipToAddress(e.target.value)} placeholder="Site address" />
             </div>
           </div>
+
+          {/* Playbook toggle */}
+          <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
+            <div className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">Generate from Playbook</p>
+                <p className="text-xs text-muted-foreground">Auto-populate line items from playbook tasks</p>
+              </div>
+            </div>
+            <Switch checked={usePlaybook} onCheckedChange={checked => { setUsePlaybook(checked); if (!checked) setSelectedPlaybookId(""); }} />
+          </div>
+
+          {usePlaybook && (
+            <div>
+              <Label>Select Playbook</Label>
+              <Select value={selectedPlaybookId} onValueChange={setSelectedPlaybookId}>
+                <SelectTrigger><SelectValue placeholder="Choose a playbook" /></SelectTrigger>
+                <SelectContent>
+                  {(playbookList ?? []).filter(p => !p.is_archived).map(p => (
+                    <SelectItem key={p.id} value={p.id}>{p.name} ({p.task_count} tasks)</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedPlaybookId && playbookDetail && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {playbookDetail.phases.flatMap(ph => ph.tasks).length} tasks loaded as labor line items. Adjust rates as needed.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Line Items */}
           <div>
