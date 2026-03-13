@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useOrganization } from '@/hooks/useOrganization';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,6 +22,12 @@ import {
   Clock, Layers, ChevronDown, ChevronRight, Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+interface Trade {
+  id: string;
+  name: string;
+  trade_type: string | null;
+}
 
 interface GeneratedPhase {
   name: string;
@@ -60,15 +68,36 @@ interface GeneratePlaybookDialogProps {
   initialJobType?: string;
 }
 
+const AUDIENCE_OPTIONS = [
+  { value: 'office', label: 'Office', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+  { value: 'foreman', label: 'Foreman', color: 'bg-orange-100 text-orange-700 border-orange-200' },
+  { value: 'field', label: 'Field', color: 'bg-green-100 text-green-700 border-green-200' },
+];
+
 export function GeneratePlaybookDialog({ open, onOpenChange, onCreated, initialJobType }: GeneratePlaybookDialogProps) {
   const { activeOrganizationId } = useOrganization();
   const { toast } = useToast();
   const [jobType, setJobType] = useState(initialJobType || '');
+  const [audience, setAudience] = useState('office');
+  const [tradeId, setTradeId] = useState<string | null>(null);
+  const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [suggestion, setSuggestion] = useState<PlaybookSuggestion | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expandedPhases, setExpandedPhases] = useState<Set<number>>(new Set());
+
+  // Load trades when dialog opens
+  useEffect(() => {
+    if (!open || !activeOrganizationId) return;
+    supabase
+      .from('trades')
+      .select('id, name, trade_type')
+      .eq('organization_id', activeOrganizationId)
+      .eq('is_active', true)
+      .order('name')
+      .then(({ data }) => setTrades(data ?? []));
+  }, [open, activeOrganizationId]);
 
   // Sync initialJobType when dialog opens
   useEffect(() => {
@@ -86,8 +115,13 @@ export function GeneratePlaybookDialog({ open, onOpenChange, onCreated, initialJ
     setSuggestion(null);
 
     try {
+      const tradeName = trades.find(t => t.id === tradeId)?.name ?? null;
       const { data, error: fnError } = await supabase.functions.invoke('generate-playbook', {
-        body: { job_type: jobType.trim() },
+        body: {
+          job_type: jobType.trim(),
+          audience,
+          trade_name: tradeName,
+        },
       });
 
       if (fnError) throw new Error(fnError.message);
@@ -131,6 +165,8 @@ export function GeneratePlaybookDialog({ open, onOpenChange, onCreated, initialJ
         p_job_type: suggestion.job_type,
         p_description: suggestion.description,
         p_phases: p_phases as any,
+        p_audience: audience,
+        p_trade_id: tradeId || null,
       });
 
       if (rpcErr) throw rpcErr;
@@ -185,6 +221,44 @@ export function GeneratePlaybookDialog({ open, onOpenChange, onCreated, initialJ
         {/* Step 1: Input */}
         {!suggestion && !loading && (
           <div className="space-y-4 py-2">
+            {/* Audience selector */}
+            <div className="space-y-1.5">
+              <Label>Audience</Label>
+              <div className="flex gap-2">
+                {AUDIENCE_OPTIONS.map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setAudience(opt.value)}
+                    className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-all ${
+                      audience === opt.value
+                        ? opt.color + ' border-current'
+                        : 'border-border text-muted-foreground hover:border-border/80'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Trade selector */}
+            <div className="space-y-1.5">
+              <Label>Trade (optional)</Label>
+              <Select value={tradeId ?? 'none'} onValueChange={v => setTradeId(v === 'none' ? null : v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All trades / General" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">All trades / General</SelectItem>
+                  {trades.map(t => (
+                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Job Type */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">Job Type</label>
               <div className="flex gap-2">
