@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSmartDefaults } from '@/hooks/useSmartDefaults';
 import { SmartSuggestionChips } from '@/components/common/SmartSuggestionChips';
 import { useToast } from '@/hooks/use-toast';
@@ -103,6 +103,29 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
   });
   const [errors, setErrors] = useState<Partial<Record<keyof TaskForm, string>>>({});
   const smartDefaults = useSmartDefaults(form.projectId || undefined);
+
+  const { data: suggestedTrade } = useQuery({
+    queryKey: ["trade-suggestion-project", form.projectId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("tasks")
+        .select("assigned_trade_id")
+        .eq("project_id", form.projectId)
+        .not("assigned_trade_id", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (!data || data.length === 0) return null;
+      const counts: Record<string, number> = {};
+      data.forEach((t) => {
+        if (t.assigned_trade_id) counts[t.assigned_trade_id] = (counts[t.assigned_trade_id] || 0) + 1;
+      });
+      const topId = Object.entries(counts).sort(([, a], [, b]) => b - a)[0]?.[0];
+      if (!topId) return null;
+      const trade = trades.find((t) => t.id === topId);
+      return trade ? { id: topId, name: trade.name } : null;
+    },
+    enabled: !!form.projectId && trades.length > 0,
+  });
 
   useEffect(() => {
     if (open) {
@@ -343,6 +366,18 @@ export const CreateTaskModal = ({ open, onOpenChange, onSuccess }: CreateTaskMod
           </FormField>
 
           <FormField label="Assigned Trade" error={errors.tradeId}>
+            {suggestedTrade && !form.tradeId && (
+              <p className="text-xs text-amber-500 mb-1">
+                You usually assign {suggestedTrade.name} to tasks on this project —{" "}
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, tradeId: suggestedTrade.id })}
+                  className="underline"
+                >
+                  Use them
+                </button>
+              </p>
+            )}
             <SmartSuggestionChips
               items={smartDefaults.topTrades}
               onSelect={(id) => setForm({ ...form, tradeId: id })}

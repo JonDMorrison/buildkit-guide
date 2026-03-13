@@ -99,6 +99,11 @@ export const DailyLogForm = ({
     },
   });
 
+  const watchedWeather = watch('weather');
+  const watchedCrewCount = watch('crew_count');
+  const weatherCarried = !existingLog && !!smartDefaults.lastWeather && watchedWeather === smartDefaults.lastWeather;
+  const crewCarried = !existingLog && smartDefaults.lastCrewCount !== null && watchedCrewCount === smartDefaults.lastCrewCount;
+
   const handleAutoFill = async () => {
     setAutoFilling(true);
     try {
@@ -244,6 +249,7 @@ export const DailyLogForm = ({
                 {...register('weather')}
                 placeholder="Sunny, Cloudy, Rainy..."
               />
+              {weatherCarried && <p className="text-xs text-muted-foreground mt-1">Carried from last log</p>}
             </FormField>
 
             <FormField label="Temperature">
@@ -257,12 +263,13 @@ export const DailyLogForm = ({
           <FormField label="Crew Count">
             <Input
               type="number"
-              {...register('crew_count', { 
+              {...register('crew_count', {
                 valueAsNumber: true,
                 validate: (val) => val === null || val >= 0 || 'Must be positive'
               })}
               placeholder="Number of workers on site"
             />
+            {crewCarried && <p className="text-xs text-muted-foreground mt-1">Carried from last log</p>}
           </FormField>
 
           <div className="flex items-center justify-between">

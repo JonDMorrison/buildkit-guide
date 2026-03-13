@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,15 @@ interface SafetyFormModalProps {
   onCreate: () => void;
   formType: string;
 }
+
+const phaseHazards: Record<string, string[]> = {
+  excavation: ["Cave-in risk", "Underground utilities", "Heavy equipment proximity"],
+  framing: ["Fall protection", "Nail gun safety", "Lumber handling"],
+  electrical: ["Lockout/tagout", "Live wire exposure", "Panel work"],
+  drywall: ["Dust inhalation", "Ladder safety", "Overhead work"],
+  roofing: ["Fall arrest required", "Weather conditions", "Hot tar burns"],
+  inspection: ["Confined space", "Electrical testing", "Slip/trip"],
+};
 
 const formTemplates: Record<string, { title: string; fields: Array<{ name: string; label: string; type: string; required?: boolean }> }> = {
   "daily_safety_log": {
@@ -141,6 +151,7 @@ export const SafetyFormModal = ({
   const [selectedHazards, setSelectedHazards] = useState<HazardSuggestion[]>([]);
   const [expandedHazard, setExpandedHazard] = useState<string | null>(null);
   const [ppeCheckedItems, setPPECheckedItems] = useState<Record<string, boolean>>({});
+  const [phaseHazardChecked, setPhaseHazardChecked] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
   const { uploadMultiple, createAttachmentRecord } = usePhotoUpload();
   const { submitForm, generateHash } = useSafetyFormSubmit();
@@ -196,6 +207,19 @@ export const SafetyFormModal = ({
   const template = formTemplates[formType] || formTemplates["daily_safety_log"];
   const isDailySafetyLog = formType === "daily_safety_log";
 
+  const { data: currentPhase } = useQuery({
+    queryKey: ["project-current-phase-safety", projectId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("project_workflows")
+        .select("current_phase")
+        .eq("project_id", projectId)
+        .maybeSingle();
+      return data?.current_phase?.toLowerCase() ?? null;
+    },
+    enabled: !!projectId && isDailySafetyLog,
+  });
+
   useEffect(() => {
     if (isOpen) {
       fetchProjects();
@@ -212,6 +236,7 @@ export const SafetyFormModal = ({
       setAutoFillApplied(false);
       setSelectedHazards([]);
       setExpandedHazard(null);
+      setPhaseHazardChecked({});
     }
   }, [isOpen, formType]);
 
@@ -222,15 +247,32 @@ export const SafetyFormModal = ({
     }
   }, [projectId, isDailySafetyLog, isOpen, fetchAutoFillData]);
 
-  // Update hazards field when selected hazards change
+  // Initialize phase hazards as pre-checked when phase loads
   useEffect(() => {
+    if (!currentPhase) return;
+    const hazards = phaseHazards[currentPhase] ?? [];
+    if (hazards.length === 0) return;
+    const checked: Record<string, boolean> = {};
+    hazards.forEach((h) => { checked[h] = true; });
+    setPhaseHazardChecked(checked);
+  }, [currentPhase]);
+
+  // Update hazards field when phase hazards or AI suggestions change
+  useEffect(() => {
+    const parts: string[] = [];
+    const checkedPhaseItems = Object.entries(phaseHazardChecked)
+      .filter(([, checked]) => checked)
+      .map(([h]) => `• ${h}`);
+    if (checkedPhaseItems.length > 0) parts.push(checkedPhaseItems.join('\n'));
     if (selectedHazards.length > 0) {
-      const hazardText = selectedHazards
+      parts.push(selectedHazards
         .map(h => `• [${h.severity.toUpperCase()}] ${h.title}: ${h.description}`)
-        .join('\n\n');
-      setFormData(prev => ({ ...prev, hazards_identified: hazardText }));
+        .join('\n\n'));
     }
-  }, [selectedHazards]);
+    if (parts.length > 0) {
+      setFormData(prev => ({ ...prev, hazards_identified: parts.join('\n\n') }));
+    }
+  }, [selectedHazards, phaseHazardChecked]);
 
   const fetchProjects = async () => {
     const { data, error } = await supabase
@@ -639,6 +681,32 @@ export const SafetyFormModal = ({
                 </div>
               )}
               
+              {/* Phase-aware hazard suggestions */}
+              {currentPhase && (phaseHazards[currentPhase] ?? []).length > 0 && (
+                <div className="space-y-2 pt-2 border-t border-border">
+                  <div className="flex items-center gap-2">
+                    <HardHat className="h-4 w-4 text-amber-500" />
+                    <span className="text-sm font-medium">Phase Hazards</span>
+                    <span className="text-xs text-muted-foreground capitalize">({currentPhase})</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {(phaseHazards[currentPhase] ?? []).map((hazard) => (
+                      <label key={hazard} className="flex items-center gap-2 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={phaseHazardChecked[hazard] ?? false}
+                          onChange={(e) =>
+                            setPhaseHazardChecked(prev => ({ ...prev, [hazard]: e.target.checked }))
+                          }
+                          className="h-3.5 w-3.5 rounded accent-amber-500"
+                        />
+                        <span className="text-xs text-foreground group-hover:text-amber-500 transition-colors">{hazard}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {autoFillApplied && (
                 <p className="text-xs text-muted-foreground">
                   Fields auto-filled. Review and adjust as needed.

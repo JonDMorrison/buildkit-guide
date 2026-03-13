@@ -91,6 +91,29 @@ function ChangeOrdersContent() {
   const [newReason, setNewReason] = useState("");
   const [newProjectId, setNewProjectId] = useState(currentProjectId || "");
 
+  const { data: reasonSuggestions } = useQuery({
+    queryKey: ["co-reason-suggestions", activeOrganizationId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("change_orders")
+        .select("reason")
+        .eq("organization_id", activeOrganizationId!)
+        .not("reason", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      const counts = (data || []).reduce((acc, co) => {
+        if (co.reason) acc[co.reason] = (acc[co.reason] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      return Object.entries(counts)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 5)
+        .map(([desc]) => desc);
+    },
+    enabled: !!activeOrganizationId,
+    staleTime: 10 * 60 * 1000,
+  });
+
   const filtered = (orders ?? []).filter((co) =>
     co.title.toLowerCase().includes(search.toLowerCase()) ||
     co.project?.name?.toLowerCase().includes(search.toLowerCase())
@@ -211,6 +234,20 @@ function ChangeOrdersContent() {
             <div className="space-y-2">
               <Label>Reason</Label>
               <Textarea value={newReason} onChange={(e) => setNewReason(e.target.value)} placeholder="Describe the reason…" />
+              {reasonSuggestions && reasonSuggestions.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                  {reasonSuggestions.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setNewReason(s)}
+                      className="text-xs px-2 py-1 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 cursor-pointer transition-colors"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>
