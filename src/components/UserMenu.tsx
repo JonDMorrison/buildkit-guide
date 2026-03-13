@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { User, LogOut, Shield, Settings, Users, FileText, Receipt, Rocket, Bug, Sun, Moon, LayoutDashboard } from 'lucide-react';
+import { User, LogOut, Shield, Settings, Users, FileText, Receipt, Rocket, Bug, Sun, Moon, LayoutDashboard, Mail } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useProjectRole } from '@/hooks/useProjectRole';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from 'next-themes';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useCurrentProject } from '@/hooks/useCurrentProject';
 import { Button } from './ui/button';
 import {
   DropdownMenu,
@@ -17,6 +20,7 @@ import {
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Badge } from './ui/badge';
 import { ReportIssueModal } from './ReportIssueModal';
+import { EODReportModal } from './ai-assist/EODReportModal';
 
 export const UserMenu = () => {
   const { user, signOut } = useAuth();
@@ -26,6 +30,23 @@ export const UserMenu = () => {
   const location = useLocation();
   const { theme, setTheme } = useTheme();
   const [reportIssueOpen, setReportIssueOpen] = useState(false);
+  const [eodReportOpen, setEodReportOpen] = useState(false);
+  const { currentProjectId } = useCurrentProject();
+
+  const { data: currentProject } = useQuery({
+    queryKey: ['project-details', currentProjectId],
+    queryFn: async () => {
+      if (!currentProjectId) return null;
+      const { data, error } = await supabase
+        .from('projects')
+        .select('name,job_number')
+        .eq('id', currentProjectId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!currentProjectId,
+  });
 
   if (!user) return null;
 
@@ -107,6 +128,15 @@ export const UserMenu = () => {
             <DropdownMenuSeparator />
           </>
         )}
+        {currentProjectId && (
+          <>
+            <DropdownMenuItem onClick={() => setEodReportOpen(true)}>
+              <Mail className="mr-2 h-4 w-4" />
+              <span>Generate EOD Report</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
         <DropdownMenuItem onClick={() => navigate('/settings/notifications')}>
           <Settings className="mr-2 h-4 w-4" />
           <span>Notification Settings</span>
@@ -137,6 +167,16 @@ export const UserMenu = () => {
         open={reportIssueOpen}
         onOpenChange={setReportIssueOpen}
       />
+
+      {currentProjectId && (
+        <EODReportModal
+          open={eodReportOpen}
+          onOpenChange={setEodReportOpen}
+          projectId={currentProjectId}
+          projectName={currentProject?.name || ''}
+          jobNumber={currentProject?.job_number}
+        />
+      )}
     </DropdownMenu>
   );
 };

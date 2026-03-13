@@ -327,8 +327,8 @@ function DashboardContent() {
             <Button onClick={() => navigate(`/projects/${currentProjectId}`)} size="sm" variant="outline" className="px-3 w-fit" disabled={!currentProjectId}>
               <Building2 className="h-4 w-4 mr-1" /> Project
             </Button>
-            <Button onClick={() => setQuickAddModalOpen(true)} size="sm" variant="outline" className="px-3 w-fit">
-              <Plus className="h-4 w-4 mr-1" /> Add
+            <Button onClick={() => setQuickAddModalOpen(true)} size="icon" variant="outline" className="h-8 w-8 border-white/10 bg-white/5 hover:bg-white/10">
+              <Plus className="h-4 w-4" />
             </Button>
             <Button onClick={() => navigate("/tasks")} size="sm" variant="outline" className="px-3 w-fit">
               <ArrowRight className="h-4 w-4 mr-1" /> Tasks
