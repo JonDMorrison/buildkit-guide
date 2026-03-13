@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/hooks/useAuth";
 import { OrganizationProvider } from "@/hooks/useOrganization";
@@ -71,7 +71,8 @@ const SecurityIsolationReport = safeLazy(() => import("./pages/SecurityIsolation
 const Workflow = safeLazy(() => import("./pages/Workflow"));
 const PromptsAudit = safeLazy(() => import("./pages/PromptsAudit"));
 const InsightsAudit = safeLazy(() => import("./pages/InsightsAudit"));
-const ConversionTestHarness = safeLazy(() => import("./pages/ConversionTestHarness"));
+const ConversionTestHarness = import.meta.env.DEV ? safeLazy(() => import("./pages/ConversionTestHarness")) : null;
+const Financials = safeLazy(() => import("./pages/Financials"));
 const AIBrainDiagnostics = safeLazy(() => import("./pages/AIBrainDiagnostics"));
 const DashboardDiagnostics = safeLazy(() => import("./pages/DashboardDiagnostics"));
 const ExecutiveDashboard = safeLazy(() => import("./pages/ExecutiveDashboard"));
@@ -438,34 +439,22 @@ const App = () => (
                   }
                 />
                 <Route
-                  path="/estimates"
+                  path="/financials"
                   element={
                     <ProtectedRoute>
-                      <Estimates />
+                      <Financials />
                     </ProtectedRoute>
                   }
                 />
+                {/* Legacy redirects — keep deep-link for estimate detail */}
+                <Route path="/estimates" element={<Navigate to="/financials" replace />} />
+                <Route path="/quotes" element={<Navigate to="/financials" replace />} />
+                <Route path="/proposals" element={<Navigate to="/financials" replace />} />
                 <Route
                   path="/estimates/:estimateId"
                   element={
                     <ProtectedRoute>
                       <EstimateDetail />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/quotes"
-                  element={
-                    <ProtectedRoute>
-                      <Quotes />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/proposals"
-                  element={
-                    <ProtectedRoute>
-                      <Proposals />
                     </ProtectedRoute>
                   }
                 />
@@ -572,14 +561,16 @@ const App = () => (
                     </ProtectedRoute>
                   }
                 />
-                <Route
-                  path="/insights/conversion-test"
-                  element={
-                    <ProtectedRoute>
-                      <ConversionTestHarness />
-                    </ProtectedRoute>
-                  }
-                />
+                {import.meta.env.DEV && ConversionTestHarness && (
+                  <Route
+                    path="/insights/conversion-test"
+                    element={
+                      <ProtectedRoute>
+                        <ConversionTestHarness />
+                      </ProtectedRoute>
+                    }
+                  />
+                )}
                 <Route
                   path="/insights/ai-brain"
                   element={

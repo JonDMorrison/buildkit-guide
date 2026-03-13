@@ -34,9 +34,7 @@ export const tabs: TabConfig[] = [
   { name: "Hours", path: "/hours-tracking", icon: BarChart3, tiers: ['all', 'office'] },
   { name: "Job Cost", path: "/job-cost-report", icon: DollarSign, tiers: ['all', 'office'] },
   { name: "Invoicing", path: "/invoicing", icon: FileText, tiers: ['all', 'office'] },
-  { name: "Estimates", path: "/estimates", icon: FileText, tiers: ['all', 'office'] },
-  { name: "Quotes", path: "/quotes", icon: FileText, tiers: ['all', 'office'] },
-  { name: "Proposals", path: "/proposals", icon: FileText, tiers: ['all'] },
+  { name: "Financials", path: "/financials", icon: DollarSign, tiers: ['all', 'office'] },
   { name: "Change Orders", path: "/change-orders", icon: FileDiff, tiers: ['all', 'office'] },
   { name: "Insights", path: "/insights", icon: TrendingUp, tiers: ['all', 'office'] },
   { name: "Intelligence", path: "/intelligence", icon: Brain, tiers: ['all'] },
@@ -135,7 +133,8 @@ export const useNavigationTabs = () => {
         case '/drawings':
           return isAdmin || isPM || isForeman;
 
-        // Admin, PM, or Foreman (estimates need at least foreman)
+        // Admin, PM, or Foreman (financials/estimates need at least foreman)
+        case '/financials':
         case '/estimates':
           return isAdmin || isPM || isForeman;
 
