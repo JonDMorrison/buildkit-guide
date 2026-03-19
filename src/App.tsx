@@ -25,6 +25,7 @@ const Features = safeLazy(() => import("./pages/Features"));
 const SafetySecurity = safeLazy(() => import("./pages/SafetySecurity"));
 const ResponsibleAI = safeLazy(() => import("./pages/ResponsibleAI"));
 const GetStarted = safeLazy(() => import("./pages/GetStarted"));
+const Pricing = safeLazy(() => import("./pages/Pricing"));
 const Dashboard = safeLazy(() => import("./pages/Dashboard"));
 const Index = safeLazy(() => import("./pages/Index"));
 const ProjectOverview = safeLazy(() => import("./pages/ProjectOverview"));
@@ -186,6 +187,10 @@ const App = () => (
                 <Route
                   path="/get-started"
                   element={<GetStarted />}
+                />
+                <Route
+                  path="/pricing"
+                  element={<Pricing />}
                 />
                 <Route
                   path="/setup"
