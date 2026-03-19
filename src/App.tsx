@@ -24,6 +24,7 @@ const HowItWorks = safeLazy(() => import("./pages/HowItWorks"));
 const Features = safeLazy(() => import("./pages/Features"));
 const SafetySecurity = safeLazy(() => import("./pages/SafetySecurity"));
 const ResponsibleAI = safeLazy(() => import("./pages/ResponsibleAI"));
+const GetStarted = safeLazy(() => import("./pages/GetStarted"));
 const Dashboard = safeLazy(() => import("./pages/Dashboard"));
 const Index = safeLazy(() => import("./pages/Index"));
 const ProjectOverview = safeLazy(() => import("./pages/ProjectOverview"));
@@ -181,6 +182,10 @@ const App = () => (
                       <ResponsibleAI />
                     </PublicRoute>
                   }
+                />
+                <Route
+                  path="/get-started"
+                  element={<GetStarted />}
                 />
                 <Route
                   path="/setup"
