@@ -63,16 +63,16 @@ export default function Landing() {
           <div className="grid lg:grid-cols-2 gap-8 md:gap-12 items-center">
             <div className="text-center lg:text-left">
                <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 md:mb-6 leading-[1.15]">
-                Run Every Construction Project the Way Your Best One Ran
+                Know what's happening on every job before anyone calls you.
                </h1>
                <p className="text-lg sm:text-xl md:text-2xl text-gray-200 mb-4 md:mb-6 leading-relaxed">
-                 ProjectPath turns your best projects into repeatable workflows so every job runs faster, safer, and more profitably.
+                 Real-time updates from the field. Issues flagged early. Every task owned. ProjectPath keeps your jobs moving without the chasing.
                </p>
               <p className="text-sm font-medium text-amber-500 uppercase tracking-widest mt-2 mb-4 md:mb-6">
                 Most software tracks work. This system helps you repeat it.
               </p>
               <p className="text-sm sm:text-base text-white/70 mb-6 md:mb-8">
-                No credit card required • Free 14-day trial • Setup in minutes
+                Free 14-day trial. No credit card required.
               </p>
               <div className="flex flex-col gap-3 justify-center lg:justify-start w-full max-w-md mx-auto lg:mx-0">
                 <Button size="lg" onClick={handleGetStarted} className="w-full h-11 md:h-16 text-sm md:text-lg bg-accent hover:bg-accent/90 text-white font-semibold shadow-xl">
