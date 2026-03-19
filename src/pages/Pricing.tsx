@@ -10,9 +10,6 @@ import {
   Users,
   ChevronRight,
   Zap,
-  Building2,
-  Layers,
-  Building,
 } from "lucide-react";
 import { PublicNav } from "@/components/PublicNav";
 import projectPathLogo from "@/assets/project-path-logo.png";
@@ -68,7 +65,7 @@ export default function Pricing() {
       price: "$79",
       subtitle: "Up to 3 active jobs",
       popular: false,
-      icon: Building2,
+      footerText: "Ideal for 1–3 active jobs",
       features: [
         "Unlimited users and foremen",
         "Unlimited photos and storage",
@@ -82,7 +79,7 @@ export default function Pricing() {
       price: "$199",
       subtitle: "Up to 10 active jobs",
       popular: true,
-      icon: Layers,
+      footerText: "Most common choice",
       features: [
         "Everything in Small Crews",
         "Priority support",
@@ -96,7 +93,7 @@ export default function Pricing() {
       price: "$399",
       subtitle: "Unlimited active jobs",
       popular: false,
-      icon: Building,
+      footerText: "For multi-crew operations",
       features: [
         "Everything in Growing Companies",
         "Dedicated account setup",
@@ -157,82 +154,87 @@ export default function Pricing() {
       <section className="py-12 md:py-20 px-4 bg-gradient-to-b from-zinc-50 to-white">
         <div className="container mx-auto max-w-6xl">
           <div className="grid md:grid-cols-3 gap-6 md:gap-8 items-stretch">
-            {tiers.map((tier, index) => {
-              const TierIcon = tier.icon;
-              return (
-                <div
-                  key={index}
-                  className={`relative flex flex-col rounded-xl border transition-shadow duration-200 ${
-                    tier.popular
-                      ? "border-primary bg-primary/5 shadow-2xl hover:shadow-xl md:-translate-y-4 [box-shadow:0_0_40px_rgba(0,163,224,0.15),0_25px_50px_-12px_rgba(0,0,0,0.25)]"
-                      : "border-border bg-card shadow-lg hover:shadow-xl"
-                  }`}
-                >
-                  {/* Top accent bar — popular card only */}
+            {tiers.map((tier, index) => (
+              <div
+                key={index}
+                className={`h-full flex flex-col rounded-xl border transition-shadow duration-200 overflow-hidden ${
+                  tier.popular
+                    ? "bg-white border-2 border-blue-500 shadow-xl hover:shadow-2xl"
+                    : "bg-zinc-900 border-zinc-700 shadow-lg hover:shadow-xl"
+                }`}
+              >
+                {/* Top accent bar — popular card only */}
+                {tier.popular && <div className="h-1 w-full bg-blue-500" />}
+
+                <div className="p-6 md:p-8 flex flex-col flex-1">
+                  {/* Most Popular badge — inside card, above tier name */}
                   {tier.popular && (
-                    <div className="h-1 w-full bg-primary rounded-t-xl" />
+                    <div className="mb-3">
+                      <span className="inline-flex items-center gap-1.5 bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded-full">
+                        <Zap className="h-3 w-3" />
+                        Most Popular
+                      </span>
+                    </div>
                   )}
 
-                  <div className="p-6 md:p-8 flex flex-col flex-1">
-                    {/* Most Popular badge */}
-                    {tier.popular && (
-                      <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                        <span className="inline-flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full shadow-lg">
-                          <Zap className="h-3 w-3" />
-                          Most Popular
-                        </span>
-                      </div>
-                    )}
-
-                    <div className="mb-6">
-                      <p className="text-sm font-semibold text-primary uppercase tracking-wide mb-1">
-                        {tier.name}
-                      </p>
-                      <div className="flex items-end gap-1 mb-1">
-                        <span className="text-4xl md:text-5xl font-bold text-foreground">
-                          {tier.price}
-                        </span>
-                        <span className="text-muted-foreground mb-1.5">/month</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground">{tier.subtitle}</p>
+                  <div className="mb-6">
+                    <p className={`text-sm font-semibold uppercase tracking-wide mb-1 ${
+                      tier.popular ? "text-blue-600" : "text-blue-400"
+                    }`}>
+                      {tier.name}
+                    </p>
+                    <div className="flex items-end gap-1 mb-1">
+                      <span className={`text-5xl font-bold ${
+                        tier.popular ? "text-gray-900" : "text-white"
+                      }`}>
+                        {tier.price}
+                      </span>
+                      <span className={`mb-1.5 ${
+                        tier.popular ? "text-gray-500" : "text-zinc-400"
+                      }`}>/month</span>
                     </div>
-
-                    <ul className="space-y-3 mb-8 flex-1">
-                      {tier.features.map((feature, i) => (
-                        <li key={i} className="flex items-start gap-3">
-                          <CheckCircle
-                            className="h-5 w-5 flex-shrink-0 mt-0.5 text-primary"
-                            strokeWidth={2.5}
-                          />
-                          <span className="text-sm md:text-base text-foreground">
-                            {feature}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-
-                    <Button
-                      size="lg"
-                      onClick={() => navigate("/get-started")}
-                      className={`w-full h-12 md:h-14 text-base font-semibold ${
-                        tier.popular
-                          ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
-                          : "bg-card border border-border hover:bg-muted text-foreground"
-                      }`}
-                      variant={tier.popular ? "default" : "outline"}
-                    >
-                      Book setup call
-                      <ChevronRight className="ml-2 h-4 w-4" />
-                    </Button>
-
-                    {/* Decorative watermark icon */}
-                    <div className="flex justify-center mt-6">
-                      <TierIcon className="h-8 w-8 text-muted-foreground/30" />
-                    </div>
+                    <p className={`text-sm ${
+                      tier.popular ? "text-gray-500" : "text-zinc-400"
+                    }`}>{tier.subtitle}</p>
                   </div>
+
+                  <ul className="space-y-3 mb-8 flex-1">
+                    {tier.features.map((feature, i) => (
+                      <li key={i} className="flex items-start gap-3">
+                        <CheckCircle
+                          className={`h-5 w-5 flex-shrink-0 mt-0.5 ${
+                            tier.popular ? "text-blue-500" : "text-blue-400"
+                          }`}
+                          strokeWidth={2.5}
+                        />
+                        <span className={`text-sm md:text-base ${
+                          tier.popular ? "text-gray-700" : "text-zinc-200"
+                        }`}>
+                          {feature}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <Button
+                    size="lg"
+                    onClick={() => navigate("/get-started")}
+                    className={`mt-auto w-full h-12 md:h-14 text-base font-semibold ${
+                      tier.popular
+                        ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
+                        : "bg-white text-zinc-900 hover:bg-zinc-100"
+                    }`}
+                  >
+                    Book setup call
+                    <ChevronRight className="ml-2 h-4 w-4" />
+                  </Button>
+
+                  <p className="text-xs text-zinc-500 text-center mt-4">
+                    {tier.footerText}
+                  </p>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         </div>
       </section>
