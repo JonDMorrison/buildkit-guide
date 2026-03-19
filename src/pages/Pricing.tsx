@@ -128,7 +128,7 @@ export default function Pricing() {
       <PublicNav />
 
       {/* SECTION 1 — Hero */}
-      <section className="pt-28 md:pt-36 pb-12 md:pb-16 px-4 bg-muted/30">
+      <section className="pt-28 md:pt-36 pb-12 md:pb-16 px-4 bg-gradient-to-b from-muted/50 to-background">
         <div className="container mx-auto max-w-3xl text-center">
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-4 md:mb-6 leading-tight">
             Simple pricing based on how many jobs you run
@@ -148,7 +148,7 @@ export default function Pricing() {
                 key={index}
                 className={`relative flex flex-col rounded-xl border p-6 md:p-8 ${
                   tier.popular
-                    ? "border-primary bg-primary/5 shadow-2xl md:-translate-y-4"
+                    ? "border-primary bg-primary/5 shadow-2xl shadow-primary/10 md:-translate-y-4 [box-shadow:0_0_40px_rgba(0,163,224,0.15),0_25px_50px_-12px_rgba(0,0,0,0.25)]"
                     : "border-border bg-card"
                 }`}
               >
@@ -210,7 +210,7 @@ export default function Pricing() {
       </section>
 
       {/* SECTION 3 — Founding partner callout */}
-      <section className="py-16 md:py-20 px-4 bg-zinc-950 border-y border-border">
+      <section className="py-16 md:py-20 px-4 bg-primary/5 border-y border-primary/20 border-l-4 border-l-primary">
         <div className="container mx-auto max-w-3xl text-center">
           <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-full px-4 py-1.5 mb-6">
             <Zap className="h-4 w-4 text-primary" />
@@ -255,7 +255,7 @@ export default function Pricing() {
                 </button>
                 {openFaq === index && (
                   <div className="px-5 pb-5">
-                    <p className="text-muted-foreground leading-relaxed">
+                    <p className="text-muted-foreground leading-relaxed pl-4 border-l-2 border-primary/30">
                       {faq.answer}
                     </p>
                   </div>

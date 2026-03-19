@@ -3,14 +3,9 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import {
   CheckCircle,
-  Phone,
   Clock,
-  Car,
   Users,
   AlertTriangle,
-  Smartphone,
-  LayoutDashboard,
-  MessageSquare,
   Shield,
   ArrowRight,
   ChevronRight,
@@ -99,19 +94,16 @@ export default function GetStarted() {
   const steps = [
     {
       number: "1",
-      icon: Smartphone,
       title: "Foreman logs today's work",
       description: "Takes 30–60 seconds. Photos, notes, progress. Done.",
     },
     {
       number: "2",
-      icon: LayoutDashboard,
       title: "Everything is instantly organized",
       description: "No texts to chase. No info lost. No back-and-forth.",
     },
     {
       number: "3",
-      icon: CheckCircle,
       title: "You see every job in real time",
       description: "From your phone. Across every active site.",
     },
@@ -170,13 +162,16 @@ export default function GetStarted() {
             issues instantly. No calls. No guessing.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-xl mx-auto">
-            <Button
-              size="lg"
-              onClick={scrollToCalendly}
-              className="h-14 md:h-16 px-6 md:px-8 text-base md:text-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-xl"
-            >
-              We'll set up your first job for you
-            </Button>
+            <div className="relative">
+              <div className="absolute inset-0 rounded-lg bg-primary/30 animate-ping pointer-events-none" />
+              <Button
+                size="lg"
+                onClick={scrollToCalendly}
+                className="relative h-14 md:h-16 px-6 md:px-8 text-base md:text-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-xl"
+              >
+                We'll set up your first job for you
+              </Button>
+            </div>
             <button
               onClick={scrollToDemo}
               className="text-white/80 hover:text-white text-base md:text-lg font-medium underline underline-offset-4 transition-colors self-center"
@@ -193,11 +188,11 @@ export default function GetStarted() {
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-10 md:mb-12 text-center leading-tight">
             Sound familiar?
           </h2>
-          <ul className="space-y-4">
+          <ul>
             {painPoints.map((item, index) => (
               <li
                 key={index}
-                className="flex items-start gap-4 p-4 md:p-5 bg-card rounded-xl border border-border"
+                className="flex items-start gap-4 py-4 border-b border-white/10 last:border-0"
               >
                 <div className="w-8 h-8 rounded-full bg-destructive/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <AlertTriangle className="h-4 w-4 text-destructive" />
@@ -237,44 +232,43 @@ export default function GetStarted() {
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-10 md:mb-14 text-center leading-tight">
             Here's what changes
           </h2>
-          <div className="grid sm:grid-cols-3 gap-6 md:gap-8">
-            {steps.map((step, index) => {
-              const Icon = step.icon;
-              return (
-                <div key={index} className="text-center">
-                  <div className="w-16 h-16 rounded-full bg-primary text-primary-foreground text-2xl font-bold flex items-center justify-center mx-auto mb-4 shadow-lg">
-                    {step.number}
-                  </div>
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-3">
-                    <Icon className="h-5 w-5 text-primary" />
-                  </div>
-                  <h3 className="text-lg md:text-xl font-bold text-foreground mb-2">
-                    {step.title}
-                  </h3>
-                  <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
-                    {step.description}
-                  </p>
+          <div className="relative grid sm:grid-cols-3 gap-6 md:gap-8">
+            {/* Connecting line — desktop only */}
+            <div className="hidden sm:block absolute top-10 left-[calc(16.67%+40px)] right-[calc(16.67%+40px)] h-px bg-primary/30" />
+            {steps.map((step, index) => (
+              <div key={index} className="text-center">
+                <div className="w-20 h-20 rounded-full bg-primary text-primary-foreground text-3xl font-bold flex items-center justify-center mx-auto mb-6 shadow-lg relative z-10">
+                  {step.number}
                 </div>
-              );
-            })}
+                <h3 className="text-lg md:text-xl font-bold text-foreground mb-2">
+                  {step.title}
+                </h3>
+                <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
+                  {step.description}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* SECTION 5 — Outcomes */}
       <section className="py-16 md:py-24 px-4 bg-background">
-        <div className="container mx-auto max-w-3xl">
+        <div className="container mx-auto max-w-4xl">
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-10 md:mb-12 text-center leading-tight">
             What this actually does for you
           </h2>
-          <div className="space-y-4">
+          <div className="grid sm:grid-cols-2 gap-4">
             {outcomes.map((outcome, index) => (
               <div
                 key={index}
-                className="flex items-center gap-4 p-5 md:p-6 bg-card rounded-xl border border-border"
+                className="relative overflow-hidden flex items-center gap-4 p-6 md:p-8 bg-card rounded-xl border border-border"
               >
-                <CheckCircle className="h-6 w-6 text-primary flex-shrink-0" strokeWidth={2.5} />
-                <p className="text-lg md:text-xl font-semibold text-foreground">
+                <span className="absolute top-2 right-4 text-6xl font-black text-primary/5 leading-none select-none pointer-events-none">
+                  {index + 1}
+                </span>
+                <CheckCircle className="h-6 w-6 text-primary flex-shrink-0 relative z-10" strokeWidth={2.5} />
+                <p className="text-lg md:text-xl font-semibold text-foreground relative z-10">
                   {outcome}
                 </p>
               </div>
@@ -293,10 +287,13 @@ export default function GetStarted() {
             {quotes.map((quote, index) => (
               <div
                 key={index}
-                className="p-6 md:p-8 bg-card rounded-xl border border-border flex items-center justify-center"
+                className="p-6 md:p-8 bg-card rounded-xl border border-primary/20 flex flex-col justify-center"
               >
+                <span className="text-6xl text-primary/20 font-serif leading-none mb-2 block select-none">
+                  &ldquo;
+                </span>
                 <p className="text-xl md:text-2xl font-bold text-foreground text-center leading-snug">
-                  "{quote}"
+                  {quote}
                 </p>
               </div>
             ))}
