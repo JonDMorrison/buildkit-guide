@@ -1,21 +1,23 @@
-# Claude Code Context
+# ProjectPath (buildkit-guide)
 
-## Who I Am
-Jon Morrison — Canadian entrepreneur running 5 SaaS products. GitHub: JonDMorrison.
+## Deploy
+- Vercel auto-deploys on push to main
+- Supabase project: bvzgxtvihbchqkvdbmqm
 
-## My Agent System
-Full context, agent files, and instructions live in ~/Sites/JonCoach/CLAUDE.md
-Read that file first for complete context on how I think, my priorities, and agent commands.
+## Key People
+- Chantel (GRM Inc, Kelowna) — primary beta user, do not break her workflows
 
-## How To Help Me
-1. Protect production stability above everything
-2. Understand the architecture before making changes
-3. Small safe changes over big rewrites
-4. Identify the failing layer before proposing fixes
-5. Never restructure core systems without understanding the full flow
+## Critical Rules
+- Invite flow spans two edge functions — read both before touching either
+- Sidebar flash fix uses useRef — do not revert to useState
+- Logout race condition fix is intentional — do not simplify the logout sequence
+- Daily log autofill correction is deliberate — check before changing form defaults
+- AI Assist uses OpenAI function calling — do not switch to simple completion
 
-## Core Rules
-- No large rewrites without explicit approval
-- Explain what files are affected before changing them
-- When debugging: identify layer → explain cause → propose fix → get approval
-- Prefer boring reliable solutions over clever ones
+## Stack
+- Lovable + Supabase + Vercel + OpenAI (function calling for AI Assist)
+
+## Common Mistakes to Avoid
+- Don't restructure the invite flow without reading both edge functions first
+- Don't assume Supabase tables are empty — this project has live data
+- Read only first, report findings, confirm with Jon, then make changes
