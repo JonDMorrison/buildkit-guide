@@ -25,3 +25,5 @@ dist-ssr
 .env
 
 .mcp.json
+test-results/
+fix-helpcenter-links.cjs

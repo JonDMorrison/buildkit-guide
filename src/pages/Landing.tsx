@@ -576,19 +576,19 @@ export default function Landing() {
       </section>
 
       {/* Trust Badges */}
-      <section className="py-8 px-4 bg-card border-t border-border">
+      <section className="py-8 px-4 bg-[#0f2a4a] border-t border-white/10">
         <div className="container mx-auto max-w-4xl">
-          <div className="flex flex-wrap justify-center items-center gap-6 md:gap-12 text-sm text-muted-foreground">
+          <div className="flex flex-wrap justify-center items-center gap-6 md:gap-12 text-sm text-white/70">
             <div className="flex items-center gap-2">
-              <Shield className="h-4 w-4" />
+              <Shield className="h-4 w-4 text-white/70" />
               <span>Your data stays yours</span>
             </div>
             <div className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4" />
+              <CheckCircle className="h-4 w-4 text-white/70" />
               <span>No credit card required</span>
             </div>
             <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4" />
+              <Clock className="h-4 w-4 text-white/70" />
               <span>Cancel anytime</span>
             </div>
           </div>
@@ -596,26 +596,26 @@ export default function Landing() {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-4 border-t border-border">
+      <footer className="py-12 px-4 bg-[#0f2a4a] border-t border-white/10">
         <div className="container mx-auto max-w-6xl">
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-2">
               <img src={projectPathLogo} alt="Project Path" className="h-16 w-auto max-w-[240px]" />
-              <p className="text-sm text-foreground/70">
+              <p className="text-sm text-white/70">
                 © 2026 Project Path. Built for the field.
               </p>
             </div>
             <div className="flex flex-wrap justify-center gap-4">
-              <Button variant="ghost" size="sm" onClick={() => navigate('/features')}>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/features')} className="text-white/80 hover:text-white hover:bg-white/10">
                 Features
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/safety-security')}>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/safety-security')} className="text-white/80 hover:text-white hover:bg-white/10">
                 Safety & Security
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/responsible-ai')}>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/responsible-ai')} className="text-white/80 hover:text-white hover:bg-white/10">
                 Responsible AI
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/auth')}>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/auth')} className="text-white/80 hover:text-white hover:bg-white/10">
                 Sign In
               </Button>
             </div>

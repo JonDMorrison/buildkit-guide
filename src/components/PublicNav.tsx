@@ -29,13 +29,13 @@ export const PublicNav = () => {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <nav className="fixed top-0 w-full bg-[#1a1a1a] backdrop-blur-md border-b border-white/10 z-50 shadow-sm">
+    <nav className="fixed top-0 w-full bg-[#0f2a4a] backdrop-blur-md border-b border-white/10 z-50 shadow-sm">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <div 
           className="flex items-center cursor-pointer" 
           onClick={() => navigate('/')}
         >
-          <img src={projectPathLogo} alt="Project Path" className="h-20 md:h-28 w-auto" />
+          <img src={projectPathLogo} alt="Project Path" className="h-9 md:h-10 w-auto" />
         </div>
         
         {/* Desktop Navigation */}
@@ -87,7 +87,7 @@ export const PublicNav = () => {
             <SheetContent side="right" className="w-[280px] sm:w-[320px]">
               <SheetHeader className="text-left mb-6">
                 <SheetTitle>
-                  <img src={projectPathLogo} alt="Project Path" className="h-40 w-auto" />
+                  <img src={projectPathLogo} alt="Project Path" className="h-10 w-auto" />
                 </SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col gap-4">
