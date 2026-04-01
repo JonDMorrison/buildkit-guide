@@ -20,6 +20,7 @@ import {
 import {
   Sparkles, Loader2, Search, CheckCircle2, AlertTriangle,
   Clock, Layers, ChevronDown, ChevronRight, Shield,
+  X, ArrowUp, ArrowDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -86,6 +87,64 @@ export function GeneratePlaybookDialog({ open, onOpenChange, onCreated, initialJ
   const [suggestion, setSuggestion] = useState<PlaybookSuggestion | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expandedPhases, setExpandedPhases] = useState<Set<number>>(new Set());
+  const [editingPhase, setEditingPhase] = useState<number | null>(null);
+  const [editingTask, setEditingTask] = useState<{ phase: number; task: number } | null>(null);
+
+  // Mutation helpers for editing suggestion in-place
+  const updatePhases = (updater: (phases: GeneratedPhase[]) => GeneratedPhase[]) => {
+    setSuggestion(prev => prev ? { ...prev, phases: updater([...prev.phases]) } : prev);
+  };
+
+  const updatePhaseName = (idx: number, name: string) => {
+    updatePhases(phases => { phases[idx] = { ...phases[idx], name }; return phases; });
+  };
+
+  const updateTaskTitle = (phaseIdx: number, taskIdx: number, title: string) => {
+    updatePhases(phases => {
+      const tasks = [...phases[phaseIdx].tasks];
+      tasks[taskIdx] = { ...tasks[taskIdx], title };
+      phases[phaseIdx] = { ...phases[phaseIdx], tasks };
+      return phases;
+    });
+  };
+
+  const deletePhase = (idx: number) => {
+    updatePhases(phases => phases.filter((_, i) => i !== idx));
+    setExpandedPhases(prev => {
+      const next = new Set<number>();
+      for (const v of prev) {
+        if (v < idx) next.add(v);
+        else if (v > idx) next.add(v - 1);
+      }
+      return next;
+    });
+  };
+
+  const deleteTask = (phaseIdx: number, taskIdx: number) => {
+    updatePhases(phases => {
+      const tasks = phases[phaseIdx].tasks.filter((_, i) => i !== taskIdx);
+      phases[phaseIdx] = { ...phases[phaseIdx], tasks };
+      return phases;
+    });
+  };
+
+  const movePhase = (idx: number, direction: -1 | 1) => {
+    const target = idx + direction;
+    updatePhases(phases => {
+      if (target < 0 || target >= phases.length) return phases;
+      [phases[idx], phases[target]] = [phases[target], phases[idx]];
+      return phases;
+    });
+    setExpandedPhases(prev => {
+      const next = new Set<number>();
+      for (const v of prev) {
+        if (v === idx) next.add(target);
+        else if (v === target) next.add(idx);
+        else next.add(v);
+      }
+      return next;
+    });
+  };
 
   // Load trades when dialog opens
   useEffect(() => {
@@ -333,23 +392,65 @@ export function GeneratePlaybookDialog({ open, onOpenChange, onCreated, initialJ
 
             <Separator />
 
-            {/* Phase/Task detail */}
-            <ScrollArea className="flex-1 min-h-0 -mx-1 px-1">
+            {/* Phase/Task detail — scrollable + editable */}
+            <div className="max-h-[60vh] overflow-y-auto -mx-1 px-1">
               <div className="space-y-2 pb-2">
                 {suggestion.phases.map((phase, idx) => (
                   <Card key={idx} className="border-border/50">
-                    <button
-                      className="w-full text-left px-4 py-3 flex items-center gap-2"
-                      onClick={() => togglePhase(idx)}
-                    >
-                      {expandedPhases.has(idx)
-                        ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-                        : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
-                      <span className="text-sm font-medium flex-1">{phase.name}</span>
-                      <Badge variant="outline" className="text-[10px] font-mono">
+                    <div className="flex items-center px-4 py-3 gap-1">
+                      <button
+                        className="flex items-center gap-2 flex-1 min-w-0 text-left"
+                        onClick={() => togglePhase(idx)}
+                      >
+                        {expandedPhases.has(idx)
+                          ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                          : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
+                        {editingPhase === idx ? (
+                          <Input
+                            autoFocus
+                            value={phase.name}
+                            onClick={e => e.stopPropagation()}
+                            onChange={e => updatePhaseName(idx, e.target.value)}
+                            onBlur={() => setEditingPhase(null)}
+                            onKeyDown={e => { if (e.key === 'Enter') setEditingPhase(null); }}
+                            className="h-7 text-sm font-medium py-0"
+                          />
+                        ) : (
+                          <span
+                            className="text-sm font-medium flex-1 truncate cursor-text"
+                            onDoubleClick={(e) => { e.stopPropagation(); setEditingPhase(idx); }}
+                          >
+                            {phase.name}
+                          </span>
+                        )}
+                      </button>
+                      <Badge variant="outline" className="text-[10px] font-mono shrink-0">
                         {phase.tasks.length} tasks
                       </Badge>
-                    </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); movePhase(idx, -1); }}
+                        disabled={idx === 0}
+                        className="p-1 rounded hover:bg-muted disabled:opacity-30 shrink-0"
+                        title="Move up"
+                      >
+                        <ArrowUp className="h-3 w-3 text-muted-foreground" />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); movePhase(idx, 1); }}
+                        disabled={idx === suggestion.phases.length - 1}
+                        className="p-1 rounded hover:bg-muted disabled:opacity-30 shrink-0"
+                        title="Move down"
+                      >
+                        <ArrowDown className="h-3 w-3 text-muted-foreground" />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); deletePhase(idx); }}
+                        className="p-1 rounded hover:bg-destructive/10 shrink-0"
+                        title="Remove phase"
+                      >
+                        <X className="h-3.5 w-3.5 text-destructive/70" />
+                      </button>
+                    </div>
 
                     {expandedPhases.has(idx) && (
                       <CardContent className="pt-0 pb-3 px-4">
@@ -360,13 +461,29 @@ export function GeneratePlaybookDialog({ open, onOpenChange, onCreated, initialJ
                           {phase.tasks.map((task, tIdx) => (
                             <div
                               key={tIdx}
-                              className="flex items-center gap-2 text-xs py-1.5 px-2 rounded bg-muted/30"
+                              className="flex items-center gap-2 text-xs py-1.5 px-2 rounded bg-muted/30 group"
                             >
                               <CheckCircle2 className={cn(
                                 "h-3.5 w-3.5 shrink-0",
                                 task.required ? "text-primary" : "text-muted-foreground/40"
                               )} />
-                              <span className="flex-1 text-foreground truncate">{task.title}</span>
+                              {editingTask?.phase === idx && editingTask?.task === tIdx ? (
+                                <Input
+                                  autoFocus
+                                  value={task.title}
+                                  onChange={e => updateTaskTitle(idx, tIdx, e.target.value)}
+                                  onBlur={() => setEditingTask(null)}
+                                  onKeyDown={e => { if (e.key === 'Enter') setEditingTask(null); }}
+                                  className="h-6 text-xs py-0 flex-1"
+                                />
+                              ) : (
+                                <span
+                                  className="flex-1 text-foreground truncate cursor-text"
+                                  onDoubleClick={() => setEditingTask({ phase: idx, task: tIdx })}
+                                >
+                                  {task.title}
+                                </span>
+                              )}
                               {task.role_type && (
                                 <Badge variant="secondary" className="text-[9px] h-4 px-1.5 shrink-0">
                                   {task.role_type}
@@ -378,6 +495,13 @@ export function GeneratePlaybookDialog({ open, onOpenChange, onCreated, initialJ
                               <span className="text-muted-foreground/50 tabular-nums shrink-0 w-8 text-right">
                                 {task.frequency_percent}%
                               </span>
+                              <button
+                                onClick={() => deleteTask(idx, tIdx)}
+                                className="p-0.5 rounded hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                                title="Remove task"
+                              >
+                                <X className="h-3 w-3 text-destructive/70" />
+                              </button>
                             </div>
                           ))}
                         </div>
@@ -386,7 +510,7 @@ export function GeneratePlaybookDialog({ open, onOpenChange, onCreated, initialJ
                   </Card>
                 ))}
               </div>
-            </ScrollArea>
+            </div>
 
             {/* Actions */}
             <div className="flex gap-3 pt-2 border-t border-border/50">
