@@ -20,7 +20,7 @@ import {
 import {
   Sparkles, Loader2, Search, CheckCircle2, AlertTriangle,
   Clock, Layers, ChevronDown, ChevronRight, Shield,
-  X, ArrowUp, ArrowDown,
+  X, ArrowUp, ArrowDown, Pencil,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -87,8 +87,7 @@ export function GeneratePlaybookDialog({ open, onOpenChange, onCreated, initialJ
   const [suggestion, setSuggestion] = useState<PlaybookSuggestion | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expandedPhases, setExpandedPhases] = useState<Set<number>>(new Set());
-  const [editingPhase, setEditingPhase] = useState<number | null>(null);
-  const [editingTask, setEditingTask] = useState<{ phase: number; task: number } | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // Mutation helpers for editing suggestion in-place
   const updatePhases = (updater: (phases: GeneratedPhase[]) => GeneratedPhase[]) => {
@@ -359,29 +358,40 @@ export function GeneratePlaybookDialog({ open, onOpenChange, onCreated, initialJ
         {/* Step 2: Review */}
         {suggestion && !loading && (
           <div className="flex-1 min-h-0 flex flex-col gap-4">
-            {/* Summary header */}
-            <div className="grid grid-cols-4 gap-3">
-              <SummaryCard
-                label="Confidence"
-                value={`${suggestion.confidence_score}%`}
-                icon={<Shield className="h-3.5 w-3.5" />}
-                className={confidenceColor(suggestion.confidence_score)}
-              />
-              <SummaryCard
-                label="Projects"
-                value={String(suggestion.projects_analyzed)}
-                icon={<Layers className="h-3.5 w-3.5" />}
-              />
-              <SummaryCard
-                label="Hours Band"
-                value={`${suggestion.total_hours_band.low}–${suggestion.total_hours_band.high}`}
-                icon={<Clock className="h-3.5 w-3.5" />}
-              />
-              <SummaryCard
-                label="Variance"
-                value={`±${Math.round((suggestion.variance_band_percent.high - suggestion.variance_band_percent.low) / 2)}%`}
-                icon={<AlertTriangle className="h-3.5 w-3.5" />}
-              />
+            {/* Summary header + Edit toggle */}
+            <div className="flex items-center justify-between">
+              <div className="grid grid-cols-4 gap-3 flex-1">
+                <SummaryCard
+                  label="Confidence"
+                  value={`${suggestion.confidence_score}%`}
+                  icon={<Shield className="h-3.5 w-3.5" />}
+                  className={confidenceColor(suggestion.confidence_score)}
+                />
+                <SummaryCard
+                  label="Projects"
+                  value={String(suggestion.projects_analyzed)}
+                  icon={<Layers className="h-3.5 w-3.5" />}
+                />
+                <SummaryCard
+                  label="Hours Band"
+                  value={`${suggestion.total_hours_band.low}–${suggestion.total_hours_band.high}`}
+                  icon={<Clock className="h-3.5 w-3.5" />}
+                />
+                <SummaryCard
+                  label="Variance"
+                  value={`±${Math.round((suggestion.variance_band_percent.high - suggestion.variance_band_percent.low) / 2)}%`}
+                  icon={<AlertTriangle className="h-3.5 w-3.5" />}
+                />
+              </div>
+              <Button
+                variant={isEditMode ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setIsEditMode(!isEditMode)}
+                className="gap-1.5 ml-3 shrink-0"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                {isEditMode ? 'Done Editing' : 'Edit'}
+              </Button>
             </div>
 
             {suggestion.data_quality_note && (
@@ -390,9 +400,15 @@ export function GeneratePlaybookDialog({ open, onOpenChange, onCreated, initialJ
               </p>
             )}
 
+            {isEditMode && (
+              <p className="text-xs text-muted-foreground/70 italic">
+                Click any field to edit. Use arrows to reorder phases.
+              </p>
+            )}
+
             <Separator />
 
-            {/* Phase/Task detail — scrollable + editable */}
+            {/* Phase/Task detail — scrollable */}
             <div className="max-h-[60vh] overflow-y-auto -mx-1 px-1">
               <div className="space-y-2 pb-2">
                 {suggestion.phases.map((phase, idx) => (
@@ -400,56 +416,52 @@ export function GeneratePlaybookDialog({ open, onOpenChange, onCreated, initialJ
                     <div className="flex items-center px-4 py-3 gap-1">
                       <button
                         className="flex items-center gap-2 flex-1 min-w-0 text-left"
-                        onClick={() => togglePhase(idx)}
+                        onClick={() => !isEditMode && togglePhase(idx)}
                       >
                         {expandedPhases.has(idx)
-                          ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-                          : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
-                        {editingPhase === idx ? (
+                          ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 cursor-pointer" onClick={(e) => { e.stopPropagation(); togglePhase(idx); }} />
+                          : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 cursor-pointer" onClick={(e) => { e.stopPropagation(); togglePhase(idx); }} />}
+                        {isEditMode ? (
                           <Input
-                            autoFocus
                             value={phase.name}
                             onClick={e => e.stopPropagation()}
                             onChange={e => updatePhaseName(idx, e.target.value)}
-                            onBlur={() => setEditingPhase(null)}
-                            onKeyDown={e => { if (e.key === 'Enter') setEditingPhase(null); }}
                             className="h-7 text-sm font-medium py-0"
                           />
                         ) : (
-                          <span
-                            className="text-sm font-medium flex-1 truncate cursor-text"
-                            onDoubleClick={(e) => { e.stopPropagation(); setEditingPhase(idx); }}
-                          >
-                            {phase.name}
-                          </span>
+                          <span className="text-sm font-medium flex-1 truncate">{phase.name}</span>
                         )}
                       </button>
                       <Badge variant="outline" className="text-[10px] font-mono shrink-0">
                         {phase.tasks.length} tasks
                       </Badge>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); movePhase(idx, -1); }}
-                        disabled={idx === 0}
-                        className="p-1 rounded hover:bg-muted disabled:opacity-30 shrink-0"
-                        title="Move up"
-                      >
-                        <ArrowUp className="h-3 w-3 text-muted-foreground" />
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); movePhase(idx, 1); }}
-                        disabled={idx === suggestion.phases.length - 1}
-                        className="p-1 rounded hover:bg-muted disabled:opacity-30 shrink-0"
-                        title="Move down"
-                      >
-                        <ArrowDown className="h-3 w-3 text-muted-foreground" />
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); deletePhase(idx); }}
-                        className="p-1 rounded hover:bg-destructive/10 shrink-0"
-                        title="Remove phase"
-                      >
-                        <X className="h-3.5 w-3.5 text-destructive/70" />
-                      </button>
+                      {isEditMode && (
+                        <>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); movePhase(idx, -1); }}
+                            disabled={idx === 0}
+                            className="p-1 rounded hover:bg-muted disabled:opacity-30 shrink-0"
+                            title="Move up"
+                          >
+                            <ArrowUp className="h-3 w-3 text-muted-foreground" />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); movePhase(idx, 1); }}
+                            disabled={idx === suggestion.phases.length - 1}
+                            className="p-1 rounded hover:bg-muted disabled:opacity-30 shrink-0"
+                            title="Move down"
+                          >
+                            <ArrowDown className="h-3 w-3 text-muted-foreground" />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); deletePhase(idx); }}
+                            className="p-1 rounded hover:bg-destructive/10 shrink-0"
+                            title="Remove phase"
+                          >
+                            <X className="h-3.5 w-3.5 text-destructive/70" />
+                          </button>
+                        </>
+                      )}
                     </div>
 
                     {expandedPhases.has(idx) && (
@@ -461,28 +473,20 @@ export function GeneratePlaybookDialog({ open, onOpenChange, onCreated, initialJ
                           {phase.tasks.map((task, tIdx) => (
                             <div
                               key={tIdx}
-                              className="flex items-center gap-2 text-xs py-1.5 px-2 rounded bg-muted/30 group"
+                              className="flex items-center gap-2 text-xs py-1.5 px-2 rounded bg-muted/30"
                             >
                               <CheckCircle2 className={cn(
                                 "h-3.5 w-3.5 shrink-0",
                                 task.required ? "text-primary" : "text-muted-foreground/40"
                               )} />
-                              {editingTask?.phase === idx && editingTask?.task === tIdx ? (
+                              {isEditMode ? (
                                 <Input
-                                  autoFocus
                                   value={task.title}
                                   onChange={e => updateTaskTitle(idx, tIdx, e.target.value)}
-                                  onBlur={() => setEditingTask(null)}
-                                  onKeyDown={e => { if (e.key === 'Enter') setEditingTask(null); }}
                                   className="h-6 text-xs py-0 flex-1"
                                 />
                               ) : (
-                                <span
-                                  className="flex-1 text-foreground truncate cursor-text"
-                                  onDoubleClick={() => setEditingTask({ phase: idx, task: tIdx })}
-                                >
-                                  {task.title}
-                                </span>
+                                <span className="flex-1 text-foreground truncate">{task.title}</span>
                               )}
                               {task.role_type && (
                                 <Badge variant="secondary" className="text-[9px] h-4 px-1.5 shrink-0">
@@ -495,13 +499,15 @@ export function GeneratePlaybookDialog({ open, onOpenChange, onCreated, initialJ
                               <span className="text-muted-foreground/50 tabular-nums shrink-0 w-8 text-right">
                                 {task.frequency_percent}%
                               </span>
-                              <button
-                                onClick={() => deleteTask(idx, tIdx)}
-                                className="p-0.5 rounded hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                                title="Remove task"
-                              >
-                                <X className="h-3 w-3 text-destructive/70" />
-                              </button>
+                              {isEditMode && (
+                                <button
+                                  onClick={() => deleteTask(idx, tIdx)}
+                                  className="p-0.5 rounded hover:bg-destructive/10 shrink-0"
+                                  title="Remove task"
+                                >
+                                  <X className="h-3 w-3 text-destructive/70" />
+                                </button>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -516,7 +522,7 @@ export function GeneratePlaybookDialog({ open, onOpenChange, onCreated, initialJ
             <div className="flex gap-3 pt-2 border-t border-border/50">
               <Button
                 variant="outline"
-                onClick={() => { setSuggestion(null); setError(null); }}
+                onClick={() => { setSuggestion(null); setError(null); setIsEditMode(false); }}
                 className="gap-1.5"
                 disabled={creating}
               >
@@ -525,7 +531,7 @@ export function GeneratePlaybookDialog({ open, onOpenChange, onCreated, initialJ
               <Button
                 onClick={handleApprove}
                 className="flex-1 gap-1.5"
-                disabled={creating}
+                disabled={creating || isEditMode}
               >
                 {creating ? (
                   <>
