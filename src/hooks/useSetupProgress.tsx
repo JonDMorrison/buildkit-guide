@@ -21,6 +21,10 @@ export interface SetupProgress {
   step_first_drawing: boolean;
   step_labor_rates: boolean;
   step_invoice_permissions: boolean;
+  step_company_profile: boolean;
+  step_ai_calibrated: boolean;
+  step_playbook_generated: boolean;
+  step_morning_briefing_reviewed: boolean;
   dismissed_at: string | null;
   completed_at: string | null;
 }
@@ -41,6 +45,10 @@ const defaultProgress: SetupProgress = {
   step_first_drawing: false,
   step_labor_rates: false,
   step_invoice_permissions: false,
+  step_company_profile: false,
+  step_ai_calibrated: false,
+  step_playbook_generated: false,
+  step_morning_briefing_reviewed: false,
   dismissed_at: null,
   completed_at: null,
 };

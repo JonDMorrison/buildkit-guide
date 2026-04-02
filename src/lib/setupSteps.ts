@@ -107,6 +107,41 @@ export const SETUP_STEPS: readonly SetupStepDefinition[] = [
     helpText: 'Add at least 3 trades to complete this step.',
     visibleIn: ['financial', 'dashboard'],
   },
+  // Company
+  {
+    key: 'step_company_profile',
+    label: 'Complete Your Company Profile',
+    description: 'Add your business type, service area, and project size range',
+    timeEstimate: '~3 min',
+    actionLabel: 'Complete Profile',
+    visibleIn: ['dashboard', 'all'],
+  },
+  {
+    key: 'step_ai_calibrated',
+    label: 'Calibrate Your AI',
+    description: 'Answer 4 questions so your AI understands your business',
+    timeEstimate: '~3 min',
+    actionLabel: 'Calibrate',
+    visibleIn: ['dashboard', 'all'],
+  },
+  // Operations
+  {
+    key: 'step_playbook_generated',
+    label: 'Generate Your First Playbook',
+    description: 'Let the AI build a reusable job template from your most common job type',
+    timeEstimate: '~2 min',
+    actionLabel: 'Go to Playbooks',
+    visibleIn: ['dashboard', 'all'],
+  },
+  {
+    key: 'step_morning_briefing_reviewed',
+    label: 'Check Your Morning Briefing',
+    description: 'See what the AI surfaces every morning on your dashboard',
+    timeEstimate: '~1 min',
+    actionLabel: "I've Seen It",
+    helpText: 'Check the Morning Briefing widget on your Dashboard, then confirm here.',
+    visibleIn: ['dashboard', 'all'],
+  },
 ] as const;
 
 /** All checklist step keys (for progress calculation) */
