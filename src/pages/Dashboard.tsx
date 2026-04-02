@@ -48,6 +48,7 @@ import { AIMarginSignalCard } from "@/components/ai-insights/AIMarginSignalCard"
 
 import { AttentionInbox } from "@/components/executive/AttentionInbox";
 import { useOrganization } from "@/hooks/useOrganization";
+import { MorningBriefingWidget } from "@/components/dashboard/MorningBriefingWidget";
 import { usePrefetchRoute } from "@/hooks/usePrefetchRoute";
 import { useExecutiveChangeFeed } from "@/hooks/rpc/useExecutiveChangeFeed";
 import { HealthContextBanner } from "@/components/HealthContextBanner";
@@ -316,6 +317,11 @@ function DashboardContent() {
     <DashboardLayout>
       <HealthContextBanner />
       <SmartChecklist />
+
+      {/* ── Morning Briefing ──────────────────────────────────────────── */}
+      <SectionErrorBoundary title="Morning Briefing">
+        <MorningBriefingWidget projectId={currentProjectId} />
+      </SectionErrorBoundary>
 
       {/* ── Zone 1: Right Now ────────────────────────────────────────── */}
       <DashboardHeader
