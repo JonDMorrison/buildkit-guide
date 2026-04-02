@@ -95,7 +95,7 @@ serve(async (req) => {
               content: [
                 {
                   type: 'text',
-                  text: 'Extract all text, labels, annotations, measurements, and important information from this construction document. Include any visible text, numbers, room labels, dimensions, notes, and technical specifications. Format the output as clear, searchable text.'
+                  text: 'Extract all information from this construction document image and return it as a JSON object with this exact structure: { "title": "document title or description if visible", "document_type": "drawing" or "spec" or "report" or "schedule" or "other", "dimensions": ["list of any measurements or dimensions found"], "room_labels": ["list of room names, area labels, or zone identifiers"], "notes": ["list of any written notes, annotations, or callouts"], "specifications": ["list of any technical specifications, material specs, or standards referenced"], "page_summary": "brief 1-2 sentence summary of what this document contains" }. Extract every piece of visible text, number, label, and annotation. If a field has no matches, return an empty array or empty string.'
                 },
                 {
                   type: 'image_url',
@@ -107,6 +107,7 @@ serve(async (req) => {
             }
           ],
           max_tokens: 4000,
+          response_format: { type: "json_object" },
         }),
       });
 
@@ -117,7 +118,24 @@ serve(async (req) => {
       }
 
       const visionResult = await visionResponse.json();
-      extractedText = visionResult.choices[0].message.content;
+      const rawContent = visionResult.choices[0].message.content;
+
+      // Parse structured JSON and build readable text for storage
+      try {
+        const parsed = JSON.parse(rawContent);
+        const parts: string[] = [];
+        if (parsed.title) parts.push(`Title: ${parsed.title}`);
+        if (parsed.document_type) parts.push(`Type: ${parsed.document_type}`);
+        if (parsed.page_summary) parts.push(`Summary: ${parsed.page_summary}`);
+        if (parsed.dimensions?.length) parts.push(`Dimensions: ${parsed.dimensions.join(', ')}`);
+        if (parsed.room_labels?.length) parts.push(`Rooms/Areas: ${parsed.room_labels.join(', ')}`);
+        if (parsed.notes?.length) parts.push(`Notes:\n${parsed.notes.join('\n')}`);
+        if (parsed.specifications?.length) parts.push(`Specifications:\n${parsed.specifications.join('\n')}`);
+        extractedText = parts.join('\n\n');
+      } catch {
+        // Fallback to raw text if JSON parsing fails
+        extractedText = rawContent;
+      }
       console.log('Extracted text length:', extractedText.length);
       
     } else {

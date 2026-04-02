@@ -192,8 +192,7 @@ The email should:
 6. Be suitable for sending to the GC, owner, or stakeholders`;
     }
 
-    const systemPrompt = `You are an AI assistant helping construction project managers draft professional emails.
-Write clear, professional emails that are appropriate for construction industry communication.
+    const jsonFormatRequirement = `
 
 Respond in JSON format:
 {
@@ -209,6 +208,14 @@ Use proper email formatting with:
 - Sender name placeholder
 
 Do not use placeholder brackets like [Name] - use the actual names provided or generic titles.`;
+
+    const systemPrompts: Record<string, string> = {
+      gc: `You are an AI assistant helping construction subcontractors draft professional emails to General Contractors. Write formally with contractual precision. Reference project numbers and specifications where relevant. Be direct about timelines, accountability, and deliverables. Maintain a firm but professional tone appropriate for contractual relationships.${jsonFormatRequirement}`,
+      trade: `You are an AI assistant helping construction project managers communicate with trade partners and subcontractors. Write in a collaborative, direct tone with operational focus. Use schedule and coordination language. Be specific about dates, locations, and crew requirements. Keep it practical — these are working relationships.${jsonFormatRequirement}`,
+      owner: `You are an AI assistant helping construction project managers write updates for project owners and stakeholders. Write in executive summary style — non-technical, focused on progress, milestones, and decisions needed. Avoid construction jargon. Lead with outcomes and impacts, not technical details.${jsonFormatRequirement}`,
+    };
+
+    const systemPrompt = systemPrompts[recipient_type] || systemPrompts['gc'];
 
     console.log('Calling OpenAI for email generation...');
 

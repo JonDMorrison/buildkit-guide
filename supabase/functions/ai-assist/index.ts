@@ -265,6 +265,7 @@ serve(async (req) => {
     let projectMembers: any[] = [];
     let trades: any[] = [];
     let comments: any[] = [];
+    let taskComments: any[] = [];
     let attachments: any[] = [];
 
     // Base task query for project
@@ -356,13 +357,16 @@ serve(async (req) => {
         .order('required_date', { ascending: true });
       manpowerRequests = manpowerData || [];
 
-      // Daily logs
+      // Daily logs (last 7 days)
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
       const { data: logsData } = await serviceClient
         .from('daily_logs')
-        .select('id, log_date, weather, crew_count, work_performed, issues')
+        .select('log_date, work_performed, issues, safety_notes, next_day_plan, weather, crew_count')
         .eq('project_id', project_id)
+        .gte('log_date', weekAgo.toISOString().split('T')[0])
         .order('log_date', { ascending: false })
-        .limit(7);
+        .limit(14);
       dailyLogs = logsData || [];
 
       // GC deficiency imports
@@ -435,6 +439,18 @@ serve(async (req) => {
           .order('created_at', { ascending: false })
           .limit(30);
         comments = cmtData || [];
+      }
+
+      // Comments on active tasks (last 20 with task titles)
+      const activeTaskIds = tasks.filter((t: any) => t.status !== 'done').map((t: any) => t.id);
+      if (activeTaskIds.length > 0) {
+        const { data: tcData } = await serviceClient
+          .from('comments')
+          .select('content, created_at, task_id, tasks(title)')
+          .in('task_id', activeTaskIds)
+          .order('created_at', { ascending: false })
+          .limit(20);
+        taskComments = tcData || [];
       }
 
       // Attachments/Documents
@@ -582,11 +598,25 @@ serve(async (req) => {
       contextString += '\n';
     }
 
-    // Daily logs
+    // Daily Log History (last 7 days)
     if (dailyLogs.length > 0) {
-      contextString += `## Recent Daily Logs:\n`;
-      dailyLogs.slice(0, 3).forEach(log => {
+      contextString += `## Daily Log History (last 7 days):\n`;
+      dailyLogs.forEach(log => {
         contextString += `- ${log.log_date}: Crew ${log.crew_count || 0}, Weather: ${log.weather || 'Not recorded'}\n`;
+        if (log.work_performed) contextString += `  Work: ${log.work_performed}\n`;
+        if (log.issues) contextString += `  Issues: ${log.issues}\n`;
+        if (log.safety_notes) contextString += `  Safety: ${log.safety_notes}\n`;
+        if (log.next_day_plan) contextString += `  Next Day Plan: ${log.next_day_plan}\n`;
+      });
+      contextString += '\n';
+    }
+
+    // Recent Task Comments
+    if (taskComments.length > 0) {
+      contextString += `## Recent Task Comments:\n`;
+      taskComments.forEach((cmt: any) => {
+        const taskTitle = (Array.isArray(cmt.tasks) && cmt.tasks[0] ? cmt.tasks[0].title : cmt.tasks?.title) || 'Unknown task';
+        contextString += `- [${taskTitle}] ${cmt.created_at}: "${(cmt.content || '').substring(0, 150)}"\n`;
       });
       contextString += '\n';
     }

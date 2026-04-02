@@ -211,6 +211,55 @@ serve(async (req) => {
       reason: mp.reason,
     }));
 
+    // Calculate historical velocity from completed tasks
+    const { data: completedTasks } = await serviceClient
+      .from('tasks')
+      .select('id, title, estimated_hours, baseline_role_type, trades(name)')
+      .eq('project_id', project_id)
+      .eq('status', 'done')
+      .eq('is_deleted', false);
+
+    const completedTaskIds = (completedTasks ?? []).map(t => t.id);
+    let velocitySummary: { trades: any[]; overall_variance_pct: string } = { trades: [], overall_variance_pct: '0%' };
+
+    if (completedTaskIds.length > 0) {
+      const { data: timeData } = await serviceClient
+        .from('time_entries')
+        .select('task_id, hours')
+        .in('task_id', completedTaskIds);
+
+      // Aggregate actual hours per task
+      const actualByTask: Record<string, number> = {};
+      for (const te of (timeData ?? [])) {
+        if (te.task_id) actualByTask[te.task_id] = (actualByTask[te.task_id] || 0) + Number(te.hours || 0);
+      }
+
+      // Group by trade
+      const tradeStats: Record<string, { estimated: number[]; actual: number[] }> = {};
+      for (const t of (completedTasks ?? [])) {
+        const tradeName = (Array.isArray(t.trades) && t.trades[0] ? (t.trades[0] as any).name : t.baseline_role_type) || 'General';
+        const est = Number(t.estimated_hours || 0);
+        const act = actualByTask[t.id] || 0;
+        if (est <= 0 && act <= 0) continue;
+        if (!tradeStats[tradeName]) tradeStats[tradeName] = { estimated: [], actual: [] };
+        tradeStats[tradeName].estimated.push(est);
+        tradeStats[tradeName].actual.push(act);
+      }
+
+      let totalEst = 0, totalAct = 0;
+      const tradeRows = Object.entries(tradeStats).map(([trade, stats]) => {
+        const avgEst = stats.estimated.reduce((a, b) => a + b, 0) / stats.estimated.length;
+        const avgAct = stats.actual.reduce((a, b) => a + b, 0) / stats.actual.length;
+        totalEst += stats.estimated.reduce((a, b) => a + b, 0);
+        totalAct += stats.actual.reduce((a, b) => a + b, 0);
+        const variance = avgEst > 0 ? Math.round(((avgAct - avgEst) / avgEst) * 100) : 0;
+        return { trade, avg_estimated: +avgEst.toFixed(1), avg_actual: +avgAct.toFixed(1), variance_pct: `${variance >= 0 ? '+' : ''}${variance}%`, sample_size: stats.estimated.length };
+      });
+
+      const overallVariance = totalEst > 0 ? Math.round(((totalAct - totalEst) / totalEst) * 100) : 0;
+      velocitySummary = { trades: tradeRows, overall_variance_pct: `${overallVariance >= 0 ? '+' : ''}${overallVariance}%` };
+    }
+
     // Build AI prompt
     const systemPrompt = `You are a construction project scheduling AI assistant. Analyze the provided project data and forecast schedule delays and their impacts.
 
@@ -240,6 +289,10 @@ ${dependencyDetails.length > 30 ? `\n... and ${dependencyDetails.length - 30} mo
 
 **Manpower Requests (${manpowerDetails.length}):**
 ${JSON.stringify(manpowerDetails, null, 2)}
+
+**Historical Velocity (Completed Tasks):**
+${JSON.stringify(velocitySummary, null, 2)}
+Use this data to adjust your delay forecasts — if a trade consistently runs over estimates, factor that into the forecast for their remaining tasks.
 
 ${taskId ? `\n**Focus Task:** Analyze impact specifically for task ID: ${taskId}` : ''}
 

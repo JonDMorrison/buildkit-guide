@@ -125,7 +125,7 @@ serve(async (req) => {
 
     // Fallback: no historical projects — generate from best practices
     if (projectList.length === 0) {
-      const fallbackSystemPrompt = `You are an expert construction project consultant with 20 years of experience. Generate a comprehensive playbook template based on industry best practices. Output ONLY valid JSON matching the schema.`;
+      const fallbackSystemPrompt = `You are a senior construction project manager with 20+ years of experience. Base your estimates on industry standards (RSMeans cost data, standard construction sequences). Do not guess or hallucinate. If you are uncertain about an estimate, provide a wider range rather than a specific number. Every hour estimate should reflect realistic field conditions, not ideal conditions. Output ONLY valid JSON matching the schema.`;
 
       const fallbackUserPrompt = `Generate a best-practice playbook for: job_type="${job_type}"${audience ? `, audience="${audience}"` : ""}${trade_name ? `, trade="${trade_name}"` : ""}
 
