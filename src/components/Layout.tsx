@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { TopNav } from "./TopNav";
 import { TabBar } from "./TabBar";
 import { GlobalAIAssist } from "./ai-assist/GlobalAIAssist";
+import { VoiceButton } from "./voice/VoiceButton";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { PageTransition } from "./PageTransition";
 import { ConnectionStatus } from "./ConnectionStatus";
@@ -36,6 +37,7 @@ export const Layout = ({ children }: LayoutProps) => {
       </div>
       <TabBar />
       <GlobalAIAssist />
+      <VoiceButton />
     </SidebarProvider>
   );
 };
