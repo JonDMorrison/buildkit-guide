@@ -39,7 +39,7 @@ const SECTIONS: SectionDef[] = [
   },
   {
     title: "Executive",
-    paths: ["/executive"],
+    paths: ["/executive", "/org-intelligence"],
   },
   {
     title: "Admin",

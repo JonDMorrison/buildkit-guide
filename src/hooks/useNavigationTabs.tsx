@@ -50,6 +50,7 @@ export const tabs: TabConfig[] = [
   { name: "Labor Rates", path: "/settings/labor-rates", icon: Settings, tiers: ['all', 'office'] },
   { name: "Users", path: "/users", icon: Users, tiers: ['all'] },
   { name: "Executive", path: "/executive", icon: Crown, tiers: ['all'] },
+  { name: "Org Intelligence", path: "/org-intelligence", icon: Brain, tiers: ['all'] },
   { name: "Data Health", path: "/data-health", icon: Shield, tiers: ['all'] },
   { name: "Diagnostics", path: "/insights/ai-brain", icon: Cpu, tiers: ['all'] },
   { name: "Playbooks", path: "/playbooks", icon: BookOpen, tiers: ['all'] },
@@ -124,6 +125,7 @@ export const useNavigationTabs = () => {
 
         // Admin or PM routes
         case '/executive':
+        case '/org-intelligence':
         case '/data-health':
         case '/users':
         case '/health':
