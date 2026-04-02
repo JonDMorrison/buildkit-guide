@@ -82,6 +82,7 @@ const ExecutiveReport = safeLazy(() => import("./pages/ExecutiveReport"));
 const OrgSettings = safeLazy(() => import("./pages/OrgSettings"));
 const Intelligence = safeLazy(() => import("./pages/Intelligence"));
 const OrgIntelligence = safeLazy(() => import("./pages/OrgIntelligence"));
+const Reports = safeLazy(() => import("./pages/Reports"));
 const ChangeOrders = safeLazy(() => import("./pages/ChangeOrders"));
 const ChangeOrderDetail = safeLazy(() => import("./pages/ChangeOrderDetail"));
 const Release = safeLazy(() => import("./pages/Release"));
@@ -506,6 +507,14 @@ const App = () => (
                   element={
                     <ProtectedRoute>
                       <OrgIntelligence />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/reports"
+                  element={
+                    <ProtectedRoute>
+                      <Reports />
                     </ProtectedRoute>
                   }
                 />

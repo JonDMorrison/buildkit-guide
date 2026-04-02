@@ -31,7 +31,7 @@ const SECTIONS: SectionDef[] = [
   },
   {
     title: "Financial",
-    paths: ["/job-cost-report", "/invoicing", "/financials", "/change-orders", "/receipts", "/insights", "/intelligence"],
+    paths: ["/job-cost-report", "/invoicing", "/financials", "/change-orders", "/receipts", "/insights", "/intelligence", "/reports"],
   },
   {
     title: "Field & Compliance",

@@ -51,6 +51,7 @@ export const tabs: TabConfig[] = [
   { name: "Users", path: "/users", icon: Users, tiers: ['all'] },
   { name: "Executive", path: "/executive", icon: Crown, tiers: ['all'] },
   { name: "Org Intelligence", path: "/org-intelligence", icon: Brain, tiers: ['all'] },
+  { name: "Reports", path: "/reports", icon: ClipboardList, tiers: ['all'] },
   { name: "Data Health", path: "/data-health", icon: Shield, tiers: ['all'] },
   { name: "Diagnostics", path: "/insights/ai-brain", icon: Cpu, tiers: ['all'] },
   { name: "Playbooks", path: "/playbooks", icon: BookOpen, tiers: ['all'] },
@@ -133,6 +134,7 @@ export const useNavigationTabs = () => {
 
         // Admin, PM, or Foreman
         case '/intelligence':
+        case '/reports':
         case '/deficiencies':
         case '/lookahead':
         case '/manpower':

@@ -51,6 +51,7 @@ import { useOrganization } from "@/hooks/useOrganization";
 import { MorningBriefingWidget } from "@/components/dashboard/MorningBriefingWidget";
 import { ProactiveAlertsWidget } from "@/components/dashboard/ProactiveAlertsWidget";
 import { OrgIntelligenceWidget } from "@/components/dashboard/OrgIntelligenceWidget";
+import { ReportsWidget } from "@/components/dashboard/ReportsWidget";
 import { usePrefetchRoute } from "@/hooks/usePrefetchRoute";
 import { useExecutiveChangeFeed } from "@/hooks/rpc/useExecutiveChangeFeed";
 import { HealthContextBanner } from "@/components/HealthContextBanner";
@@ -330,9 +331,12 @@ function DashboardContent() {
         <ProactiveAlertsWidget projectId={currentProjectId} />
       </SectionErrorBoundary>
 
-      {/* ── Org Intelligence ──────────────────────────────────────────── */}
+      {/* ── Org Intelligence + Reports ─────────────────────────────────── */}
       <SectionErrorBoundary title="Org Intelligence">
-        <OrgIntelligenceWidget />
+        <DashboardGrid columns={2} gap="lg">
+          <OrgIntelligenceWidget />
+          <ReportsWidget />
+        </DashboardGrid>
       </SectionErrorBoundary>
 
       {/* ── Zone 1: Right Now ────────────────────────────────────────── */}
