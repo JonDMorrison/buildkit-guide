@@ -9,6 +9,8 @@ import { CertificationBadge } from "@/components/CertificationBadge";
 import { useCertificationTier } from "@/hooks/useCertificationTier";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrganization } from "@/hooks/useOrganization";
+import { useCurrentProject } from "@/hooks/useCurrentProject";
+import { useProactiveAlerts } from "@/hooks/useProactiveAlerts";
 import {
   Sidebar,
   SidebarContent,
@@ -52,6 +54,8 @@ export const AppSidebar = () => {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const { tier } = useCertificationTier();
+  const { currentProjectId } = useCurrentProject();
+  const { alertCount } = useProactiveAlerts(currentProjectId);
 
   /* Build sections from visible tabs */
   const sections = useMemo(() => {
@@ -113,6 +117,7 @@ export const AppSidebar = () => {
                   icon={tab.icon}
                   route={tab.path}
                   collapsed={collapsed}
+                  badgeCount={tab.path === "/dashboard" && alertCount > 0 ? alertCount : undefined}
                 />
               ))}
             </NavSection>
