@@ -23,19 +23,25 @@ export default function Landing() {
       {/* ════════════════════════════════════════════════════════════════ */}
       <section className="relative min-h-screen flex flex-col overflow-hidden">
         {/* Layer 1: gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#060c14] via-[#0a1218] to-[#0e1a0a]" />
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(ellipse at 50% 0%, rgba(122,182,72,0.08), transparent 50%), radial-gradient(ellipse at 20% 100%, rgba(122,182,72,0.05), transparent 40%), linear-gradient(170deg, #060c14 0%, #080f10 40%, #060c0a 100%)",
+          }}
+        />
 
         {/* Layer 2: ghosted PROJECTPATH */}
         <div
-          className="absolute top-[18%] left-1/2 -translate-x-1/2 select-none pointer-events-none whitespace-nowrap"
+          className="absolute top-[22%] left-1/2 -translate-x-1/2 select-none pointer-events-none whitespace-nowrap"
           style={{
-            fontSize: "clamp(4rem, 14vw, 13rem)",
+            fontSize: "clamp(6rem, 18vw, 16rem)",
             fontWeight: 900,
-            letterSpacing: "-0.02em",
-            opacity: 0.08,
+            letterSpacing: "0.05em",
+            opacity: 0.11,
             color: "white",
             textShadow:
-              "0 0 80px rgba(255,255,255,0.15), 0 0 160px rgba(255,255,255,0.08), 0 0 320px rgba(255,255,255,0.04)",
+              "0 0 40px rgba(255,255,255,0.15), 0 0 80px rgba(255,255,255,0.10), 0 0 120px rgba(255,255,255,0.06)",
             animation: "ghostPulse 4s ease-in-out infinite",
           }}
         >
@@ -43,27 +49,46 @@ export default function Landing() {
         </div>
 
         {/* Layer 3: perspective wireframe grid */}
-        <div className="absolute bottom-0 left-0 right-0 h-[55%] overflow-hidden" style={{ perspective: "800px" }}>
+        <div className="absolute bottom-0 left-0 right-0 h-[60%] overflow-hidden" style={{ perspective: "800px" }}>
+          {/* Primary grid */}
           <div
             className="absolute inset-0"
             style={{
               transform: "rotateX(68deg)",
               transformOrigin: "center bottom",
               backgroundImage:
-                "linear-gradient(rgba(122,182,72,0.25) 1px, transparent 1px), linear-gradient(90deg, rgba(122,182,72,0.25) 1px, transparent 1px)",
+                "linear-gradient(rgba(122,182,72,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(122,182,72,0.4) 1px, transparent 1px)",
               backgroundSize: "60px 60px",
-              maskImage: "linear-gradient(to bottom, transparent 0%, black 40%)",
-              WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 40%)",
+              maskImage: "linear-gradient(to bottom, transparent 0%, black 35%)",
+              WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 35%)",
               animation: "gridPan 20s linear infinite",
             }}
           />
+          {/* Diamond cross-hatch overlay */}
+          <div
+            className="absolute inset-0"
+            style={{
+              transform: "rotateX(68deg)",
+              transformOrigin: "center bottom",
+              backgroundImage:
+                "linear-gradient(45deg, rgba(122,182,72,0.08) 1px, transparent 1px), linear-gradient(-45deg, rgba(122,182,72,0.08) 1px, transparent 1px)",
+              backgroundSize: "60px 60px",
+              maskImage: "linear-gradient(to bottom, transparent 0%, black 35%)",
+              WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 35%)",
+            }}
+          />
           {/* Radial glow spots */}
-          <div className="absolute bottom-[20%] left-[30%] w-64 h-64 rounded-full bg-[#7ab648]/10 blur-[100px]" />
-          <div className="absolute bottom-[30%] right-[25%] w-48 h-48 rounded-full bg-[#7ab648]/8 blur-[80px]" />
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                "radial-gradient(circle at 35% 75%, rgba(100,200,60,0.25), transparent 40%), radial-gradient(circle at 65% 80%, rgba(80,180,40,0.15), transparent 35%)",
+            }}
+          />
         </div>
 
         {/* Nav (Layer 5) */}
-        <nav className="relative z-20 w-full border-b border-white/[0.08]">
+        <nav className="absolute top-0 left-0 right-0 z-20 border-b border-white/[0.08]" style={{ background: "transparent" }}>
           <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
             <div className="flex items-center cursor-pointer" onClick={() => navigate("/")}>
               <img src={projectPathLogo} alt="ProjectPath" className="h-9 w-auto" />
@@ -118,23 +143,34 @@ export default function Landing() {
 
         {/* Hero content (Layer 4) */}
         <div className="relative z-10 flex-1 flex items-center justify-center px-6">
-          <div className="max-w-3xl text-center space-y-8">
-            <p className="text-xs md:text-sm tracking-[0.25em] uppercase text-white/50 font-medium">
+          <div className="max-w-4xl text-center space-y-10">
+            <p className="text-xs md:text-sm tracking-[0.3em] uppercase text-white/50 font-medium">
               Construction OS for Contractors and PMs
             </p>
 
-            <h1>
-              <span className="block text-4xl md:text-6xl lg:text-7xl font-medium leading-[1.1]">
+            <h1 className="space-y-2">
+              <span
+                className="block font-medium leading-[1.05]"
+                style={{ fontSize: "clamp(3.5rem, 7vw, 7rem)" }}
+              >
                 Run your jobs.
               </span>
-              <span className="block text-4xl md:text-6xl lg:text-7xl font-extrabold leading-[1.1]">
+              <span
+                className="block leading-[1.05]"
+                style={{ fontSize: "clamp(3.5rem, 7vw, 7rem)", fontWeight: 900 }}
+              >
                 Not your software.
               </span>
             </h1>
 
             <p
-              className="text-lg md:text-xl italic text-[#7ab648] font-medium"
-              style={{ transform: "rotate(-2deg)", display: "inline-block" }}
+              className="italic font-semibold text-[#7ab648]"
+              style={{
+                fontSize: "clamp(1.8rem, 3.5vw, 3.2rem)",
+                transform: "rotate(-3deg)",
+                display: "inline-block",
+                textShadow: "0 0 30px rgba(122,182,72,0.4)",
+              }}
             >
               Every task. Every trade. Every day.
             </p>
@@ -143,18 +179,35 @@ export default function Landing() {
               ProjectPath gives contractors and PMs a single command center for tasks, time, safety, and AI insights — so you can focus on building, not admin.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
-              <Button onClick={handleGetStarted} size="lg" className="bg-[#7ab648] hover:bg-[#6aa33d] text-white font-semibold h-14 px-8 text-lg rounded-2xl w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-5 pt-4">
+              <button
+                onClick={handleGetStarted}
+                className="text-white font-bold rounded-[14px] w-full sm:w-auto transition-all hover:brightness-110"
+                style={{
+                  background: "#7ab648",
+                  padding: "18px 40px",
+                  fontSize: "1.1rem",
+                  boxShadow: "0 0 24px rgba(122,182,72,0.3)",
+                }}
+              >
                 Start Free Trial
-              </Button>
-              <Button onClick={() => navigate("/how-it-works")} variant="outline" size="lg"
-                className="border-white/30 text-white hover:bg-white/5 h-14 px-8 text-lg rounded-2xl w-full sm:w-auto bg-transparent">
+              </button>
+              <button
+                onClick={() => navigate("/how-it-works")}
+                className="text-white rounded-[14px] w-full sm:w-auto transition-all hover:bg-white/5"
+                style={{
+                  border: "1.5px solid rgba(255,255,255,0.35)",
+                  background: "transparent",
+                  padding: "18px 40px",
+                  fontSize: "1.1rem",
+                }}
+              >
                 See how it works
-              </Button>
+              </button>
             </div>
 
-            <p className="text-sm text-white/30">
-              Used by contractors across Canada · No credit card required
+            <p className="text-white/50" style={{ fontSize: "0.9rem" }}>
+              Used by contractors across Canada&nbsp; · &nbsp;No credit card required
             </p>
           </div>
         </div>
@@ -314,8 +367,8 @@ export default function Landing() {
       {/* Keyframe animations */}
       <style>{`
         @keyframes ghostPulse {
-          0%, 100% { opacity: 0.07; }
-          50% { opacity: 0.11; }
+          0%, 100% { opacity: 0.09; }
+          50% { opacity: 0.13; }
         }
         @keyframes gridPan {
           0% { background-position: 0 0; }
