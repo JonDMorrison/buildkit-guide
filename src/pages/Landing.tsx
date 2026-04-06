@@ -49,40 +49,40 @@ export default function Landing() {
         </div>
 
         {/* Layer 3: perspective wireframe grid */}
-        <div className="absolute bottom-0 left-0 right-0 h-[60%] overflow-hidden" style={{ perspective: "800px" }}>
+        <div className="absolute top-[45%] bottom-0 left-0 right-0 overflow-hidden" style={{ perspective: "700px" }}>
           {/* Primary grid */}
           <div
             className="absolute inset-0"
             style={{
-              transform: "rotateX(68deg)",
+              transform: "rotateX(65deg) scale(1.3)",
               transformOrigin: "center bottom",
               backgroundImage:
-                "linear-gradient(rgba(122,182,72,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(122,182,72,0.4) 1px, transparent 1px)",
-              backgroundSize: "60px 60px",
-              maskImage: "linear-gradient(to bottom, transparent 0%, black 35%)",
-              WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 35%)",
-              animation: "gridPan 20s linear infinite",
+                "linear-gradient(rgba(100,190,60,0.55) 1px, transparent 1px), linear-gradient(90deg, rgba(100,190,60,0.55) 1px, transparent 1px)",
+              backgroundSize: "50px 50px",
+              maskImage: "linear-gradient(to bottom, transparent 0%, black 40%)",
+              WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 40%)",
+              animation: "gridScroll 3s linear infinite",
             }}
           />
           {/* Diamond cross-hatch overlay */}
           <div
             className="absolute inset-0"
             style={{
-              transform: "rotateX(68deg)",
+              transform: "rotateX(65deg) scale(1.3)",
               transformOrigin: "center bottom",
               backgroundImage:
-                "linear-gradient(45deg, rgba(122,182,72,0.08) 1px, transparent 1px), linear-gradient(-45deg, rgba(122,182,72,0.08) 1px, transparent 1px)",
-              backgroundSize: "60px 60px",
-              maskImage: "linear-gradient(to bottom, transparent 0%, black 35%)",
-              WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 35%)",
+                "linear-gradient(45deg, rgba(100,190,60,0.1) 1px, transparent 1px), linear-gradient(-45deg, rgba(100,190,60,0.1) 1px, transparent 1px)",
+              backgroundSize: "50px 50px",
+              maskImage: "linear-gradient(to bottom, transparent 0%, black 40%)",
+              WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 40%)",
             }}
           />
-          {/* Radial glow spots */}
+          {/* Bright focal glow at center bottom */}
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
               background:
-                "radial-gradient(circle at 35% 75%, rgba(100,200,60,0.25), transparent 40%), radial-gradient(circle at 65% 80%, rgba(80,180,40,0.15), transparent 35%)",
+                "radial-gradient(circle at 50% 90%, rgba(122,182,72,0.4), transparent 45%), radial-gradient(circle at 35% 75%, rgba(100,200,60,0.2), transparent 40%), radial-gradient(circle at 65% 80%, rgba(80,180,40,0.15), transparent 35%)",
             }}
           />
         </div>
@@ -370,9 +370,9 @@ export default function Landing() {
           0%, 100% { opacity: 0.09; }
           50% { opacity: 0.13; }
         }
-        @keyframes gridPan {
-          0% { background-position: 0 0; }
-          100% { background-position: 60px 60px; }
+        @keyframes gridScroll {
+          from { background-position: 0 0; }
+          to { background-position: 0 -50px; }
         }
       `}</style>
     </div>

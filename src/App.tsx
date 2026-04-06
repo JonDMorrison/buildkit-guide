@@ -146,14 +146,7 @@ const App = () => (
                     </ProtectedRoute>
                   }
                 />
-                <Route
-                  path="/"
-                  element={
-                    <PublicRoute>
-                      <Landing />
-                    </PublicRoute>
-                  }
-                />
+                <Route path="/" element={<Landing />} />
                 <Route
                   path="/how-it-works"
                   element={
