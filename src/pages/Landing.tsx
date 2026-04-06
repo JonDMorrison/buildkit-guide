@@ -2,14 +2,15 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import {
   Sun, Mic, ShieldAlert, BookOpen, Brain, FileText,
-  Quote,
+  Quote, MessageSquareX, TrendingDown, AlertTriangle,
+  Building2, ClipboardList, HardHat, Play, ChevronDown,
 } from "lucide-react";
 import { useState } from "react";
 import projectPathLogo from "@/assets/project-path-logo.png";
 
 export default function Landing() {
   const navigate = useNavigate();
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   const handleGetStarted = () => navigate("/auth?tab=signup");
   const handleLogin = () => navigate("/auth");
@@ -186,31 +187,104 @@ export default function Landing() {
       </section>
 
       {/* ════════════════════════════════════════════════════════════════ */}
-      {/* SECTION 1: THE PROBLEM                                         */}
+      {/* THE REAL COST                                                  */}
       {/* ════════════════════════════════════════════════════════════════ */}
       <section className="relative py-24 px-6 bg-[#070e1c]">
-        <div className="max-w-5xl mx-auto space-y-12">
-          <h2 className="text-2xl md:text-4xl font-bold text-center leading-tight">
-            Construction management is still done with<br className="hidden md:block" /> spreadsheets and group texts.
-          </h2>
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12 space-y-4">
+            <h2 className="text-2xl md:text-4xl font-bold leading-tight">
+              The cost of running jobs on group texts and spreadsheets.
+            </h2>
+            <p className="text-white/60 mx-auto leading-relaxed" style={{ fontSize: "1.1rem", maxWidth: "680px" }}>
+              Most contractors don't lose jobs on site. They lose them in the chaos between the office, the foreman, and the trades.
+            </p>
+          </div>
           <div className="grid md:grid-cols-3 gap-6">
             {[
               {
+                icon: MessageSquareX,
+                iconColor: "text-red-400/70",
                 title: "Tasks fall through the cracks",
-                desc: "No single place where the crew, the PM, and the owner all see the same thing.",
+                body: "A foreman gets a message at 7am. By 9am it's buried under 40 other texts. The task never gets done. Nobody knows until the GC shows up.",
               },
               {
-                title: "Nobody knows the real numbers",
-                desc: "Job cost, margin, and labor burn are always a week behind.",
+                icon: TrendingDown,
+                iconColor: "text-amber-400/70",
+                title: "You don't know your numbers until it's too late",
+                body: "Job cost, labor burn, and margin are always a week behind. By the time you see the overrun, you've already lost the money.",
               },
               {
-                title: "Safety and quality are reactive",
-                desc: "Deficiencies pile up. Safety forms get skipped. Problems surface too late.",
+                icon: AlertTriangle,
+                iconColor: "text-red-400/70",
+                title: "Safety and quality are always reactive",
+                body: "Deficiencies pile up. Safety forms get skipped on busy days. The punch list shows up at the end when fixing things costs 3x more.",
               },
-            ].map((pain, i) => (
-              <div key={i} className="border border-white/10 rounded-xl p-6 bg-white/[0.02] hover:bg-white/[0.04] transition-colors">
-                <h3 className="text-lg font-semibold mb-2">{pain.title}</h3>
-                <p className="text-sm text-white/50 leading-relaxed">{pain.desc}</p>
+            ].map((card, i) => (
+              <div key={i} className="bg-[#0a1628] rounded-xl border-l-[3px] border-l-[#4a8fd4]" style={{ padding: "28px" }}>
+                <card.icon className={`h-7 w-7 ${card.iconColor} mb-4`} />
+                <h3 className="text-base font-semibold mb-2">{card.title}</h3>
+                <p className="text-sm text-white/50 leading-relaxed">{card.body}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-center text-white/50 italic mt-12" style={{ fontSize: "1rem" }}>
+            ProjectPath was built to fix all three. Before they cost you.
+          </p>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════════════════════════════ */}
+      {/* PERSONA CARDS                                                  */}
+      {/* ════════════════════════════════════════════════════════════════ */}
+      <section className="relative py-24 px-6 bg-[#0a1628]">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12 space-y-3">
+            <h2 className="text-2xl md:text-4xl font-bold">Built for everyone on the job.</h2>
+            <p className="text-white/60 mx-auto" style={{ maxWidth: "560px" }}>
+              Whether you're running the business, managing the project, or working the site — ProjectPath works the way you do.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              {
+                icon: Building2,
+                badge: "GENERAL CONTRACTOR",
+                problem: "You're running 3 jobs and managing 12 subcontractors through a mix of calls, texts, and gut feel. You don't actually know where each job stands until something goes wrong.",
+                win: "One dashboard across all your projects. Real job cost, live task status, and AI that flags problems before you have to ask.",
+              },
+              {
+                icon: ClipboardList,
+                badge: "PROJECT MANAGER",
+                problem: "You're the hub for everything — the GC, the trades, the owner, the foreman. You spend half your day answering questions you've already answered.",
+                win: "Everyone sees the same information. Trades update their own tasks. You get automated reports to send the owner in one click.",
+              },
+              {
+                icon: HardHat,
+                badge: "SITE FOREMAN",
+                problem: "You're on site before 7am. You don't have time to type updates into a laptop. By the end of the day you've forgotten half of what happened.",
+                win: "Tap the mic, say what happened. ProjectPath logs it, creates the tasks, and sends the daily summary — while you're still on site.",
+              },
+            ].map((persona, i) => (
+              <div key={i} className="bg-[#060d18] rounded-xl border-t-[3px] border-t-[#4a8fd4] flex flex-col" style={{ padding: "32px" }}>
+                <persona.icon className="h-8 w-8 text-[#4a8fd4] mb-4" />
+                <span
+                  className="inline-block self-start rounded-full border mb-5"
+                  style={{
+                    background: "rgba(74,143,212,0.15)",
+                    color: "#4a8fd4",
+                    borderColor: "rgba(74,143,212,0.30)",
+                    padding: "4px 12px",
+                    fontSize: "0.7rem",
+                    letterSpacing: "0.1em",
+                    fontWeight: 600,
+                  }}
+                >
+                  {persona.badge}
+                </span>
+                <p className="text-white/40 uppercase text-[10px] tracking-[0.15em] font-medium mb-1">The challenge:</p>
+                <p className="text-sm text-white/60 leading-relaxed mb-5">{persona.problem}</p>
+                <p className="text-[#4a8fd4] uppercase text-[10px] tracking-[0.15em] font-medium mb-1 mt-auto">The ProjectPath win:</p>
+                <p className="text-sm text-white/70 leading-relaxed">{persona.win}</p>
               </div>
             ))}
           </div>
@@ -218,7 +292,7 @@ export default function Landing() {
       </section>
 
       {/* ════════════════════════════════════════════════════════════════ */}
-      {/* SECTION 2: THE SOLUTION                                        */}
+      {/* FEATURES (existing solution section)                           */}
       {/* ════════════════════════════════════════════════════════════════ */}
       <section className="relative py-24 px-6 bg-[#0a1628]">
         <div className="max-w-6xl mx-auto space-y-12">
@@ -248,7 +322,42 @@ export default function Landing() {
       </section>
 
       {/* ════════════════════════════════════════════════════════════════ */}
-      {/* SECTION 3: SOCIAL PROOF                                        */}
+      {/* VIDEO PLACEHOLDER                                              */}
+      {/* ════════════════════════════════════════════════════════════════ */}
+      <section className="relative py-24 px-6 bg-[#070e1c]">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12 space-y-3">
+            <h2 className="text-2xl md:text-4xl font-bold">See ProjectPath in action.</h2>
+            <p className="text-white/60">From morning briefing to daily log — see how a real job runs through ProjectPath.</p>
+          </div>
+          <div
+            className="mx-auto rounded-2xl border border-[#4a8fd4]/25 bg-[#0a1628] overflow-hidden cursor-pointer group"
+            style={{ maxWidth: "860px", boxShadow: "0 0 60px rgba(74,143,212,0.12)" }}
+            onClick={() => navigate("/get-started")}
+          >
+            <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <div className="relative">
+                  {/* Pulse ring */}
+                  <div
+                    className="absolute inset-0 rounded-full bg-[#4a8fd4]/30"
+                    style={{ animation: "playPulse 2s ease-out infinite" }}
+                  />
+                  <div className="relative h-20 w-20 rounded-full bg-[#4a8fd4] flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <Play className="h-8 w-8 text-white ml-1" />
+                  </div>
+                </div>
+                <p className="text-white/40 mt-4" style={{ fontSize: "0.85rem" }}>
+                  2-minute walkthrough · No signup required
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════════════════════════════ */}
+      {/* SOCIAL PROOF                                                   */}
       {/* ════════════════════════════════════════════════════════════════ */}
       <section className="relative py-24 px-6 bg-[#070e1c]">
         <div className="max-w-5xl mx-auto space-y-12">
@@ -287,7 +396,71 @@ export default function Landing() {
       </section>
 
       {/* ════════════════════════════════════════════════════════════════ */}
-      {/* SECTION 4: FINAL CTA                                           */}
+      {/* FAQ                                                            */}
+      {/* ════════════════════════════════════════════════════════════════ */}
+      <section className="relative py-24 px-6 bg-[#0a1628]">
+        <div className="mx-auto" style={{ maxWidth: "760px" }}>
+          <div className="text-center mb-12 space-y-3">
+            <h2 className="text-2xl md:text-4xl font-bold">Questions contractors actually ask.</h2>
+            <p className="text-white/60 mx-auto" style={{ maxWidth: "580px" }}>
+              We've talked to a lot of foremen, PMs, and GCs. Here's what comes up every time.
+            </p>
+          </div>
+          <div>
+            {[
+              {
+                q: "Will my crew actually use this?",
+                a: "Most field crews are skeptical of new software — and they should be. That's why we built voice commands. Your foreman taps a button, speaks naturally, and ProjectPath does the rest. No typing on a job site. Most crews are using it within the first week.",
+              },
+              {
+                q: "How long does setup actually take?",
+                a: "The core setup takes about 10 minutes: create your org, add your trades, create your first project. The AI calibration adds another 5. You can be running a real job on day one. Our onboarding wizard walks you through it step by step.",
+              },
+              {
+                q: "Does it work without internet on site?",
+                a: "The app requires a connection to sync data. Most job sites have LTE coverage. We're building offline mode for a future release. Anything logged on site syncs automatically when connectivity resumes.",
+              },
+              {
+                q: "We already use Procore or Buildertrend. Why switch?",
+                a: "Most enterprise tools are built for large GCs with dedicated admins and six-figure implementation budgets. ProjectPath is built for the contractor running 2–8 jobs without a full operations team. Faster to set up, easier to use on site, and AI built in from day one.",
+              },
+              {
+                q: "How is the AI actually useful on a construction site?",
+                a: "Every morning your team gets a briefing: what's due today, which blockers are unresolved, who's expected on site, and what safety concerns to watch for. Your foreman can speak to create tasks and log deficiencies. The system flags when a trade goes 30% over their hours before it becomes a problem.",
+              },
+              {
+                q: "What does it cost?",
+                a: "ProjectPath pricing is straightforward with no per-seat fees and no surprise add-ons. Book a demo and we'll walk you through the options that fit your operation.",
+              },
+              {
+                q: "Is our project data secure?",
+                a: "All data is encrypted in transit and at rest. We use enterprise-grade infrastructure with the same security standards used by thousands of enterprise applications. Your project data is never shared or used to train AI models.",
+              },
+            ].map((item, i) => (
+              <div key={i} className="border-b border-white/10 py-5">
+                <button
+                  className="w-full flex items-center justify-between text-left"
+                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                >
+                  <span className="text-sm font-medium text-white pr-4">{item.q}</span>
+                  <ChevronDown
+                    className="h-4 w-4 text-white/40 shrink-0 transition-transform duration-200"
+                    style={{ transform: openFaq === i ? "rotate(180deg)" : "rotate(0deg)" }}
+                  />
+                </button>
+                {openFaq === i && (
+                  <p className="text-white/65 leading-[1.7] pt-3 pb-1" style={{ fontSize: "0.95rem" }}>
+                    {item.a}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════════════════════════════ */}
+      {/* FINAL CTA                                                      */}
       {/* ════════════════════════════════════════════════════════════════ */}
       <section className="relative py-28 px-6 bg-[#050b16]">
         <div className="max-w-2xl mx-auto text-center space-y-6">
@@ -345,6 +518,10 @@ export default function Landing() {
         @keyframes gridScroll {
           from { background-position: 0 0; }
           to { background-position: 0 -50px; }
+        }
+        @keyframes playPulse {
+          0% { transform: scale(1); opacity: 1; }
+          100% { transform: scale(1.5); opacity: 0; }
         }
       `}</style>
     </div>
