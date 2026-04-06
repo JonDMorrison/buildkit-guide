@@ -41,23 +41,6 @@ export default function Landing() {
           }}
         />
 
-        {/* Layer 2: ghosted PROJECTPATH */}
-        <div
-          className="absolute top-[22%] left-1/2 -translate-x-1/2 select-none pointer-events-none whitespace-nowrap z-[2]"
-          style={{
-            fontSize: "clamp(6rem, 18vw, 16rem)",
-            fontWeight: 900,
-            letterSpacing: "0.05em",
-            opacity: 0.11,
-            color: "white",
-            textShadow:
-              "0 0 40px rgba(74,143,212,0.20), 0 0 80px rgba(74,143,212,0.12), 0 0 120px rgba(74,143,212,0.06)",
-            animation: "ghostPulse 4s ease-in-out infinite",
-          }}
-        >
-          PROJECTPATH
-        </div>
-
         {/* Layer 3: perspective wireframe grid */}
         <div className="absolute top-[45%] bottom-0 left-0 right-0 overflow-hidden z-[3]" style={{ perspective: "700px" }}>
           {/* Primary grid */}
@@ -511,10 +494,6 @@ export default function Landing() {
 
       {/* Keyframe animations */}
       <style>{`
-        @keyframes ghostPulse {
-          0%, 100% { opacity: 0.09; }
-          50% { opacity: 0.13; }
-        }
         @keyframes gridScroll {
           from { background-position: 0 0; }
           to { background-position: 0 -50px; }
