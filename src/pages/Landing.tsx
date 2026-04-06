@@ -17,7 +17,7 @@ export default function Landing() {
   const handleLogin = () => navigate("/auth");
 
   return (
-    <div className="min-h-screen bg-[#060c14] text-white overflow-x-hidden">
+    <div className="min-h-screen bg-[#060d18] text-white overflow-x-hidden">
       {/* ════════════════════════════════════════════════════════════════ */}
       {/* HERO                                                           */}
       {/* ════════════════════════════════════════════════════════════════ */}
@@ -27,7 +27,7 @@ export default function Landing() {
           className="absolute inset-0"
           style={{
             background:
-              "radial-gradient(ellipse at 50% 0%, rgba(122,182,72,0.08), transparent 50%), radial-gradient(ellipse at 20% 100%, rgba(122,182,72,0.05), transparent 40%), linear-gradient(170deg, #060c14 0%, #080f10 40%, #060c0a 100%)",
+              "radial-gradient(ellipse at 50% 0%, rgba(74,143,212,0.12), transparent 55%), radial-gradient(ellipse at 15% 100%, rgba(45,106,173,0.08), transparent 45%), linear-gradient(170deg, #060d18 0%, #080f1e 40%, #060d18 100%)",
           }}
         />
 
@@ -41,7 +41,7 @@ export default function Landing() {
             opacity: 0.11,
             color: "white",
             textShadow:
-              "0 0 40px rgba(255,255,255,0.15), 0 0 80px rgba(255,255,255,0.10), 0 0 120px rgba(255,255,255,0.06)",
+              "0 0 40px rgba(74,143,212,0.20), 0 0 80px rgba(74,143,212,0.12), 0 0 120px rgba(74,143,212,0.06)",
             animation: "ghostPulse 4s ease-in-out infinite",
           }}
         >
@@ -57,7 +57,7 @@ export default function Landing() {
               transform: "rotateX(65deg) scale(1.3)",
               transformOrigin: "center bottom",
               backgroundImage:
-                "linear-gradient(rgba(100,190,60,0.55) 1px, transparent 1px), linear-gradient(90deg, rgba(100,190,60,0.55) 1px, transparent 1px)",
+                "linear-gradient(rgba(74,143,212,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(74,143,212,0.4) 1px, transparent 1px)",
               backgroundSize: "50px 50px",
               maskImage: "linear-gradient(to bottom, transparent 0%, black 40%)",
               WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 40%)",
@@ -71,7 +71,7 @@ export default function Landing() {
               transform: "rotateX(65deg) scale(1.3)",
               transformOrigin: "center bottom",
               backgroundImage:
-                "linear-gradient(45deg, rgba(100,190,60,0.1) 1px, transparent 1px), linear-gradient(-45deg, rgba(100,190,60,0.1) 1px, transparent 1px)",
+                "linear-gradient(45deg, rgba(74,143,212,0.08) 1px, transparent 1px), linear-gradient(-45deg, rgba(74,143,212,0.08) 1px, transparent 1px)",
               backgroundSize: "50px 50px",
               maskImage: "linear-gradient(to bottom, transparent 0%, black 40%)",
               WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 40%)",
@@ -82,7 +82,7 @@ export default function Landing() {
             className="absolute inset-0 pointer-events-none"
             style={{
               background:
-                "radial-gradient(circle at 50% 90%, rgba(122,182,72,0.4), transparent 45%), radial-gradient(circle at 35% 75%, rgba(100,200,60,0.2), transparent 40%), radial-gradient(circle at 65% 80%, rgba(80,180,40,0.15), transparent 35%)",
+                "radial-gradient(circle at 50% 90%, rgba(74,143,212,0.35), transparent 45%), radial-gradient(circle at 35% 75%, rgba(74,143,212,0.3), transparent 40%), radial-gradient(circle at 65% 80%, rgba(45,106,173,0.2), transparent 35%)",
             }}
           />
         </div>
@@ -110,13 +110,13 @@ export default function Landing() {
               <button onClick={handleLogin} className="px-3 py-2 text-sm text-white/50 hover:text-white transition-colors">
                 Log In
               </button>
-              <Button onClick={handleGetStarted} className="bg-[#7ab648] hover:bg-[#6aa33d] text-white font-semibold h-10 px-5 rounded-2xl">
+              <Button onClick={handleGetStarted} className="bg-[#4a8fd4] hover:bg-[#3a7fc4] text-white font-semibold h-10 px-5 rounded-2xl">
                 Start Free Trial
               </Button>
             </div>
             {/* Mobile */}
             <div className="flex md:hidden items-center gap-2">
-              <Button onClick={handleGetStarted} size="sm" className="bg-[#7ab648] hover:bg-[#6aa33d] text-white rounded-2xl">
+              <Button onClick={handleGetStarted} size="sm" className="bg-[#4a8fd4] hover:bg-[#3a7fc4] text-white rounded-2xl">
                 Start Free
               </Button>
               <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
@@ -133,7 +133,7 @@ export default function Landing() {
                         className="text-left py-2 text-base font-medium">{label}</button>
                     ))}
                     <button onClick={() => { handleLogin(); setMobileMenuOpen(false); }} className="text-left py-2 text-base">Sign In</button>
-                    <Button onClick={() => { handleGetStarted(); setMobileMenuOpen(false); }} className="bg-[#7ab648] text-white mt-4 w-full">Get Started Free</Button>
+                    <Button onClick={() => { handleGetStarted(); setMobileMenuOpen(false); }} className="bg-[#4a8fd4] text-white mt-4 w-full">Get Started Free</Button>
                   </nav>
                 </SheetContent>
               </Sheet>
@@ -164,12 +164,12 @@ export default function Landing() {
             </h1>
 
             <p
-              className="italic font-semibold text-[#7ab648]"
+              className="italic font-semibold text-[#7ab8f5]"
               style={{
                 fontSize: "clamp(1.8rem, 3.5vw, 3.2rem)",
                 transform: "rotate(-3deg)",
                 display: "inline-block",
-                textShadow: "0 0 30px rgba(122,182,72,0.4)",
+                textShadow: "0 0 30px rgba(74,143,212,0.4)",
               }}
             >
               Every task. Every trade. Every day.
@@ -184,10 +184,10 @@ export default function Landing() {
                 onClick={handleGetStarted}
                 className="text-white font-bold rounded-[14px] w-full sm:w-auto transition-all hover:brightness-110"
                 style={{
-                  background: "#7ab648",
+                  background: "#4a8fd4",
                   padding: "18px 40px",
                   fontSize: "1.1rem",
-                  boxShadow: "0 0 24px rgba(122,182,72,0.3)",
+                  boxShadow: "0 0 24px rgba(74,143,212,0.3)",
                 }}
               >
                 Start Free Trial
@@ -196,8 +196,8 @@ export default function Landing() {
                 onClick={() => navigate("/how-it-works")}
                 className="text-white rounded-[14px] w-full sm:w-auto transition-all hover:bg-white/5"
                 style={{
-                  border: "1.5px solid rgba(255,255,255,0.35)",
-                  background: "transparent",
+                  border: "1.5px solid rgba(255,255,255,0.30)",
+                  background: "rgba(255,255,255,0.06)",
                   padding: "18px 40px",
                   fontSize: "1.1rem",
                 }}
@@ -216,7 +216,7 @@ export default function Landing() {
       {/* ════════════════════════════════════════════════════════════════ */}
       {/* SECTION 1: THE PROBLEM                                         */}
       {/* ════════════════════════════════════════════════════════════════ */}
-      <section className="relative py-24 px-6 bg-[#080e16]">
+      <section className="relative py-24 px-6 bg-[#070e1c]">
         <div className="max-w-5xl mx-auto space-y-12">
           <h2 className="text-2xl md:text-4xl font-bold text-center leading-tight">
             Construction management is still done with<br className="hidden md:block" /> spreadsheets and group texts.
@@ -248,7 +248,7 @@ export default function Landing() {
       {/* ════════════════════════════════════════════════════════════════ */}
       {/* SECTION 2: THE SOLUTION                                        */}
       {/* ════════════════════════════════════════════════════════════════ */}
-      <section className="relative py-24 px-6 bg-[#0a1119]">
+      <section className="relative py-24 px-6 bg-[#0a1628]">
         <div className="max-w-6xl mx-auto space-y-12">
           <div className="text-center space-y-3">
             <h2 className="text-2xl md:text-4xl font-bold">One platform. Everything connected.</h2>
@@ -265,8 +265,8 @@ export default function Landing() {
               { icon: Brain, title: "Org Intelligence", desc: "Learn which trades run over, which job types are risky, and where your margin leaks — across all your projects." },
               { icon: FileText, title: "Client Reports", desc: "Generate professional weekly reports for owners and GCs in one click. Export as PDF." },
             ].map((feat, i) => (
-              <div key={i} className="border border-white/10 rounded-xl p-6 bg-white/[0.02] hover:border-[#7ab648]/30 transition-colors group">
-                <feat.icon className="h-8 w-8 text-[#7ab648] mb-4 group-hover:scale-110 transition-transform" />
+              <div key={i} className="border border-white/10 rounded-xl p-6 bg-white/[0.02] hover:border-[#4a8fd4]/40 transition-colors group">
+                <feat.icon className="h-8 w-8 text-[#4a8fd4] mb-4 group-hover:scale-110 transition-transform" />
                 <h3 className="text-base font-semibold mb-2">{feat.title}</h3>
                 <p className="text-sm text-white/50 leading-relaxed">{feat.desc}</p>
               </div>
@@ -278,7 +278,7 @@ export default function Landing() {
       {/* ════════════════════════════════════════════════════════════════ */}
       {/* SECTION 3: SOCIAL PROOF                                        */}
       {/* ════════════════════════════════════════════════════════════════ */}
-      <section className="relative py-24 px-6 bg-[#080e16]">
+      <section className="relative py-24 px-6 bg-[#070e1c]">
         <div className="max-w-5xl mx-auto space-y-12">
           <h2 className="text-2xl md:text-4xl font-bold text-center">
             Built for the job site. Tested in the field.
@@ -302,7 +302,7 @@ export default function Landing() {
               },
             ].map((testimonial, i) => (
               <div key={i} className="border border-white/10 rounded-xl p-6 bg-white/[0.02] space-y-4">
-                <Quote className="h-6 w-6 text-[#7ab648]/50" />
+                <Quote className="h-6 w-6 text-[#4a8fd4]/40" />
                 <p className="text-sm text-white/70 leading-relaxed italic">"{testimonial.quote}"</p>
                 <div>
                   <p className="text-sm font-semibold">{testimonial.name}</p>
@@ -317,14 +317,14 @@ export default function Landing() {
       {/* ════════════════════════════════════════════════════════════════ */}
       {/* SECTION 4: FINAL CTA                                           */}
       {/* ════════════════════════════════════════════════════════════════ */}
-      <section className="relative py-28 px-6 bg-[#050a10]">
+      <section className="relative py-28 px-6 bg-[#050b16]">
         <div className="max-w-2xl mx-auto text-center space-y-6">
           <h2 className="text-2xl md:text-4xl font-bold">Your job site deserves better tools.</h2>
           <p className="text-base text-white/50">
             Start your free trial. Setup takes 10 minutes.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
-            <Button onClick={handleGetStarted} size="lg" className="bg-[#7ab648] hover:bg-[#6aa33d] text-white font-semibold h-14 px-8 text-lg rounded-2xl w-full sm:w-auto">
+            <Button onClick={handleGetStarted} size="lg" className="bg-[#4a8fd4] hover:bg-[#3a7fc4] text-white font-semibold h-14 px-8 text-lg rounded-2xl w-full sm:w-auto">
               Start Free Trial
             </Button>
             <Button onClick={() => navigate("/get-started")} variant="outline" size="lg"
@@ -341,7 +341,7 @@ export default function Landing() {
       {/* ════════════════════════════════════════════════════════════════ */}
       {/* FOOTER                                                         */}
       {/* ════════════════════════════════════════════════════════════════ */}
-      <footer className="border-t border-white/[0.06] py-10 px-6 bg-[#050a10]">
+      <footer className="border-t border-white/[0.06] py-10 px-6 bg-[#050b16]">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center cursor-pointer" onClick={() => navigate("/")}>
             <img src={projectPathLogo} alt="ProjectPath" className="h-8 w-auto opacity-60" />
