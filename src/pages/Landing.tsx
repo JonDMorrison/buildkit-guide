@@ -2,16 +2,14 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import {
   Sun, Mic, ShieldAlert, BookOpen, Brain, FileText,
-  ChevronDown, ChevronUp, Menu, Quote,
+  Quote,
 } from "lucide-react";
 import { useState } from "react";
 import projectPathLogo from "@/assets/project-path-logo.png";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 export default function Landing() {
   const navigate = useNavigate();
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleGetStarted = () => navigate("/auth?tab=signup");
   const handleLogin = () => navigate("/auth");
@@ -31,9 +29,20 @@ export default function Landing() {
           }}
         />
 
+        {/* Layer 1.5: construction site photo */}
+        <div
+          className="absolute inset-0 z-[1]"
+          style={{
+            backgroundImage:
+              "linear-gradient(to bottom, rgba(6,13,24,0.85) 0%, rgba(6,13,24,0.70) 50%, rgba(6,13,24,0.92) 100%), url('https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=1920&q=80&auto=format&fit=crop')",
+            backgroundSize: "cover",
+            backgroundPosition: "center 40%",
+          }}
+        />
+
         {/* Layer 2: ghosted PROJECTPATH */}
         <div
-          className="absolute top-[22%] left-1/2 -translate-x-1/2 select-none pointer-events-none whitespace-nowrap"
+          className="absolute top-[22%] left-1/2 -translate-x-1/2 select-none pointer-events-none whitespace-nowrap z-[2]"
           style={{
             fontSize: "clamp(6rem, 18vw, 16rem)",
             fontWeight: 900,
@@ -49,7 +58,7 @@ export default function Landing() {
         </div>
 
         {/* Layer 3: perspective wireframe grid */}
-        <div className="absolute top-[45%] bottom-0 left-0 right-0 overflow-hidden" style={{ perspective: "700px" }}>
+        <div className="absolute top-[45%] bottom-0 left-0 right-0 overflow-hidden z-[3]" style={{ perspective: "700px" }}>
           {/* Primary grid */}
           <div
             className="absolute inset-0"
@@ -93,20 +102,7 @@ export default function Landing() {
             <div className="flex items-center cursor-pointer" onClick={() => navigate("/")}>
               <img src={projectPathLogo} alt="ProjectPath" className="h-9 w-auto" />
             </div>
-            <div className="hidden md:flex items-center gap-3">
-              {[
-                { label: "How It Works", path: "/how-it-works" },
-                { label: "Features", path: "/features" },
-                { label: "Safety & Security", path: "/safety-security" },
-              ].map((item) => (
-                <button
-                  key={item.path}
-                  onClick={() => navigate(item.path)}
-                  className="px-3 py-2 text-sm text-white/70 hover:text-white transition-colors"
-                >
-                  {item.label}
-                </button>
-              ))}
+            <div className="flex items-center gap-3">
               <button onClick={handleLogin} className="px-3 py-2 text-sm text-white/50 hover:text-white transition-colors">
                 Log In
               </button>
@@ -114,57 +110,33 @@ export default function Landing() {
                 Start Free Trial
               </Button>
             </div>
-            {/* Mobile */}
-            <div className="flex md:hidden items-center gap-2">
-              <Button onClick={handleGetStarted} size="sm" className="bg-[#4a8fd4] hover:bg-[#3a7fc4] text-white rounded-2xl">
-                Start Free
-              </Button>
-              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-                <SheetTrigger asChild>
-                  <button className="p-2 text-white/70 hover:text-white"><Menu className="h-6 w-6" /></button>
-                </SheetTrigger>
-                <SheetContent side="right" className="w-[280px]">
-                  <SheetHeader className="text-left mb-6">
-                    <SheetTitle><img src={projectPathLogo} alt="ProjectPath" className="h-10 w-auto" /></SheetTitle>
-                  </SheetHeader>
-                  <nav className="flex flex-col gap-3">
-                    {["How It Works", "Features", "Safety & Security"].map((label) => (
-                      <button key={label} onClick={() => { navigate(`/${label.toLowerCase().replace(/ & /g, "-").replace(/ /g, "-")}`); setMobileMenuOpen(false); }}
-                        className="text-left py-2 text-base font-medium">{label}</button>
-                    ))}
-                    <button onClick={() => { handleLogin(); setMobileMenuOpen(false); }} className="text-left py-2 text-base">Sign In</button>
-                    <Button onClick={() => { handleGetStarted(); setMobileMenuOpen(false); }} className="bg-[#4a8fd4] text-white mt-4 w-full">Get Started Free</Button>
-                  </nav>
-                </SheetContent>
-              </Sheet>
-            </div>
           </div>
         </nav>
 
         {/* Hero content (Layer 4) */}
-        <div className="relative z-10 flex-1 flex items-center justify-center px-6">
-          <div className="max-w-4xl text-center space-y-10">
-            <p className="text-xs md:text-sm tracking-[0.3em] uppercase text-white/50 font-medium">
-              Construction OS for Contractors and PMs
+        <div className="relative z-10 flex-1 flex items-center justify-center px-6" style={{ paddingTop: "10vh" }}>
+          <div className="max-w-4xl text-center">
+            <p className="text-white/50 tracking-[0.2em] uppercase font-medium mb-3" style={{ fontSize: "0.85rem" }}>
+              Trusted by contractors across Canada
             </p>
 
-            <h1 className="space-y-2">
+            <h1 className="space-y-1 mb-8">
               <span
-                className="block font-medium leading-[1.05]"
-                style={{ fontSize: "clamp(3.5rem, 7vw, 7rem)" }}
+                className="block font-normal leading-[1.08]"
+                style={{ fontSize: "clamp(2.8rem, 5.5vw, 5.5rem)" }}
               >
-                Run your jobs.
+                Your entire job site,
               </span>
               <span
-                className="block leading-[1.05]"
-                style={{ fontSize: "clamp(3.5rem, 7vw, 7rem)", fontWeight: 900 }}
+                className="block leading-[1.08]"
+                style={{ fontSize: "clamp(2.8rem, 5.5vw, 5.5rem)", fontWeight: 900 }}
               >
-                Not your software.
+                in one command center.
               </span>
             </h1>
 
             <p
-              className="italic font-semibold text-[#7ab8f5]"
+              className="italic font-semibold text-[#7ab8f5] mb-8"
               style={{
                 fontSize: "clamp(1.8rem, 3.5vw, 3.2rem)",
                 transform: "rotate(-3deg)",
@@ -172,14 +144,14 @@ export default function Landing() {
                 textShadow: "0 0 30px rgba(74,143,212,0.4)",
               }}
             >
-              Every task. Every trade. Every day.
+              Tasks. Trades. Time. All connected.
             </p>
 
-            <p className="text-base md:text-lg text-white/60 max-w-2xl mx-auto leading-relaxed">
-              ProjectPath gives contractors and PMs a single command center for tasks, time, safety, and AI insights — so you can focus on building, not admin.
+            <p className="text-white/65 mx-auto leading-[1.6] mb-10" style={{ fontSize: "1.1rem", maxWidth: "600px" }}>
+              ProjectPath replaces the group texts, scattered spreadsheets, and missed handoffs with a single AI-powered platform built for how construction actually works.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-5 pt-4">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-5">
               <button
                 onClick={handleGetStarted}
                 className="text-white font-bold rounded-[14px] w-full sm:w-auto transition-all hover:brightness-110"
@@ -190,11 +162,11 @@ export default function Landing() {
                   boxShadow: "0 0 24px rgba(74,143,212,0.3)",
                 }}
               >
-                Start Free Trial
+                Start Free Trial — Free for 14 Days
               </button>
               <button
                 onClick={() => navigate("/how-it-works")}
-                className="text-white rounded-[14px] w-full sm:w-auto transition-all hover:bg-white/5"
+                className="text-white rounded-[14px] w-full sm:w-auto transition-all hover:bg-white/8"
                 style={{
                   border: "1.5px solid rgba(255,255,255,0.30)",
                   background: "rgba(255,255,255,0.06)",
@@ -202,12 +174,12 @@ export default function Landing() {
                   fontSize: "1.1rem",
                 }}
               >
-                See how it works
+                Watch 2-min Demo
               </button>
             </div>
 
-            <p className="text-white/50" style={{ fontSize: "0.9rem" }}>
-              Used by contractors across Canada&nbsp; · &nbsp;No credit card required
+            <p className="text-white/45 mt-8" style={{ fontSize: "0.85rem" }}>
+              No credit card required&nbsp; · &nbsp;Setup in 10 minutes&nbsp; · &nbsp;Cancel anytime
             </p>
           </div>
         </div>
