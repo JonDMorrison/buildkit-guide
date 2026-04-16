@@ -113,12 +113,23 @@ const PageLoader = () => (
   </div>
 );
 
-// Preload critical routes during idle time
+// Preload critical routes during idle time so route transitions do not
+// blank-screen-flash the Suspense fallback. Covers the most commonly
+// navigated pages in the construction-app context. First visit to any
+// of these still performs the fetch (on idle), every subsequent nav
+// resolves from the cached chunk.
 if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
   requestIdleCallback(() => {
+    import('./pages/Dashboard');
     import('./pages/Tasks');
     import('./pages/Safety');
-    import('./pages/Dashboard');
+    import('./pages/Index');          // /projects
+    import('./pages/DailyLogs');      // /daily-logs
+    import('./pages/Deficiencies');   // /deficiencies
+    import('./pages/Manpower');       // /manpower
+    import('./pages/Documents');      // /documents
+    import('./pages/Financials');     // /financials
+    import('./pages/UserManagement'); // /users
   });
 }
 
