@@ -131,3 +131,12 @@ verify_jwt = false
 
 [functions.seed-margin-test-project]
 verify_jwt = true
+
+[functions.org-intelligence]
+verify_jwt = false
+
+[functions.detect-alerts]
+verify_jwt = false
+
+[functions.morning-briefing]
+verify_jwt = false
