@@ -11,6 +11,7 @@ import projectPathLogo from "@/assets/project-path-logo.png";
 export default function Landing() {
   const navigate = useNavigate();
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [videoPlaying, setVideoPlaying] = useState(false);
 
   const handleGetStarted = () => navigate("/auth?tab=signup");
   const handleLogin = () => navigate("/auth");
@@ -314,26 +315,39 @@ export default function Landing() {
             <p className="text-white/60">From morning briefing to daily log — see how a real job runs through ProjectPath.</p>
           </div>
           <div
-            className="mx-auto rounded-2xl border border-[#4a8fd4]/25 bg-[#0a1628] overflow-hidden cursor-pointer group"
+            className={`mx-auto rounded-2xl border border-[#4a8fd4]/25 bg-[#0a1628] overflow-hidden group ${
+              videoPlaying ? "" : "cursor-pointer"
+            }`}
             style={{ maxWidth: "860px", boxShadow: "0 0 60px rgba(74,143,212,0.12)" }}
-            onClick={() => navigate("/get-started")}
+            onClick={videoPlaying ? undefined : () => setVideoPlaying(true)}
           >
             <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <div className="relative">
-                  {/* Pulse ring */}
-                  <div
-                    className="absolute inset-0 rounded-full bg-[#4a8fd4]/30"
-                    style={{ animation: "playPulse 2s ease-out infinite" }}
-                  />
-                  <div className="relative h-20 w-20 rounded-full bg-[#4a8fd4] flex items-center justify-center group-hover:scale-105 transition-transform">
-                    <Play className="h-8 w-8 text-white ml-1" />
+              {videoPlaying ? (
+                <iframe
+                  src="https://player.vimeo.com/video/1159202838?badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1"
+                  className="absolute inset-0 w-full h-full"
+                  frameBorder="0"
+                  allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
+                  allowFullScreen
+                  title="Project Path Demo Video"
+                />
+              ) : (
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <div className="relative">
+                    {/* Pulse ring */}
+                    <div
+                      className="absolute inset-0 rounded-full bg-[#4a8fd4]/30"
+                      style={{ animation: "playPulse 2s ease-out infinite" }}
+                    />
+                    <div className="relative h-20 w-20 rounded-full bg-[#4a8fd4] flex items-center justify-center group-hover:scale-105 transition-transform">
+                      <Play className="h-8 w-8 text-white ml-1" />
+                    </div>
                   </div>
+                  <p className="text-white/40 mt-4" style={{ fontSize: "0.85rem" }}>
+                    2-minute walkthrough · No signup required
+                  </p>
                 </div>
-                <p className="text-white/40 mt-4" style={{ fontSize: "0.85rem" }}>
-                  2-minute walkthrough · No signup required
-                </p>
-              </div>
+              )}
             </div>
           </div>
         </div>
