@@ -7,8 +7,10 @@ const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'https://projectpath.app';
 const E2E_EMAIL = process.env.E2E_EMAIL || '';
 const E2E_PASSWORD = process.env.E2E_PASSWORD || '';
 
-const timestamp = Date.now();
-const signupEmail = `e2e+${timestamp}@mailinator.com`;
+// NOTE: timestamp is generated INSIDE each test body rather than at module
+// scope so Playwright retries get a fresh value. A module-level timestamp
+// would be reused across retries, causing the second run to fail with
+// "already registered" / unique-key collisions on org/project names.
 const signupPassword = 'TestPass123!';
 
 async function signIn(page: Page, email: string, password: string) {
@@ -36,6 +38,9 @@ test.describe('Core User Flows', () => {
   // TEST 1: Sign up with company name (independent)
   // ──────────────────────────────────────────────────────────────────
   test('1. Sign up with company name', async ({ page }) => {
+    const timestamp = Date.now();
+    const signupEmail = `e2e+${timestamp}@mailinator.com`;
+
     await page.goto(`${BASE_URL}/auth`);
 
     await page.getByRole('tab', { name: 'Sign Up' }).click();
@@ -104,6 +109,8 @@ test.describe('Core User Flows', () => {
     if (!E2E_EMAIL) {
       test.skip(true, 'Set E2E_EMAIL and E2E_PASSWORD env vars to run authenticated tests');
     }
+
+    const timestamp = Date.now();
 
     await page.goto(`${BASE_URL}/auth`);
     await page.getByRole('tab', { name: 'Sign In' }).click().catch(() => {});
@@ -181,7 +188,7 @@ test.describe('Core User Flows', () => {
     await page.goto(`${BASE_URL}/projects`);
     await page.waitForLoadState('networkidle');
 
-    const testProjectName = `E2E Project ${timestamp}`;
+    const testProjectName = `E2E Project ${Date.now()}`;
 
     // The "Add Project" button only shows for admin/PM roles (canCreateProjects gate).
     await expect(page.getByRole('heading', { name: /^projects$/i })).toBeVisible({ timeout: 10000 });
