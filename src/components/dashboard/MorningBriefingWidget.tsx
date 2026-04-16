@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { useNavigate } from "react-router-dom";
 import { DashboardCard } from "@/components/dashboard/shared/DashboardCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,13 +9,32 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Sun, RefreshCw, AlertTriangle, HardHat, Users } from "lucide-react";
+import { Sun, RefreshCw, Check, ChevronRight, HardHat, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   useMorningBriefing,
   type BriefingSection,
 } from "@/hooks/useMorningBriefing";
 import { format } from "date-fns";
+
+// Split a free-form watch_out_for string into individual items.
+// Backend returns one paragraph; we break on newlines and sentence ends.
+const splitWatchOutItems = (text: string): string[] =>
+  text
+    .split(/(?:\r?\n|(?<=[.!?])\s+)/g)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+// Resolve a keyword -> route mapping for a watch-out item.
+const routeForItem = (text: string): string => {
+  const t = text.toLowerCase();
+  if (/\b(crew|manpower|labor|staffing|personnel)\b/.test(t)) return "/manpower";
+  if (/\b(safety|hazard|ppe|incident|injury)\b/.test(t)) return "/safety";
+  if (/\b(blocker|deficien|punch|flag)\b/.test(t)) return "/deficiencies";
+  if (/\b(schedule|task|delay|overdue|behind)\b/.test(t)) return "/tasks";
+  if (/daily log|site log/.test(t)) return "/daily-logs";
+  return "/projects";
+};
 
 interface MorningBriefingWidgetProps {
   projectId: string | null;
@@ -41,8 +61,13 @@ const priorityStyles: Record<string, { border: string; badge: string; label: str
 export const MorningBriefingWidget = memo(function MorningBriefingWidget({
   projectId,
 }: MorningBriefingWidgetProps) {
+  const navigate = useNavigate();
   const { data: briefing, isLoading, isError, refetch, isFetching } =
     useMorningBriefing(projectId);
+
+  const watchItems = briefing?.watch_out_for
+    ? splitWatchOutItems(briefing.watch_out_for)
+    : [];
 
   if (!projectId) {
     return (
@@ -134,17 +159,37 @@ export const MorningBriefingWidget = memo(function MorningBriefingWidget({
           )}
 
           {/* Watch out for */}
-          {briefing.watch_out_for && (
-            <div className="flex items-start gap-2 p-2.5 rounded-md bg-amber-500/10 border border-amber-500/20">
-              <AlertTriangle className="h-3.5 w-3.5 text-amber-600 mt-0.5 shrink-0" />
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-700 mb-0.5">
-                  Watch out for
-                </p>
-                <p className="text-xs text-amber-900/80">{briefing.watch_out_for}</p>
+          <div className="rounded-md border border-border bg-muted/30 p-2.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+              Watch out for
+            </p>
+            {watchItems.length > 0 ? (
+              <ul className="space-y-0.5">
+                {watchItems.map((item, i) => (
+                  <li key={i}>
+                    <button
+                      type="button"
+                      onClick={() => navigate(routeForItem(item))}
+                      className="group w-full flex items-start gap-2 px-2 py-1.5 rounded text-left text-xs text-foreground hover:bg-muted/50 cursor-pointer transition-colors"
+                    >
+                      <span className="text-muted-foreground/60 shrink-0 mt-0.5">
+                        &bull;
+                      </span>
+                      <span className="flex-1">{item}</span>
+                      <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 shrink-0 mt-0.5 transition-opacity" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="flex items-center gap-2 px-2 py-1.5">
+                <Check className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <span className="text-xs text-muted-foreground">
+                  Nothing flagged.
+                </span>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Crew + Safety footer */}
           <div className="grid grid-cols-2 gap-2">
