@@ -21,8 +21,8 @@ export function useSmartChecklist(contextOverride?: ChecklistContext) {
 
   const currentContext = contextOverride || detectContextFromRoute(location.pathname);
 
-  const visibleItems = useMemo(() => {
-    if (isLoading) return [];
+  const { tier1Items, tier2Items } = useMemo(() => {
+    if (isLoading) return { tier1Items: [], tier2Items: [] };
 
     const relevant = SETUP_STEPS.filter((item) => {
       if (progress[item.key] === true) return false;
@@ -32,8 +32,18 @@ export function useSmartChecklist(contextOverride?: ChecklistContext) {
       return false;
     });
 
-    return relevant.slice(0, 5);
+    return {
+      tier1Items: relevant.filter((i) => i.tier === 1),
+      tier2Items: relevant.filter((i) => i.tier === 2),
+    };
   }, [progress, isLoading, currentContext]);
+
+  // Backwards-compatible combined list (tier 1 first, then tier 2 if expanded).
+  // Kept so any external consumers that still use `items` don't break.
+  const visibleItems = useMemo(
+    () => [...tier1Items, ...tier2Items],
+    [tier1Items, tier2Items]
+  );
 
   const completedCount = useMemo(() => {
     return SETUP_STEP_KEYS.filter((key) => progress[key] === true).length;
@@ -41,6 +51,8 @@ export function useSmartChecklist(contextOverride?: ChecklistContext) {
 
   return {
     items: visibleItems,
+    tier1Items,
+    tier2Items,
     completedCount,
     totalCount: SETUP_STEP_KEYS.length,
     isLoading,

@@ -26,6 +26,11 @@ export interface SetupStepDefinition {
   actionLabel?: string;
   /** Which checklist contexts this step is visible in */
   visibleIn: ChecklistContext[];
+  /**
+   * 1 = Tier 1 (always visible in the Next Steps card).
+   * 2 = Tier 2 (hidden behind "Show more setup options" toggle).
+   */
+  tier: 1 | 2;
 }
 
 /**
@@ -33,105 +38,33 @@ export interface SetupStepDefinition {
  * Order here determines display order in the UI.
  */
 export const SETUP_STEPS: readonly SetupStepDefinition[] = [
-  // Team / Dashboard
+  // ── Tier 1 — always visible on the dashboard checklist ──────────────────
   {
     key: 'step_first_invite',
     label: 'Invite a Team Member',
     description: 'Add your first team member to collaborate on projects',
     timeEstimate: '~2 min',
     actionLabel: 'Invite',
-    visibleIn: ['dashboard'],
+    visibleIn: ['dashboard', 'all'],
+    tier: 1,
+  },
+  {
+    key: 'step_first_project',
+    label: 'Create your first project',
+    description: 'Set up a project so you can start managing work',
+    timeEstimate: '~2 min',
+    actionLabel: 'Create Project',
+    visibleIn: ['dashboard', 'all'],
+    tier: 1,
   },
   {
     key: 'step_users_assigned',
-    label: 'Assign Someone to Your Project',
+    label: 'Assign someone to your project',
     description: 'Give team members access to specific projects',
     timeEstimate: '~2 min',
     actionLabel: 'Manage Users',
-    visibleIn: ['dashboard'],
-  },
-  // Time Tracking
-  {
-    key: 'step_time_tracking_enabled',
-    label: 'Enable Time Tracking',
-    description: 'Turn on time tracking for your organization',
-    timeEstimate: '~1 min',
-    actionLabel: 'Enable',
-    visibleIn: ['time-tracking'],
-  },
-  {
-    key: 'step_labor_rates',
-    label: 'Set Labor Cost Rates',
-    description: 'Set hourly cost rates so job costing works correctly',
-    timeEstimate: '~3 min',
-    actionLabel: 'Go to Labor Rates',
-    helpText: 'Each field worker needs a cost rate for accurate job costing.',
-    visibleIn: ['time-tracking', 'financial'],
-  },
-  // Safety — acknowledgement steps (no auto-detector; user confirms review)
-  {
-    key: 'step_ppe_reviewed',
-    label: 'Review PPE Requirements',
-    description: "Confirm you've reviewed PPE checklists for each trade",
-    timeEstimate: '~5 min',
-    actionLabel: "I've Reviewed This",
-    helpText: 'Review your PPE requirements outside the app, then confirm here.',
-    visibleIn: ['safety'],
-  },
-  {
-    key: 'step_hazard_library',
-    label: 'Configure Hazard Library',
-    description: "Confirm you've set up common hazards for safety forms",
-    timeEstimate: '~5 min',
-    actionLabel: "I've Configured This",
-    helpText: 'Configure hazards in your safety workflow, then confirm here.',
-    visibleIn: ['safety'],
-  },
-  // Invoicing
-  {
-    key: 'step_invoice_permissions',
-    label: 'Configure Invoice Permissions',
-    description: 'Decide who can send invoices and whether approval is required',
-    timeEstimate: '~2 min',
-    actionLabel: 'Go to Invoicing',
-    helpText: 'Admin-only step. Configure in the Invoicing settings tab.',
-    visibleIn: ['invoicing'],
-  },
-  // Financial / Dashboard
-  {
-    key: 'step_trades_configured',
-    label: 'Configure Trades',
-    description: 'Set up the trades/subcontractors working on your projects',
-    timeEstimate: '~5 min',
-    actionLabel: 'Manage Trades',
-    helpText: 'Add at least 3 trades to complete this step.',
-    visibleIn: ['financial', 'dashboard'],
-  },
-  // Company
-  {
-    key: 'step_company_profile',
-    label: 'Complete Your Company Profile',
-    description: 'Add your business type, service area, and project size range',
-    timeEstimate: '~3 min',
-    actionLabel: 'Complete Profile',
     visibleIn: ['dashboard', 'all'],
-  },
-  {
-    key: 'step_ai_calibrated',
-    label: 'Calibrate Your AI',
-    description: 'Answer 4 questions so your AI understands your business',
-    timeEstimate: '~3 min',
-    actionLabel: 'Calibrate',
-    visibleIn: ['dashboard', 'all'],
-  },
-  // Operations
-  {
-    key: 'step_playbook_generated',
-    label: 'Generate Your First Playbook',
-    description: 'Let the AI build a reusable job template from your most common job type',
-    timeEstimate: '~2 min',
-    actionLabel: 'Go to Playbooks',
-    visibleIn: ['dashboard', 'all'],
+    tier: 1,
   },
   {
     key: 'step_morning_briefing_reviewed',
@@ -141,6 +74,105 @@ export const SETUP_STEPS: readonly SetupStepDefinition[] = [
     actionLabel: "I've Seen It",
     helpText: 'Check the Morning Briefing widget on your Dashboard, then confirm here.',
     visibleIn: ['dashboard', 'all'],
+    tier: 1,
+  },
+  {
+    // Reuses the existing step_first_job_site column. Label is
+    // user-facing-reframed as "daily site log" per product spec.
+    key: 'step_first_job_site',
+    label: 'Submit a daily site log',
+    description: 'Log your first daily update so the morning briefing has something to summarize',
+    timeEstimate: '~3 min',
+    actionLabel: 'Go to Daily Logs',
+    visibleIn: ['dashboard', 'all'],
+    tier: 1,
+  },
+  // ── Tier 2 — hidden behind "Show more setup options" toggle ─────────────
+  {
+    key: 'step_time_tracking_enabled',
+    label: 'Enable Time Tracking',
+    description: 'Turn on time tracking for your organization',
+    timeEstimate: '~1 min',
+    actionLabel: 'Enable',
+    visibleIn: ['dashboard', 'time-tracking', 'all'],
+    tier: 2,
+  },
+  {
+    key: 'step_labor_rates',
+    label: 'Set Labor Cost Rates',
+    description: 'Set hourly cost rates so job costing works correctly',
+    timeEstimate: '~3 min',
+    actionLabel: 'Go to Labor Rates',
+    helpText: 'Each field worker needs a cost rate for accurate job costing.',
+    visibleIn: ['dashboard', 'time-tracking', 'financial', 'all'],
+    tier: 2,
+  },
+  {
+    key: 'step_ppe_reviewed',
+    label: 'Review PPE Requirements',
+    description: "Confirm you've reviewed PPE checklists for each trade",
+    timeEstimate: '~5 min',
+    actionLabel: "I've Reviewed This",
+    helpText: 'Review your PPE requirements outside the app, then confirm here.',
+    visibleIn: ['dashboard', 'safety', 'all'],
+    tier: 2,
+  },
+  {
+    key: 'step_hazard_library',
+    label: 'Configure Hazard Library',
+    description: "Confirm you've set up common hazards for safety forms",
+    timeEstimate: '~5 min',
+    actionLabel: "I've Configured This",
+    helpText: 'Configure hazards in your safety workflow, then confirm here.',
+    visibleIn: ['dashboard', 'safety', 'all'],
+    tier: 2,
+  },
+  {
+    key: 'step_invoice_permissions',
+    label: 'Configure Invoice Permissions',
+    description: 'Decide who can send invoices and whether approval is required',
+    timeEstimate: '~2 min',
+    actionLabel: 'Go to Invoicing',
+    helpText: 'Admin-only step. Configure in the Invoicing settings tab.',
+    visibleIn: ['dashboard', 'invoicing', 'all'],
+    tier: 2,
+  },
+  {
+    key: 'step_trades_configured',
+    label: 'Configure Trades',
+    description: 'Set up the trades/subcontractors working on your projects',
+    timeEstimate: '~5 min',
+    actionLabel: 'Manage Trades',
+    helpText: 'Add at least 3 trades to complete this step.',
+    visibleIn: ['financial', 'dashboard', 'all'],
+    tier: 2,
+  },
+  {
+    key: 'step_company_profile',
+    label: 'Complete Your Company Profile',
+    description: 'Add your business type, service area, and project size range',
+    timeEstimate: '~3 min',
+    actionLabel: 'Complete Profile',
+    visibleIn: ['dashboard', 'all'],
+    tier: 2,
+  },
+  {
+    key: 'step_ai_calibrated',
+    label: 'Calibrate Your AI',
+    description: 'Answer 4 questions so your AI understands your business',
+    timeEstimate: '~3 min',
+    actionLabel: 'Calibrate',
+    visibleIn: ['dashboard', 'all'],
+    tier: 2,
+  },
+  {
+    key: 'step_playbook_generated',
+    label: 'Generate Your First Playbook',
+    description: 'Let the AI build a reusable job template from your most common job type',
+    timeEstimate: '~2 min',
+    actionLabel: 'Go to Playbooks',
+    visibleIn: ['dashboard', 'all'],
+    tier: 2,
   },
 ] as const;
 

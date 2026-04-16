@@ -251,14 +251,21 @@ const Auth = () => {
         </div>
       </div>
 
-      {/* Right Side - Auth Form */}
+      {/* Right Side - Auth Form (+ value preview on signup tab / md+) */}
       <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-background via-background to-secondary/30 p-4 sm:p-8">
-        <div className="w-full max-w-md space-y-8">
+        <div
+          className={cn(
+            'w-full grid gap-6',
+            activeTab === 'signup' ? 'md:grid-cols-2 max-w-4xl' : 'max-w-md'
+          )}
+        >
+          {/* Form column */}
+          <div className="space-y-8">
           {/* Mobile Logo */}
           <div className="lg:hidden text-center">
-            <img 
-              src={projectPathLogo} 
-              alt="Project Path" 
+            <img
+              src={projectPathLogo}
+              alt="Project Path"
               className="h-28 w-auto mx-auto mb-2"
             />
             <p className="text-sm text-muted-foreground">Field coordination made simple</p>
@@ -435,6 +442,40 @@ const Auth = () => {
           <p className="text-center text-xs text-muted-foreground">
             By continuing, you agree to our Terms of Service and Privacy Policy
           </p>
+          </div>
+
+          {/* Value preview panel — signup tab only, hidden on mobile */}
+          {activeTab === 'signup' && (
+            <div className="hidden md:flex flex-col justify-center">
+              <div className="rounded-2xl bg-zinc-900 text-zinc-100 p-6 sm:p-8 shadow-2xl border border-zinc-800">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-4">
+                  What you'll see every morning
+                </p>
+
+                <div className="space-y-2.5">
+                  <div className="flex items-center gap-3 rounded-lg bg-zinc-800/60 px-4 py-3">
+                    <span className="h-2 w-2 rounded-full bg-green-500 shrink-0" />
+                    <span className="text-sm">No Daily Log Issues</span>
+                  </div>
+                  <div className="flex items-center gap-3 rounded-lg bg-zinc-800/60 px-4 py-3">
+                    <span className="h-2 w-2 rounded-full bg-amber-500 shrink-0" />
+                    <span className="text-sm">2 tasks need attention</span>
+                  </div>
+                  <div className="flex items-center gap-3 rounded-lg bg-zinc-800/60 px-4 py-3">
+                    <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0" />
+                    <span className="text-sm">Crew on site: 4 of 5</span>
+                  </div>
+                </div>
+
+                <p className="mt-8 text-sm italic text-zinc-400 leading-relaxed">
+                  &ldquo;I stopped driving to site just to check progress.&rdquo;
+                  <span className="block mt-2 not-italic text-xs text-zinc-500">
+                    &mdash; Construction owner, BC
+                  </span>
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

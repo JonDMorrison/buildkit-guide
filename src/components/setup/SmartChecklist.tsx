@@ -34,7 +34,8 @@ export function SmartChecklist({ context, forceShow = false }: SmartChecklistPro
   const navigate = useNavigate();
   const { currentProjectId } = useCurrentProject();
   const {
-    items,
+    tier1Items,
+    tier2Items,
     completedCount,
     totalCount,
     isLoading,
@@ -49,12 +50,14 @@ export function SmartChecklist({ context, forceShow = false }: SmartChecklistPro
   } = useSmartChecklist(context);
 
   const [isExpanded, setIsExpanded] = useState(true);
+  const [showMore, setShowMore] = useState(false);
   const [showTradesModal, setShowTradesModal] = useState(false);
   const [showTimeSettingsModal, setShowTimeSettingsModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [ackStep, setAckStep] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
   const celebrationShown = useRef(false);
+  const totalVisibleItemCount = tier1Items.length + tier2Items.length;
 
   // Show celebration when setup becomes complete
   useEffect(() => {
@@ -84,7 +87,7 @@ export function SmartChecklist({ context, forceShow = false }: SmartChecklistPro
   }
 
   // Don't show if dismissed, complete, loading, or no items
-  if (isLoading || (!forceShow && (isDismissed || isComplete)) || items.length === 0) {
+  if (isLoading || (!forceShow && (isDismissed || isComplete)) || totalVisibleItemCount === 0) {
     return null;
   }
 
@@ -126,7 +129,7 @@ export function SmartChecklist({ context, forceShow = false }: SmartChecklistPro
               <div>
                 <h3 className="font-semibold text-base">Next Steps</h3>
                 <p className="text-sm text-muted-foreground">
-                  {items.length} {items.length === 1 ? 'thing' : 'things'} to set up
+                  {totalVisibleItemCount} {totalVisibleItemCount === 1 ? 'thing' : 'things'} to set up
                 </p>
               </div>
             </div>
@@ -170,7 +173,7 @@ export function SmartChecklist({ context, forceShow = false }: SmartChecklistPro
               </div>
             )}
             <div className="space-y-1">
-              {items.map((item) => (
+              {tier1Items.map((item) => (
                 <SetupChecklistItem
                   key={item.key}
                   label={item.label}
@@ -182,6 +185,37 @@ export function SmartChecklist({ context, forceShow = false }: SmartChecklistPro
                   onAction={getAction(item.key)}
                 />
               ))}
+
+              {tier2Items.length > 0 && (
+                <>
+                  {showMore && (
+                    <div className="space-y-1 pt-1">
+                      {tier2Items.map((item) => (
+                        <SetupChecklistItem
+                          key={item.key}
+                          label={item.label}
+                          description={item.description}
+                          isComplete={false}
+                          timeEstimate={item.timeEstimate}
+                          helpText={item.helpText}
+                          actionLabel={item.actionLabel}
+                          onAction={getAction(item.key)}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setShowMore((v) => !v)}
+                    className="w-full text-left text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 pt-2"
+                  >
+                    {showMore
+                      ? 'Show less'
+                      : `Show more setup options (${tier2Items.length})`}
+                  </button>
+                </>
+              )}
             </div>
           </CardContent>
         )}
