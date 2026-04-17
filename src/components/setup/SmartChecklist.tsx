@@ -8,7 +8,6 @@ import { SetupChecklistItem } from './SetupChecklistItem';
 import { useSmartChecklist, type ChecklistContext } from './useSmartChecklist';
 import { type SetupStepDefinition } from '@/lib/setupSteps';
 import { AcknowledgeStepDialog } from './AcknowledgeStepDialog';
-import { PPERequirementsDialog } from './steps/PPERequirementsDialog';
 import { TradesManagementModal } from './steps/TradesManagementModal';
 import { TimeTrackingSettingsModal } from './steps/TimeTrackingSettingsModal';
 import { InviteUserModal } from '@/components/users/InviteUserModal';
@@ -21,10 +20,6 @@ interface SmartChecklistProps {
 
 /** Steps that require an acknowledgement dialog instead of instant action */
 const ACK_STEPS: Record<string, { label: string; description: string }> = {
-  step_ppe_reviewed: {
-    label: 'Review PPE Requirements',
-    description: 'Have you reviewed and configured the PPE checklists for each trade working on your projects?',
-  },
   step_hazard_library: {
     label: 'Configure Hazard Library',
     description: 'Have you set up common hazards in your safety workflow so they can be quickly selected in safety forms?',
@@ -108,7 +103,7 @@ export function SmartChecklist({ context, forceShow = false }: SmartChecklistPro
       step_first_job_site: () => navigate('/daily-logs'),
       step_time_tracking_enabled: () => setShowTimeSettingsModal(true),
       step_labor_rates: () => navigate('/settings/labor-rates'),
-      step_ppe_reviewed: () => setAckStep('step_ppe_reviewed'),
+      step_ppe_reviewed: () => navigate('/safety'),
       step_hazard_library: () => setAckStep('step_hazard_library'),
       step_invoice_permissions: () => navigate('/invoicing'),
       step_trades_configured: () => setShowTradesModal(true),
@@ -242,15 +237,8 @@ export function SmartChecklist({ context, forceShow = false }: SmartChecklistPro
         )}
       </Card>
 
-      {/* PPE-specific dialog with jurisdiction-aware reference guide */}
-      <PPERequirementsDialog
-        open={ackStep === 'step_ppe_reviewed'}
-        onOpenChange={(open) => { if (!open) setAckStep(null); }}
-        onConfirm={handleAckConfirm}
-      />
-
-      {/* Generic acknowledgement dialog for other ack steps */}
-      {activeAck && ackStep !== 'step_ppe_reviewed' && (
+      {/* Generic acknowledgement dialog for ack steps */}
+      {activeAck && (
         <AcknowledgeStepDialog
           open={!!ackStep}
           onOpenChange={(open) => { if (!open) setAckStep(null); }}
