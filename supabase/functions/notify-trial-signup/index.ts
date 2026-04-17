@@ -79,8 +79,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
           <!-- Logo header -->
           <tr>
-            <td style="background-color:#ffffff;border-radius:12px 12px 0 0;padding:28px 40px;text-align:center;border-bottom:1px solid #e4e4e7;">
-              <img src="https://www.projectpath.app/favicon.jpeg" alt="Project Path" width="80" height="63" style="display:block;margin:0 auto;border:0;" />
+            <td style="background-color:#0a1628;border-radius:12px 12px 0 0;padding:24px 40px;text-align:center;">
+              <img src="https://projectpath.app/email-logo.png" alt="Project Path" width="180" style="display:block;margin:0 auto;border:0;" />
             </td>
           </tr>
 
