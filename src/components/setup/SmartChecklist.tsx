@@ -8,6 +8,7 @@ import { SetupChecklistItem } from './SetupChecklistItem';
 import { useSmartChecklist, type ChecklistContext } from './useSmartChecklist';
 import { type SetupStepDefinition } from '@/lib/setupSteps';
 import { AcknowledgeStepDialog } from './AcknowledgeStepDialog';
+import { PPERequirementsDialog } from './steps/PPERequirementsDialog';
 import { TradesManagementModal } from './steps/TradesManagementModal';
 import { TimeTrackingSettingsModal } from './steps/TimeTrackingSettingsModal';
 import { InviteUserModal } from '@/components/users/InviteUserModal';
@@ -241,8 +242,15 @@ export function SmartChecklist({ context, forceShow = false }: SmartChecklistPro
         )}
       </Card>
 
-      {/* Acknowledgement dialog for steps without auto-detection */}
-      {activeAck && (
+      {/* PPE-specific dialog with jurisdiction-aware reference guide */}
+      <PPERequirementsDialog
+        open={ackStep === 'step_ppe_reviewed'}
+        onOpenChange={(open) => { if (!open) setAckStep(null); }}
+        onConfirm={handleAckConfirm}
+      />
+
+      {/* Generic acknowledgement dialog for other ack steps */}
+      {activeAck && ackStep !== 'step_ppe_reviewed' && (
         <AcknowledgeStepDialog
           open={!!ackStep}
           onOpenChange={(open) => { if (!open) setAckStep(null); }}
