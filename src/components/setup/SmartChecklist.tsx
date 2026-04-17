@@ -28,6 +28,10 @@ const ACK_STEPS: Record<string, { label: string; description: string }> = {
     label: 'Configure Hazard Library',
     description: 'Have you set up common hazards in your safety workflow so they can be quickly selected in safety forms?',
   },
+  step_morning_briefing_reviewed: {
+    label: 'Check Your Morning Briefing',
+    description: 'Have you visited the dashboard and read the Morning Briefing widget? It summarizes what needs attention today.',
+  },
 };
 
 export function SmartChecklist({ context, forceShow = false }: SmartChecklistProps) {
@@ -97,13 +101,19 @@ export function SmartChecklist({ context, forceShow = false }: SmartChecklistPro
   const getAction = (key: SetupStepDefinition['key']): (() => void) | undefined => {
     const actionMap: Partial<Record<SetupStepDefinition['key'], () => void>> = {
       step_first_invite: () => setShowInviteModal(true),
+      step_first_project: () => navigate('/projects'),
       step_users_assigned: () => navigate('/users'),
+      step_morning_briefing_reviewed: () => setAckStep('step_morning_briefing_reviewed'),
+      step_first_job_site: () => navigate('/daily-logs'),
       step_time_tracking_enabled: () => setShowTimeSettingsModal(true),
       step_labor_rates: () => navigate('/settings/labor-rates'),
       step_ppe_reviewed: () => setAckStep('step_ppe_reviewed'),
       step_hazard_library: () => setAckStep('step_hazard_library'),
       step_invoice_permissions: () => navigate('/invoicing'),
       step_trades_configured: () => setShowTradesModal(true),
+      step_company_profile: () => navigate('/settings/organization'),
+      step_ai_calibrated: () => navigate('/dashboard'),
+      step_playbook_generated: () => navigate('/playbooks'),
     };
     return actionMap[key];
   };
