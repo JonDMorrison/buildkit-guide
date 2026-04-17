@@ -51,7 +51,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     `;
 
     const emailResponse = await resend.emails.send({
-      from: "Project Path <noreply@projectpathapp.com>",
+      from: "Project Path <noreply@projectpath.app>",
       to: NOTIFY_EMAILS,
       subject: `New Trial Signup: ${fullName}`,
       html: emailHtml,
@@ -79,16 +79,25 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
           <!-- Header -->
           <tr>
-            <td style="background-color:#0a1628;border-radius:12px 12px 0 0;padding:32px 40px;text-align:center;">
-              <div style="font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.5px;">Project Path</div>
-              <div style="font-size:13px;color:#4a8fd4;margin-top:4px;">Built for the field</div>
+            <td style="background-color:#0a1628;border-radius:12px 12px 0 0;padding:28px 40px;text-align:center;mso-padding-alt:28px 40px;">
+              <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
+                <tr>
+                  <td style="padding-right:10px;vertical-align:middle;">
+                    <div style="width:28px;height:28px;background-color:#4a8fd4;border-radius:6px;display:inline-block;vertical-align:middle;"></div>
+                  </td>
+                  <td style="vertical-align:middle;">
+                    <span style="font-size:20px;font-weight:700;color:#ffffff;letter-spacing:-0.5px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">Project Path</span>
+                  </td>
+                </tr>
+              </table>
+              <div style="font-size:12px;color:#4a8fd4;margin-top:6px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">Built for the field</div>
             </td>
           </tr>
 
           <!-- Main card -->
           <tr>
             <td style="background-color:#ffffff;padding:40px 40px 32px;border-left:1px solid #e4e4e7;border-right:1px solid #e4e4e7;">
-              <p style="font-size:24px;font-weight:700;color:#0a1628;margin:0 0 8px;">You're in, ${fullName}.</p>
+              <p style="font-size:20px;font-weight:700;color:#0a1628;margin:0 0 8px;">You're in, ${fullName}.</p>
               <p style="font-size:15px;color:#71717a;margin:0 0 32px;line-height:1.6;">Your Project Path account is set up and ready. Here's how to get your first job running in the next 15 minutes.</p>
 
               <!-- Steps -->
@@ -97,8 +106,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
                   <td style="padding:0 0 20px;">
                     <table cellpadding="0" cellspacing="0">
                       <tr>
-                        <td style="width:36px;height:36px;background-color:#0a1628;border-radius:50%;text-align:center;vertical-align:middle;">
-                          <span style="font-size:14px;font-weight:700;color:#ffffff;">1</span>
+                        <td width="36" height="36" style="width:36px;height:36px;background-color:#0a1628;border-radius:50%;text-align:center;vertical-align:middle;line-height:36px;">
+                          <span style="font-size:14px;font-weight:700;color:#ffffff;line-height:36px;">1</span>
                         </td>
                         <td style="padding-left:14px;vertical-align:middle;">
                           <div style="font-size:15px;font-weight:600;color:#0a1628;">Add your first job site</div>
@@ -112,8 +121,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
                   <td style="padding:0 0 20px;">
                     <table cellpadding="0" cellspacing="0">
                       <tr>
-                        <td style="width:36px;height:36px;background-color:#0a1628;border-radius:50%;text-align:center;vertical-align:middle;">
-                          <span style="font-size:14px;font-weight:700;color:#ffffff;">2</span>
+                        <td width="36" height="36" style="width:36px;height:36px;background-color:#0a1628;border-radius:50%;text-align:center;vertical-align:middle;line-height:36px;">
+                          <span style="font-size:14px;font-weight:700;color:#ffffff;line-height:36px;">2</span>
                         </td>
                         <td style="padding-left:14px;vertical-align:middle;">
                           <div style="font-size:15px;font-weight:600;color:#0a1628;">Invite your foreman or site lead</div>
@@ -127,8 +136,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
                   <td style="padding:0 0 32px;">
                     <table cellpadding="0" cellspacing="0">
                       <tr>
-                        <td style="width:36px;height:36px;background-color:#0a1628;border-radius:50%;text-align:center;vertical-align:middle;">
-                          <span style="font-size:14px;font-weight:700;color:#ffffff;">3</span>
+                        <td width="36" height="36" style="width:36px;height:36px;background-color:#0a1628;border-radius:50%;text-align:center;vertical-align:middle;line-height:36px;">
+                          <span style="font-size:14px;font-weight:700;color:#ffffff;line-height:36px;">3</span>
                         </td>
                         <td style="padding-left:14px;vertical-align:middle;">
                           <div style="font-size:15px;font-weight:600;color:#0a1628;">Check your morning briefing tomorrow</div>
