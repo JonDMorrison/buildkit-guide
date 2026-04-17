@@ -65,25 +65,126 @@ Deno.serve(async (req: Request): Promise<Response> => {
     let userWelcomeResponse: unknown = null;
     try {
       const welcomeHtml = `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #222; max-width: 560px;">
-          <p>Hi ${fullName},</p>
-          <p>Welcome to Project Path.</p>
-          <p>You're set up and ready to go. Here's what to do first:</p>
-          <ol style="padding-left: 20px;">
-            <li>Add your first job site &mdash; it takes about 2 minutes</li>
-            <li>Invite your foreman or project manager</li>
-            <li>Check your morning briefing tomorrow morning</li>
-          </ol>
-          <p>If you have any questions, just reply to this email.</p>
-          <p>&mdash; Jon Morrison, Project Path</p>
-          <p style="color: #666; font-size: 14px;">P.S. If Jordan already connected with you, he'll be in touch to help you run your first project through it.</p>
-        </div>
-      `;
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background-color:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#0a1628;border-radius:12px 12px 0 0;padding:32px 40px;text-align:center;">
+              <div style="font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.5px;">Project Path</div>
+              <div style="font-size:13px;color:#4a8fd4;margin-top:4px;">Built for the field</div>
+            </td>
+          </tr>
+
+          <!-- Main card -->
+          <tr>
+            <td style="background-color:#ffffff;padding:40px 40px 32px;border-left:1px solid #e4e4e7;border-right:1px solid #e4e4e7;">
+              <p style="font-size:24px;font-weight:700;color:#0a1628;margin:0 0 8px;">You're in, ${fullName}.</p>
+              <p style="font-size:15px;color:#71717a;margin:0 0 32px;line-height:1.6;">Your Project Path account is set up and ready. Here's how to get your first job running in the next 15 minutes.</p>
+
+              <!-- Steps -->
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding:0 0 20px;">
+                    <table cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="width:36px;height:36px;background-color:#0a1628;border-radius:50%;text-align:center;vertical-align:middle;">
+                          <span style="font-size:14px;font-weight:700;color:#ffffff;">1</span>
+                        </td>
+                        <td style="padding-left:14px;vertical-align:middle;">
+                          <div style="font-size:15px;font-weight:600;color:#0a1628;">Add your first job site</div>
+                          <div style="font-size:13px;color:#71717a;margin-top:2px;">Takes about 2 minutes. Give it a name and address.</div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:0 0 20px;">
+                    <table cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="width:36px;height:36px;background-color:#0a1628;border-radius:50%;text-align:center;vertical-align:middle;">
+                          <span style="font-size:14px;font-weight:700;color:#ffffff;">2</span>
+                        </td>
+                        <td style="padding-left:14px;vertical-align:middle;">
+                          <div style="font-size:15px;font-weight:600;color:#0a1628;">Invite your foreman or site lead</div>
+                          <div style="font-size:13px;color:#71717a;margin-top:2px;">They'll get an email invite and can log updates from their phone.</div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:0 0 32px;">
+                    <table cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="width:36px;height:36px;background-color:#0a1628;border-radius:50%;text-align:center;vertical-align:middle;">
+                          <span style="font-size:14px;font-weight:700;color:#ffffff;">3</span>
+                        </td>
+                        <td style="padding-left:14px;vertical-align:middle;">
+                          <div style="font-size:15px;font-weight:600;color:#0a1628;">Check your morning briefing tomorrow</div>
+                          <div style="font-size:13px;color:#71717a;margin-top:2px;">The AI surfaces what needs your attention before the crew shows up.</div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- CTA Button -->
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center" style="padding-bottom:32px;">
+                    <a href="https://projectpath.app/dashboard" style="display:inline-block;background-color:#4a8fd4;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;padding:14px 32px;border-radius:8px;">Go to your dashboard &rarr;</a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Login help -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #f4f4f5;padding-top:24px;">
+                <tr>
+                  <td style="background-color:#f8fafc;border-radius:8px;padding:20px 24px;">
+                    <div style="font-size:13px;font-weight:600;color:#0a1628;margin-bottom:8px;">Signing in</div>
+                    <div style="font-size:13px;color:#71717a;line-height:1.7;">
+                      Go to <a href="https://projectpath.app/auth" style="color:#4a8fd4;text-decoration:none;">projectpath.app/auth</a> and sign in with <strong style="color:#3f3f46;">${email}</strong>.<br>
+                      If you forget your password, click <em>Forgot password</em> on the login screen and we'll send you a reset link.<br>
+                      Having trouble? Reply to this email and we'll sort it out.
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color:#f4f4f5;border-radius:0 0 12px 12px;border:1px solid #e4e4e7;border-top:none;padding:24px 40px;text-align:center;">
+              <p style="font-size:13px;color:#71717a;margin:0 0 4px;">Jon Morrison, Project Path</p>
+              <p style="font-size:12px;color:#a1a1aa;margin:0;">P.S. Jordan will be in touch to help you run your first project through it. He's good at this.</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`;
 
       userWelcomeResponse = await resend.emails.send({
         from: "Project Path <noreply@projectpath.app>",
         to: [email],
-        subject: "Your Project Path account is ready",
+        subject: "You're in \u2014 here's how to get started with Project Path",
         html: welcomeHtml,
       });
       console.log("User welcome email sent:", userWelcomeResponse);
