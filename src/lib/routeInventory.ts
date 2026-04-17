@@ -70,6 +70,7 @@ export const ROUTE_WRAPPER_MAP: Record<string, RouteWrapper[]> = {
   '/insights': ['protected'],
   '/intelligence': ['protected'],
   '/org-intelligence': ['protected'],
+  '/reports': ['protected'],
   '/insights/snapshots': ['protected'],
   '/docs/qa-gauntlet': ['protected'],
   '/workflow': ['protected'],
