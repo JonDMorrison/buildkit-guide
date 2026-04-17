@@ -106,10 +106,19 @@ const queryClient = new QueryClient({
   },
 });
 
-// Fallback component for lazy loading
+// Layout-preserving skeleton so the sidebar/top chrome area stays visible
+// while a lazy route chunk loads. Prevents the full-screen blank flash.
 const PageLoader = () => (
-  <div className="flex items-center justify-center h-screen bg-background">
-    <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent"></div>
+  <div className="flex h-screen bg-background">
+    <div className="hidden md:block w-64 border-r border-border bg-card shrink-0 animate-pulse" />
+    <div className="flex-1 flex flex-col">
+      <div className="h-14 border-b border-border bg-card animate-pulse" />
+      <div className="flex-1 p-6 space-y-4">
+        <div className="h-8 w-48 rounded-lg bg-muted animate-pulse" />
+        <div className="h-32 rounded-xl bg-muted animate-pulse" />
+        <div className="h-32 rounded-xl bg-muted animate-pulse" />
+      </div>
+    </div>
   </div>
 );
 
