@@ -35,42 +35,42 @@ const MAX_LOCAL_NOTES = 10;
 const TEMPLATES: Record<Template, { label: string; outline: string }> = {
   weekly: {
     label: 'Weekly',
-    outline: `## Weekly Decision Summary
+    outline: `Weekly Decision Summary
 
-**Key decisions made:**
-- 
+Key decisions made:
+-
 
-**Follow-up actions:**
-- [ ] 
+Follow-up actions:
+- [ ]
 
-**Owner / deadline:**
+Owner / deadline:
 - `,
   },
   project: {
     label: 'Project-specific',
-    outline: `## Project Decision Note
+    outline: `Project Decision Note
 
-**Project:**
+Project:
 
-**Decision:**
+Decision:
 
-**Rationale:**
+Rationale:
 
-**Next steps:**
+Next steps:
 - [ ] `,
   },
   risk: {
     label: 'Risk response',
-    outline: `## Risk Response Decision
+    outline: `Risk Response Decision
 
-**Risk identified:**
+Risk identified:
 
-**Chosen response (accept / mitigate / escalate):**
+Chosen response (accept / mitigate / escalate):
 
-**Mitigation actions:**
-- [ ] 
+Mitigation actions:
+- [ ]
 
-**Review date:** `,
+Review date: `,
   },
 };
 
