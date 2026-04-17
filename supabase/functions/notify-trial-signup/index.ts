@@ -77,20 +77,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
       <td align="center">
         <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
 
-          <!-- Header -->
+          <!-- Logo header -->
           <tr>
-            <td style="background-color:#0a1628;border-radius:12px 12px 0 0;padding:28px 40px;text-align:center;mso-padding-alt:28px 40px;">
-              <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
-                <tr>
-                  <td style="padding-right:10px;vertical-align:middle;">
-                    <div style="width:28px;height:28px;background-color:#4a8fd4;border-radius:6px;display:inline-block;vertical-align:middle;"></div>
-                  </td>
-                  <td style="vertical-align:middle;">
-                    <span style="font-size:20px;font-weight:700;color:#ffffff;letter-spacing:-0.5px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">Project Path</span>
-                  </td>
-                </tr>
-              </table>
-              <div style="font-size:12px;color:#4a8fd4;margin-top:6px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">Built for the field</div>
+            <td style="background-color:#ffffff;border-radius:12px 12px 0 0;padding:28px 40px;text-align:center;border-bottom:1px solid #e4e4e7;">
+              <img src="https://www.projectpath.app/favicon.jpeg" alt="Project Path" width="80" height="63" style="display:block;margin:0 auto;border:0;" />
             </td>
           </tr>
 

@@ -19,6 +19,82 @@ const log = (level: 'info' | 'warn' | 'error', message: string, data?: Record<st
   }));
 };
 
+// Styled invite email template — shared by both existing-user and new-user paths.
+function buildInviteEmailHtml(params: {
+  recipientName: string;
+  inviterName: string;
+  orgName: string;
+  ctaUrl: string;
+  ctaText: string;
+}): string {
+  const { recipientName, inviterName, orgName, ctaUrl, ctaText } = params;
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background-color:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+          <tr>
+            <td style="background-color:#ffffff;border-radius:12px 12px 0 0;padding:28px 40px;text-align:center;border-bottom:1px solid #e4e4e7;">
+              <img src="https://www.projectpath.app/favicon.jpeg" alt="Project Path" width="80" height="63" style="display:block;margin:0 auto;border:0;" />
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color:#ffffff;padding:40px 40px 32px;border-left:1px solid #e4e4e7;border-right:1px solid #e4e4e7;">
+              <p style="font-size:20px;font-weight:700;color:#0a1628;margin:0 0 4px;">You've been invited.</p>
+              <p style="font-size:24px;font-weight:700;color:#0a1628;margin:0 0 16px;">${inviterName} added you to ${orgName}.</p>
+              <p style="font-size:15px;color:#71717a;margin:0 0 32px;line-height:1.6;">Project Path is how your team coordinates job sites, tracks daily progress, and keeps everyone on the same page -- without the group texts.</p>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center" style="padding-bottom:32px;">
+                    <a href="${ctaUrl}" style="display:inline-block;background-color:#4a8fd4;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;padding:14px 32px;border-radius:8px;">${ctaText}</a>
+                  </td>
+                </tr>
+              </table>
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:32px;">
+                <tr>
+                  <td style="background-color:#f8fafc;border-radius:8px;padding:20px 24px;border:1px solid #e4e4e7;">
+                    <div style="font-size:13px;font-weight:600;color:#0a1628;margin-bottom:12px;">What you'll be able to do</div>
+                    <table cellpadding="0" cellspacing="0">
+                      <tr><td style="padding-bottom:8px;vertical-align:top;"><span style="font-size:13px;color:#71717a;line-height:1.6;">&#10003;&nbsp;&nbsp;Log daily site updates from your phone</span></td></tr>
+                      <tr><td style="padding-bottom:8px;vertical-align:top;"><span style="font-size:13px;color:#71717a;line-height:1.6;">&#10003;&nbsp;&nbsp;Submit safety forms and flag issues</span></td></tr>
+                      <tr><td style="vertical-align:top;"><span style="font-size:13px;color:#71717a;line-height:1.6;">&#10003;&nbsp;&nbsp;See your tasks and project updates in one place</span></td></tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="background-color:#f8fafc;border-radius:8px;padding:20px 24px;border:1px solid #e4e4e7;">
+                    <div style="font-size:13px;font-weight:600;color:#0a1628;margin-bottom:8px;">Signing in after you accept</div>
+                    <div style="font-size:13px;color:#71717a;line-height:1.7;">
+                      Go to <a href="https://projectpath.app/auth" style="color:#4a8fd4;text-decoration:none;">projectpath.app/auth</a> and sign in with this email address.<br>
+                      If you forget your password, click <em>Forgot password</em> on the login screen.<br>
+                      Having trouble? Reply to this email.
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color:#f4f4f5;border-radius:0 0 12px 12px;border:1px solid #e4e4e7;border-top:none;padding:24px 40px;text-align:center;">
+              <p style="font-size:12px;color:#a1a1aa;margin:0;">You received this because ${inviterName} added you to their Project Path account. If this was a mistake, you can ignore this email.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
 // Zod schema for input validation
 const InviteRequestSchema = z.object({
   email: z.string().email("Invalid email format").max(255),
@@ -97,16 +173,17 @@ serve(async (req: Request) => {
       log('info', 'Admin invite authorized', { inviterId: user.id });
     }
 
-    // Get inviter's organization membership (needed for both new and existing user paths)
+    // Get inviter's organization membership + org name (needed for both paths)
     const { data: inviterMembership } = await supabase
       .from("organization_memberships")
-      .select("organization_id")
+      .select("organization_id, organizations(name)")
       .eq("user_id", user.id)
       .eq("is_active", true)
       .limit(1)
       .single();
 
     const organizationId = inviterMembership?.organization_id || null;
+    const orgName = (inviterMembership?.organizations as any)?.name || 'their team';
 
     // Check if user already exists
     const { data: existingProfile } = await supabase
@@ -133,28 +210,25 @@ serve(async (req: Request) => {
 
       if (inviteError) throw inviteError;
 
-      // Send a "sign in to accept" email instead of a signup link
+      // Send a "sign in to accept" email instead of a signup link.
+      // Wrapped in a 15s timeout so a slow Resend response doesn't hang the UI —
+      // the user is already in the system regardless of whether this email lands.
       if (resendApiKey) {
         const resend = new Resend(resendApiKey);
-        await resend.emails.send({
-          from: "Project Path <noreply@projectpath.app>",
-          to: [email],
-          subject: `${inviterName} added you to their team on Project Path`,
-          html: `
-            <body style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-              <h1 style="color: #E53935;">Project Path</h1>
-              <p>Hi ${fullName || email.split('@')[0]},</p>
-              <p><strong>${inviterName}</strong> has added you to their team on Project Path.</p>
-              <p>Since you already have an account, just sign in and your new project access will be ready automatically.</p>
-              <div style="text-align: center; margin: 30px 0;">
-                <a href="https://projectpath.app/auth" style="background: #E53935; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold;">
-                  Sign In to ProjectPath
-                </a>
-              </div>
-              <p style="color: #666; font-size: 14px;">If you didn't expect this email, you can safely ignore it.</p>
-            </body>
-          `,
-        });
+        const recipientName = fullName || email.split('@')[0];
+        try {
+          const sendTimeout = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Existing-user email timeout after 15s')), 15000)
+          );
+          await Promise.race([resend.emails.send({
+            from: "Project Path <noreply@projectpath.app>",
+            to: [email],
+            subject: `You've been added to ${orgName} on Project Path`,
+            html: buildInviteEmailHtml({ recipientName, inviterName, orgName, ctaUrl: 'https://projectpath.app/auth', ctaText: 'Sign in to get started &rarr;' }),
+          }), sendTimeout]);
+        } catch (err: any) {
+          log('warn', 'Existing-user invite email failed or timed out', { error: err.message });
+        }
       }
 
       log('info', 'Existing user invited — invitation created for process-pending-invites', {
@@ -217,44 +291,8 @@ serve(async (req: Request) => {
         const emailResponse = await Promise.race([resend.emails.send({
           from: "Project Path <noreply@projectpath.app>",
           to: [email],
-          subject: `${inviterName} invited you to join Project Path`,
-          html: `
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <meta charset="utf-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            </head>
-            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-              <div style="text-align: center; margin-bottom: 30px;">
-                <h1 style="color: #E53935; margin: 0; font-size: 28px;">Project Path</h1>
-                <p style="color: #666; margin-top: 5px;">Construction Project Management</p>
-              </div>
-              
-              <div style="background: linear-gradient(135deg, #E53935 0%, #EF5350 100%); color: white; padding: 30px; border-radius: 12px; text-align: center; margin-bottom: 30px;">
-                <h2 style="margin: 0 0 10px 0; font-size: 24px;">You're Invited! 🎉</h2>
-                <p style="margin: 0; opacity: 0.9; font-size: 16px;">Join the team on Project Path</p>
-              </div>
-              
-              <p style="font-size: 16px;">Hi ${recipientName},</p>
-              
-              <p style="font-size: 16px;"><strong>${inviterName}</strong> has invited you to join their team on Project Path - the construction project management platform that keeps every trade accountable and your schedule on track.</p>
-              
-              <div style="text-align: center; margin: 35px 0;">
-                <a href="${inviteLink}" style="display: inline-block; background: #E53935; color: white; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-weight: bold; font-size: 16px;">Accept Invitation</a>
-              </div>
-              
-              <p style="font-size: 14px; color: #666;">This invitation will expire in 7 days. If you didn't expect this email, you can safely ignore it.</p>
-              
-              <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-              
-              <p style="font-size: 12px; color: #999; text-align: center;">
-                Project Path - Keep your job site moving<br>
-                <a href="${appUrl}" style="color: #E53935;">projectpath.app</a>
-              </p>
-            </body>
-            </html>
-          `,
+          subject: `You've been invited to join ${orgName} on Project Path`,
+          html: buildInviteEmailHtml({ recipientName, inviterName, orgName, ctaUrl: inviteLink, ctaText: 'Accept your invitation &rarr;' }),
         }), sendTimeout]);
 
         // Check if Resend returned an error in the response
