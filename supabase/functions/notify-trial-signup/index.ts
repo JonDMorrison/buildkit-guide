@@ -97,7 +97,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
           <!-- Main card -->
           <tr>
             <td style="background-color:#ffffff;padding:40px 40px 32px;border-left:1px solid #e4e4e7;border-right:1px solid #e4e4e7;">
-              <p style="font-size:20px;font-weight:700;color:#0a1628;margin:0 0 8px;">You're in, ${fullName}.</p>
+              <p style="font-size:20px;font-weight:700;color:#0a1628;margin:0 0 4px;">You're in,</p>
+              <p style="font-size:24px;font-weight:700;color:#0a1628;margin:0 0 20px;">${fullName}.</p>
               <p style="font-size:15px;color:#71717a;margin:0 0 32px;line-height:1.6;">Your Project Path account is set up and ready. Here's how to get your first job running in the next 15 minutes.</p>
 
               <!-- Steps -->
@@ -106,10 +107,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
                   <td style="padding:0 0 20px;">
                     <table cellpadding="0" cellspacing="0">
                       <tr>
-                        <td width="36" height="36" style="width:36px;height:36px;background-color:#0a1628;border-radius:50%;text-align:center;vertical-align:middle;line-height:36px;">
-                          <span style="font-size:14px;font-weight:700;color:#ffffff;line-height:36px;">1</span>
+                        <td width="36" style="padding-right:14px;">
+                          <div style="width:36px;height:36px;min-width:36px;background-color:#0a1628;border-radius:18px;text-align:center;line-height:36px;font-size:14px;font-weight:700;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">1</div>
                         </td>
-                        <td style="padding-left:14px;vertical-align:middle;">
+                        <td style="vertical-align:middle;">
                           <div style="font-size:15px;font-weight:600;color:#0a1628;">Add your first job site</div>
                           <div style="font-size:13px;color:#71717a;margin-top:2px;">Takes about 2 minutes. Give it a name and address.</div>
                         </td>
@@ -121,10 +122,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
                   <td style="padding:0 0 20px;">
                     <table cellpadding="0" cellspacing="0">
                       <tr>
-                        <td width="36" height="36" style="width:36px;height:36px;background-color:#0a1628;border-radius:50%;text-align:center;vertical-align:middle;line-height:36px;">
-                          <span style="font-size:14px;font-weight:700;color:#ffffff;line-height:36px;">2</span>
+                        <td width="36" style="padding-right:14px;">
+                          <div style="width:36px;height:36px;min-width:36px;background-color:#0a1628;border-radius:18px;text-align:center;line-height:36px;font-size:14px;font-weight:700;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">2</div>
                         </td>
-                        <td style="padding-left:14px;vertical-align:middle;">
+                        <td style="vertical-align:middle;">
                           <div style="font-size:15px;font-weight:600;color:#0a1628;">Invite your foreman or site lead</div>
                           <div style="font-size:13px;color:#71717a;margin-top:2px;">They'll get an email invite and can log updates from their phone.</div>
                         </td>
@@ -136,10 +137,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
                   <td style="padding:0 0 32px;">
                     <table cellpadding="0" cellspacing="0">
                       <tr>
-                        <td width="36" height="36" style="width:36px;height:36px;background-color:#0a1628;border-radius:50%;text-align:center;vertical-align:middle;line-height:36px;">
-                          <span style="font-size:14px;font-weight:700;color:#ffffff;line-height:36px;">3</span>
+                        <td width="36" style="padding-right:14px;">
+                          <div style="width:36px;height:36px;min-width:36px;background-color:#0a1628;border-radius:18px;text-align:center;line-height:36px;font-size:14px;font-weight:700;color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">3</div>
                         </td>
-                        <td style="padding-left:14px;vertical-align:middle;">
+                        <td style="vertical-align:middle;">
                           <div style="font-size:15px;font-weight:600;color:#0a1628;">Check your morning briefing tomorrow</div>
                           <div style="font-size:13px;color:#71717a;margin-top:2px;">The AI surfaces what needs your attention before the crew shows up.</div>
                         </td>
