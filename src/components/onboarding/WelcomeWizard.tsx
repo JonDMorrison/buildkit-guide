@@ -425,7 +425,7 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
         </div>
 
         {/* Step 1: Organization + Timezone + Province */}
-        {step === 1 && (
+        {step === 1 && !showCelebration && (
           <>
             <CardHeader className="text-center pt-6 pb-4">
               <div className="mx-auto mb-4 relative">
@@ -539,7 +539,7 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
         )}
 
         {/* Step 2: Trades */}
-        {step === 2 && (
+        {step === 2 && !showCelebration && (
           <>
             <CardHeader className="text-center pt-6 pb-2">
               <CardTitle className="text-2xl font-bold">What trades do you work in?</CardTitle>
@@ -631,7 +631,7 @@ export default function WelcomeWizard({ onComplete }: WelcomeWizardProps) {
         )}
 
         {/* Step 3: First Project */}
-        {step === 3 && (
+        {step === 3 && !showCelebration && (
           <>
             <CardHeader className="text-center pt-6 pb-2">
               <CardTitle className="text-2xl font-bold">Create your first project</CardTitle>
