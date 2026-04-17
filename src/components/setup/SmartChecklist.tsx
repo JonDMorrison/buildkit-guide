@@ -183,6 +183,11 @@ export function SmartChecklist({ context, forceShow = false }: SmartChecklistPro
                   helpText={item.helpText}
                   actionLabel={item.actionLabel}
                   onAction={getAction(item.key)}
+                  onSkip={
+                    item.key === 'step_first_invite'
+                      ? () => markStepComplete('step_first_invite')
+                      : undefined
+                  }
                 />
               ))}
 
@@ -200,6 +205,11 @@ export function SmartChecklist({ context, forceShow = false }: SmartChecklistPro
                           helpText={item.helpText}
                           actionLabel={item.actionLabel}
                           onAction={getAction(item.key)}
+                          onSkip={
+                            item.key === 'step_first_invite'
+                              ? () => markStepComplete('step_first_invite')
+                              : undefined
+                          }
                         />
                       ))}
                     </div>

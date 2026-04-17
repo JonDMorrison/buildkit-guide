@@ -11,6 +11,8 @@ interface SetupChecklistItemProps {
   helpText?: string;
   actionLabel?: string;
   onAction?: () => void;
+  onSkip?: () => void;
+  skipLabel?: string;
   isDisabled?: boolean;
 }
 
@@ -22,15 +24,33 @@ export function SetupChecklistItem({
   helpText,
   actionLabel = 'Start',
   onAction,
+  onSkip,
+  skipLabel,
   isDisabled = false,
 }: SetupChecklistItemProps) {
+  const isClickable = !isComplete && !!onAction && !isDisabled;
+
   return (
     <div
       className={cn(
         'group flex items-start gap-3 p-3 rounded-lg transition-colors',
         isComplete ? 'bg-muted/30' : 'hover:bg-muted/50',
+        isClickable && 'cursor-pointer',
         isDisabled && !isComplete && 'opacity-50'
       )}
+      onClick={isClickable ? onAction : undefined}
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      onKeyDown={
+        isClickable
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onAction!();
+              }
+            }
+          : undefined
+      }
     >
       {/* Status Icon */}
       <div className="flex-shrink-0 mt-0.5">
@@ -54,14 +74,14 @@ export function SetupChecklistItem({
           >
             {label}
           </span>
-          
+
           {timeEstimate && !isComplete && (
             <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
               <Clock className="w-3 h-3" />
               {timeEstimate}
             </span>
           )}
-          
+
           {helpText && (
             <TooltipProvider>
               <Tooltip>
@@ -75,7 +95,7 @@ export function SetupChecklistItem({
             </TooltipProvider>
           )}
         </div>
-        
+
         <p className={cn(
           'text-xs mt-0.5',
           isComplete ? 'text-muted-foreground/70' : 'text-muted-foreground'
@@ -84,18 +104,35 @@ export function SetupChecklistItem({
         </p>
       </div>
 
-      {/* Action Button */}
+      {/* Action / skip affordances — pointer-events-none so clicks fall
+          through to the row's onClick. The Button is purely visual. */}
       {!isComplete && onAction && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onAction}
-          disabled={isDisabled}
-          className="flex-shrink-0"
+        <div className="flex items-center gap-2 flex-shrink-0 pointer-events-none">
+          <Button
+            variant="ghost"
+            size="sm"
+            tabIndex={-1}
+            disabled={isDisabled}
+            className="flex-shrink-0"
+          >
+            {actionLabel}
+            <ChevronRight className="w-4 h-4 ml-1" />
+          </Button>
+        </div>
+      )}
+
+      {/* Optional skip link — re-enables pointer events so it's its own click target */}
+      {!isComplete && onSkip && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSkip();
+          }}
+          className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 flex-shrink-0 pointer-events-auto mt-1"
         >
-          {actionLabel}
-          <ChevronRight className="w-4 h-4 ml-1" />
-        </Button>
+          {skipLabel || 'No thanks'}
+        </button>
       )}
     </div>
   );
