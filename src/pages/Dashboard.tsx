@@ -318,28 +318,10 @@ function DashboardContent() {
 
   return (
     <DashboardLayout>
+      {/* ── 1. Health Banner ─────────────────────────────────────────── */}
       <HealthContextBanner />
-      <SmartChecklist />
 
-      {/* ── Morning Briefing ──────────────────────────────────────────── */}
-      <SectionErrorBoundary title="Morning Briefing">
-        <MorningBriefingWidget projectId={currentProjectId} />
-      </SectionErrorBoundary>
-
-      {/* ── Proactive Alerts ──────────────────────────────────────────── */}
-      <SectionErrorBoundary title="Proactive Alerts">
-        <ProactiveAlertsWidget projectId={currentProjectId} />
-      </SectionErrorBoundary>
-
-      {/* ── Org Intelligence + Reports ─────────────────────────────────── */}
-      <SectionErrorBoundary title="Org Intelligence">
-        <DashboardGrid columns={2} gap="lg">
-          <OrgIntelligenceWidget />
-          <ReportsWidget />
-        </DashboardGrid>
-      </SectionErrorBoundary>
-
-      {/* ── Zone 1: Right Now ────────────────────────────────────────── */}
+      {/* ── 2. Daily Snapshot — operational data at a glance ─────────── */}
       <DashboardHeader
         title={isForeman() ? "Site Operations" : "Today on Site"}
         subtitle={isForeman() ? "Your crew, tasks, and blockers" : "Operational clarity — project status and priorities"}
@@ -358,7 +340,28 @@ function DashboardContent() {
           </>
         }
       />
+      <DailySnapshotStrip
+        weather={todayLog?.weather || null}
+        crewCount={todayLog?.crew_count || 0}
+        activeTrades={activeTrades}
+        tasksStarting={tasksStartingTodayList.length}
+        tasksFinishing={tasksFinishingTodayList.length}
+        blockedCount={blockedTasks}
+        staleLogDate={logIsStale ? recentLog?.log_date : null}
+        onWeatherClick={() => setWeatherPopoverOpen(true)}
+        onCrewClick={() => { setCrewModalOpened(true); setCrewPopoverOpen(true); }}
+        onTradesClick={() => setTradesPopoverOpen(true)}
+        onStartingClick={() => setStartingModalOpen(true)}
+        onFinishingClick={() => setFinishingModalOpen(true)}
+        onBlockersClick={() => setBlockersModalOpen(true)}
+      />
 
+      {/* ── 3. Proactive Alerts ──────────────────────────────────────── */}
+      <SectionErrorBoundary title="Proactive Alerts">
+        <ProactiveAlertsWidget projectId={currentProjectId} />
+      </SectionErrorBoundary>
+
+      {/* ── 4. Attention Inbox (PM/Admin) ────────────────────────────── */}
       {(isPM() || isAdmin) && (changeFeed?.attention_ranked_projects?.length ?? 0) > 0 && (
         <SectionErrorBoundary title="Attention Needed">
           <AttentionInbox
@@ -370,6 +373,7 @@ function DashboardContent() {
         </SectionErrorBoundary>
       )}
 
+      {/* ── 5. My Day + Blockers ─────────────────────────────────────── */}
       <SectionErrorBoundary title="Right Now">
         <DashboardGrid columns={2} gap="lg">
           <MyDayTaskList tasks={priorityTasks} loading={tasksLoading} />
@@ -377,35 +381,20 @@ function DashboardContent() {
         </DashboardGrid>
       </SectionErrorBoundary>
 
-      {/* ── Zone 2: Project Pulse ─────────────────────────────────────── */}
-      <SectionErrorBoundary title="Project Pulse">
-        <DashboardSection
-          title="Project Pulse"
-          helpText="Today's site status, project health, and open change orders."
-        >
-          <DailySnapshotStrip
-            weather={todayLog?.weather || null}
-            crewCount={todayLog?.crew_count || 0}
-            activeTrades={activeTrades}
-            tasksStarting={tasksStartingTodayList.length}
-            tasksFinishing={tasksFinishingTodayList.length}
-            blockedCount={blockedTasks}
-            staleLogDate={logIsStale ? recentLog?.log_date : null}
-            onWeatherClick={() => setWeatherPopoverOpen(true)}
-            onCrewClick={() => { setCrewModalOpened(true); setCrewPopoverOpen(true); }}
-            onTradesClick={() => setTradesPopoverOpen(true)}
-            onStartingClick={() => setStartingModalOpen(true)}
-            onFinishingClick={() => setFinishingModalOpen(true)}
-            onBlockersClick={() => setBlockersModalOpen(true)}
-          />
-          <DashboardGrid columns={2} gap="lg">
-            <ProjectHealthSignalCard projectId={currentProjectId} />
-            {(isPM() || isAdmin) && <OpenChangeOrdersCard projectId={currentProjectId} />}
-          </DashboardGrid>
-        </DashboardSection>
+      {/* ── 6. Morning Briefing ──────────────────────────────────────── */}
+      <SectionErrorBoundary title="Morning Briefing">
+        <MorningBriefingWidget projectId={currentProjectId} />
       </SectionErrorBoundary>
 
-      {/* ── Zone 3: This Week (lazy, below fold) ──────────────────────── */}
+      {/* ── 7. Project Health + Change Orders ────────────────────────── */}
+      <SectionErrorBoundary title="Project Pulse">
+        <DashboardGrid columns={2} gap="lg">
+          <ProjectHealthSignalCard projectId={currentProjectId} />
+          {(isPM() || isAdmin) && <OpenChangeOrdersCard projectId={currentProjectId} />}
+        </DashboardGrid>
+      </SectionErrorBoundary>
+
+      {/* ── 8. This Week (lazy, below fold) ──────────────────────────── */}
       <DashboardSection
         title="This Week"
         helpText="Upcoming tasks and what changed since the last snapshot."
@@ -421,6 +410,17 @@ function DashboardContent() {
           </div>
         </DashboardGrid>
       </DashboardSection>
+
+      {/* ── 9. Org Intelligence + Reports ────────────────────────────── */}
+      <SectionErrorBoundary title="Org Intelligence">
+        <DashboardGrid columns={2} gap="lg">
+          <OrgIntelligenceWidget />
+          <ReportsWidget />
+        </DashboardGrid>
+      </SectionErrorBoundary>
+
+      {/* ── 10. Setup Checklist (hidden when complete/dismissed) ──────── */}
+      <SmartChecklist />
 
       {/* ── Modals ───────────────────────────────────────────────────── */}
       <WeatherInfoModal todayLog={todayLog} open={weatherPopoverOpen} onOpenChange={setWeatherPopoverOpen} projectId={currentProjectId} />
