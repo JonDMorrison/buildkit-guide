@@ -24,18 +24,22 @@
 
 ## Testing
 
-End-to-end tests live in `tests/e2e/` and run with Playwright (chromium-only). Config is `playwright.config.ts`; baseURL honors `TEST_BASE_URL` / `PLAYWRIGHT_BASE_URL` (default `http://localhost:8080`). The webServer block auto-starts `npm run dev` if nothing is on 8080.
+End-to-end tests live in `e2e/` and run with Playwright (chromium-only). Config is `playwright.config.ts`; baseURL honors `TEST_BASE_URL` / `PLAYWRIGHT_BASE_URL` (default `http://localhost:8080`). The webServer block auto-starts `npm run dev` if nothing is on 8080.
 
 Scripts:
 - `npm run test:e2e` — full suite
 - `npm run test:e2e:ui` — interactive Playwright UI
 - `npm run test:e2e:headed` — visible browser
 
-Skeleton specs (TODO selectors):
-- `auth.spec.ts` — contractor signup + login
-- `projects.spec.ts` — project creation, task assignment + completion
-- `ai-assist.spec.ts` — AI Assist drawer open + canned-response render (stub OpenAI before enabling)
-- `client-invite.spec.ts` — invite flow + scoped client dashboard
+Existing specs:
+- `e2e/smoke.spec.ts` — landing page smoke
+- `e2e/core-flows.spec.ts` — core-flow regression. Note: this file currently falls back to `https://projectpath.app` when no env var is set — set `PLAYWRIGHT_BASE_URL` (or `TEST_BASE_URL`) to localhost before running, or refactor that fallback before next CI run.
+
+New skeleton specs (TODO selectors):
+- `e2e/auth.spec.ts` — contractor signup + login
+- `e2e/projects.spec.ts` — project creation, task assignment + completion
+- `e2e/ai-assist.spec.ts` — AI Assist drawer open + canned-response render (stub OpenAI before enabling)
+- `e2e/client-invite.spec.ts` — invite flow + scoped client dashboard
 
 Before enabling these:
 1. Use a non-Chantel test contractor account — Chantel is the live primary beta user.
