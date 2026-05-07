@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
 
-const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'https://projectpath.app';
+const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:8080';
 
 // For authenticated tests — set these env vars to use a pre-existing account
 // e.g.: E2E_EMAIL=test@example.com E2E_PASSWORD=secret npx playwright test
