@@ -27,3 +27,7 @@ dist-ssr
 .mcp.json
 test-results/
 fix-helpcenter-links.cjs
+
+# Playwright
+playwright-report/
+tests/e2e/.auth/
