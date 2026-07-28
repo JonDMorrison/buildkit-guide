@@ -1,90 +1,60 @@
-# Welcome to your Lovable project
+# ProjectPath
 
-## Project info
+ProjectPath is a construction operations product designed to improve the flow of information from the jobsite to the office.
 
-**URL**: https://lovable.dev/projects/4e4098c3-e93d-49cc-9e6c-99f0c48a10e3
+It is not intended to replace estimating, scheduling, or full construction-management platforms. Its focus is the execution loop that often breaks between daily activity, reporting, issues, ownership, action, and measurable follow-through.
 
-## How can I edit this code?
+## The problem
 
-There are several ways of editing your application.
+Construction companies frequently rely on group texts, spreadsheets, disconnected forms, and informal conversations to understand what is happening across active jobs. Important information may be recorded without becoming visible, assigned, resolved, or learned from.
 
-**Use Lovable**
+ProjectPath is designed to help teams turn daily field information into structured action.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/4e4098c3-e93d-49cc-9e6c-99f0c48a10e3) and start prompting.
+## Product focus
 
-Changes made via Lovable will be committed automatically to this repo.
+- Daily reporting discipline
+- Field-to-office visibility
+- Issue escalation
+- Ownership and follow-through
+- Lookahead coordination
+- Safety workflows
+- Job-performance awareness
+- Mobile-first use for field teams
 
-**Use your preferred IDE**
+## Jon Morrison's role
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+Jon leads product strategy, customer discovery, workflow definition, positioning, feature prioritization, UX direction, testing, and AI-assisted implementation. He works with construction operators and technical collaborators to translate real field and leadership problems into a focused software product.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+This repository reflects a product-led, AI-assisted development workflow. It should not be interpreted as a claim that one person manually authored every line of code.
 
-Follow these steps:
+## Current status
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+Active product development and early customer validation.
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+## Technology
 
-# Step 3: Install the necessary dependencies.
-npm i
+- React
+- TypeScript
+- Vite
+- Tailwind CSS
+- shadcn/ui
+- Supabase
+- Playwright for selected end-to-end testing
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+## Local development
+
+```bash
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/4e4098c3-e93d-49cc-9e6c-99f0c48a10e3) and click on Share -> Publish.
-
-## E2E Testing
-
-Run end-to-end tests for the safety module:
+## Testing
 
 ```bash
-# Install Playwright (first time)
 npx playwright install chromium
-
-# Run tests
 npm run test:e2e
-
-# Run with UI
-npm run test:e2e:ui
 ```
 
-See [E2E Testing Guide](docs/E2E_TESTING.md) for details.
+## Product leadership context
 
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+ProjectPath demonstrates Jon's core product approach: begin with the work people are trying to complete, identify where the operating loop breaks, simplify the workflow, and guide the product from discovery through usable software.
